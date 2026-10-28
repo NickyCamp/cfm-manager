@@ -9,6 +9,10 @@ A home for Madden Connected Franchise leagues. Anyone in a league signs in, conn
 
 The EA code is ported from the NCL sync engine (`ncl-sync/ea/sync.mjs`), which was adapted from [snallabot](https://github.com/snallabot/snallabot-service) (MIT License, Copyright (c) 2024 snallabot).
 
+## Live
+- App: Vercel project `cfm-manager` (team CFM Manager)
+- Database: Supabase project `cfm-manager` (East US)
+
 ## Setup
 1. **Supabase:** create a project. In the SQL editor, run `supabase/migrations/0001_init.sql`. Under Authentication → URL configuration, set the Site URL to the Vercel address and add `<site>/auth/callback` as a redirect URL.
 2. **Vercel:** import this repo. Add the env vars from `.env.example`.
