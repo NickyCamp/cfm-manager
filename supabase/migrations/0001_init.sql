@@ -117,6 +117,16 @@ create policy "sync history of visible leagues" on public.sync_runs
     exists (select 1 from public.leagues l where l.id = league_id and (l.is_public or public.is_member(l.id)))
   );
 
+-- ---------- Data API access ----------
+-- New Supabase projects can be set not to expose new tables to the API
+-- automatically, so grant exactly what the policies above expect.
+grant usage on schema public to anon, authenticated, service_role;
+grant select on public.leagues, public.league_members, public.sync_runs to anon, authenticated;
+grant select on public.profiles to authenticated;
+grant all on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+grant execute on function public.is_member(uuid) to anon, authenticated;
+
 -- ---------- storage: each league's built data ----------
 -- league-data/<slug>/data.json is what the league pages load. Public read;
 -- the worker writes with the service role.
