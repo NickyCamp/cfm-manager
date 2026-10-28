@@ -1,0 +1,42 @@
+name: Sync leagues
+
+# Every 3 hours, checks every league on CFM Manager and pulls from EA when the
+# league has moved (advance, newly played games, or a day since the last pull).
+# The app can also start a run for one league (first sync after it's added).
+
+on:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      league:
+        description: "League web address (slug). Empty = all leagues."
+        default: ""
+      mode:
+        description: "auto = only leagues that changed; full = always pull"
+        default: "auto"
+
+concurrency:
+  group: sync-${{ inputs.league || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Sync
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EA_CLIENT_SECRET: ${{ secrets.EA_CLIENT_SECRET }}
+          EA_TOKEN_KEY: ${{ secrets.EA_TOKEN_KEY }}
+          LEAGUE: ${{ inputs.league }}
+          MODE: ${{ inputs.mode || 'auto' }}
+        run: npx tsx worker/sync-all.ts
