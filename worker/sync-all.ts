@@ -7,25 +7,32 @@
 //   3. Pull everything and upload it as one gzipped bundle:
 //        league-data/<slug>/raw.json.gz   { "<file>.json": data, ... }
 //        league-data/<slug>/status.json   small summary the app can read
-//   4. Record the run in sync_runs and update the league row.
+//   4. Build the data file the league pages read, carrying over past stat lines:
+//        league-data/<slug>/data.json.gz
+//   5. Record the run in sync_runs and update the league row.
+//
+// MODE=rebuild skips EA entirely and rebuilds data.json.gz from the saved raw
+// pull (after a change to the data format).
 //
 // Leagues run one at a time so we stay gentle with EA's servers.
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL), SUPABASE_SERVICE_ROLE_KEY,
 //      EA_CLIENT_SECRET, EA_TOKEN_KEY, optional LEAGUE, MODE (auto|full).
 
-import { gzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { blazeLogin, refreshToken, type EaToken } from "../src/lib/ea/client";
 import { decryptJson, encryptJson } from "../src/lib/crypto";
 import { fullPull, getHub, leagueKey } from "./pull";
+import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
+import type { LeagueData } from "../src/lib/league/types";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) { console.error("Supabase URL and service-role key are required."); process.exit(1); }
 const db = createClient(url, key, { auth: { persistSession: false } });
 
-const MODE = process.env.MODE === "full" ? "full" : "auto";
+const MODE = process.env.MODE === "full" ? "full" : process.env.MODE === "rebuild" ? "rebuild" : "auto";
 const ONLY = (process.env.LEAGUE || "").trim();
 const STALE_HOURS = 20;
 
@@ -98,7 +105,39 @@ async function syncLeague(lg: League): Promise<string> {
     { contentType: "application/json", upsert: true },
   );
   log(`- Saved ${Object.keys(files).length} files (${(bundle.length / 1024).toFixed(0)} KB compressed).`);
-  return finish("synced", syncKey);
+  const built = await buildAndSave(lg.slug, files, log);
+  return finish(built ? "synced" : "failed", built ? syncKey : undefined);
+}
+
+async function download(path: string): Promise<Buffer | null> {
+  const { data, error } = await db.storage.from("league-data").download(path);
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
+
+async function buildAndSave(slug: string, files: Record<string, unknown>, log: (s: string) => void): Promise<boolean> {
+  try {
+    const prevBuf = await download(`${slug}/data.json.gz`);
+    let prev: LeagueData | null = null;
+    try { prev = prevBuf ? JSON.parse(gunzipSync(prevBuf).toString("utf8")) : null; } catch { prev = null; }
+    const data = mergeHistory(prev, buildLeagueData(files));
+    const gz = gzipSync(Buffer.from(JSON.stringify(data)));
+    const up = await db.storage.from("league-data").upload(`${slug}/data.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
+    if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return false; }
+    log(`- Built league data: ${data.teams.length} teams, ${data.players.length} players, ${data.games.length} games, ${data.lines.length} stat lines (${(gz.length / 1024).toFixed(0)} KB).`);
+    return true;
+  } catch (e) {
+    log(`- **Couldn't build the league data:** ${(e as Error).message}`);
+    return false;
+  }
+}
+
+async function rebuildLeague(lg: League): Promise<string> {
+  const log = (s: string) => console.log(`[${lg.slug}] ${s}`);
+  const raw = await download(`${lg.slug}/raw.json.gz`);
+  if (!raw) { log("- No saved pull yet."); return "skipped"; }
+  const ok = await buildAndSave(lg.slug, JSON.parse(gunzipSync(raw).toString("utf8")), log);
+  return ok ? "rebuilt" : "failed";
 }
 
 (async () => {
@@ -110,7 +149,7 @@ async function syncLeague(lg: League): Promise<string> {
 
   const results: string[] = [];
   for (const lg of leagues as League[]) {
-    try { results.push(`${lg.slug}: ${await syncLeague(lg)}`); }
+    try { results.push(`${lg.slug}: ${MODE === "rebuild" ? await rebuildLeague(lg) : await syncLeague(lg)}`); }
     catch (e) { results.push(`${lg.slug}: crashed (${(e as Error).message})`); console.error(e); }
   }
   console.log("\nSummary\n" + results.join("\n"));

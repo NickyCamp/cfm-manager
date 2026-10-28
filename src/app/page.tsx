@@ -25,7 +25,7 @@ export default async function Home() {
               cap space, contracts, standings, scores and transactions, refreshed from EA after every advance.
             </p>
             <div className="hero-actions">
-              <Link className="btn btn-primary" href="/login">Set up your league</Link>
+              <Link className="btn btn-primary" href="/login?next=/connect">Set up your league</Link>
               <Link className="btn btn-quiet" href="/login">Sign in</Link>
             </div>
           </div>
@@ -53,7 +53,7 @@ export default async function Home() {
           <ol className="steps">
             <li>
               <h3>Create an account</h3>
-              <p>Just an email address. No password to remember.</p>
+              <p>An email and a password. That&apos;s it.</p>
             </li>
             <li>
               <h3>Connect EA</h3>

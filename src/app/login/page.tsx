@@ -9,7 +9,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="page">
       <div className="wrap narrow">
         <h1>Sign in</h1>
-        <p>Enter your email and we&apos;ll send you a sign-in link. New here? The same link creates your account.</p>
+        <p>New here? Choose Create account. You&apos;ll connect your EA account and pick your league next.</p>
         {error === "link" && (
           <div className="notice error">That sign-in link didn&apos;t work. It may have expired. Send yourself a new one below.</div>
         )}
