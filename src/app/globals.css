@@ -94,7 +94,7 @@ a { color: inherit; }
 
 label { display: block; font-weight: 600; margin: 0 0 6px; }
 .hint { color: var(--ink-soft); font-size: 0.92rem; margin-top: 6px; }
-input[type="text"], input[type="email"], textarea {
+input[type="text"], input[type="email"], input[type="password"], textarea {
   width: 100%; font: 400 1rem var(--text); color: var(--ink);
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--radius-control);
   padding: 12px 14px; min-height: 48px;
@@ -312,7 +312,8 @@ a.game-card:hover { border-color: var(--field); }
 .tb-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-weight: 600; opacity: 0.92; }
 .jersey-big { font: 800 3rem var(--display); min-width: 2ch; text-align: center; opacity: 0.9; }
 
-.tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--line); margin-bottom: 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
 .tabs a { padding: 10px 14px; text-decoration: none; font-weight: 700; color: var(--ink-soft); border-bottom: 3px solid transparent; margin-bottom: -1.5px; white-space: nowrap; }
 .tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--field); }
 @media (prefers-color-scheme: dark) { .tabs a[aria-current="page"] { border-bottom-color: var(--goalpost); } }
