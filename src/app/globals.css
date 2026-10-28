@@ -336,6 +336,9 @@ details.panel[open] summary { margin-bottom: 8px; }
 .seg a { padding: 7px 14px; border-radius: 999px; text-decoration: none; font-weight: 700; color: var(--ink-soft); font-size: 0.95rem; }
 .seg a[aria-current="page"] { background: var(--field); color: #fff; }
 .proj { display: block; font-size: 0.7rem; font-weight: 600; opacity: 0.8; }
+.summary-tbl td, .summary-tbl th { padding-top: 11px; padding-bottom: 11px; }
+.seg { flex-wrap: wrap; max-width: 100%; }
+.seg a { white-space: nowrap; }
 .years-tbl tfoot th { text-align: left; font: 700 0.9rem var(--text); color: var(--ink); padding: 9px 10px 9px 14px; border-top: 1px solid var(--line); }
 .years-tbl tfoot td { border-top: 1px solid var(--line); }
 .years-tbl tfoot tr:first-child th, .years-tbl tfoot tr:first-child td { border-top: 2px solid var(--ink-soft); }
@@ -417,6 +420,7 @@ details.panel[open] summary { margin-bottom: 8px; }
   .stat-tiles, .stat-tiles.three { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .search-form, .search-form input { width: 100%; min-width: 0; }
   .tool-grid { grid-template-columns: minmax(0, 1fr); }
+  .seg a { padding: 7px 11px; }
   .comps { position: static; }
   .offer-grid { grid-template-columns: repeat(2, 1fr); }
   .offer-grid .num-field:first-child { grid-column: span 2; }

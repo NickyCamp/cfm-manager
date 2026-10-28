@@ -163,8 +163,25 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
   return (
     <>
       <div className="panel tbl-wrap">
+        <table className="tbl summary-tbl">
+          <caption>Next {years.length - 1} seasons <span className="muted">from contracts as of this sync</span></caption>
+          <thead><tr><th>Season</th><th className="num" title="Players under contract">Signed</th><th className="num">Committed</th><th className="num hide-sm">League cap</th><th className="num">Space</th></tr></thead>
+          <tbody>
+            {totals.map((t, i) => (
+              <tr key={t.year}>
+                <td className="nw">{t.year}{i === 0 ? <span className="muted small"> now</span> : <span className="proj">proj.</span>}</td>
+                <td className="num strong">{t.players}</td>
+                <td className="num">{money(t.committed)}</td>
+                <td className="num muted hide-sm">{money(t.cap)}</td>
+                <td className={`num strong ${t.space < 0 ? "neg" : "pos"}`}>{money(t.space)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="panel tbl-wrap">
         <table className="tbl years-tbl">
-          <caption>Cap by year <span className="muted">{years[0]} is Madden&apos;s; later years are projected</span></caption>
+          <caption>By player <span className="muted">{years[0]} is Madden&apos;s; later years are projected</span></caption>
           <thead>
             <tr>
               <th>Player</th>
