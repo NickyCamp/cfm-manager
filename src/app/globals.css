@@ -479,3 +479,9 @@ details.panel[open] summary { margin-bottom: 8px; }
 .ab-h { margin: 18px 0 6px; }
 .ab-group { margin: 10px 0; }
 .ab-group__h { font: 700 0.95rem var(--display); margin-bottom: 6px; color: var(--ink-soft); }
+
+/* sync now */
+.sync-now { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.btn-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; min-height: 32px; }
+.btn-link:disabled { opacity: 0.6; cursor: default; }
+.sync-msg { font-size: 0.85rem; opacity: 0.9; }
