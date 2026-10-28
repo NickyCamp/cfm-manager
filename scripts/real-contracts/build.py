@@ -24,7 +24,7 @@ df = pd.read_parquet(sys.argv[1])
 df = df[df.is_active == True]
 out = []
 for _, r in df.iterrows():
-    caps = {}
+    caps, pros = {}, {}
     for s in r.season_history if r.season_history is not None else []:
         try:
             y = int(s["year"])
@@ -34,6 +34,7 @@ for _, r in df.iterrows():
             cap, base = s.get("cap_number") or 0, s.get("base_salary") or 0
             # Void / post-contract rows carry dead proration only; stop there.
             caps[y] = round(cap * 100) if cap > 0.5 and cap >= 0.9 * base else None
+            pros[y] = round((s.get("prorated_bonus") or 0) * 100)
     years = []
     for y in range(FIRST, LAST + 1):
         v = caps.get(y)
@@ -47,7 +48,11 @@ for _, r in df.iterrows():
         continue
     dy = None if pd.isna(r.draft_year) else int(r.draft_year)
     # Total value of the current real contract ($10K), to confirm Madden still carries this deal.
-    out.append([n[0], n[-1], dy, years, round((r.value or 0) * 100)])
+    # Bonus proration charged in each of those years, plus what's left after the
+    # last one (void years), so an extension can tell old bonus from new.
+    pro = [pros.get(FIRST + i, 0) for i in range(len(years))]
+    after = sum(v for y, v in pros.items() if y >= FIRST + len(years))
+    out.append([n[0], n[-1], dy, years, round((r.value or 0) * 100), pro, after])
 
 out.sort(key=lambda x: (x[1], x[0]))
 json.dump({

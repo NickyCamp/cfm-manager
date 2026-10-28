@@ -6,9 +6,9 @@
 //
 // Server-only: the JSON is ~35 KB and shouldn't ship to the browser.
 import data from "./real-contracts.json";
-import { MAX_BONUS_PRORATION_YEARS, type ContractLike } from "./cap";
+import { MAX_BONUS_PRORATION_YEARS, yearlyRaise, type ContractLike } from "./cap";
 
-type Entry = [first: string, last: string, draftYear: number | null, caps: number[], value: number];
+type Entry = [first: string, last: string, draftYear: number | null, caps: number[], value: number, pro: number[], proAfter: number];
 const { firstYear, unit, players } = data as unknown as { firstYear: number; unit: number; players: Entry[] };
 
 export function normName(s: string) {
@@ -38,7 +38,7 @@ function findEntry(first: string, last: string, eaDraftYear: number | null): Ent
   return c.length === 1 ? c[0] : null;
 }
 
-export type RealSource = "real" | "real-restructured";
+export type RealSource = "real" | "real-restructured" | "real-extended";
 
 /**
  * Cap hit by year from the player's real contract, or null when it doesn't
@@ -47,6 +47,10 @@ export type RealSource = "real" | "real-restructured";
  * - Restructured in the franchise (Madden's cap hit is lower than the real one):
  *   the converted salary X became bonus spread over the rest of the bonus
  *   window, so this season drops by X - X/n and the next n-1 seasons rise X/n.
+ * - Extended this season (contract restarted, longer than the real one): the
+ *   real deal's remaining years stay as they were, then the new years follow
+ *   Madden's even raises. EA's bonus is the real bonus not yet charged plus the
+ *   new bonus, which starts the season after the old deal ends.
  */
 export function realProjection(
   name: { first: string; last: string; draftYear: number | null },
@@ -56,22 +60,42 @@ export function realProjection(
   const e = findEntry(name.first, name.last, name.draftYear);
   if (!e) return null;
   const caps = e[3];
-  // Same contract: Madden's total equals the real contract's value (restructures move money, not add it).
-  const ratio = (c.salary + c.bonus) / (e[4] * unit);
-  if (!(ratio >= 0.7 && ratio <= 2.1)) return null;
   const cap = (y: number) => caps[y - firstYear] * unit;
   const realEnd = firstYear + caps.length - 1;
   const maddenEnd = currentYear + c.yearsLeft - 1;
-  if (realEnd !== maddenEnd || currentYear < firstYear) return null;
+  if (currentYear < firstYear || realEnd < currentYear) return null;
   const c0 = cap(currentYear);
   if (!(c0 > 0)) return null;
   const gap = c0 - c.capHit;
   const hits: Record<number, number> = { [currentYear]: c.capHit };
+  const el = c.length - c.yearsLeft;
+
+  if (el === 0 && realEnd < maddenEnd && Math.abs(gap) <= 0.15 * c.capHit) {
+    const pro = (y: number) => e[5][y - firstYear] * unit;
+    let oldSalary = 0, oldBonusLeft = e[6] * unit;
+    for (let y = currentYear; y <= realEnd; y++) { oldSalary += cap(y) - pro(y); oldBonusLeft += pro(y); }
+    const n = maddenEnd - realEnd;
+    const newSalary = c.salary - oldSalary;
+    if (newSalary > 0) {
+      const pn = Math.min(n, MAX_BONUS_PRORATION_YEARS);
+      const bn = Math.max(0, c.bonus - oldBonusLeft) / pn;
+      const avg = newSalary / n, d = yearlyRaise(n, avg), s1 = avg - (d * (n - 1)) / 2;
+      for (let y = currentYear + 1; y <= maddenEnd; y++) {
+        if (y <= realEnd) hits[y] = Math.max(0, cap(y) - gap);
+        else { const i = y - realEnd - 1; hits[y] = Math.max(0, s1 + d * i) + (i < pn ? bn : 0); }
+      }
+      return { hits, source: "real-extended" };
+    }
+  }
+
+  // Same contract: Madden's total equals the real contract's value (restructures move money, not add it).
+  const ratio = (c.salary + c.bonus) / (e[4] * unit);
+  if (!(ratio >= 0.7 && ratio <= 2.1)) return null;
+  if (realEnd !== maddenEnd) return null;
   if (Math.abs(gap) <= 0.1 * c.capHit) {
     for (let k = 1; k < c.yearsLeft; k++) hits[currentYear + k] = Math.max(0, cap(currentYear + k) - gap);
     return { hits, source: "real" };
   }
-  const el = c.length - c.yearsLeft;
   const n = Math.min(c.length, MAX_BONUS_PRORATION_YEARS) - el;
   const x = (gap * n) / (n - 1);
   // The converted salary becomes bonus, so it can't exceed the bonus Madden now shows.

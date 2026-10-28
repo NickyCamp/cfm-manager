@@ -15,22 +15,28 @@
 //     capHit minus this season's bonus share. Projections run a line through
 //     that known salary, sized so the whole contract adds up to its total
 //     salary. That alone took the typical miss from ~9% to under 1%.
-//  4. EXTENSIONS are merged with the old deal: EA's length counts the old
-//     deal's remaining years first. Signed this season: this season (and any
-//     other rookie-deal years left) stay at the old salary, the new bonus
-//     starts next season, and the new deal's raise follows Madden's raise
-//     rule for its length (yearlyRaise).
+//  4. EXTENSIONS are merged with the old deal: the contract restarts, the old
+//     deal's remaining years keep their salaries, and EA's bonus becomes the
+//     old bonus not yet charged plus the new bonus, which starts the season
+//     after the old deal ends. New years rise by yearlyRaise(length). Signed
+//     this season shows up as a cap hit below one bonus share, or as this
+//     season's salary sitting above the deal's average (a new deal starts low).
 //  5. GUARANTEED DEALS: when dead-if-cut covers all remaining salary,
 //     (dead money - remaining bonus) is the salary still to be paid; that
 //     fixes the line for extensions that are already underway.
-//  6. ROOKIE DEALS imported from real life follow the NFL rookie scale
-//     (~10% raises); blended with the line.
+//  6. The rookie blend below targets EA rookieYear == currentYear - elapsed,
+//     i.e. players in their second season on a deal (EA's rookieYear is the
+//     draft year + 1). Fit that way; "fixing" the offset tested worse.
 //
-// Accuracy against the real numbers (held-out half of the teams): median miss
-// 0.8%, ~60% of future seasons within 2%, ~75% within 5%. The big misses are
-// mostly real-life contracts imported at franchise start (hand-built NFL
-// structures) and void years, which EA's data doesn't describe.
-// Scripts and data: /home/claude/capfit (see the project notes).
+// Madden's save stores each contract as per-year salary and bonus arrays plus
+// a SalaryDistribution (BackLoaded, FrontLoaded, Flat, BellCurve, Custom) and
+// void/guaranteed year counts (madden-franchise schema). EA's export only has
+// totals, so the formula can't see the distribution; real NFL contracts
+// (realContracts.ts) cover players still on the deal the franchise imported.
+//
+// Accuracy vs Madden's cap screens with both (2026-10-28): dollar-weighted miss
+// 9.8% (formula alone was 15%), 68% of future seasons within 2%.
+// Research scripts lived in the session sandbox (capfit/); see the project notes.
 
 export const MAX_BONUS_PRORATION_YEARS = 5;
 
@@ -53,7 +59,7 @@ const RAISE_FIT: Record<number, [number, number]> = {
 };
 export function yearlyRaise(length: number, avgSalary: number) {
   if (length <= 1) return 0;
-  const [a, c] = RAISE_FIT[length] ?? [0.175, 0];
+  const [a, c] = RAISE_FIT[length] ?? [0.2, 0];
   return Math.max(0.05 * avgSalary, a * avgSalary + c);
 }
 
@@ -126,13 +132,18 @@ export function contractKind(c: ContractLike, currentYear: number): ContractKind
   const P = Math.min(L, MAX_BONUS_PRORATION_YEARS);
   const B = P ? c.bonus / P : 0;
   if (el === 0 && c.bonus > 0 && L >= 2 && c.capHit < 0.9 * B) return "extension-pending";
+  // A new Madden deal starts below its average salary and rises. If this
+  // season's salary (cap hit minus a bonus share) is above the average, this
+  // season is still the old deal's: an extension signed during the season.
+  const rookieDeal = c.rookieYear != null && c.rookieYear - 1 === currentYear - el && (c.yearsPro ?? 99) <= 3;
+  const avg = L ? c.salary / L : 0;
+  if (el === 0 && L >= 3 && !rookieDeal && avg > 0 && (c.capHit - B) / avg > 1.05 && c.salary > c.capHit) return "extension-pending";
   const pen = c.releasePenalty ?? 0;
   const excess = pen - B * Math.max(0, P - el);
   if (c.releasePenalty != null && excess > Math.max(80_000, 0.01 * c.bonus)) {
     const sNow = c.capHit - (el < P ? B : 0);
     return excess >= 0.95 * sNow * c.yearsLeft ? "extension-guaranteed" : "extension";
   }
-  void currentYear;
   return "standard";
 }
 
