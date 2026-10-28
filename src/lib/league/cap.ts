@@ -125,6 +125,9 @@ export type ContractLike = {
   yearsPro?: number;
 };
 
+let GTD_SHARE = 0.5;
+export function _setGtdShare(v: number) { GTD_SHARE = v; } // research hook
+
 export type ContractKind = "standard" | "extension-pending" | "extension-guaranteed" | "extension";
 
 export function contractKind(c: ContractLike, currentYear: number): ContractKind {
@@ -142,7 +145,11 @@ export function contractKind(c: ContractLike, currentYear: number): ContractKind
   const excess = pen - B * Math.max(0, P - el);
   if (c.releasePenalty != null && excess > Math.max(80_000, 0.01 * c.bonus)) {
     const sNow = c.capHit - (el < P ? B : 0);
-    return excess >= 0.95 * sNow * c.yearsLeft ? "extension-guaranteed" : "extension";
+    // Guaranteed salary still owed should be about the deal's remaining share of
+    // its salary; much less means the bonus just started late (an extension
+    // signed last season), not a guarantee.
+    const owedShare = (c.salary * c.yearsLeft) / L;
+    return excess >= 0.95 * sNow * c.yearsLeft && excess >= GTD_SHARE * owedShare ? "extension-guaranteed" : "extension";
   }
   return "standard";
 }
@@ -184,7 +191,9 @@ export function projectContract(c: ContractLike, currentYear: number): Record<nu
   } else {
     // Straight line through this season's known salary; the whole deal adds up to its total.
     const denom = (L * (L - 1)) / 2 - L * el;
-    d = denom ? (c.salary - L * sNow) / denom : 0;
+    // When this season is the deal's midpoint the total can't fix the slope;
+    // fall back to Madden's usual raise for a deal this long.
+    d = Math.abs(denom) > 1e-9 ? (c.salary - L * sNow) / denom : yearlyRaise(L, c.salary / L);
   }
   const rookie = kind === "standard" && c.rookieYear === currentYear - el && (c.yearsPro ?? 99) <= L;
   for (let k = 1; k < rem; k++) {
