@@ -460,3 +460,22 @@ details.panel[open] summary { margin-bottom: 8px; }
 @media (prefers-reduced-motion: no-preference) and (max-width: 760px) {
   @keyframes settle { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
 }
+
+/* ---------- abilities ---------- */
+.ab-list { display: grid; gap: 6px; }
+.ab-row { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.ab-row > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; }
+.ab-row > summary::-webkit-details-marker { display: none; }
+.ab-row > summary::after { content: "+"; margin-left: auto; font-weight: 800; color: var(--ink-soft); }
+.ab-row[open] > summary::after { content: "–"; }
+.ab-name { font-weight: 700; }
+.ab-next { flex-basis: 100%; }
+@media (min-width: 720px) { .ab-next { flex-basis: auto; } }
+.ab-body { padding: 4px 12px 12px; border-top: 1px solid var(--line); }
+.ab-mechs { display: grid; gap: 10px 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); margin: 8px 0; }
+.ab-mech__h { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); margin-bottom: 2px; }
+.ab-mech ul { margin: 0; padding-left: 18px; }
+.ab-mech li { margin: 2px 0; }
+.ab-h { margin: 18px 0 6px; }
+.ab-group { margin: 10px 0; }
+.ab-group__h { font: 700 0.95rem var(--display); margin-bottom: 6px; color: var(--ink-soft); }

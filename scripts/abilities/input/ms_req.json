@@ -1,0 +1,16544 @@
+{
+"bazooka": {
+"title": "Bazooka",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"blitz-radar": {
+"title": "Blitz Radar",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"brick-wall": {
+"title": "Brick Wall",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"dots": {
+"title": "Dots",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"escape-artist": {
+"title": "Escape Artist",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"first-one-free": {
+"title": "First One Free",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"60 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"freight-train": {
+"title": "Freight Train",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"60 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"95 or higher"
+]
+]
+}
+]
+},
+"gambit": {
+"title": "Gambit",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"omaha": {
+"title": "Omaha",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"pro-reads": {
+"title": "Pro Reads",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"run-gun": {
+"title": "Run & Gun",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"60 or higher"
+]
+]
+}
+]
+},
+"truzz": {
+"title": "Truzz",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks and Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+]
+]
+}
+]
+},
+"bulldozer": {
+"title": "Bulldozer",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Trucking",
+"82 or higher"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Trucking",
+"89 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Trucking",
+"82 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Trucking",
+"89 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Trucking",
+"82 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Trucking",
+"89 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Trucking",
+"82 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Trucking",
+"89 or higher"
+]
+]
+}
+]
+},
+"clutch": {
+"title": "Clutch",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks and Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks and Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"84 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks and Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"94 or higher"
+],
+[
+"Stamina",
+"95 or higher"
+]
+]
+}
+]
+},
+"dashing-deadeye": {
+"title": "Dashing Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Acceleration",
+"85 or higher"
+],
+[
+"Speed",
+"84 or higher"
+],
+[
+"Throw On The Run",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Acceleration",
+"86 or higher"
+],
+[
+"Speed",
+"87 or higher"
+],
+[
+"Throw On The Run",
+"93 or higher"
+]
+]
+}
+]
+},
+"extender": {
+"title": "Extender",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"85 or higher"
+],
+[
+"Break Sack",
+"81 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Break Sack",
+"87 or higher"
+]
+]
+}
+]
+},
+"fastbreak": {
+"title": "Fastbreak",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"80 or higher"
+],
+[
+"Change Of Direction",
+"81 or higher"
+],
+[
+"Speed",
+"82 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Change Of Direction",
+"85 or higher"
+],
+[
+"Speed",
+"86 or higher"
+]
+]
+}
+]
+},
+"fearless": {
+"title": "Fearless",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Awareness",
+"83 or higher"
+],
+[
+"Break Sack",
+"83 or higher"
+],
+[
+"Throw Under Pressure",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Break Sack",
+"89 or higher"
+],
+[
+"Throw Under Pressure",
+"90 or higher"
+]
+]
+}
+]
+},
+"field-general": {
+"title": "Field General",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Play Action",
+"89 or higher"
+],
+[
+"Throw Under Pressure",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"92 or higher"
+],
+[
+"Play Action",
+"92 or higher"
+],
+[
+"Throw Under Pressure",
+"91 or higher"
+]
+]
+}
+]
+},
+"gift-wrapped": {
+"title": "Gift-Wrapped",
+"missing": true
+},
+"gunslinger": {
+"title": "Gunslinger",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Medium Throw Accuracy",
+"87 or higher"
+],
+[
+"Throw Power",
+"91 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Awareness",
+"90 or higher"
+],
+[
+"Medium Throw Accuracy",
+"90 or higher"
+],
+[
+"Throw Power",
+"94 or higher"
+]
+]
+}
+]
+},
+"high-point-deadeye": {
+"title": "High Point Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Awareness",
+"82 or higher"
+],
+[
+"Medium Throw Accuracy",
+"84 or higher"
+],
+[
+"Short Throw Accuracy",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Medium Throw Accuracy",
+"88 or higher"
+],
+[
+"Short Throw Accuracy",
+"88 or higher"
+]
+]
+}
+]
+},
+"homer": {
+"title": "Homer",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Speed",
+"83 or higher"
+],
+[
+"Toughness",
+"81 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Speed",
+"89 or higher"
+],
+[
+"Toughness",
+"86 or higher"
+]
+]
+}
+]
+},
+"indoor-baller": {
+"title": "Indoor Baller",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"60 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"60 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+],
+[
+"Awareness",
+"79 or higher"
+],
+[
+"Toughness",
+"80 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"60 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+],
+[
+"Awareness",
+"83 or higher"
+],
+[
+"Toughness",
+"86 or higher"
+]
+]
+}
+]
+},
+"inside-deadeye": {
+"title": "Inside Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Medium Throw Accuracy",
+"86 or higher"
+],
+[
+"Short Throw Accuracy",
+"85 or higher"
+],
+[
+"Throw Under Pressure",
+"88 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Medium Throw Accuracy",
+"92 or higher"
+],
+[
+"Short Throw Accuracy",
+"91 or higher"
+],
+[
+"Throw Under Pressure",
+"90 or higher"
+]
+]
+}
+]
+},
+"juke-box": {
+"title": "Juke Box",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Agility",
+"86 or higher"
+],
+[
+"Juke Move",
+"81 or higher"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Scrambler rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Agility",
+"91 or higher"
+],
+[
+"Juke Move",
+"88 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"86 or higher"
+],
+[
+"Juke Move",
+"81 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"91 or higher"
+],
+[
+"Juke Move",
+"88 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"86 or higher"
+],
+[
+"Juke Move",
+"81 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"91 or higher"
+],
+[
+"Juke Move",
+"88 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"86 or higher"
+],
+[
+"Juke Move",
+"81 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"91 or higher"
+],
+[
+"Juke Move",
+"88 or higher"
+]
+]
+}
+]
+},
+"lofting-deadeye": {
+"title": "Lofting Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Play Action",
+"88 or higher"
+],
+[
+"Deep Throw Accuracy",
+"87 or higher"
+],
+[
+"Throw Power",
+"91 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Play Action",
+"93 or higher"
+],
+[
+"Deep Throw Accuracy",
+"89 or higher"
+],
+[
+"Throw Power",
+"95 or higher"
+]
+]
+}
+]
+},
+"long-range-deadeye": {
+"title": "Long Range Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Deep Throw Accuracy",
+"87 or higher"
+],
+[
+"Medium Throw Accuracy",
+"88 or higher"
+],
+[
+"Throw Power",
+"91 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Deep Throw Accuracy",
+"91 or higher"
+],
+[
+"Medium Throw Accuracy",
+"92 or higher"
+],
+[
+"Throw Power",
+"94 or higher"
+]
+]
+}
+]
+},
+"no-look-deadeye": {
+"title": "No-Look Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Speed",
+"82 or higher"
+],
+[
+"Medium Throw Accuracy",
+"87 or higher"
+],
+[
+"Throw On The Run",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Speed",
+"84 or higher"
+],
+[
+"Medium Throw Accuracy",
+"91 or higher"
+],
+[
+"Throw On The Run",
+"94 or higher"
+]
+]
+}
+]
+},
+"persistent": {
+"title": "Persistent",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Stamina",
+"79 or higher"
+],
+[
+"Toughness",
+"72 or higher"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Stamina",
+"86 or higher"
+],
+[
+"Toughness",
+"83 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Defensive Tackles, Fullbacks, Safeties, Halfbacks, Edges, Outside Linebackers, Mike Linebackers, Tight Ends, Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks, Defensive Tackles, Fullbacks, Safeties, Halfbacks, Edges, Outside Linebackers, Mike Linebackers, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks, Defensive Tackles, Fullbacks, Safeties, Halfbacks, Edges, Outside Linebackers, Mike Linebackers, Tight Ends, Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks, Defensive Tackles, Fullbacks, Safeties, Halfbacks, Edges, Outside Linebackers, Mike Linebackers, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"79 or higher"
+],
+[
+"Toughness",
+"72 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Defensive Tackles, Fullbacks, Safeties, Halfbacks, Edges, Outside Linebackers, Mike Linebackers, Tight Ends, Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks, Defensive Tackles, Fullbacks, Safeties, Halfbacks, Edges, Outside Linebackers, Mike Linebackers, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"86 or higher"
+],
+[
+"Toughness",
+"83 or higher"
+]
+]
+}
+]
+},
+"pocket-deadeye": {
+"title": "Pocket Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Deep Throw Accuracy",
+"88 or higher"
+],
+[
+"Medium Throw Accuracy",
+"89 or higher"
+],
+[
+"Short Throw Accuracy",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Field General rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Deep Throw Accuracy",
+"92 or higher"
+],
+[
+"Medium Throw Accuracy",
+"91 or higher"
+],
+[
+"Short Throw Accuracy",
+"93 or higher"
+]
+]
+}
+]
+},
+"protected": {
+"title": "Protected",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Play Action",
+"84 or higher"
+],
+[
+"Throw Under Pressure",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Play Action",
+"87 or higher"
+],
+[
+"Throw Under Pressure",
+"93 or higher"
+]
+]
+}
+]
+},
+"red-zone-deadeye": {
+"title": "Red Zone Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Medium Throw Accuracy",
+"86 or higher"
+],
+[
+"Short Throw Accuracy",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Medium Throw Accuracy",
+"90 or higher"
+],
+[
+"Short Throw Accuracy",
+"91 or higher"
+]
+]
+}
+]
+},
+"roaming-deadeye": {
+"title": "Roaming Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Break Sack",
+"84 or higher"
+],
+[
+"Medium Throw Accuracy",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Break Sack",
+"87 or higher"
+],
+[
+"Medium Throw Accuracy",
+"92 or higher"
+]
+]
+}
+]
+},
+"sideline-deadeye": {
+"title": "Sideline Deadeye",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Deep Throw Accuracy",
+"87 or higher"
+],
+[
+"Medium Throw Accuracy",
+"88 or higher"
+],
+[
+"Throw Power",
+"90 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Strong Arm rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 to 5"
+],
+[
+"Deep Throw Accuracy",
+"93 or higher"
+],
+[
+"Medium Throw Accuracy",
+"91 or higher"
+],
+[
+"Throw Power",
+"92 or higher"
+]
+]
+}
+]
+},
+"sleight-of-hand": {
+"title": "Sleight of Hand",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Play Action",
+"83 or higher"
+],
+[
+"Throw Under Pressure",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Play Action",
+"87 or higher"
+],
+[
+"Throw Under Pressure",
+"90 or higher"
+]
+]
+}
+]
+},
+"spin-cycle": {
+"title": "Spin Cycle",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Agility",
+"84 or higher"
+],
+[
+"Spin Move",
+"83 or higher"
+]
+]
+},
+{
+"group": "Quarterbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+],
+[
+"Agility",
+"90 or higher"
+],
+[
+"Spin Move",
+"90 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"84 or higher"
+],
+[
+"Spin Move",
+"83 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"90 or higher"
+],
+[
+"Spin Move",
+"90 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"84 or higher"
+],
+[
+"Spin Move",
+"83 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"90 or higher"
+],
+[
+"Spin Move",
+"90 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"84 or higher"
+],
+[
+"Spin Move",
+"83 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"90 or higher"
+],
+[
+"Spin Move",
+"90 or higher"
+]
+]
+}
+]
+},
+"threat-detector": {
+"title": "Threat Detector",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Quarterbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Quarterbacks"
+],
+[
+"Improviser rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 5"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Pass Block",
+"87 or higher"
+],
+[
+"Run Block",
+"86 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Pass Block",
+"90 or higher"
+],
+[
+"Run Block",
+"90 or higher"
+]
+]
+}
+]
+},
+"ankle-breaker": {
+"title": "Madden 27 Abilities For Franchise Mode",
+"missing": true
+},
+"max-security": {
+"title": "Max Security",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"phenom": {
+"title": "Phenom",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"80 or higher"
+]
+]
+}
+]
+},
+"satellite": {
+"title": "Satellite",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"wrecking-ball": {
+"title": "Wrecking Ball",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"arm-bar": {
+"title": "Arm Bar",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Stiff Arm",
+"81 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"88 or higher"
+],
+[
+"Stiff Arm",
+"90 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Stiff Arm",
+"81 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slot 1"
+],
+[
+"Break Tackle",
+"88 or higher"
+],
+[
+"Stiff Arm",
+"90 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"80 or higher"
+],
+[
+"Stiff Arm",
+"81 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"88 or higher"
+],
+[
+"Stiff Arm",
+"90 or higher"
+]
+]
+}
+]
+},
+"backfield-mismatch": {
+"title": "Backfield Mismatch",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"87 or higher"
+],
+[
+"Medium Route Running",
+"75 or higher"
+],
+[
+"Short Route Running",
+"80 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"89 or higher"
+],
+[
+"Medium Route Running",
+"80 or higher"
+],
+[
+"Short Route Running",
+"86 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"87 or higher"
+],
+[
+"Medium Route Running",
+"75 or higher"
+],
+[
+"Short Route Running",
+"80 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"89 or higher"
+],
+[
+"Medium Route Running",
+"80 or higher"
+],
+[
+"Short Route Running",
+"86 or higher"
+]
+]
+}
+]
+},
+"backlash": {
+"title": "Backlash",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"89 or higher"
+],
+[
+"Strength",
+"75 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"93 or higher"
+],
+[
+"Strength",
+"80 or higher"
+]
+]
+}
+]
+},
+"balance-beam": {
+"title": "Balance Beam",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"81 or higher"
+],
+[
+"Change Of Direction",
+"84 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"87 or higher"
+],
+[
+"Change Of Direction",
+"89 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"81 or higher"
+],
+[
+"Change Of Direction",
+"84 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"87 or higher"
+],
+[
+"Change Of Direction",
+"89 or higher"
+]
+]
+}
+]
+},
+"bruiser": {
+"title": "Bruiser",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Break Tackle",
+"82 or higher"
+],
+[
+"Stiff Arm",
+"82 or higher"
+],
+[
+"Trucking",
+"81 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Stiff Arm",
+"90 or higher"
+],
+[
+"Trucking",
+"90 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Break Tackle",
+"82 or higher"
+],
+[
+"Stiff Arm",
+"82 or higher"
+],
+[
+"Trucking",
+"81 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Stiff Arm",
+"90 or higher"
+],
+[
+"Trucking",
+"90 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Break Tackle",
+"82 or higher"
+],
+[
+"Stiff Arm",
+"82 or higher"
+],
+[
+"Trucking",
+"81 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Break Tackle",
+"90 or higher"
+],
+[
+"Stiff Arm",
+"90 or higher"
+],
+[
+"Trucking",
+"90 or higher"
+]
+]
+}
+]
+},
+"closer": {
+"title": "Closer",
+"missing": true
+},
+"energizer": {
+"title": "Energizer",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks, Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks, Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Juke Move",
+"84 or higher"
+],
+[
+"Spin Move",
+"83 or higher"
+],
+[
+"Stamina",
+"87 or higher"
+]
+]
+},
+{
+"group": "Halfbacks, Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Juke Move",
+"87 or higher"
+],
+[
+"Spin Move",
+"89 or higher"
+],
+[
+"Stamina",
+"90 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"evasive": {
+"title": "Evasive",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slot 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slot 4"
+],
+[
+"Agility",
+"86 or higher"
+],
+[
+"Juke Move",
+"84 or higher"
+],
+[
+"Spin Move",
+"82 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slot 4"
+],
+[
+"Agility",
+"90 or higher"
+],
+[
+"Juke Move",
+"90 or higher"
+],
+[
+"Spin Move",
+"89 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slot 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slot 4"
+],
+[
+"Agility",
+"86 or higher"
+],
+[
+"Juke Move",
+"84 or higher"
+],
+[
+"Spin Move",
+"82 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slot 4"
+],
+[
+"Agility",
+"90 or higher"
+],
+[
+"Juke Move",
+"90 or higher"
+],
+[
+"Spin Move",
+"89 or higher"
+]
+]
+}
+]
+},
+"goal-line-back": {
+"title": "Goal Line Back",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"88 or higher"
+],
+[
+"Strength",
+"80 or higher"
+],
+[
+"Trucking",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"91 or higher"
+],
+[
+"Strength",
+"85 or higher"
+],
+[
+"Trucking",
+"90 or higher"
+]
+]
+}
+]
+},
+"grab-n-go": {
+"title": "Grab-N-Go",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Playmaker rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"human-joystick": {
+"title": "Human Joystick",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"95 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+}
+]
+},
+"matchup-nightmare": {
+"title": "Matchup Nightmare",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"reach-for-it": {
+"title": "Reach For It",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks, Tight Ends, Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks, Tight Ends, Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"86 or higher"
+],
+[
+"Carrying",
+"87 or higher"
+]
+]
+},
+{
+"group": "Halfbacks, Tight Ends, Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"92 or higher"
+],
+[
+"Carrying",
+"91 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"86 or higher"
+],
+[
+"Carrying",
+"87 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Break Tackle",
+"92 or higher"
+],
+[
+"Carrying",
+"91 or higher"
+]
+]
+}
+]
+},
+"recuperation": {
+"title": "Recuperation",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"79 or higher"
+],
+[
+"Strength",
+"67 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"91 or higher"
+],
+[
+"Strength",
+"85 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"79 or higher"
+],
+[
+"Strength",
+"67 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"91 or higher"
+],
+[
+"Strength",
+"85 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"79 or higher"
+],
+[
+"Strength",
+"67 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"91 or higher"
+],
+[
+"Strength",
+"85 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Safeties, Halfbacks, Edges, Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks, Safeties, Halfbacks, Edges and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks, Safeties, Halfbacks, Edges, Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks, Safeties, Halfbacks, Edges and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"79 or higher"
+],
+[
+"Strength",
+"67 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Safeties, Halfbacks, Edges, Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks, Safeties, Halfbacks, Edges and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"91 or higher"
+],
+[
+"Strength",
+"85 or higher"
+]
+]
+}
+]
+},
+"return-man": {
+"title": "Return Man",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Release",
+"85 or higher"
+],
+[
+"Speed",
+"90 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Elusive Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Release",
+"94 or higher"
+],
+[
+"Speed",
+"93 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks, Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Release",
+"85 or higher"
+],
+[
+"Speed",
+"90 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Release",
+"94 or higher"
+],
+[
+"Speed",
+"93 or higher"
+]
+]
+}
+]
+},
+"route-technician": {
+"title": "Route Technician",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Playmaker rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Playmaker rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Deep Route Running",
+"87 or higher"
+],
+[
+"Medium Route Running",
+"88 or higher"
+],
+[
+"Short Route Running",
+"89 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Playmaker rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Deep Route Running",
+"90 or higher"
+],
+[
+"Medium Route Running",
+"92 or higher"
+],
+[
+"Short Route Running",
+"93 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Deep Route Running",
+"87 or higher"
+],
+[
+"Medium Route Running",
+"88 or higher"
+],
+[
+"Short Route Running",
+"89 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Deep Route Running",
+"90 or higher"
+],
+[
+"Medium Route Running",
+"92 or higher"
+],
+[
+"Short Route Running",
+"93 or higher"
+]
+]
+}
+]
+},
+"second-wind": {
+"title": "Second Wind",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"83 or higher"
+],
+[
+"Stamina",
+"82 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"83 or higher"
+],
+[
+"Stamina",
+"82 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"83 or higher"
+],
+[
+"Stamina",
+"82 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"83 or higher"
+],
+[
+"Stamina",
+"82 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+}
+]
+},
+"short-in-elite": {
+"title": "Short In Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"88 or higher"
+],
+[
+"Short Route Running",
+"87 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Receiving Back rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"92 or higher"
+],
+[
+"Short Route Running",
+"91 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"88 or higher"
+],
+[
+"Short Route Running",
+"87 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"92 or higher"
+],
+[
+"Short Route Running",
+"91 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"83 or higher"
+],
+[
+"Short Route Running",
+"80 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Agility",
+"88 or higher"
+],
+[
+"Short Route Running",
+"84 or higher"
+]
+]
+}
+]
+},
+"short-out-elite": {
+"title": "Short Out Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"85 or higher"
+],
+[
+"Short Route Running",
+"80 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Short Route Running",
+"85 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"85 or higher"
+],
+[
+"Short Route Running",
+"80 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Short Route Running",
+"85 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"85 or higher"
+],
+[
+"Short Route Running",
+"80 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Short Route Running",
+"85 or higher"
+]
+]
+}
+]
+},
+"steamroller": {
+"title": "Steamroller",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks, Halfbacks, Tight Ends and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"tank": {
+"title": "Tank",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Halfbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"87 or higher"
+],
+[
+"Trucking",
+"83 or higher"
+]
+]
+},
+{
+"group": "Halfbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Halfbacks"
+],
+[
+"Power Back rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"90 or higher"
+],
+[
+"Trucking",
+"86 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"87 or higher"
+],
+[
+"Trucking",
+"83 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"90 or higher"
+],
+[
+"Trucking",
+"86 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"87 or higher"
+],
+[
+"Trucking",
+"83 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Carrying",
+"90 or higher"
+],
+[
+"Trucking",
+"86 or higher"
+]
+]
+}
+]
+},
+"all-day": {
+"title": "All Day",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Pass Block",
+"86 or higher"
+],
+[
+"Run Block",
+"87 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"92 or higher"
+],
+[
+"Pass Block",
+"90 or higher"
+],
+[
+"Run Block",
+"90 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Pass Block",
+"86 or higher"
+],
+[
+"Run Block",
+"87 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"92 or higher"
+],
+[
+"Pass Block",
+"90 or higher"
+],
+[
+"Run Block",
+"90 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"86 or higher"
+],
+[
+"Pass Block",
+"86 or higher"
+],
+[
+"Run Block",
+"87 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"92 or higher"
+],
+[
+"Pass Block",
+"90 or higher"
+],
+[
+"Run Block",
+"90 or higher"
+]
+]
+}
+]
+},
+"matador": {
+"title": "Matador",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks, Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks and Tight Ends"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Power rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"mid-out-elite": {
+"title": "Mid Out Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Utility rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"nasty-streak": {
+"title": "Nasty Streak",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"86 or higher"
+],
+[
+"Speed",
+"69 or higher"
+]
+]
+},
+{
+"group": "Fullbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"89 or higher"
+],
+[
+"Speed",
+"73 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"86 or higher"
+],
+[
+"Speed",
+"69 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"89 or higher"
+],
+[
+"Speed",
+"73 or higher"
+]
+]
+}
+]
+},
+"screen-protector": {
+"title": "Screen Protector",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"84 or higher"
+],
+[
+"Pass Block Finesse",
+"86 or higher"
+],
+[
+"Speed",
+"68 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"89 or higher"
+],
+[
+"Pass Block Finesse",
+"90 or higher"
+],
+[
+"Speed",
+"72 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Agile rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Agile rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"84 or higher"
+],
+[
+"Pass Block Finesse",
+"86 or higher"
+],
+[
+"Speed",
+"68 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Agile rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"89 or higher"
+],
+[
+"Pass Block Finesse",
+"90 or higher"
+],
+[
+"Speed",
+"72 or higher"
+]
+]
+}
+]
+},
+"secure-protector": {
+"title": "Secure Protector",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Fullbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Fullbacks"
+],
+[
+"Blocking rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers and Offensive Guards"
+],
+[
+"Pass Protector rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+}
+]
+},
+"double-me": {
+"title": "Double Me",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"grab-and-smash": {
+"title": "Grab and Smash",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"rac-em-up": {
+"title": "RAC 'em Up",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Playmaker rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"yac-em-up": {
+"title": "YAC 'Em Up",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"acrobat": {
+"title": "Acrobat",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"87 or higher"
+],
+[
+"Jumping",
+"92 or higher"
+],
+[
+"Speed",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"93 or higher"
+],
+[
+"Jumping",
+"96 or higher"
+],
+[
+"Speed",
+"91 or higher"
+]
+]
+}
+]
+},
+"deep-elite": {
+"title": "Deep Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+}
+]
+},
+"deep-in-elite": {
+"title": "Deep In Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"deep-out-elite": {
+"title": "Deep Out Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Deep Route Running",
+"67 or higher"
+],
+[
+"Spectacular Catch",
+"85 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Deep Route Running",
+"72 or higher"
+],
+[
+"Spectacular Catch",
+"89 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Deep Route Running",
+"67 or higher"
+],
+[
+"Spectacular Catch",
+"85 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Vertical Threat rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Deep Route Running",
+"72 or higher"
+],
+[
+"Spectacular Catch",
+"89 or higher"
+]
+]
+}
+]
+},
+"honorary-lineman": {
+"title": "Honorary Lineman",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"57 or higher"
+],
+[
+"Run Block",
+"57 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Impact Blocking",
+"61 or higher"
+],
+[
+"Run Block",
+"63 or higher"
+]
+]
+}
+]
+},
+"ironman": {
+"title": "Ironman",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Change Of Direction",
+"91 or higher"
+],
+[
+"Speed",
+"90 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks and Wide Receivers"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"94 or higher"
+],
+[
+"Change Of Direction",
+"93 or higher"
+],
+[
+"Speed",
+"92 or higher"
+]
+]
+}
+]
+},
+"mid-elite": {
+"title": "Mid Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Playmaker rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+}
+]
+},
+"mid-in-elite": {
+"title": "Mid In Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"87 or higher"
+],
+[
+"Medium Route Running",
+"87 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"91 or higher"
+],
+[
+"Medium Route Running",
+"90 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"83 or higher"
+],
+[
+"Medium Route Running",
+"70 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"87 or higher"
+],
+[
+"Medium Route Running",
+"73 or higher"
+]
+]
+}
+]
+},
+"mossed": {
+"title": "Mossed",
+"missing": true
+},
+"quick-jump": {
+"title": "Quick Jump",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles, Edges, Outside Linebackers and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles, Edges, Outside Linebackers and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"82 or higher"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Stamina",
+"81 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles, Edges, Outside Linebackers and Wide Receivers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"86 or higher"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+}
+]
+},
+"red-zone-threat": {
+"title": "Red Zone Threat",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"89 or higher"
+],
+[
+"Jumping",
+"91 or higher"
+],
+[
+"Spectacular Catch",
+"90 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Physical rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"94 or higher"
+],
+[
+"Jumping",
+"94 or higher"
+],
+[
+"Spectacular Catch",
+"93 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"89 or higher"
+],
+[
+"Jumping",
+"91 or higher"
+],
+[
+"Spectacular Catch",
+"90 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"94 or higher"
+],
+[
+"Jumping",
+"94 or higher"
+],
+[
+"Spectacular Catch",
+"93 or higher"
+]
+]
+}
+]
+},
+"runoff-elite": {
+"title": "Runoff Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block",
+"70 or higher"
+],
+[
+"Strength",
+"75 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Deep Threat rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block",
+"78 or higher"
+],
+[
+"Strength",
+"81 or higher"
+]
+]
+}
+]
+},
+"short-elite": {
+"title": "Short Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"slot-o-matic": {
+"title": "Slot-O-Matic",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Wide Receivers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"87 or higher"
+],
+[
+"Change Of Direction",
+"89 or higher"
+],
+[
+"Short Route Running",
+"89 or higher"
+]
+]
+},
+{
+"group": "Wide Receivers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Wide Receivers"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"92 or higher"
+],
+[
+"Change Of Direction",
+"91 or higher"
+],
+[
+"Short Route Running",
+"92 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"87 or higher"
+],
+[
+"Change Of Direction",
+"89 or higher"
+],
+[
+"Short Route Running",
+"89 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Possession rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"92 or higher"
+],
+[
+"Change Of Direction",
+"91 or higher"
+],
+[
+"Short Route Running",
+"92 or higher"
+]
+]
+}
+]
+},
+"vanguard": {
+"title": "Vanguard",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Blocking rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"3rd-down-threat": {
+"title": "3rd Down Threat",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"87 or higher"
+],
+[
+"Release",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catch In Traffic",
+"92 or higher"
+],
+[
+"Release",
+"90 or higher"
+]
+]
+}
+]
+},
+"pass-protector": {
+"title": "Pass Protector",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Tight Ends",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block",
+"86 or higher"
+],
+[
+"Pass Block Finesse",
+"84 or higher"
+],
+[
+"Pass Block Power",
+"85 or higher"
+]
+]
+},
+{
+"group": "Tight Ends",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block",
+"92 or higher"
+],
+[
+"Pass Block Finesse",
+"93 or higher"
+],
+[
+"Pass Block Power",
+"91 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block",
+"86 or higher"
+],
+[
+"Pass Block Finesse",
+"84 or higher"
+],
+[
+"Pass Block Power",
+"85 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards, Offensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block",
+"92 or higher"
+],
+[
+"Pass Block Finesse",
+"93 or higher"
+],
+[
+"Pass Block Power",
+"91 or higher"
+]
+]
+}
+]
+},
+"run-protector": {
+"title": "Run Protector",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards, Offensive Tackles and Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards, Offensive Tackles and Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block",
+"87 or higher"
+],
+[
+"Run Block Finesse",
+"86 or higher"
+],
+[
+"Run Block Power",
+"85 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards, Offensive Tackles and Tight Ends"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block",
+"92 or higher"
+],
+[
+"Run Block Finesse",
+"91 or higher"
+],
+[
+"Run Block Power",
+"93 or higher"
+]
+]
+}
+]
+},
+"edge-protector": {
+"title": "Edge Protector",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block Finesse",
+"88 or higher"
+],
+[
+"Pass Block Power",
+"87 or higher"
+],
+[
+"Strength",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block Finesse",
+"93 or higher"
+],
+[
+"Pass Block Power",
+"91 or higher"
+],
+[
+"Strength",
+"91 or higher"
+]
+]
+}
+]
+},
+"post-up": {
+"title": "Post Up",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Offensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block Finesse",
+"84 or higher"
+],
+[
+"Run Block Power",
+"84 or higher"
+],
+[
+"Strength",
+"88 or higher"
+]
+]
+},
+{
+"group": "Offensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block Finesse",
+"89 or higher"
+],
+[
+"Run Block Power",
+"87 or higher"
+],
+[
+"Strength",
+"92 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers and Offensive Guards"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers and Offensive Guards"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block Finesse",
+"84 or higher"
+],
+[
+"Run Block Power",
+"84 or higher"
+],
+[
+"Strength",
+"88 or higher"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers and Offensive Guards"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block Finesse",
+"89 or higher"
+],
+[
+"Run Block Power",
+"87 or higher"
+],
+[
+"Strength",
+"92 or higher"
+]
+]
+}
+]
+},
+"puller-elite": {
+"title": "Puller Elite",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Power rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Power rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block Finesse",
+"83 or higher"
+],
+[
+"Speed",
+"67 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Power rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Run Block Finesse",
+"85 or higher"
+],
+[
+"Speed",
+"70 or higher"
+]
+]
+}
+]
+},
+"resistant": {
+"title": "Resistant",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Offensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Centers, Offensive Guards",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers and Offensive Guards"
+],
+[
+"Agile rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"tough-nut": {
+"title": "Tough Nut",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block Power",
+"85 or higher"
+],
+[
+"Run Block Power",
+"83 or higher"
+],
+[
+"Strength",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers, Offensive Guards and Offensive Tackles"
+],
+[
+"Pass Protector rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pass Block Power",
+"88 or higher"
+],
+[
+"Run Block Power",
+"86 or higher"
+],
+[
+"Strength",
+"90 or higher"
+]
+]
+}
+]
+},
+"linchpin": {
+"title": "Linchpin",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Centers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Centers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Impact Blocking",
+"88 or higher"
+],
+[
+"Strength",
+"91 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Centers"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Awareness",
+"93 or higher"
+],
+[
+"Impact Blocking",
+"92 or higher"
+],
+[
+"Strength",
+"94 or higher"
+]
+]
+}
+]
+},
+"blitz": {
+"title": "Blitz",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"70 or higher"
+]
+]
+}
+]
+},
+"dual-threat": {
+"title": "Dual Threat",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"98 or higher"
+]
+]
+}
+]
+},
+"fearmonger": {
+"title": "Fearmonger",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"momentum-shift": {
+"title": "Momentum Shift",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Defensive Tackles, Safeties, Edges",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles, Safeties and Edges"
+],
+[
+"Overall",
+"70 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"reinforcement": {
+"title": "Reinforcement",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Edges, Outside Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"relentless": {
+"title": "Relentless",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"70 or higher"
+]
+]
+}
+]
+},
+"run-stuffer": {
+"title": "Run Stuffer",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Edges, Outside Linebackers, Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Edges, Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"unstoppable-force": {
+"title": "Unstoppable Force",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"adrenaline-rush": {
+"title": "Adrenaline Rush",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"b-o-g-o": {
+"title": "B.O.G.O.",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles, Edges and Outside Linebackers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"defensive-rally": {
+"title": "Defensive Rally",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"81 or higher"
+],
+[
+"Stamina",
+"87 or higher"
+],
+[
+"Tackle",
+"84 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Stamina",
+"92 or higher"
+],
+[
+"Tackle",
+"91 or higher"
+]
+]
+}
+]
+},
+"deflator": {
+"title": "Deflator",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"84 or higher"
+],
+[
+"Tackle",
+"86 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"89 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"84 or higher"
+],
+[
+"Tackle",
+"86 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"89 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"84 or higher"
+],
+[
+"Tackle",
+"86 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"89 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+}
+]
+},
+"demoralizer": {
+"title": "Demoralizer",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges, Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges, Outside Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"83 or higher"
+],
+[
+"Stamina",
+"84 or higher"
+],
+[
+"Toughness",
+"87 or higher"
+]
+]
+},
+{
+"group": "Edges, Outside Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"87 or higher"
+],
+[
+"Stamina",
+"88 or higher"
+],
+[
+"Toughness",
+"91 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"83 or higher"
+],
+[
+"Stamina",
+"84 or higher"
+],
+[
+"Toughness",
+"87 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"87 or higher"
+],
+[
+"Stamina",
+"88 or higher"
+],
+[
+"Toughness",
+"91 or higher"
+]
+]
+}
+]
+},
+"double-or-nothing": {
+"title": "Double Or Nothing",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"85 or higher"
+],
+[
+"Stamina",
+"85 or higher"
+],
+[
+"Strength",
+"81 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"89 or higher"
+],
+[
+"Stamina",
+"89 or higher"
+],
+[
+"Strength",
+"86 or higher"
+]
+]
+}
+]
+},
+"edge-threat": {
+"title": "Edge Threat",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Finesse Moves",
+"85 or higher"
+],
+[
+"Power Moves",
+"85 or higher"
+],
+[
+"Pursuit",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Finesse Moves",
+"89 or higher"
+],
+[
+"Power Moves",
+"89 or higher"
+],
+[
+"Pursuit",
+"92 or higher"
+]
+]
+}
+]
+},
+"el-toro": {
+"title": "El Toro",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"86 or higher"
+],
+[
+"Power Moves",
+"84 or higher"
+],
+[
+"Strength",
+"81 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"89 or higher"
+],
+[
+"Power Moves",
+"88 or higher"
+],
+[
+"Strength",
+"84 or higher"
+]
+]
+}
+]
+},
+"extra-credit": {
+"title": "Extra Credit",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Power Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Power Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"89 or higher"
+],
+[
+"Strength",
+"91 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Power Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"94 or higher"
+],
+[
+"Strength",
+"96 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"89 or higher"
+],
+[
+"Strength",
+"91 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"94 or higher"
+],
+[
+"Strength",
+"96 or higher"
+]
+]
+}
+]
+},
+"goal-line-stuff": {
+"title": "Goal Line Stuff",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Strength",
+"84 or higher"
+],
+[
+"Tackle",
+"85 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"90 or higher"
+],
+[
+"Strength",
+"88 or higher"
+],
+[
+"Tackle",
+"91 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Strength",
+"84 or higher"
+],
+[
+"Tackle",
+"85 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"90 or higher"
+],
+[
+"Strength",
+"88 or higher"
+],
+[
+"Tackle",
+"91 or higher"
+]
+]
+}
+]
+},
+"inside-stuff": {
+"title": "Inside Stuff",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"86 or higher"
+],
+[
+"Hit Power",
+"85 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"90 or higher"
+],
+[
+"Hit Power",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"86 or higher"
+],
+[
+"Hit Power",
+"85 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"90 or higher"
+],
+[
+"Hit Power",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"74 or higher"
+],
+[
+"Hit Power",
+"85 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"78 or higher"
+],
+[
+"Hit Power",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"74 or higher"
+],
+[
+"Hit Power",
+"85 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"78 or higher"
+],
+[
+"Hit Power",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+}
+]
+},
+"instant-rebate": {
+"title": "Instant Rebate",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Stamina",
+"83 or higher"
+],
+[
+"Tackle",
+"82 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"91 or higher"
+],
+[
+"Stamina",
+"89 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Stamina",
+"83 or higher"
+],
+[
+"Tackle",
+"82 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"91 or higher"
+],
+[
+"Stamina",
+"89 or higher"
+],
+[
+"Tackle",
+"89 or higher"
+]
+]
+}
+]
+},
+"interior-threat": {
+"title": "Interior Threat",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Power Moves",
+"86 or higher"
+],
+[
+"Strength",
+"89 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Power Moves",
+"90 or higher"
+],
+[
+"Strength",
+"93 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+}
+]
+},
+"lockout": {
+"title": "Lockout",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"84 or higher"
+],
+[
+"Strength",
+"83 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"87 or higher"
+],
+[
+"Strength",
+"87 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"84 or higher"
+],
+[
+"Strength",
+"91 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"89 or higher"
+],
+[
+"Strength",
+"94 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"max-effort": {
+"title": "Max Effort",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"80 or higher"
+],
+[
+"Finesse Moves",
+"81 or higher"
+],
+[
+"Stamina",
+"82 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Speed Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"89 or higher"
+],
+[
+"Finesse Moves",
+"86 or higher"
+],
+[
+"Stamina",
+"87 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"80 or higher"
+],
+[
+"Finesse Moves",
+"81 or higher"
+],
+[
+"Stamina",
+"82 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"89 or higher"
+],
+[
+"Finesse Moves",
+"86 or higher"
+],
+[
+"Stamina",
+"87 or higher"
+]
+]
+}
+]
+},
+"mid-zone-ko": {
+"title": "Mid Zone KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Play Recognition",
+"86 or higher"
+],
+[
+"Zone Coverage",
+"70 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Play Recognition",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"74 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Play Recognition",
+"86 or higher"
+],
+[
+"Zone Coverage",
+"84 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Play Recognition",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"88 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Play Recognition",
+"86 or higher"
+],
+[
+"Zone Coverage",
+"84 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Play Recognition",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"88 or higher"
+]
+]
+}
+]
+},
+"mr-big-stop": {
+"title": "Mr. Big Stop",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"82 or higher"
+],
+[
+"Tackle",
+"85 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Stamina",
+"87 or higher"
+],
+[
+"Tackle",
+"91 or higher"
+]
+]
+}
+]
+},
+"no-outsiders": {
+"title": "No Outsiders",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Pursuit",
+"84 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Pursuit",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Pursuit",
+"84 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Pursuit",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Pursuit",
+"87 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Pursuit",
+"91 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Pursuit",
+"87 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Pursuit",
+"91 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Pursuit",
+"84 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Pursuit",
+"88 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+}
+]
+},
+"outmatched": {
+"title": "Outmatched",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"79 or higher"
+],
+[
+"Tackle",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"79 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"85 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+],
+[
+"Zone Coverage",
+"85 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"79 or higher"
+],
+[
+"Tackle",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"79 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"85 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+],
+[
+"Zone Coverage",
+"85 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"79 or higher"
+],
+[
+"Tackle",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"79 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"85 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+],
+[
+"Zone Coverage",
+"85 or higher"
+]
+]
+}
+]
+},
+"pass-committed": {
+"title": "Pass Committed",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"84 or higher"
+],
+[
+"Finesse Moves",
+"81 or higher"
+],
+[
+"Power Moves",
+"82 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Finesse Moves",
+"87 or higher"
+],
+[
+"Power Moves",
+"86 or higher"
+]
+]
+}
+]
+},
+"ripper": {
+"title": "Ripper",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"84 or higher"
+],
+[
+"Stamina",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"89 or higher"
+],
+[
+"Stamina",
+"90 or higher"
+]
+]
+}
+]
+},
+"run-committed": {
+"title": "Run Committed",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Tackle",
+"84 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"84 or higher"
+],
+[
+"Tackle",
+"84 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+}
+]
+},
+"run-stopper": {
+"title": "Run Stopper",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges, Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges, Outside Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Strength",
+"84 or higher"
+]
+]
+},
+{
+"group": "Edges, Outside Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges and Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"93 or higher"
+],
+[
+"Strength",
+"89 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Strength",
+"84 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Nose Tackle rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"93 or higher"
+],
+[
+"Strength",
+"89 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"88 or higher"
+],
+[
+"Strength",
+"84 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Block Shedding",
+"93 or higher"
+],
+[
+"Strength",
+"89 or higher"
+]
+]
+}
+]
+},
+"secure-tackler": {
+"title": "Secure Tackler",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Defensive Tackles, Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles, Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pursuit",
+"85 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles, Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pursuit",
+"90 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Safeties, Outside Linebackers, Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties, Outside Linebackers and Mike Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties, Outside Linebackers, Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties, Outside Linebackers and Mike Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pursuit",
+"85 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+]
+]
+},
+{
+"group": "Safeties, Outside Linebackers, Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties, Outside Linebackers and Mike Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Pursuit",
+"90 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+}
+]
+},
+"spinner": {
+"title": "Spinner",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"82 or higher"
+],
+[
+"Stamina",
+"84 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"87 or higher"
+],
+[
+"Stamina",
+"88 or higher"
+]
+]
+}
+]
+},
+"swim-club": {
+"title": "Swim Club",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"83 or higher"
+],
+[
+"Speed",
+"81 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Speed Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"87 or higher"
+],
+[
+"Speed",
+"85 or higher"
+]
+]
+}
+]
+},
+"under-pressure": {
+"title": "Under Pressure",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Defensive Tackles, Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles, Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"84 or higher"
+],
+[
+"Strength",
+"83 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles, Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles and Edges"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"89 or higher"
+],
+[
+"Strength",
+"87 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"84 or higher"
+],
+[
+"Strength",
+"83 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Power Moves",
+"89 or higher"
+],
+[
+"Strength",
+"87 or higher"
+]
+]
+}
+]
+},
+"unpredictable": {
+"title": "Unpredictable",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Edges",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"83 or higher"
+],
+[
+"Power Moves",
+"81 or higher"
+]
+]
+},
+{
+"group": "Edges",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Edges"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"87 or higher"
+],
+[
+"Power Moves",
+"88 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"83 or higher"
+],
+[
+"Power Moves",
+"81 or higher"
+]
+]
+},
+{
+"group": "Defensive Tackles",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Defensive Tackles"
+],
+[
+"Power Rusher rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Finesse Moves",
+"87 or higher"
+],
+[
+"Power Moves",
+"88 or higher"
+]
+]
+}
+]
+},
+"avalanche": {
+"title": "Avalanche",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"95 or higher"
+]
+]
+}
+]
+},
+"mind-reader": {
+"title": "Mind Reader",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"95 or higher"
+]
+]
+}
+]
+},
+"selfless": {
+"title": "Selfless",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Run Stopper rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"shutdown": {
+"title": "Shutdown",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"universal-coverage": {
+"title": "Universal Coverage",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Cornerbacks, Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Cornerbacks and Mike Linebackers"
+],
+[
+"Overall",
+"70 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"zone-hawk": {
+"title": "Zone Hawk",
+"kind": "X-Factor",
+"tiers": [
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"70 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks, Safeties",
+"tier": "X-Factor",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Zone rating",
+"70 or higher"
+]
+]
+}
+]
+},
+"enforcer": {
+"title": "Enforcer",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"86 or higher"
+],
+[
+"Strength",
+"75 or higher"
+],
+[
+"Tackle",
+"88 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"94 or higher"
+],
+[
+"Strength",
+"82 or higher"
+],
+[
+"Tackle",
+"93 or higher"
+]
+]
+}
+]
+},
+"film-study": {
+"title": "Film Study",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"87 or higher"
+],
+[
+"Play Recognition",
+"87 or higher"
+],
+[
+"Zone Coverage",
+"88 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"90 or higher"
+],
+[
+"Play Recognition",
+"92 or higher"
+],
+[
+"Zone Coverage",
+"91 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"87 or higher"
+],
+[
+"Play Recognition",
+"87 or higher"
+],
+[
+"Zone Coverage",
+"88 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"90 or higher"
+],
+[
+"Play Recognition",
+"92 or higher"
+],
+[
+"Zone Coverage",
+"91 or higher"
+]
+]
+}
+]
+},
+"flat-zone-ko": {
+"title": "Flat Zone KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Field General rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+}
+]
+},
+"lumberjack": {
+"title": "Lumberjack",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"85 or higher"
+],
+[
+"Strength",
+"81 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"89 or higher"
+],
+[
+"Strength",
+"85 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"85 or higher"
+],
+[
+"Strength",
+"81 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"89 or higher"
+],
+[
+"Strength",
+"85 or higher"
+],
+[
+"Tackle",
+"92 or higher"
+]
+]
+}
+]
+},
+"lurker": {
+"title": "Lurker",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"87 or higher"
+],
+[
+"Speed",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"86 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"92 or higher"
+],
+[
+"Speed",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"90 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"87 or higher"
+],
+[
+"Speed",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"86 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"92 or higher"
+],
+[
+"Speed",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"90 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"87 or higher"
+],
+[
+"Speed",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"86 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"92 or higher"
+],
+[
+"Speed",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"90 or higher"
+]
+]
+}
+]
+},
+"medium-route-ko": {
+"title": "Medium Route KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"83 or higher"
+],
+[
+"Change Of Direction",
+"73 or higher"
+],
+[
+"Man Coverage",
+"69 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Change Of Direction",
+"79 or higher"
+],
+[
+"Man Coverage",
+"74 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Change Of Direction",
+"90 or higher"
+],
+[
+"Man Coverage",
+"87 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Slot rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"94 or higher"
+],
+[
+"Change Of Direction",
+"93 or higher"
+],
+[
+"Man Coverage",
+"91 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"90 or higher"
+],
+[
+"Change Of Direction",
+"90 or higher"
+],
+[
+"Man Coverage",
+"87 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"94 or higher"
+],
+[
+"Change Of Direction",
+"93 or higher"
+],
+[
+"Man Coverage",
+"91 or higher"
+]
+]
+}
+]
+},
+"out-my-way": {
+"title": "Out My Way",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"85 or higher"
+],
+[
+"Block Shedding",
+"82 or higher"
+],
+[
+"Tackle",
+"82 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers, Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers and Mike Linebackers"
+],
+[
+"Run Stopper rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Block Shedding",
+"89 or higher"
+],
+[
+"Tackle",
+"84 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"85 or higher"
+],
+[
+"Block Shedding",
+"82 or higher"
+],
+[
+"Tackle",
+"82 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Run Support rating",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Block Shedding",
+"89 or higher"
+],
+[
+"Tackle",
+"84 or higher"
+]
+]
+}
+]
+},
+"short-route-ko": {
+"title": "Short Route KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Mike Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"85 or higher"
+],
+[
+"Awareness",
+"84 or higher"
+],
+[
+"Man Coverage",
+"67 or higher"
+]
+]
+},
+{
+"group": "Mike Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Mike Linebackers"
+],
+[
+"Overall",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Man Coverage",
+"71 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"85 or higher"
+],
+[
+"Awareness",
+"84 or higher"
+],
+[
+"Man Coverage",
+"67 or higher"
+]
+]
+},
+{
+"group": "Outside Linebackers",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Outside Linebackers"
+],
+[
+"Pass Coverage rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Man Coverage",
+"71 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"88 or higher"
+],
+[
+"Awareness",
+"84 or higher"
+],
+[
+"Man Coverage",
+"85 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"92 or higher"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Man Coverage",
+"90 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"88 or higher"
+],
+[
+"Awareness",
+"84 or higher"
+],
+[
+"Man Coverage",
+"85 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Hybrid rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"92 or higher"
+],
+[
+"Awareness",
+"88 or higher"
+],
+[
+"Man Coverage",
+"90 or higher"
+]
+]
+}
+]
+},
+"bottleneck": {
+"title": "Madden 27 Abilities For Franchise Mode",
+"missing": true
+},
+"bench-press": {
+"title": "Bench Press",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"89 or higher"
+],
+[
+"Strength",
+"75 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"92 or higher"
+],
+[
+"Strength",
+"82 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"89 or higher"
+],
+[
+"Strength",
+"75 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Catching",
+"92 or higher"
+],
+[
+"Strength",
+"82 or higher"
+]
+]
+}
+]
+},
+"chuck-out": {
+"title": "Chuck Out",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Play Recognition",
+"85 or higher"
+],
+[
+"Strength",
+"78 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Play Recognition",
+"89 or higher"
+],
+[
+"Strength",
+"83 or higher"
+]
+]
+}
+]
+},
+"deep-out-zone-ko": {
+"title": "Deep Out Zone KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Speed",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"90 or higher"
+],
+[
+"Speed",
+"92 or higher"
+],
+[
+"Zone Coverage",
+"90 or higher"
+]
+]
+}
+]
+},
+"deep-route-ko": {
+"title": "Deep Route KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Jumping",
+"89 or higher"
+],
+[
+"Man Coverage",
+"88 or higher"
+],
+[
+"Speed",
+"91 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Jumping",
+"92 or higher"
+],
+[
+"Man Coverage",
+"92 or higher"
+],
+[
+"Speed",
+"94 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Jumping",
+"89 or higher"
+],
+[
+"Man Coverage",
+"88 or higher"
+],
+[
+"Speed",
+"91 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Jumping",
+"92 or higher"
+],
+[
+"Man Coverage",
+"92 or higher"
+],
+[
+"Speed",
+"94 or higher"
+]
+]
+}
+]
+},
+"deep-zone-ko": {
+"title": "Deep Zone KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Play Recognition",
+"88 or higher"
+],
+[
+"Zone Coverage",
+"89 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Zone rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Awareness",
+"91 or higher"
+],
+[
+"Play Recognition",
+"92 or higher"
+],
+[
+"Zone Coverage",
+"93 or higher"
+]
+]
+}
+]
+},
+"inside-shade": {
+"title": "Inside Shade",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"87 or higher"
+],
+[
+"Play Recognition",
+"88 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Man Coverage",
+"91 or higher"
+],
+[
+"Play Recognition",
+"92 or higher"
+]
+]
+}
+]
+},
+"menace": {
+"title": "Menace",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"88 or higher"
+],
+[
+"Tackle",
+"87 or higher"
+],
+[
+"Zone Coverage",
+"84 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks and Safeties"
+],
+[
+"Overall",
+"75 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Hit Power",
+"91 or higher"
+],
+[
+"Tackle",
+"91 or higher"
+],
+[
+"Zone Coverage",
+"87 or higher"
+]
+]
+}
+]
+},
+"on-the-ball": {
+"title": "On The Ball",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Tackle",
+"79 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Overall",
+"80 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Tackle",
+"86 or higher"
+]
+]
+}
+]
+},
+"one-step-ahead": {
+"title": "One Step Ahead",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "Cornerbacks",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Change Of Direction",
+"90 or higher"
+],
+[
+"Man Coverage",
+"89 or higher"
+],
+[
+"Play Recognition",
+"89 or higher"
+]
+]
+},
+{
+"group": "Cornerbacks",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Change Of Direction",
+"92 or higher"
+],
+[
+"Man Coverage",
+"91 or higher"
+],
+[
+"Play Recognition",
+"92 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Change Of Direction",
+"90 or higher"
+],
+[
+"Man Coverage",
+"89 or higher"
+],
+[
+"Play Recognition",
+"89 or higher"
+]
+]
+},
+{
+"group": "Safeties",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Overall",
+"90 or higher"
+],
+[
+"Ability slot",
+"Slots 3 or 4"
+],
+[
+"Change Of Direction",
+"92 or higher"
+],
+[
+"Man Coverage",
+"91 or higher"
+],
+[
+"Play Recognition",
+"92 or higher"
+]
+]
+}
+]
+},
+"outside-shade": {
+"title": "Outside Shade",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"89 or higher"
+],
+[
+"Man Coverage",
+"87 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Cornerbacks"
+],
+[
+"Manto Man rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Change Of Direction",
+"92 or higher"
+],
+[
+"Man Coverage",
+"91 or higher"
+]
+]
+}
+]
+},
+"deep-in-zone-ko": {
+"title": "Deep In Zone KO",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"89 or higher"
+],
+[
+"Awareness",
+"85 or higher"
+],
+[
+"Zone Coverage",
+"86 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Safeties"
+],
+[
+"Zone rating",
+"85 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Acceleration",
+"93 or higher"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Zone Coverage",
+"91 or higher"
+]
+]
+}
+]
+},
+"clutch-kicker": {
+"title": "Clutch Kicker",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Kick Accuracy",
+"91 or higher"
+],
+[
+"Kick Power",
+"92 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Kick Accuracy",
+"93 or higher"
+],
+[
+"Kick Power",
+"94 or higher"
+]
+]
+}
+]
+},
+"focused-kicker": {
+"title": "Zen Kicker",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Kick Power",
+"90 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Kick Power",
+"92 or higher"
+]
+]
+}
+]
+},
+"precision-kicker": {
+"title": "Precision Kicker",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Kick Accuracy",
+"90 or higher"
+],
+[
+"Kick Power",
+"90 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Kick Accuracy",
+"92 or higher"
+],
+[
+"Kick Power",
+"93 or higher"
+]
+]
+}
+]
+},
+"zen-kicker": {
+"title": "Zen Kicker",
+"kind": "Superstar",
+"tiers": [
+{
+"group": "",
+"tier": "Bronze",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+]
+]
+},
+{
+"group": "",
+"tier": "Silver",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"87 or higher"
+],
+[
+"Kick Power",
+"90 or higher"
+]
+]
+},
+{
+"group": "",
+"tier": "Gold",
+"rows": [
+[
+"Position",
+"Kickers/Punters"
+],
+[
+"Overall",
+"70 or higher"
+],
+[
+"Ability slot",
+"Slots 1 to 4"
+],
+[
+"Awareness",
+"89 or higher"
+],
+[
+"Kick Power",
+"92 or higher"
+]
+]
+}
+]
+}
+}

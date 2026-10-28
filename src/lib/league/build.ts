@@ -8,6 +8,7 @@
 // - winLossStreak arrives as an unsigned byte (255 = -1).
 // - Playoff games not set yet come back as several TBD-vs-TBD rows per round.
 
+import { RATING_KEYS } from "./ratings";
 import { DATA_VERSION, type Game, type LeagueData, type Player, type StatLine, type Team, type TeamGame, type Week } from "./types";
 
 type Raw = Record<string, unknown>;
@@ -116,6 +117,11 @@ export function buildLeagueData(files: Raw): LeagueData {
         abilities: (p.signatureSlotList || [])
           .filter((s: Any) => !s.isEmpty && s.signatureAbility?.signatureTitle)
           .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: TIER[s.signatureAbility.rank] || "" })),
+        ratings: RATING_KEYS.map((k) => num(p[k])),
+        slots: (p.signatureSlotList || []).map((s: Any) => ({
+          ovr: num(s.ovrThreshold), locked: Boolean(s.locked),
+          title: (!s.isEmpty && s.signatureAbility?.signatureTitle) || "", tier: TIER[s.signatureAbility?.rank] || "",
+        })),
       });
     }
   }

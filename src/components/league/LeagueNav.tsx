@@ -10,6 +10,7 @@ const TABS = [
   ["cap", "Cap"],
   ["contracts", "Contract tool"],
   ["dev", "Dev tracker"],
+  ["abilities", "Abilities"],
   ["leaders", "Leaders"],
 ] as const;
 

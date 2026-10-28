@@ -1,0 +1,994 @@
+{
+"ratingKeys": [
+"accelRating",
+"agilityRating",
+"awareRating",
+"bCVRating",
+"blockShedRating",
+"breakSackRating",
+"breakTackleRating",
+"cITRating",
+"carryRating",
+"catchRating",
+"changeOfDirectionRating",
+"confRating",
+"finesseMovesRating",
+"hitPowerRating",
+"impactBlockRating",
+"injuryRating",
+"jukeMoveRating",
+"jumpRating",
+"kickAccRating",
+"kickPowerRating",
+"kickRetRating",
+"leadBlockRating",
+"longSnapRating",
+"manCoverRating",
+"passBlockFinesseRating",
+"passBlockPowerRating",
+"passBlockRating",
+"playActionRating",
+"playRecRating",
+"powerMovesRating",
+"pressRating",
+"pursuitRating",
+"releaseRating",
+"routeRunDeepRating",
+"routeRunMedRating",
+"routeRunShortRating",
+"runBlockFinesseRating",
+"runBlockPowerRating",
+"runBlockRating",
+"specCatchRating",
+"speedRating",
+"spinMoveRating",
+"staminaRating",
+"stiffArmRating",
+"strengthRating",
+"tackleRating",
+"throwAccDeepRating",
+"throwAccMidRating",
+"throwAccRating",
+"throwAccShortRating",
+"throwOnRunRating",
+"throwPowerRating",
+"throwUnderPressureRating",
+"toughRating",
+"truckRating",
+"zoneCoverRating"
+],
+"groups": {
+"QB": {
+"Field General": {
+"w": {
+"accelRating": 0.018804,
+"awareRating": 0.315037,
+"changeOfDirectionRating": 0.001054,
+"playActionRating": 0.055342,
+"throwAccDeepRating": 0.227796,
+"throwAccMidRating": 0.364723,
+"throwAccShortRating": 0.351344,
+"throwOnRunRating": 0.061543,
+"throwPowerRating": 0.483217,
+"throwUnderPressureRating": 0.102311
+},
+"b": -91.3179
+},
+"Improviser": {
+"w": {
+"awareRating": 0.248094,
+"breakSackRating": 0.168135,
+"changeOfDirectionRating": 0.12241,
+"jumpRating": 0.000893,
+"playActionRating": 0.070193,
+"speedRating": 0.085637,
+"strengthRating": 0.027024,
+"throwAccDeepRating": 0.305755,
+"throwAccMidRating": 0.097165,
+"throwAccShortRating": 0.005343,
+"throwOnRunRating": 0.17422,
+"throwPowerRating": 0.45264,
+"throwUnderPressureRating": 0.301747
+},
+"b": -95.2576
+},
+"Scrambler": {
+"w": {
+"accelRating": 0.058284,
+"agilityRating": 0.018702,
+"awareRating": 0.125066,
+"breakSackRating": 0.210647,
+"changeOfDirectionRating": 0.055211,
+"playActionRating": 0.028832,
+"speedRating": 0.16218,
+"throwAccDeepRating": 0.010313,
+"throwAccMidRating": 0.257347,
+"throwAccShortRating": 0.261498,
+"throwOnRunRating": 0.230877,
+"throwPowerRating": 0.446122,
+"throwUnderPressureRating": 0.126286
+},
+"b": -93.2611
+},
+"Strong Arm": {
+"w": {
+"awareRating": 0.23845,
+"breakSackRating": 0.038873,
+"playActionRating": 0.07972,
+"strengthRating": 0.0052,
+"throwAccDeepRating": 0.369483,
+"throwAccMidRating": 0.402692,
+"throwOnRunRating": 0.003888,
+"throwPowerRating": 0.653997,
+"throwUnderPressureRating": 0.194751
+},
+"b": -91.7844
+}
+},
+"FB": {
+"Blocking": {
+"w": {
+"agilityRating": 0.125237,
+"awareRating": 0.128198,
+"breakTackleRating": 0.074155,
+"catchRating": 0.058797,
+"changeOfDirectionRating": 0.242034,
+"impactBlockRating": 0.163421,
+"leadBlockRating": 0.174521,
+"routeRunShortRating": 0.018728,
+"runBlockRating": 0.221747,
+"speedRating": 0.158802,
+"strengthRating": 0.253904
+},
+"b": -45.8361
+},
+"Utility": {
+"w": {
+"agilityRating": 0.09826,
+"awareRating": 0.30696,
+"breakTackleRating": 0.193139,
+"carryRating": 0.264586,
+"catchRating": 0.097143,
+"impactBlockRating": 0.194825,
+"jumpRating": 0.046949,
+"leadBlockRating": 0.078947,
+"routeRunMedRating": 0.026769,
+"routeRunShortRating": 0.267894,
+"runBlockRating": 0.178526,
+"speedRating": 0.051582,
+"strengthRating": 0.128427
+},
+"b": -60.606
+}
+},
+"HB": {
+"Elusive Back": {
+"w": {
+"accelRating": 0.320458,
+"agilityRating": 0.301197,
+"awareRating": 0.272864,
+"bCVRating": 0.240526,
+"breakTackleRating": 0.106199,
+"carryRating": 0.269417,
+"catchRating": 0.001141,
+"changeOfDirectionRating": 0.200568,
+"jukeMoveRating": 0.238588,
+"releaseRating": 0.002892,
+"speedRating": 0.318679,
+"spinMoveRating": 0.178869,
+"strengthRating": 0.001655
+},
+"b": -131.9995
+},
+"Power Back": {
+"w": {
+"accelRating": 0.245722,
+"agilityRating": 0.09685,
+"awareRating": 0.266564,
+"bCVRating": 0.182437,
+"breakTackleRating": 0.276065,
+"carryRating": 0.316382,
+"catchRating": 8.3e-05,
+"speedRating": 0.194937,
+"spinMoveRating": 0.006481,
+"stiffArmRating": 0.249469,
+"strengthRating": 0.210661,
+"truckRating": 0.30241
+},
+"b": -122.1751
+},
+"Receiving Back": {
+"w": {
+"accelRating": 0.335344,
+"agilityRating": 0.060704,
+"awareRating": 0.279359,
+"bCVRating": 0.060897,
+"breakTackleRating": 0.148727,
+"carryRating": 0.116627,
+"catchRating": 0.469027,
+"changeOfDirectionRating": 0.16315,
+"jumpRating": 0.027713,
+"releaseRating": 0.113574,
+"routeRunShortRating": 0.161981,
+"speedRating": 0.168216,
+"spinMoveRating": 0.25424,
+"stiffArmRating": 0.012351,
+"strengthRating": 0.007099
+},
+"b": -117.2777
+}
+},
+"WR": {
+"Deep Threat": {
+"w": {
+"accelRating": 0.217477,
+"agilityRating": 0.146455,
+"awareRating": 0.159732,
+"cITRating": 0.139377,
+"catchRating": 0.224682,
+"changeOfDirectionRating": 0.042413,
+"jukeMoveRating": 0.016729,
+"jumpRating": 0.01429,
+"releaseRating": 0.169625,
+"routeRunDeepRating": 0.262775,
+"routeRunMedRating": 0.092279,
+"routeRunShortRating": 0.010642,
+"specCatchRating": 0.074337,
+"speedRating": 0.196512
+},
+"b": -71.2349
+},
+"Physical": {
+"w": {
+"accelRating": 0.130836,
+"agilityRating": 0.057566,
+"awareRating": 0.129709,
+"breakTackleRating": 0.130298,
+"cITRating": 0.24328,
+"catchRating": 0.192931,
+"changeOfDirectionRating": 0.001538,
+"jukeMoveRating": 0.035323,
+"jumpRating": 0.148601,
+"releaseRating": 0.19755,
+"routeRunMedRating": 0.047366,
+"routeRunShortRating": 0.08386,
+"specCatchRating": 0.245529,
+"speedRating": 0.100011,
+"strengthRating": 0.117424
+},
+"b": -78.7526
+},
+"Playmaker": {
+"w": {
+"accelRating": 0.160394,
+"agilityRating": 0.179326,
+"awareRating": 0.121855,
+"bCVRating": 0.112922,
+"breakTackleRating": 0.096112,
+"cITRating": 0.043181,
+"catchRating": 0.090254,
+"changeOfDirectionRating": 0.075651,
+"jukeMoveRating": 0.188837,
+"jumpRating": 0.020916,
+"routeRunDeepRating": 0.097538,
+"routeRunMedRating": 0.221744,
+"routeRunShortRating": 0.08623,
+"specCatchRating": 0.06343,
+"speedRating": 0.217981,
+"strengthRating": 0.005461
+},
+"b": -72.414
+},
+"Slot": {
+"w": {
+"accelRating": 0.191931,
+"agilityRating": 0.215054,
+"awareRating": 0.213484,
+"bCVRating": 0.006091,
+"breakTackleRating": 0.011307,
+"cITRating": 0.261441,
+"catchRating": 0.228914,
+"changeOfDirectionRating": 0.040675,
+"jukeMoveRating": 0.029994,
+"jumpRating": 0.002497,
+"releaseRating": 0.002958,
+"routeRunDeepRating": 0.001901,
+"routeRunMedRating": 0.121131,
+"routeRunShortRating": 0.327839,
+"specCatchRating": 0.015044,
+"speedRating": 0.108128,
+"strengthRating": 0.001892
+},
+"b": -72.3526
+}
+},
+"TE": {
+"Blocking": {
+"w": {
+"agilityRating": 0.049892,
+"awareRating": 0.005484,
+"cITRating": 0.200282,
+"changeOfDirectionRating": 0.174472,
+"impactBlockRating": 0.049769,
+"leadBlockRating": 0.32937,
+"releaseRating": 0.317037,
+"routeRunShortRating": 0.193613,
+"runBlockFinesseRating": 0.234731,
+"specCatchRating": 0.106917,
+"strengthRating": 0.478147
+},
+"b": -81.2367
+},
+"Possession": {
+"w": {
+"accelRating": 0.083052,
+"agilityRating": 0.079567,
+"awareRating": 0.189982,
+"breakTackleRating": 0.071463,
+"cITRating": 0.327322,
+"catchRating": 0.186062,
+"impactBlockRating": 0.099905,
+"leadBlockRating": 0.043897,
+"releaseRating": 0.058104,
+"routeRunDeepRating": 0.04331,
+"routeRunMedRating": 0.08254,
+"routeRunShortRating": 0.279012,
+"runBlockFinesseRating": 0.090672,
+"runBlockPowerRating": 0.088421,
+"runBlockRating": 0.143813,
+"specCatchRating": 0.047332,
+"speedRating": 0.054238,
+"strengthRating": 0.025467
+},
+"b": -70.9073
+},
+"Vertical Threat": {
+"w": {
+"accelRating": 0.142422,
+"agilityRating": 0.132681,
+"awareRating": 0.216903,
+"breakTackleRating": 0.07572,
+"cITRating": 0.161976,
+"catchRating": 0.226254,
+"changeOfDirectionRating": 0.020181,
+"impactBlockRating": 0.020355,
+"jumpRating": 0.052717,
+"leadBlockRating": 0.017621,
+"releaseRating": 0.043989,
+"routeRunDeepRating": 0.089984,
+"routeRunMedRating": 0.164234,
+"routeRunShortRating": 0.188322,
+"runBlockFinesseRating": 0.08495,
+"runBlockPowerRating": 0.0263,
+"runBlockRating": 0.097337,
+"specCatchRating": 0.085688,
+"speedRating": 0.178618
+},
+"b": -77.1522
+}
+},
+"LT": {
+"Agile": {
+"w": {
+"accelRating": 0.036907,
+"agilityRating": 0.045349,
+"awareRating": 0.162268,
+"impactBlockRating": 0.022776,
+"jumpRating": 0.005632,
+"leadBlockRating": 0.031116,
+"passBlockFinesseRating": 0.375403,
+"passBlockRating": 0.061543,
+"runBlockFinesseRating": 0.346012,
+"runBlockPowerRating": 0.020644,
+"runBlockRating": 0.114289,
+"speedRating": 0.03453,
+"strengthRating": 0.211332
+},
+"b": -42.073
+},
+"Pass Protector": {
+"w": {
+"accelRating": 0.033186,
+"agilityRating": 0.049098,
+"awareRating": 0.194752,
+"impactBlockRating": 0.038404,
+"leadBlockRating": 0.006892,
+"passBlockFinesseRating": 0.453788,
+"passBlockPowerRating": 0.476482,
+"passBlockRating": 0.185301,
+"runBlockFinesseRating": 0.023514,
+"speedRating": 0.020763,
+"strengthRating": 0.026711
+},
+"b": -45.6434
+},
+"Power": {
+"w": {
+"accelRating": 0.038519,
+"agilityRating": 0.020691,
+"awareRating": 0.150518,
+"changeOfDirectionRating": 0.000702,
+"impactBlockRating": 0.067119,
+"leadBlockRating": 0.038575,
+"passBlockFinesseRating": 0.018997,
+"passBlockPowerRating": 0.334657,
+"passBlockRating": 0.048312,
+"runBlockPowerRating": 0.370491,
+"runBlockRating": 0.148211,
+"speedRating": 0.026345,
+"strengthRating": 0.219981
+},
+"b": -43.449
+}
+},
+"G": {
+"Agile": {
+"w": {
+"accelRating": 0.028288,
+"agilityRating": 0.066435,
+"awareRating": 0.165386,
+"changeOfDirectionRating": 0.002487,
+"impactBlockRating": 0.081198,
+"leadBlockRating": 0.13233,
+"passBlockFinesseRating": 0.351998,
+"passBlockPowerRating": 0.017235,
+"passBlockRating": 0.059649,
+"runBlockFinesseRating": 0.291504,
+"runBlockRating": 0.114748,
+"speedRating": 0.032598,
+"strengthRating": 0.203943
+},
+"b": -47.5748
+},
+"Pass Protector": {
+"w": {
+"accelRating": 0.023035,
+"agilityRating": 0.045407,
+"awareRating": 0.20381,
+"impactBlockRating": 0.074636,
+"leadBlockRating": 0.016784,
+"passBlockFinesseRating": 0.464097,
+"passBlockPowerRating": 0.466376,
+"passBlockRating": 0.172092,
+"runBlockFinesseRating": 0.00123,
+"runBlockPowerRating": 0.000294,
+"speedRating": 0.044566,
+"strengthRating": 0.048382
+},
+"b": -48.7156
+},
+"Power": {
+"w": {
+"accelRating": 0.023667,
+"agilityRating": 0.031235,
+"awareRating": 0.175409,
+"changeOfDirectionRating": 0.001113,
+"impactBlockRating": 0.118629,
+"jumpRating": 1.5e-05,
+"leadBlockRating": 0.130943,
+"passBlockFinesseRating": 0.016784,
+"passBlockPowerRating": 0.325771,
+"passBlockRating": 0.022391,
+"runBlockFinesseRating": 0.010367,
+"runBlockPowerRating": 0.287609,
+"runBlockRating": 0.141028,
+"speedRating": 0.023979,
+"strengthRating": 0.231375
+},
+"b": -47.6285
+}
+},
+"C": {
+"Agile": {
+"w": {
+"accelRating": 0.025657,
+"agilityRating": 0.048352,
+"awareRating": 0.24537,
+"impactBlockRating": 0.097012,
+"leadBlockRating": 0.096825,
+"passBlockFinesseRating": 0.306933,
+"passBlockPowerRating": 0.004463,
+"passBlockRating": 0.060768,
+"runBlockFinesseRating": 0.327975,
+"runBlockRating": 0.127217,
+"speedRating": 0.049962,
+"strengthRating": 0.21381
+},
+"b": -53.4342
+},
+"Pass Protector": {
+"w": {
+"accelRating": 0.041382,
+"agilityRating": 0.034035,
+"awareRating": 0.338611,
+"changeOfDirectionRating": 0.004624,
+"impactBlockRating": 0.058309,
+"jumpRating": 0.012883,
+"passBlockFinesseRating": 0.48163,
+"passBlockPowerRating": 0.403915,
+"passBlockRating": 0.180134,
+"strengthRating": 0.068992
+},
+"b": -54.683
+},
+"Power": {
+"w": {
+"accelRating": 0.043899,
+"agilityRating": 0.018668,
+"awareRating": 0.250699,
+"impactBlockRating": 0.093062,
+"jumpRating": 0.002758,
+"leadBlockRating": 0.091763,
+"passBlockFinesseRating": 0.021697,
+"passBlockPowerRating": 0.297415,
+"passBlockRating": 0.036226,
+"runBlockPowerRating": 0.316175,
+"runBlockRating": 0.148562,
+"speedRating": 0.038687,
+"strengthRating": 0.230853
+},
+"b": -52.2335
+}
+},
+"RT": {
+"Agile": {
+"w": {
+"accelRating": 0.027427,
+"agilityRating": 0.055624,
+"awareRating": 0.139776,
+"changeOfDirectionRating": 0.00383,
+"impactBlockRating": 0.049134,
+"jumpRating": 0.000734,
+"leadBlockRating": 0.034032,
+"passBlockFinesseRating": 0.392745,
+"passBlockRating": 0.066414,
+"runBlockFinesseRating": 0.337459,
+"runBlockPowerRating": 0.018968,
+"runBlockRating": 0.111295,
+"speedRating": 0.044496,
+"strengthRating": 0.21217
+},
+"b": -44.0097
+},
+"Pass Protector": {
+"w": {
+"accelRating": 0.035818,
+"agilityRating": 0.025437,
+"awareRating": 0.22777,
+"impactBlockRating": 0.034229,
+"leadBlockRating": 0.007303,
+"passBlockFinesseRating": 0.420134,
+"passBlockPowerRating": 0.499829,
+"passBlockRating": 0.175408,
+"speedRating": 0.047878,
+"strengthRating": 0.032473
+},
+"b": -45.5853
+},
+"Power": {
+"w": {
+"accelRating": 0.045017,
+"agilityRating": 0.020913,
+"awareRating": 0.14823,
+"changeOfDirectionRating": 0.011471,
+"impactBlockRating": 0.053158,
+"leadBlockRating": 0.032277,
+"passBlockFinesseRating": 0.01722,
+"passBlockPowerRating": 0.335309,
+"passBlockRating": 0.041592,
+"runBlockFinesseRating": 0.000706,
+"runBlockPowerRating": 0.364672,
+"runBlockRating": 0.158269,
+"speedRating": 0.034055,
+"strengthRating": 0.249313
+},
+"b": -45.5876
+}
+},
+"EDGE": {
+"Power Rusher": {
+"w": {
+"accelRating": 0.171756,
+"agilityRating": 0.099868,
+"awareRating": 0.21381,
+"blockShedRating": 0.004776,
+"changeOfDirectionRating": 0.002988,
+"finesseMovesRating": 0.020928,
+"hitPowerRating": 0.022605,
+"jumpRating": 0.004457,
+"playRecRating": 0.028476,
+"powerMovesRating": 0.36597,
+"pursuitRating": 0.119278,
+"speedRating": 0.108078,
+"strengthRating": 0.249788,
+"tackleRating": 0.248235
+},
+"b": -57.366
+},
+"Run Stopper": {
+"w": {
+"accelRating": 0.129704,
+"agilityRating": 0.071553,
+"awareRating": 0.113977,
+"blockShedRating": 0.284927,
+"finesseMovesRating": 0.036766,
+"hitPowerRating": 0.047604,
+"playRecRating": 0.187547,
+"powerMovesRating": 0.040832,
+"pursuitRating": 0.144504,
+"speedRating": 0.099885,
+"strengthRating": 0.197551,
+"tackleRating": 0.311769
+},
+"b": -57.8505
+},
+"Speed Rusher": {
+"w": {
+"accelRating": 0.236649,
+"agilityRating": 0.146275,
+"awareRating": 0.210621,
+"finesseMovesRating": 0.373635,
+"hitPowerRating": 0.038321,
+"playRecRating": 0.035279,
+"powerMovesRating": 0.012904,
+"pursuitRating": 0.124613,
+"speedRating": 0.157982,
+"strengthRating": 0.090091,
+"tackleRating": 0.251326
+},
+"b": -58.7563
+}
+},
+"DT": {
+"Nose Tackle": {
+"w": {
+"accelRating": 0.101851,
+"agilityRating": 0.050408,
+"awareRating": 0.070296,
+"blockShedRating": 0.374907,
+"changeOfDirectionRating": 0.000268,
+"finesseMovesRating": 0.008679,
+"hitPowerRating": 0.050694,
+"playRecRating": 0.205109,
+"powerMovesRating": 0.006619,
+"pursuitRating": 0.131464,
+"speedRating": 0.067951,
+"strengthRating": 0.359738,
+"tackleRating": 0.273171
+},
+"b": -60.9351
+},
+"Power Rusher": {
+"w": {
+"accelRating": 0.115198,
+"agilityRating": 0.036324,
+"awareRating": 0.170584,
+"blockShedRating": 0.140068,
+"changeOfDirectionRating": 0.009079,
+"finesseMovesRating": 0.015352,
+"hitPowerRating": 0.038594,
+"playRecRating": 0.100571,
+"powerMovesRating": 0.332431,
+"pursuitRating": 0.115386,
+"speedRating": 0.083545,
+"strengthRating": 0.354049,
+"tackleRating": 0.233467
+},
+"b": -64.4525
+},
+"Speed Rusher": {
+"w": {
+"accelRating": 0.234398,
+"agilityRating": 0.061886,
+"awareRating": 0.316424,
+"blockShedRating": 0.074767,
+"finesseMovesRating": 0.243764,
+"jumpRating": 0.098067,
+"playRecRating": 0.068028,
+"powerMovesRating": 0.030011,
+"pursuitRating": 0.094255,
+"speedRating": 0.070606,
+"strengthRating": 0.312951,
+"tackleRating": 0.219979
+},
+"b": -70.719
+}
+},
+"OLB": {
+"Pass Coverage": {
+"w": {
+"accelRating": 0.225463,
+"agilityRating": 0.058182,
+"awareRating": 0.280053,
+"blockShedRating": 0.011639,
+"changeOfDirectionRating": 0.062349,
+"jumpRating": 0.000537,
+"manCoverRating": 0.127914,
+"playRecRating": 0.125355,
+"pursuitRating": 0.206906,
+"speedRating": 0.181149,
+"strengthRating": 0.035034,
+"tackleRating": 0.230055,
+"zoneCoverRating": 0.30744
+},
+"b": -71.5234
+},
+"Run Stopper": {
+"w": {
+"accelRating": 0.166694,
+"agilityRating": 0.032553,
+"awareRating": 0.075362,
+"blockShedRating": 0.286639,
+"changeOfDirectionRating": 0.040119,
+"hitPowerRating": 0.056022,
+"manCoverRating": 0.033426,
+"playRecRating": 0.161907,
+"pursuitRating": 0.294116,
+"speedRating": 0.109556,
+"strengthRating": 0.182318,
+"tackleRating": 0.293067,
+"zoneCoverRating": 0.099982
+},
+"b": -69.6343
+}
+},
+"MIKE": {
+"Field General": {
+"w": {
+"accelRating": 0.190158,
+"agilityRating": 0.092827,
+"awareRating": 0.082754,
+"blockShedRating": 0.206172,
+"changeOfDirectionRating": 0.031582,
+"hitPowerRating": 0.020819,
+"manCoverRating": 0.025526,
+"playRecRating": 0.257639,
+"pursuitRating": 0.223459,
+"speedRating": 0.046149,
+"strengthRating": 0.232008,
+"tackleRating": 0.364481,
+"zoneCoverRating": 0.093179
+},
+"b": -73.3829
+},
+"Pass Coverage": {
+"w": {
+"accelRating": 0.259508,
+"agilityRating": 0.135475,
+"awareRating": 0.18317,
+"blockShedRating": 0.006085,
+"changeOfDirectionRating": 0.101488,
+"hitPowerRating": 0.009676,
+"jumpRating": 0.004853,
+"manCoverRating": 0.138157,
+"playRecRating": 0.108248,
+"pursuitRating": 0.300811,
+"speedRating": 0.038715,
+"strengthRating": 0.078462,
+"tackleRating": 0.283457,
+"zoneCoverRating": 0.335946
+},
+"b": -81.5869
+},
+"Run Stopper": {
+"w": {
+"accelRating": 0.130462,
+"agilityRating": 0.077592,
+"awareRating": 0.122059,
+"blockShedRating": 0.158273,
+"changeOfDirectionRating": 0.045065,
+"hitPowerRating": 0.023931,
+"manCoverRating": 0.068892,
+"playRecRating": 0.218313,
+"powerMovesRating": 0.002449,
+"pursuitRating": 0.28159,
+"speedRating": 0.117643,
+"strengthRating": 0.189894,
+"tackleRating": 0.36923,
+"zoneCoverRating": 0.118496
+},
+"b": -76.9495
+}
+},
+"CB": {
+"Man": {
+"w": {
+"accelRating": 0.348613,
+"agilityRating": 0.050144,
+"awareRating": 0.213149,
+"changeOfDirectionRating": 0.099338,
+"jumpRating": 0.040905,
+"manCoverRating": 0.385412,
+"playActionRating": 0.003822,
+"playRecRating": 0.087485,
+"pressRating": 0.124578,
+"speedRating": 0.363091,
+"strengthRating": 0.000625,
+"tackleRating": 0.052819,
+"zoneCoverRating": 0.045302
+},
+"b": -73.7771
+},
+"Slot": {
+"w": {
+"accelRating": 0.244118,
+"agilityRating": 0.119203,
+"awareRating": 0.114713,
+"changeOfDirectionRating": 0.152674,
+"jumpRating": 0.044574,
+"manCoverRating": 0.270057,
+"playActionRating": 0.003486,
+"playRecRating": 0.198505,
+"pressRating": 0.057635,
+"pursuitRating": 0.095684,
+"speedRating": 0.23254,
+"strengthRating": 0.03262,
+"tackleRating": 0.207501,
+"zoneCoverRating": 0.091775
+},
+"b": -73.5538
+},
+"Zone": {
+"w": {
+"accelRating": 0.357557,
+"agilityRating": 0.067026,
+"awareRating": 0.205101,
+"changeOfDirectionRating": 0.072522,
+"jumpRating": 0.037984,
+"manCoverRating": 0.100841,
+"playActionRating": 6.6e-05,
+"playRecRating": 0.12457,
+"pressRating": 0.066316,
+"pursuitRating": 0.005888,
+"speedRating": 0.337563,
+"tackleRating": 0.09108,
+"zoneCoverRating": 0.33828
+},
+"b": -72.7615
+}
+},
+"FS": {
+"Hybrid": {
+"w": {
+"accelRating": 0.202762,
+"agilityRating": 0.117307,
+"awareRating": 0.254241,
+"blockShedRating": 0.020503,
+"catchRating": 0.009351,
+"changeOfDirectionRating": 0.039035,
+"jumpRating": 0.052081,
+"manCoverRating": 0.24423,
+"playRecRating": 0.096046,
+"pressRating": 0.04199,
+"pursuitRating": 0.086528,
+"speedRating": 0.244281,
+"strengthRating": 0.049964,
+"tackleRating": 0.213693,
+"zoneCoverRating": 0.15497
+},
+"b": -67.9744
+},
+"Run Support": {
+"w": {
+"accelRating": 0.108617,
+"agilityRating": 0.091086,
+"awareRating": 0.131444,
+"blockShedRating": 0.045248,
+"changeOfDirectionRating": 0.064665,
+"hitPowerRating": 0.098395,
+"jumpRating": 0.034186,
+"manCoverRating": 0.104026,
+"playRecRating": 0.281092,
+"pressRating": 0.000453,
+"pursuitRating": 0.181659,
+"speedRating": 0.172959,
+"tackleRating": 0.284943,
+"zoneCoverRating": 0.144977
+},
+"b": -60.8117
+},
+"Zone": {
+"w": {
+"accelRating": 0.170023,
+"agilityRating": 0.097094,
+"awareRating": 0.357279,
+"catchRating": 0.003163,
+"changeOfDirectionRating": 0.071642,
+"hitPowerRating": 0.003958,
+"jumpRating": 0.052014,
+"manCoverRating": 0.007581,
+"playRecRating": 0.050712,
+"pressRating": 0.000768,
+"pursuitRating": 0.129032,
+"speedRating": 0.258539,
+"strengthRating": 0.027293,
+"tackleRating": 0.148232,
+"zoneCoverRating": 0.378403
+},
+"b": -64.6665
+}
+},
+"SS": {
+"Hybrid": {
+"w": {
+"accelRating": 0.308095,
+"agilityRating": 0.094839,
+"awareRating": 0.229658,
+"blockShedRating": 0.027657,
+"changeOfDirectionRating": 0.073794,
+"hitPowerRating": 0.00804,
+"jumpRating": 0.029966,
+"manCoverRating": 0.276896,
+"playRecRating": 0.158672,
+"pressRating": 0.063109,
+"pursuitRating": 0.107612,
+"speedRating": 0.150276,
+"strengthRating": 0.021031,
+"tackleRating": 0.19577,
+"zoneCoverRating": 0.101391
+},
+"b": -69.5748
+},
+"Run Support": {
+"w": {
+"accelRating": 0.190748,
+"agilityRating": 0.137574,
+"awareRating": 0.153216,
+"blockShedRating": 0.046119,
+"catchRating": 0.010962,
+"changeOfDirectionRating": 0.01741,
+"hitPowerRating": 0.076079,
+"jumpRating": 0.040765,
+"manCoverRating": 0.092082,
+"playRecRating": 0.347001,
+"pursuitRating": 0.117484,
+"speedRating": 0.136531,
+"strengthRating": 0.056151,
+"tackleRating": 0.268253,
+"zoneCoverRating": 0.112663
+},
+"b": -65.3642
+},
+"Zone": {
+"w": {
+"accelRating": 0.192932,
+"agilityRating": 0.100815,
+"awareRating": 0.341951,
+"blockShedRating": 0.005458,
+"catchRating": 0.00848,
+"changeOfDirectionRating": 0.07572,
+"hitPowerRating": 0.004139,
+"jumpRating": 0.048333,
+"playRecRating": 0.056277,
+"pursuitRating": 0.135778,
+"speedRating": 0.26806,
+"strengthRating": 0.041196,
+"tackleRating": 0.155834,
+"zoneCoverRating": 0.384698
+},
+"b": -69.74
+}
+}
+},
+"positions": {
+"QB": "QB",
+"HB": "HB",
+"FB": "FB",
+"WR": "WR",
+"TE": "TE",
+"LT": "LT",
+"RT": "RT",
+"LG": "G",
+"RG": "G",
+"C": "C",
+"LEDG": "EDGE",
+"REDG": "EDGE",
+"DT": "DT",
+"MIKE": "MIKE",
+"WILL": "OLB",
+"SAM": "OLB",
+"CB": "CB",
+"FS": "FS",
+"SS": "SS"
+}
+}

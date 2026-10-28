@@ -7,6 +7,8 @@ import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
 import { DEV_LABEL, type StatLine } from "@/lib/league/types";
 import { projectPlayer } from "@/lib/league/projection";
+import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
+import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
 
 type Props = { params: Promise<{ slug: string; id: string }> };
 
@@ -76,12 +78,7 @@ export default async function PlayerPage({ params }: Props) {
           );
         })()}
 
-        {p.abilities.length > 0 && (
-          <div className="panel">
-            <h3>Abilities</h3>
-            <ul className="abilities">{p.abilities.map((a) => <li key={a.title}><span className={`tier tier-${a.tier.toLowerCase()}`}>{a.tier}</span> {a.title}</li>)}</ul>
-          </div>
-        )}
+        {!p.gone && <AbilitiesPanel slug={slug} p={p} />}
 
         {t && (
           <div className="panel tbl-wrap">
@@ -136,4 +133,59 @@ function lineText(l: StatLine) {
   if (n(l.fga) || n(l.xpa)) parts.push(`FG ${n(l.fgm)}/${n(l.fga)}, XP ${n(l.xpm)}/${n(l.xpa)}`);
   if (n(l.pnt)) parts.push(`${l.pnt} punts, ${avg(n(l.pnty), n(l.pnt))} avg`);
   return parts.join("; ") || "Played";
+}
+
+function AbilitiesPanel({ slug, p }: { slug: string; p: import("@/lib/league/types").Player }) {
+  const eligible = p.ratings && p.slots ? eligibleAbilities(p) : null;
+  const fresh = eligible?.filter((e) => !e.has) || [];
+  if (!p.abilities.length && !fresh.length) return null;
+  const groups: [string, typeof fresh][] = [
+    ["X-Factor", fresh.filter((e) => e.tier === "Single")],
+    ["Gold", fresh.filter((e) => e.tier === "Gold")],
+    ["Silver", fresh.filter((e) => e.tier === "Silver")],
+    ["Bronze", fresh.filter((e) => e.tier === "Bronze")],
+  ];
+  return (
+    <div className="panel">
+      <h3>Abilities</h3>
+      {p.abilities.length > 0 && (
+        <div className="ab-list">
+          {p.abilities.map((h) => {
+            const a = findAbility(h.title);
+            const el = eligible?.find((e) => e.ability.key === a?.key);
+            return (
+              <details className="ab-row" key={h.title}>
+                <summary>
+                  <TierPill tier={h.tier} />
+                  {a ? <Link href={`/l/${slug}/abilities/${a.key}`} className="ab-name">{h.title}</Link> : <span className="ab-name">{h.title}</span>}
+                  {el?.next && el.tier !== "Single" && (
+                    <span className="ab-next small muted">{el.next.tier} needs {el.next.missing.map((m) => `${m.label}${m.min ? ` ${m.min}` : ""}${m.have != null ? ` (has ${m.have})` : ""}`).join(", ")}</span>
+                  )}
+                </summary>
+                {a ? <AbilityMechanics a={a} slug={slug} /> : <p className="muted small">No mechanics on file for this one.</p>}
+              </details>
+            );
+          })}
+        </div>
+      )}
+      {eligible == null ? (
+        <p className="hint">Eligible abilities show up after this league&apos;s next sync.</p>
+      ) : fresh.length > 0 && (
+        <>
+          <h4 className="ab-h">Eligible for <span className="muted small">{fresh.length} he meets every requirement for, at the best tier he qualifies for</span></h4>
+          {groups.filter(([, l]) => l.length).map(([name, list]) => (
+            <div key={name} className="ab-group">
+              <div className="ab-group__h">{name}</div>
+              <div className="ab-list">{list.map((e) => <EligibleRow key={e.ability.key} e={e} slug={slug} />)}</div>
+            </div>
+          ))}
+          <p className="hint">
+            Requirements are Madden 27 franchise rules (position, open ability slot, ratings) from Madden School. Some abilities also need an
+            archetype rating such as Speed Rusher, which EA doesn&apos;t send; those are estimated from his ratings, and &quot;close call&quot; marks
+            ones within a point of the cutoff. What each ability does comes from Madden&apos;s own trigger and effect names (via ClutchTrait).
+          </p>
+        </>
+      )}
+    </div>
+  );
 }
