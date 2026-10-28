@@ -6,6 +6,7 @@ import { indexes, passerRating, seasonTotals, weekTitle } from "@/lib/league/der
 import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
 import { DEV_LABEL, type StatLine } from "@/lib/league/types";
+import { projectContract } from "@/lib/league/cap";
 
 type Props = { params: Promise<{ slug: string; id: string }> };
 
@@ -60,6 +61,20 @@ export default async function PlayerPage({ params }: Props) {
             <div className="tile"><div className="tile-label">If cut today</div><div className="tile-value">{money(c.releaseSavings)}</div><div className="tile-sub">saved, {money(c.releasePenalty)} dead</div></div>
           </div>
         )}
+
+        {!p.gone && c.yearsLeft > 0 && (() => {
+          const hits = projectContract(c, d.season.year);
+          const ys = Object.keys(hits).map(Number).sort((a, b) => a - b);
+          return (
+            <div className="panel tbl-wrap">
+              <table className="tbl">
+                <caption>Cap hit by year <span className="muted">later years projected</span></caption>
+                <thead><tr>{ys.map((y, i) => <th key={y} className="num">{y}{i > 0 && <span className="proj">proj.</span>}</th>)}</tr></thead>
+                <tbody><tr>{ys.map((y, i) => <td key={y} className={`num ${i === 0 ? "strong" : ""}`}>{money(hits[y])}</td>)}</tr></tbody>
+              </table>
+            </div>
+          );
+        })()}
 
         {p.abilities.length > 0 && (
           <div className="panel">

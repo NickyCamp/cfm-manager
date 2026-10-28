@@ -2,6 +2,8 @@
 // scores, season totals and leaders. Pure functions; safe to call per request.
 
 import type { Game, LeagueData, Player, StatLine, Team, Week } from "./types";
+import { leagueCap, projectContract, projectedLeagueCap } from "./cap";
+
 
 export const REG_SEASON_LAST_WEEK = 17;
 
@@ -184,3 +186,33 @@ export function inferredDeadCap(team: Team, roster: Player[]) {
 }
 
 export const fullName = (p: Player | undefined) => (p ? `${p.first} ${p.last}` : "Unknown player");
+
+// ---------- future cap ----------
+
+export const PROJECTION_YEARS = 4;
+
+export function capYears(d: LeagueData) {
+  return Array.from({ length: PROJECTION_YEARS + 1 }, (_, i) => d.season.year + i);
+}
+
+/**
+ * A team's cap by year. This season uses Madden's own spent/available numbers
+ * (they include dead money); later years add up projected cap hits of
+ * everyone signed through that year (practice squad left out) against the
+ * league cap grown by the baseline each season.
+ */
+export function teamCapProjection(d: LeagueData, team: Team) {
+  const years = capYears(d);
+  const baseCap = leagueCap(d.teams);
+  const roster = teamPlayers(d, team.id).filter((p) => !p.ps);
+  const rows = roster
+    .map((p) => ({ p, hits: projectContract(p.contract, d.season.year) }))
+    .sort((a, b) => b.p.contract.capHit - a.p.contract.capHit);
+  const totals = years.map((y, i) => {
+    if (i === 0) return { year: y, cap: team.cap.room, committed: team.cap.spent, space: team.cap.available, players: rows.filter((r) => r.hits[y] != null).length };
+    const committed = rows.reduce((a, r) => a + (r.hits[y] || 0), 0);
+    const cap = projectedLeagueCap(baseCap, d.season.year, y);
+    return { year: y, cap, committed, space: cap - committed, players: rows.filter((r) => r.hits[y] != null).length };
+  });
+  return { years, rows, totals, baseCap };
+}

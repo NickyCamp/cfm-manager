@@ -3,13 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueData } from "@/lib/league/load";
 import {
-  indexes, inferredDeadCap, passerRating, record, rosterGroups, seasonTotals, streakText, teamPlayers, teamSchedule, weekTitle,
+  indexes, inferredDeadCap, passerRating, record, rosterGroups, seasonTotals, streakText, teamCapProjection, teamPlayers, teamSchedule, weekTitle,
 } from "@/lib/league/derive";
+import { CAP_GROWTH_PER_YEAR } from "@/lib/league/cap";
 import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 
-type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string }> };
+type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"]] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TeamPage({ params, searchParams }: Props) {
   const { slug, abbr } = await params;
-  const { tab = "roster" } = await searchParams;
+  const { tab = "roster", view } = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
   const { byAbbr } = indexes(d);
@@ -53,7 +54,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
             <Link key={k} href={k === "roster" ? base : `${base}?tab=${k}`} aria-current={tab === k ? "page" : undefined}>{label}</Link>
           ))}
         </nav>
-        {tab === "cap" ? <CapTab team={team} roster={roster} slug={slug} />
+        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" ? "details" : "years"} base={base} />
           : tab === "schedule" ? <ScheduleTab d={d} team={team} slug={slug} />
           : tab === "stats" ? <StatsTab d={d} team={team} slug={slug} />
           : <RosterTab roster={roster} slug={slug} />}
@@ -100,7 +101,7 @@ function RosterTab({ roster, slug }: { roster: Player[]; slug: string }) {
   );
 }
 
-function CapTab({ team, roster, slug }: { team: Team; roster: Player[]; slug: string }) {
+function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details"; base: string }) {
   const active = roster.filter((p) => !p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
   const ps = roster.filter((p) => p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
   const dead = inferredDeadCap(team, roster);
@@ -128,22 +129,72 @@ function CapTab({ team, roster, slug }: { team: Team; roster: Player[]; slug: st
       <div className="cap-meter" role="img" aria-label={`${usedPct.toFixed(0)}% of the cap used`}>
         <span style={{ width: `${usedPct}%`, background: team.primary }} />
       </div>
+      <div className="seg" role="tablist" aria-label="Cap view">
+        <Link href={`${base}?tab=cap`} aria-current={view === "years" ? "page" : undefined}>Cap by year</Link>
+        <Link href={`${base}?tab=cap&view=details`} aria-current={view === "details" ? "page" : undefined}>Contract details</Link>
+      </div>
+      {view === "years" ? <CapByYear d={d} team={team} slug={slug} /> : (
+        <>
+        <div className="panel tbl-wrap">
+          <table className="tbl">
+            <caption>Contracts <span className="muted">highest cap hit first</span></caption>
+            <thead>
+              <tr><th>Player</th><th className="num">Cap hit</th><th className="num" title="Years left / length">Yrs</th><th className="num hide-sm">Total</th><th className="num hide-sm">Bonus</th><th className="num">Cut saves</th><th className="num">Dead if cut</th></tr>
+            </thead>
+            <tbody>{capRows(active)}</tbody>
+          </table>
+        </div>
+        {ps.length > 0 && (
+          <details className="panel">
+            <summary>Practice squad <span className="muted">{ps.length} players, {money(ps.reduce((a, p) => a + p.contract.capHit, 0))}</span></summary>
+            <div className="tbl-wrap"><table className="tbl"><tbody>{capRows(ps)}</tbody></table></div>
+          </details>
+        )}
+        </>
+      )}
+      {view === "details" && <p className="hint">Cap hit is this season. &quot;Cut saves&quot; and &quot;Dead if cut&quot; are Madden&apos;s own numbers for releasing the player today.</p>}
+    </>
+  );
+}
+
+function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string }) {
+  const { years, rows, totals } = teamCapProjection(d, team);
+  const shown = rows.filter((r) => Object.keys(r.hits).length);
+  return (
+    <>
       <div className="panel tbl-wrap">
-        <table className="tbl">
-          <caption>Contracts <span className="muted">highest cap hit first</span></caption>
+        <table className="tbl years-tbl">
+          <caption>Cap by year <span className="muted">{years[0]} is Madden&apos;s; later years are projected</span></caption>
           <thead>
-            <tr><th>Player</th><th className="num">Cap hit</th><th className="num" title="Years left / length">Yrs</th><th className="num hide-sm">Total</th><th className="num hide-sm">Bonus</th><th className="num">Cut saves</th><th className="num">Dead if cut</th></tr>
+            <tr>
+              <th>Player</th>
+              {years.map((y, i) => <th key={y} className="num">{y}{i > 0 && <span className="proj">proj.</span>}</th>)}
+            </tr>
           </thead>
-          <tbody>{capRows(active)}</tbody>
+          <tbody>
+            {shown.map(({ p, hits }) => (
+              <tr key={p.id}>
+                <td className="cap-name"><PlayerLink slug={slug} player={p} /> <span className="muted small">{p.pos}</span></td>
+                {years.map((y, i) => (
+                  <td key={y} className={`num ${i === 0 ? "strong" : ""} ${hits[y] == null ? "muted" : ""}`}>{hits[y] == null ? "—" : money(hits[y])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr><th scope="row">Committed</th>{totals.map((t) => <td key={t.year} className="num">{money(t.committed)}</td>)}</tr>
+            <tr><th scope="row">League cap</th>{totals.map((t) => <td key={t.year} className="num muted">{money(t.cap)}</td>)}</tr>
+            <tr className="space-row"><th scope="row">Cap space</th>{totals.map((t) => <td key={t.year} className={`num strong ${t.space < 0 ? "neg" : "pos"}`}>{money(t.space)}</td>)}</tr>
+            <tr><th scope="row">Players signed</th>{totals.map((t) => <td key={t.year} className="num muted">{t.players}</td>)}</tr>
+          </tfoot>
         </table>
       </div>
-      {ps.length > 0 && (
-        <details className="panel">
-          <summary>Practice squad <span className="muted">{ps.length} players, {money(ps.reduce((a, p) => a + p.contract.capHit, 0))}</span></summary>
-          <div className="tbl-wrap"><table className="tbl"><tbody>{capRows(ps)}</tbody></table></div>
-        </details>
-      )}
-      <p className="hint">Cap hit is this season. &quot;Cut saves&quot; and &quot;Dead if cut&quot; are Madden&apos;s own numbers for releasing the player today. Year-by-year projections are coming next.</p>
+      <p className="hint">
+        {years[0]} uses Madden&apos;s own numbers, dead money included. Later years project each current contract year by year
+        with the formula worked out from real Madden extensions (bonus spread over up to 5 years, salary rising toward the end),
+        so individual years can be off by 10–20%. The league cap is assumed to grow {money(CAP_GROWTH_PER_YEAR)} a year.
+        Future dead money, new signings and re-signings aren&apos;t included. Practice squad deals are left out.
+      </p>
     </>
   );
 }
