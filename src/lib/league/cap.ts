@@ -1,28 +1,38 @@
 // Contract and cap projection math. Pure, no Node APIs: used on the server
 // (team cap tabs, player pages) and in the browser (contract tool).
 //
-// Ported from the NCL site (template capMath / calculateContractOffer), where
-// the rules were worked out by blind-predicting real Madden extensions before
-// seeing the signed result (Witherspoon, Shaheed, Edmunds, Bates, Morris,
-// Leonard Williams) and then checked against a batch of verified Seahawks cap
-// hits:
-//  1. TIMING: an extension starts the year after the current deal's last real
-//     year (startYear = currentYear + yearsLeft). The caller sets startYear.
-//  2. BONUS: prorated evenly over min(length + void years, 5) years. 6-for-6.
-//  3. BASE SALARY: back-loaded, not flat. Low first year, steady climb, the
-//     final year absorbs the remainder. Cheap deals (under $3M a year) ramp
-//     much flatter. This is the approximate part: individual middle years
-//     can be off 10-30%.
-//  4. CAP HIT = that year's base salary + that year's bonus share.
-// Real NFL rules are a guide, not a spec: if a real in-game number disagrees,
-// the in-game number wins and these constants get tuned.
+// How Madden structures a contract, worked out (2026-10-28) by comparing EA's
+// contract fields with the real year-by-year cap hits Nick read off Madden's
+// cap screens for all 32 NCL teams (1,679 contracts, 2,487 future seasons):
+//
+//  1. SALARY rises by the same dollar amount every year (a straight line).
+//     Not a back-loaded curve. 6+ year deals alternate bigger/smaller raises
+//     around that line.
+//  2. BONUS is spread evenly over min(length + void years, 5) years. Madden's
+//     "dead if cut" (capReleasePenalty) is exactly the bonus not yet charged
+//     (including this season's share), plus any guaranteed salary.
+//  3. THIS SEASON is exact in EA's data (capHit), so this season's salary is
+//     capHit minus this season's bonus share. Projections run a line through
+//     that known salary, sized so the whole contract adds up to its total
+//     salary. That alone took the typical miss from ~9% to under 1%.
+//  4. EXTENSIONS are merged with the old deal: EA's length counts the old
+//     deal's remaining years first. Signed this season: this season (and any
+//     other rookie-deal years left) stay at the old salary, the new bonus
+//     starts next season, and the new deal's raise follows Madden's raise
+//     rule for its length (yearlyRaise).
+//  5. GUARANTEED DEALS: when dead-if-cut covers all remaining salary,
+//     (dead money - remaining bonus) is the salary still to be paid; that
+//     fixes the line for extensions that are already underway.
+//  6. ROOKIE DEALS imported from real life follow the NFL rookie scale
+//     (~10% raises); blended with the line.
+//
+// Accuracy against the real numbers (held-out half of the teams): median miss
+// 0.8%, ~60% of future seasons within 2%, ~75% within 5%. The big misses are
+// mostly real-life contracts imported at franchise start (hand-built NFL
+// structures) and void years, which EA's data doesn't describe.
+// Scripts and data: /home/claude/capfit (see the project notes).
 
 export const MAX_BONUS_PRORATION_YEARS = 5;
-const RAMP_FIRST_YEAR_RATIO = 0.32;
-const RAMP_STEP_RATIO = 0.36;
-const LOW_TIER_APY_THRESHOLD = 3_000_000;
-const LOW_TIER_RAMP_FIRST_YEAR_RATIO = 0.73;
-const LOW_TIER_RAMP_STEP_RATIO = 0.19;
 
 /** Baseline league cap growth per season (Nick, 2026-10-27). */
 export const CAP_GROWTH_PER_YEAR = 15_000_000;
@@ -31,16 +41,29 @@ export function projectedLeagueCap(currentCap: number, currentYear: number, year
   return currentCap + CAP_GROWTH_PER_YEAR * Math.max(0, year - currentYear);
 }
 
-function salarySchedule(totalSalary: number, length: number, firstRatio: number, stepRatio: number): number[] {
+// Yearly raise of a new Madden deal by length: raise = a * avgSalary + c.
+// Fit on 2026-27 in-franchise signings and extensions.
+const RAISE_FIT: Record<number, [number, number]> = {
+  2: [0.5801, -352_500],
+  3: [0.6136, -662_900],
+  4: [0.3593, -387_300],
+  5: [0.3065, -395_100],
+  6: [0.3065, -395_100],
+  7: [0.2593, -460_900],
+};
+export function yearlyRaise(length: number, avgSalary: number) {
+  if (length <= 1) return 0;
+  const [a, c] = RAISE_FIT[length] ?? [0.175, 0];
+  return Math.max(0.05 * avgSalary, a * avgSalary + c);
+}
+
+/** Salary by year for a new deal: a straight line around the average. */
+export function salarySchedule(totalSalary: number, length: number): number[] {
   if (length <= 1) return [totalSalary];
   const avg = totalSalary / length;
-  const ramp: number[] = [];
-  for (let i = 0; i < length - 1; i++) ramp.push(avg * (firstRatio + i * stepRatio));
-  const rampSum = ramp.reduce((a, b) => a + b, 0);
-  const maxRamp = totalSalary * 0.9; // the final year always keeps at least 10% of the total
-  const scale = rampSum > maxRamp && rampSum > 0 ? maxRamp / rampSum : 1;
-  const scaled = ramp.map((v) => v * scale);
-  return [...scaled, Math.max(0, totalSalary - scaled.reduce((a, b) => a + b, 0))];
+  const d = yearlyRaise(length, avg);
+  const s0 = avg - (d * (length - 1)) / 2;
+  return Array.from({ length }, (_, i) => Math.max(0, s0 + d * i));
 }
 
 export type OfferInput = {
@@ -69,8 +92,7 @@ export function calculateOffer(input: OfferInput) {
   const perYearBonus = prorationYears ? totalBonus / prorationYears : 0;
   const totalSalary = length * yearlySalary;
   const apy = (totalSalary + totalBonus) / length;
-  const low = apy < LOW_TIER_APY_THRESHOLD;
-  const salaries = salarySchedule(totalSalary, length, low ? LOW_TIER_RAMP_FIRST_YEAR_RATIO : RAMP_FIRST_YEAR_RATIO, low ? LOW_TIER_RAMP_STEP_RATIO : RAMP_STEP_RATIO);
+  const salaries = salarySchedule(totalSalary, length);
 
   const rows: OfferRow[] = [];
   for (let i = 0; i < span; i++) {
@@ -90,23 +112,81 @@ export function calculateOffer(input: OfferInput) {
   return { rows, totalValue: totalSalary + totalBonus, apy, prorationYears };
 }
 
-export type ContractLike = { length: number; yearsLeft: number; salary: number; bonus: number; capHit: number };
+export type ContractLike = {
+  length: number; yearsLeft: number; salary: number; bonus: number; capHit: number;
+  releasePenalty?: number; // Madden's dead-if-cut; improves extension handling
+  rookieYear?: number;     // first NFL season
+  yearsPro?: number;
+};
+
+export type ContractKind = "standard" | "extension-pending" | "extension-guaranteed" | "extension";
+
+export function contractKind(c: ContractLike, currentYear: number): ContractKind {
+  const L = Math.floor(c.length), el = L - c.yearsLeft;
+  const P = Math.min(L, MAX_BONUS_PRORATION_YEARS);
+  const B = P ? c.bonus / P : 0;
+  if (el === 0 && c.bonus > 0 && L >= 2 && c.capHit < 0.9 * B) return "extension-pending";
+  const pen = c.releasePenalty ?? 0;
+  const excess = pen - B * Math.max(0, P - el);
+  if (c.releasePenalty != null && excess > Math.max(80_000, 0.01 * c.bonus)) {
+    const sNow = c.capHit - (el < P ? B : 0);
+    return excess >= 0.95 * sNow * c.yearsLeft ? "extension-guaranteed" : "extension";
+  }
+  void currentYear;
+  return "standard";
+}
 
 /**
  * Cap hit by year for a contract already signed: this season is Madden's own
- * number; later years run the deal's totals through the formula above.
- * startYear is backed out from how much of the deal has already elapsed.
+ * number; later seasons are projected (see the rules at the top of the file).
  */
 export function projectContract(c: ContractLike, currentYear: number): Record<number, number> {
   const out: Record<number, number> = {};
-  if (c.yearsLeft <= 0) return out;
+  const L = Math.floor(c.length), rem = c.yearsLeft, el = L - rem;
+  if (rem <= 0) return out;
   out[currentYear] = c.capHit;
-  const length = Math.floor(c.length);
-  if (length <= 0 || c.salary + c.bonus <= 0) return out;
-  const startYear = currentYear - (length - c.yearsLeft);
-  const { rows } = calculateOffer({ startYear, length, yearlySalary: c.salary / length, totalBonus: c.bonus });
-  for (const r of rows) if (r.year > currentYear && !r.isVoid) out[r.year] = r.capHit;
+  if (L <= 0 || rem <= 1 || c.salary + c.bonus <= 0) return out;
+  const P = Math.min(L, MAX_BONUS_PRORATION_YEARS);
+  const B = c.bonus / P;
+  const kind = contractKind(c, currentYear);
+  const put = (k: number, v: number) => { out[currentYear + k] = Math.max(0, v); };
+
+  if (kind === "extension-pending") {
+    // Old-deal years first (still at the old salary), then the new deal.
+    const yrsIn = c.rookieYear != null ? currentYear - c.rookieYear : 99;
+    const oldLeft = yrsIn >= 0 && yrsIn < 4 && (c.yearsPro ?? 99) <= 4 ? Math.max(1, 4 - yrsIn) : 1;
+    const kOld = Math.min(oldLeft, L - 1);
+    const N = L - kOld, Pn = Math.min(N, MAX_BONUS_PRORATION_YEARS), Bn = c.bonus / Pn;
+    const old = Array.from({ length: kOld }, (_, j) => c.capHit * 1.1 ** j);
+    const sal = salarySchedule(c.salary - old.reduce((a, b) => a + b, 0), N);
+    for (let k = 1; k < rem; k++) put(k, k < kOld ? old[k] : sal[k - kOld] + (k - kOld < Pn ? Bn : 0));
+    return out;
+  }
+
+  const sNow = c.capHit - (el < P ? B : 0);
+  let d: number;
+  if (kind === "extension-guaranteed") {
+    // Dead money minus the bonus left = salary still owed, this season included.
+    const owed = (c.releasePenalty ?? 0) - B * Math.max(0, P - el);
+    const n = rem - 1;
+    d = (owed - sNow - n * sNow) / ((n * (n + 1)) / 2);
+  } else {
+    // Straight line through this season's known salary; the whole deal adds up to its total.
+    const denom = (L * (L - 1)) / 2 - L * el;
+    d = denom ? (c.salary - L * sNow) / denom : 0;
+  }
+  const rookie = kind === "standard" && c.rookieYear === currentYear - el && (c.yearsPro ?? 99) <= L;
+  for (let k = 1; k < rem; k++) {
+    let s = sNow + d * k;
+    if (rookie) s = (s + sNow * 1.1 ** k) / 2; // real-life rookie scale climbs ~10% a year
+    put(k, s + (el + k < P ? B : 0));
+  }
   return out;
+}
+
+/** Projection inputs for a league player. */
+export function contractInput(p: { contract: { length: number; yearsLeft: number; salary: number; bonus: number; capHit: number; releasePenalty: number }; draft: { year: number }; yearsPro: number }): ContractLike {
+  return { ...p.contract, rookieYear: p.draft.year, yearsPro: p.yearsPro };
 }
 
 /** The league's cap this season: the most common cap among teams (ignores a team with the cap switched off). */

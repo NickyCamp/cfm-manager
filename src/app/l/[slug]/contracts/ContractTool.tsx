@@ -6,12 +6,12 @@ import { money, onColor } from "@/lib/league/format";
 
 export type ToolPlayer = {
   id: number; n: string; pos: string; t: number; age: number; ovr: number; dev: number; ps: boolean;
-  c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number];
+  c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number, penalty: number, rookieYear: number, yearsPro: number];
 };
 export type ToolTeam = { id: number; abbr: string; name: string; primary: string; committed: number[]; cap: number[] };
 
 const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
-const contractOf = (p: ToolPlayer) => ({ length: p.c[0], yearsLeft: p.c[1], salary: p.c[2], bonus: p.c[3], capHit: p.c[4] });
+const contractOf = (p: ToolPlayer) => ({ length: p.c[0], yearsLeft: p.c[1], salary: p.c[2], bonus: p.c[3], capHit: p.c[4], releasePenalty: p.c[5], rookieYear: p.c[6], yearsPro: p.c[7] });
 
 export function ContractTool({ slug, year, years, players, teams, initialPlayer }: {
   slug: string; year: number; years: number[]; players: ToolPlayer[]; teams: ToolTeam[]; initialPlayer: number | null;
@@ -151,7 +151,7 @@ function Detail({ slug, p, year, years, players, teams, teamById }: {
               </tbody>
             </table>
           </div>
-          <p className="hint">Salary rises over the deal and the bonus is spread evenly over up to 5 years, the way Madden handled the real extensions this was checked against. Middle years can be off 10–20%.</p>
+          <p className="hint">Salary rises by the same amount each year and the bonus is spread evenly over up to 5 years, the way Madden builds new deals. The raise size follows what Madden gave real extensions of the same length, so the exact split can differ a little from what Madden shows.</p>
         </section>
 
         <section className="panel">
