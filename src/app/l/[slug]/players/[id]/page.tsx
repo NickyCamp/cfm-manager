@@ -6,7 +6,7 @@ import { indexes, passerRating, seasonTotals, weekTitle } from "@/lib/league/der
 import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
 import { DEV_LABEL, type StatLine } from "@/lib/league/types";
-import { contractInput, projectContract } from "@/lib/league/cap";
+import { projectPlayer } from "@/lib/league/projection";
 
 type Props = { params: Promise<{ slug: string; id: string }> };
 
@@ -63,7 +63,7 @@ export default async function PlayerPage({ params }: Props) {
         )}
 
         {!p.gone && c.yearsLeft > 0 && (() => {
-          const hits = projectContract(contractInput(p), d.season.year);
+          const hits = projectPlayer(p, d.season.year).hits;
           const ys = Object.keys(hits).map(Number).sort((a, b) => a - b);
           return (
             <div className="panel tbl-wrap">

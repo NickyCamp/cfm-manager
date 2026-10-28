@@ -1,0 +1,78 @@
+// Real NFL contracts (OverTheCap via nflverse) for players still on the deal
+// their Madden 27 franchise imported. Madden copies real contracts in year by
+// year, so for those players the real cap numbers are the best projection.
+// Checked against Madden's cap screens (NCL, 2026-10-28): unchanged real deals
+// land within ~1% in dollars, versus ~20% for any formula on these deals.
+//
+// Server-only: the JSON is ~35 KB and shouldn't ship to the browser.
+import data from "./real-contracts.json";
+import { MAX_BONUS_PRORATION_YEARS, type ContractLike } from "./cap";
+
+type Entry = [first: string, last: string, draftYear: number | null, caps: number[]];
+const { firstYear, unit, players } = data as unknown as { firstYear: number; unit: number; players: Entry[] };
+
+export function normName(s: string) {
+  return s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, "").replace(/[^a-z ]/g, " ").split(/\s+/).filter(Boolean);
+}
+
+const byLast = new Map<string, Entry[]>();
+for (const e of players) {
+  const list = byLast.get(e[1]) || [];
+  list.push(e);
+  byLast.set(e[1], list);
+}
+
+/** EA's draft year is the real draft year + 1 for Madden 27 rosters; allow either. */
+function findEntry(first: string, last: string, eaDraftYear: number | null): Entry | null {
+  const l = normName(last).pop();
+  const f = normName(first)[0];
+  if (!l || !f) return null;
+  let c = (byLast.get(l) || []).filter((e) => e[0][0] === f[0]);
+  if (c.length > 1) { const exact = c.filter((e) => e[0] === f); if (exact.length) c = exact; }
+  if (c.length > 1 && eaDraftYear) {
+    const d = c.filter((e) => e[2] != null && Math.abs(e[2] - (eaDraftYear - 1)) <= 1);
+    if (d.length) c = d;
+  }
+  return c.length === 1 ? c[0] : null;
+}
+
+export type RealSource = "real" | "real-restructured";
+
+/**
+ * Cap hit by year from the player's real contract, or null when it doesn't
+ * describe his current Madden contract (different end year, re-signed, cut...).
+ * - Same deal: real numbers, shifted by any small gap Madden shows this season.
+ * - Restructured in the franchise (Madden's cap hit is lower than the real one):
+ *   the converted salary X became bonus spread over the rest of the bonus
+ *   window, so this season drops by X - X/n and the next n-1 seasons rise X/n.
+ */
+export function realProjection(
+  name: { first: string; last: string; draftYear: number | null },
+  c: ContractLike, currentYear: number,
+): { hits: Record<number, number>; source: RealSource } | null {
+  if (c.yearsLeft < 2) return null;
+  const e = findEntry(name.first, name.last, name.draftYear);
+  if (!e) return null;
+  const caps = e[3];
+  const cap = (y: number) => caps[y - firstYear] * unit;
+  const realEnd = firstYear + caps.length - 1;
+  const maddenEnd = currentYear + c.yearsLeft - 1;
+  if (realEnd !== maddenEnd || currentYear < firstYear) return null;
+  const c0 = cap(currentYear);
+  if (!(c0 > 0)) return null;
+  const gap = c0 - c.capHit;
+  const hits: Record<number, number> = { [currentYear]: c.capHit };
+  if (Math.abs(gap) <= 0.1 * c.capHit) {
+    for (let k = 1; k < c.yearsLeft; k++) hits[currentYear + k] = Math.max(0, cap(currentYear + k) - gap);
+    return { hits, source: "real" };
+  }
+  const el = c.length - c.yearsLeft;
+  const n = Math.min(c.length, MAX_BONUS_PRORATION_YEARS) - el;
+  if (gap > 500_000 && n >= 2) {
+    const x = (gap * n) / (n - 1);
+    for (let k = 1; k < c.yearsLeft; k++) hits[currentYear + k] = cap(currentYear + k) + (k < n ? x / n : 0);
+    return { hits, source: "real-restructured" };
+  }
+  return null;
+}

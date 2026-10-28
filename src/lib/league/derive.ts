@@ -2,7 +2,8 @@
 // scores, season totals and leaders. Pure functions; safe to call per request.
 
 import type { Game, LeagueData, Player, StatLine, Team, Week } from "./types";
-import { contractInput, leagueCap, projectContract, projectedLeagueCap } from "./cap";
+import { leagueCap, projectedLeagueCap } from "./cap";
+import { projectPlayer } from "./projection";
 
 
 export const REG_SEASON_LAST_WEEK = 17;
@@ -206,7 +207,7 @@ export function teamCapProjection(d: LeagueData, team: Team) {
   const baseCap = leagueCap(d.teams);
   const roster = teamPlayers(d, team.id).filter((p) => !p.ps);
   const rows = roster
-    .map((p) => ({ p, hits: projectContract(contractInput(p), d.season.year) }))
+    .map((p) => ({ p, hits: projectPlayer(p, d.season.year).hits }))
     .sort((a, b) => b.p.contract.capHit - a.p.contract.capHit);
   const totals = years.map((y, i) => {
     if (i === 0) return { year: y, cap: team.cap.room, committed: team.cap.spent, space: team.cap.available, players: rows.filter((r) => r.hits[y] != null).length };

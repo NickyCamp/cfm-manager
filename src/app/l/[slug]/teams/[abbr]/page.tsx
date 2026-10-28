@@ -232,9 +232,9 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
       </div>
       <p className="hint">
         {years[0]} uses Madden&apos;s own numbers, dead money included. Later years project each current contract year by year
-        from its current cap hit: salary rises by an even amount each year and the bonus is spread over up to 5 years, the way
-        Madden builds deals. Checked against Madden&apos;s own cap screens, most future years land within 2%; deals carried over
-        from real life and void years can miss by more. The league cap is assumed to grow {money(CAP_GROWTH_PER_YEAR)} a year.
+        the way Madden does: players still on the real NFL contract the franchise started with follow that contract year by year
+        (OverTheCap data via nflverse), and other deals rise by an even amount each year with the bonus spread over up to 5 years.
+        Checked against Madden&apos;s own cap screens, most future years land within 2%; extensions and restructures can miss by more. The league cap is assumed to grow {money(CAP_GROWTH_PER_YEAR)} a year.
         Future dead money, new signings and re-signings aren&apos;t included. Practice squad deals are left out.
       </p>
     </>

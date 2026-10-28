@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getLeagueData } from "@/lib/league/load";
-import { contractInput, leagueCap, projectContract, projectedLeagueCap } from "@/lib/league/cap";
+import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
+import { projectPlayer } from "@/lib/league/projection";
 import { NoData } from "@/components/league/bits";
 import { ContractTool, type ToolPlayer, type ToolTeam } from "./ContractTool";
 
@@ -19,16 +20,22 @@ export default async function ContractsPage({ params, searchParams }: Props) {
   const baseCap = leagueCap(d.teams);
   const years = Array.from({ length: YEARS_AHEAD + 1 }, (_, i) => year + i);
 
-  const players: ToolPlayer[] = d.players.filter((p) => !p.gone).map((p) => ({
-    id: p.id, n: `${p.first} ${p.last}`, pos: p.pos, t: p.team, age: p.age, ovr: p.ovr, dev: p.dev, ps: p.ps,
-    c: [p.contract.length, p.contract.yearsLeft, p.contract.salary, p.contract.bonus, p.contract.capHit, p.contract.releasePenalty, p.draft.year, p.yearsPro],
-  }));
+  const proj = new Map(d.players.filter((p) => !p.gone).map((p) => [p.id, projectPlayer(p, year)]));
+  const players: ToolPlayer[] = d.players.filter((p) => !p.gone).map((p) => {
+    const pr = proj.get(p.id)!;
+    return {
+      id: p.id, n: `${p.first} ${p.last}`, pos: p.pos, t: p.team, age: p.age, ovr: p.ovr, dev: p.dev, ps: p.ps,
+      c: [p.contract.length, p.contract.yearsLeft, p.contract.salary, p.contract.bonus, p.contract.capHit],
+      h: years.slice(0, Math.max(0, p.contract.yearsLeft)).map((y) => Math.round(pr.hits[y] || 0)),
+      real: pr.source !== "formula",
+    };
+  });
 
   // Every team's committed cap by year from current contracts (practice squad left out).
   const committed = new Map<number, number[]>(d.teams.map((t) => [t.id, years.map(() => 0)]));
   for (const p of d.players) {
     if (p.gone || !p.team || p.ps) continue;
-    const hits = projectContract(contractInput(p), year);
+    const hits = proj.get(p.id)?.hits || {};
     const row = committed.get(p.team);
     if (!row) continue;
     years.forEach((y, i) => { if (i > 0) row[i] += hits[y] || 0; });

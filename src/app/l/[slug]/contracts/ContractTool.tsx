@@ -1,17 +1,19 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { calculateOffer, projectContract, MAX_BONUS_PRORATION_YEARS } from "@/lib/league/cap";
+import { calculateOffer, MAX_BONUS_PRORATION_YEARS } from "@/lib/league/cap";
 import { money, onColor } from "@/lib/league/format";
 
 export type ToolPlayer = {
   id: number; n: string; pos: string; t: number; age: number; ovr: number; dev: number; ps: boolean;
-  c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number, penalty: number, rookieYear: number, yearsPro: number];
+  c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number];
+  h: number[];     // cap hit by year from this season, current deal
+  real: boolean;   // projected from his real NFL contract
 };
 export type ToolTeam = { id: number; abbr: string; name: string; primary: string; committed: number[]; cap: number[] };
 
 const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
-const contractOf = (p: ToolPlayer) => ({ length: p.c[0], yearsLeft: p.c[1], salary: p.c[2], bonus: p.c[3], capHit: p.c[4], releasePenalty: p.c[5], rookieYear: p.c[6], yearsPro: p.c[7] });
+const contractOf = (p: ToolPlayer) => ({ length: p.c[0], yearsLeft: p.c[1], salary: p.c[2], bonus: p.c[3], capHit: p.c[4] });
 
 export function ContractTool({ slug, year, years, players, teams, initialPlayer }: {
   slug: string; year: number; years: number[]; players: ToolPlayer[]; teams: ToolTeam[]; initialPlayer: number | null;
@@ -71,8 +73,8 @@ function Detail({ slug, p, year, years, players, teams, teamById }: {
 }) {
   const c = contractOf(p);
   const team = teamById.get(p.t);
-  const current = projectContract(c, year);
-  const currentYears = Object.keys(current).map(Number).sort((a, b) => a - b);
+  const currentYears = p.h.map((_, i) => year + i);
+  const current: Record<number, number> = Object.fromEntries(p.h.map((v, i) => [year + i, v]));
   // Timing rule: a new deal starts the year after the current one's last year.
   // A free agent signing now counts this season.
   const startYear = c.yearsLeft > 0 ? year + c.yearsLeft : p.t ? year + 1 : year;
@@ -119,6 +121,7 @@ function Detail({ slug, p, year, years, players, teams, teamById }: {
               </table>
             </div>
           ) : <p className="muted">No contract on file.</p>}
+          {p.real && currentYears.length > 1 && <p className="hint">Later years follow his real NFL contract, which Madden copied into the franchise.</p>}
         </section>
 
         <section className="panel">
