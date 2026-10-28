@@ -385,6 +385,19 @@ details.panel[open] summary { margin-bottom: 8px; }
 .comps li { padding: 10px 0; border-top: 1px solid var(--line); }
 .comp-top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
 
+/* cap outlook strip (team pages) */
+.outlook-strip { margin: 0 0 16px; }
+.outlook-strip .section-head h3 { margin: 0 0 8px; }
+.outlook-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.outlook-card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 10px 12px; }
+.oc-year { font: 700 1rem var(--display); }
+.proj-inline { font: 600 0.7rem var(--text); color: var(--ink-soft); margin-left: 5px; }
+.oc-space { font: 800 1.5rem var(--display); font-variant-numeric: tabular-nums; color: var(--ok); line-height: 1.1; margin-top: 4px; }
+.oc-space.neg { color: var(--danger); }
+.oc-label { font-size: 0.75rem; color: var(--ink-soft); margin-bottom: 6px; }
+.oc-row { font-size: 0.85rem; color: var(--ink-soft); }
+.oc-row span { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+
 /* cap overview */
 .cap-table .bar-col { width: 28%; min-width: 80px; }
 .bar { display: block; height: 10px; border-radius: 5px; background: var(--field); }
@@ -421,6 +434,8 @@ details.panel[open] summary { margin-bottom: 8px; }
   .search-form, .search-form input { width: 100%; min-width: 0; }
   .tool-grid { grid-template-columns: minmax(0, 1fr); }
   .seg a { padding: 7px 11px; }
+  .outlook-cards { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .outlook-card { flex: 0 0 42%; scroll-snap-align: start; }
   .comps { position: static; }
   .offer-grid { grid-template-columns: repeat(2, 1fr); }
   .offer-grid .num-field:first-child { grid-column: span 2; }

@@ -49,6 +49,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
         </div>
       </div>
       <div className="wrap page-tight">
+        {tab !== "cap" && <CapOutlook d={d} team={team} base={base} />}
         <nav className="tabs" aria-label="Team">
           {TABS.map(([k, label]) => (
             <Link key={k} href={k === "roster" ? base : `${base}?tab=${k}`} aria-current={tab === k ? "page" : undefined}>{label}</Link>
@@ -60,6 +61,29 @@ export default async function TeamPage({ params, searchParams }: Props) {
           : <RosterTab roster={roster} slug={slug} />}
       </div>
     </main>
+  );
+}
+
+function CapOutlook({ d, team, base }: { d: LeagueData; team: Team; base: string }) {
+  const { totals } = teamCapProjection(d, team);
+  return (
+    <section className="outlook-strip" aria-labelledby="outlook-h">
+      <div className="section-head">
+        <h3 id="outlook-h">Cap outlook</h3>
+        <Link href={`${base}?tab=cap`}>Full breakdown</Link>
+      </div>
+      <div className="outlook-cards">
+        {totals.map((t, i) => (
+          <div className="outlook-card" key={t.year}>
+            <div className="oc-year">{t.year}{i === 0 ? <span className="muted"> now</span> : <span className="proj-inline">proj.</span>}</div>
+            <div className={`oc-space ${t.space < 0 ? "neg" : ""}`}>{money(t.space)}</div>
+            <div className="oc-label">cap space</div>
+            <div className="oc-row"><span>{t.players}</span> signed</div>
+            <div className="oc-row"><span>{money(t.committed)}</span> committed</div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
