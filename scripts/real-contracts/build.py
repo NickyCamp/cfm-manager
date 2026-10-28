@@ -46,7 +46,8 @@ for _, r in df.iterrows():
     if not n:
         continue
     dy = None if pd.isna(r.draft_year) else int(r.draft_year)
-    out.append([n[0], n[-1], dy, years])
+    # Total value of the current real contract ($10K), to confirm Madden still carries this deal.
+    out.append([n[0], n[-1], dy, years, round((r.value or 0) * 100)])
 
 out.sort(key=lambda x: (x[1], x[0]))
 json.dump({

@@ -8,7 +8,7 @@
 import data from "./real-contracts.json";
 import { MAX_BONUS_PRORATION_YEARS, type ContractLike } from "./cap";
 
-type Entry = [first: string, last: string, draftYear: number | null, caps: number[]];
+type Entry = [first: string, last: string, draftYear: number | null, caps: number[], value: number];
 const { firstYear, unit, players } = data as unknown as { firstYear: number; unit: number; players: Entry[] };
 
 export function normName(s: string) {
@@ -28,8 +28,9 @@ function findEntry(first: string, last: string, eaDraftYear: number | null): Ent
   const l = normName(last).pop();
   const f = normName(first)[0];
   if (!l || !f) return null;
-  let c = (byLast.get(l) || []).filter((e) => e[0][0] === f[0]);
-  if (c.length > 1) { const exact = c.filter((e) => e[0] === f); if (exact.length) c = exact; }
+  // A full first name must match exactly; an initial ("J.") matches any first name starting with it.
+  const initialOnly = f.length === 1;
+  let c = (byLast.get(l) || []).filter((e) => (initialOnly ? e[0][0] === f : e[0] === f));
   if (c.length > 1 && eaDraftYear) {
     const d = c.filter((e) => e[2] != null && Math.abs(e[2] - (eaDraftYear - 1)) <= 1);
     if (d.length) c = d;
@@ -55,6 +56,9 @@ export function realProjection(
   const e = findEntry(name.first, name.last, name.draftYear);
   if (!e) return null;
   const caps = e[3];
+  // Same contract: Madden's total equals the real contract's value (restructures move money, not add it).
+  const ratio = (c.salary + c.bonus) / (e[4] * unit);
+  if (!(ratio >= 0.7 && ratio <= 2.1)) return null;
   const cap = (y: number) => caps[y - firstYear] * unit;
   const realEnd = firstYear + caps.length - 1;
   const maddenEnd = currentYear + c.yearsLeft - 1;
@@ -69,8 +73,9 @@ export function realProjection(
   }
   const el = c.length - c.yearsLeft;
   const n = Math.min(c.length, MAX_BONUS_PRORATION_YEARS) - el;
-  if (gap > 500_000 && n >= 2) {
-    const x = (gap * n) / (n - 1);
+  const x = (gap * n) / (n - 1);
+  // The converted salary becomes bonus, so it can't exceed the bonus Madden now shows.
+  if (gap > 500_000 && n >= 2 && x <= c.bonus + 10_000 && c.capHit >= 0.2 * c0) {
     for (let k = 1; k < c.yearsLeft; k++) hits[currentYear + k] = cap(currentYear + k) + (k < n ? x / n : 0);
     return { hits, source: "real-restructured" };
   }
