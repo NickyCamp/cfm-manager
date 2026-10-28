@@ -199,19 +199,20 @@ export function capYears(d: LeagueData) {
 /**
  * A team's cap by year. This season uses Madden's own spent/available numbers
  * (they include dead money); later years add up projected cap hits of
- * everyone signed through that year (practice squad left out) against the
- * league cap grown by the baseline each season.
+ * everyone signed through that year (practice squad left out), plus void-year
+ * bonus still counting from deals that have ended, against the league cap
+ * grown by the baseline each season.
  */
 export function teamCapProjection(d: LeagueData, team: Team) {
   const years = capYears(d);
   const baseCap = leagueCap(d.teams);
   const roster = teamPlayers(d, team.id).filter((p) => !p.ps);
   const rows = roster
-    .map((p) => ({ p, hits: projectPlayer(p, d.season.year).hits }))
+    .map((p) => { const pr = projectPlayer(p, d.season.year); return { p, hits: pr.hits, dead: pr.dead }; })
     .sort((a, b) => b.p.contract.capHit - a.p.contract.capHit);
   const totals = years.map((y, i) => {
     if (i === 0) return { year: y, cap: team.cap.room, committed: team.cap.spent, space: team.cap.available, players: rows.filter((r) => r.hits[y] != null).length };
-    const committed = rows.reduce((a, r) => a + (r.hits[y] || 0), 0);
+    const committed = rows.reduce((a, r) => a + (r.hits[y] || 0) + (r.dead[y] || 0), 0);
     const cap = projectedLeagueCap(baseCap, d.season.year, y);
     return { year: y, cap, committed, space: cap - committed, players: rows.filter((r) => r.hits[y] != null).length };
   });

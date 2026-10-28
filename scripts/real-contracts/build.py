@@ -9,10 +9,12 @@ contract in year by year, so while a player is still on that contract (or the
 old years of an extension) his cap hits follow the real ones. The app only
 uses an entry when it still lines up with EA's numbers (see realContracts.ts).
 
-Each entry: [first, last, draftYear, startYear, caps[], value, pros[], proAfter]
+Each entry: [first, last, draftYear, startYear, caps[], value, pros[], proAfter, signed, voids[]]
   caps/pros: cap number and bonus proration ($10K) for startYear.. through the
   last year that pays cash (void years pay none); proAfter: proration left in
-  void years after that; value: the current contract's total value ($10K).
+  void years after that; value: the current contract's total value ($10K);
+  signed: the year the current contract was signed; voids: proration in each
+  void year right after the last paid one (dead money Madden keeps showing).
 """
 import sys, json, re, unicodedata
 import pandas as pd
@@ -52,11 +54,17 @@ for _, r in df.iterrows():
     caps = [round(rows[y]["cap_number"] * 100) for y in range(start, end + 1)]
     pros = [round((rows[y].get("prorated_bonus") or 0) * 100) for y in range(start, end + 1)]
     after = round(sum((s.get("prorated_bonus") or 0) * 100 for y, s in rows.items() if y > end))
+    voids = []
+    y = end + 1
+    while y in rows and (rows[y].get("prorated_bonus") or 0) > 0:
+        voids.append(round(rows[y]["prorated_bonus"] * 100))
+        y += 1
     n = norm(r.player).split()
     if not n:
         continue
     dy = None if pd.isna(r.draft_year) else int(r.draft_year)
-    out.append([n[0], n[-1], dy, start, caps, round((r.value or 0) * 100), pros, after])
+    signed = None if pd.isna(r.year_signed) else int(r.year_signed)
+    out.append([n[0], n[-1], dy, start, caps, round((r.value or 0) * 100), pros, after, signed, voids])
 
 out.sort(key=lambda x: (x[1], x[0]))
 json.dump({

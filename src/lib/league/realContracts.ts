@@ -8,7 +8,7 @@
 import data from "./real-contracts.json";
 import { MAX_BONUS_PRORATION_YEARS, yearlyRaise, type ContractLike } from "./cap";
 
-type Entry = [first: string, last: string, draftYear: number | null, start: number, caps: number[], value: number, pros: number[], proAfter: number];
+type Entry = [first: string, last: string, draftYear: number | null, start: number, caps: number[], value: number, pros: number[], proAfter: number, signed: number | null, voids: number[]];
 const { unit, players } = data as unknown as { unit: number; players: Entry[] };
 
 export function normName(s: string) {
@@ -106,4 +106,32 @@ export function realProjection(
     return { hits, source: "real-restructured" };
   }
   return null;
+}
+
+/**
+ * Void-year dead money after the contract ends: the real deal's bonus still
+ * charged in its void years. Madden keeps these only inside the 5-season bonus
+ * window from the contract's start (checked on the NCL: 95 of 120 in-window
+ * void years shown, 0 of 49 outside), and only while the player is still on
+ * that real deal.
+ */
+export function realVoidYears(
+  name: { first: string; last: string; draftYear: number | null },
+  c: ContractLike, currentYear: number,
+): Record<number, number> {
+  const out: Record<number, number> = {};
+  if (c.yearsLeft < 1) return out;
+  const e = findEntry(name.first, name.last, name.draftYear);
+  if (!e) return out;
+  const [, , , start, caps, value, , , signed, voids] = e;
+  const realEnd = start + caps.length - 1;
+  const maddenEnd = currentYear + c.yearsLeft - 1;
+  const maddenStart = currentYear - (c.length - c.yearsLeft);
+  const ratio = (c.salary + c.bonus) / (value * unit);
+  if (realEnd !== maddenEnd || signed !== maddenStart || !(ratio >= 0.7 && ratio <= 2.1)) return out;
+  voids.forEach((v, i) => {
+    const y = realEnd + 1 + i;
+    if (y - maddenStart < MAX_BONUS_PRORATION_YEARS && v > 0) out[y] = v * unit;
+  });
+  return out;
 }

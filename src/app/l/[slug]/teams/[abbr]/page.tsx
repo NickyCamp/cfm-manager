@@ -213,11 +213,14 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
             </tr>
           </thead>
           <tbody>
-            {shown.map(({ p, hits }) => (
+            {shown.map(({ p, hits, dead }) => (
               <tr key={p.id}>
                 <td className="cap-name"><PlayerLink slug={slug} player={p} /> <span className="muted small">{p.pos}</span></td>
                 {years.map((y, i) => (
-                  <td key={y} className={`num ${i === 0 ? "strong" : ""} ${hits[y] == null ? "muted" : ""}`}>{hits[y] == null ? "—" : money(hits[y])}</td>
+                  <td key={y} className={`num ${i === 0 ? "strong" : ""} ${hits[y] == null ? "muted" : ""}`}
+                    title={hits[y] == null && dead[y] ? "Void year: leftover signing bonus still counts after the deal ends" : undefined}>
+                    {hits[y] != null ? money(hits[y]) : dead[y] ? <>{money(dead[y])}<span className="tag">void</span></> : "—"}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -235,7 +238,8 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
         the way Madden does: players still on the real NFL contract the franchise started with follow that contract year by year
         (OverTheCap data via nflverse), and other deals rise by an even amount each year with the bonus spread over up to 5 years.
         Checked against Madden&apos;s own cap screens, most future years land within 2%; extensions and restructures can miss by more. The league cap is assumed to grow {money(CAP_GROWTH_PER_YEAR)} a year.
-        Future dead money, new signings and re-signings aren&apos;t included. Practice squad deals are left out.
+        Void years (leftover bonus from real contracts that still counts after the deal ends) are included and marked; other
+        future dead money, new signings and re-signings aren&apos;t. Practice squad deals are left out.
       </p>
     </>
   );

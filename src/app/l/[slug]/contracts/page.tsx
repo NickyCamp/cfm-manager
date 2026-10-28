@@ -35,10 +35,11 @@ export default async function ContractsPage({ params, searchParams }: Props) {
   const committed = new Map<number, number[]>(d.teams.map((t) => [t.id, years.map(() => 0)]));
   for (const p of d.players) {
     if (p.gone || !p.team || p.ps) continue;
-    const hits = proj.get(p.id)?.hits || {};
+    const pr = proj.get(p.id);
+    const hits = pr?.hits || {}, dead = pr?.dead || {};
     const row = committed.get(p.team);
     if (!row) continue;
-    years.forEach((y, i) => { if (i > 0) row[i] += hits[y] || 0; });
+    years.forEach((y, i) => { if (i > 0) row[i] += (hits[y] || 0) + (dead[y] || 0); });
   }
   const teams: ToolTeam[] = [...d.teams].sort((a, b) => a.city.localeCompare(b.city)).map((t) => {
     const row = committed.get(t.id)!;
