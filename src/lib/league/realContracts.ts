@@ -93,7 +93,8 @@ export function realProjection(
   // Same contract: Madden's total equals the real contract's value (restructures move money, not add it).
   const ratio = (c.salary + c.bonus) / (value * unit);
   if (!(ratio >= 0.7 && ratio <= 2.1)) return null;
-  if (realEnd !== maddenEnd) return null;
+  // The imported deal started before this season, in the year it was really signed.
+  if (realEnd !== maddenEnd || el < 1 || (e[8] != null && e[8] !== signed)) return null;
   if (Math.abs(gap) <= 0.1 * c.capHit) {
     for (let k = 1; k < c.yearsLeft; k++) hits[currentYear + k] = Math.max(0, cap(currentYear + k) - gap);
     return { hits, source: "real" };
