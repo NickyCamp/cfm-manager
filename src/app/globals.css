@@ -373,7 +373,7 @@ details.panel[open] summary { margin-bottom: 8px; }
 .player-head h3 a { text-decoration: none; }
 .team-pill { font: 800 1rem var(--display); padding: 6px 10px; border-radius: 6px; }
 .offer-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 10px 0 16px; }
-.num-field { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 0.85rem; margin: 0; }
+.num-field { display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; font-weight: 600; font-size: 0.85rem; margin: 0; }
 .num-field input { width: 100%; font: 600 1.05rem var(--text); color: var(--ink); background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--radius-control); padding: 10px 12px; min-height: 48px; }
 .num-field input:focus { border-color: var(--field); outline: none; box-shadow: 0 0 0 3px rgba(242, 194, 0, 0.45); }
 .inline-select select { font: 600 0.95rem var(--text); color: var(--ink); background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--radius-control); padding: 8px 10px; min-height: 44px; max-width: 220px; }
