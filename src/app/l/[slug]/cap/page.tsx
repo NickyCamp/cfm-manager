@@ -21,7 +21,9 @@ export default async function LeagueCap({ params }: Props) {
       expiring: active.filter((p) => p.contract.yearsLeft <= 1).reduce((a, p) => a + p.contract.capHit, 0),
     };
   }).sort((a, b) => b.t.cap.available - a.t.cap.available);
-  const max = Math.max(...rows.map((r) => Math.abs(r.t.cap.available)), 1);
+  // Scale bars to the league cap so one team with the cap switched off doesn't flatten the rest.
+  const room = Math.max(...rows.map((r) => r.t.cap.room), 1);
+  const max = Math.max(...rows.map((r) => Math.min(Math.abs(r.t.cap.available), room)), 1);
 
   return (
     <main className="page league-page">
@@ -38,7 +40,7 @@ export default async function LeagueCap({ params }: Props) {
                 <tr key={t.id}>
                   <td><Link className="team-link" href={`/l/${slug}/teams/${t.abbr.toLowerCase()}?tab=cap`}><TeamBadge team={t} size={22} />{t.name}</Link></td>
                   <td className={`num strong ${t.cap.available < 0 ? "neg" : ""}`}>{money(t.cap.available)}</td>
-                  <td className="bar-col"><span className={`bar ${t.cap.available < 0 ? "neg" : ""}`} style={{ width: `${(Math.abs(t.cap.available) / max) * 100}%` }} /></td>
+                  <td className="bar-col"><span className={`bar ${t.cap.available < 0 ? "neg" : ""}`} style={{ width: `${Math.min(100, (Math.abs(t.cap.available) / max) * 100)}%` }} /></td>
                   <td className="num">{money(t.cap.spent)}</td>
                   <td className="num hide-sm">{money(dead)}</td>
                   <td className="num hide-sm">{money(expiring)}</td>

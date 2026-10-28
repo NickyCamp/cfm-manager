@@ -1,6 +1,7 @@
 export function money(n: number, opts: { sign?: boolean } = {}) {
   const sign = n < 0 ? "−" : opts.sign && n > 0 ? "+" : "";
   const a = Math.abs(n);
+  if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(2)}B`;
   if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(a >= 1e8 ? 0 : 1)}M`;
   if (a >= 1e3) return `${sign}$${Math.round(a / 1e3)}K`;
   return `${sign}$${a}`;

@@ -82,7 +82,7 @@ export default async function LeagueHome({ params, searchParams }: Props) {
 
           <section className="panel">
             <div className="section-head"><h3>Leaders</h3><Link href={`/l/${slug}/leaders`}>All leaders</Link></div>
-            <table className="tbl compact">
+            {lead.every((c) => !c.rows.length) ? <p className="muted">No regular-season stats yet.</p> : <table className="tbl compact">
               <tbody>
                 {lead.map((c) => c.rows[0] && (
                   <tr key={c.key}>
@@ -92,7 +92,7 @@ export default async function LeagueHome({ params, searchParams }: Props) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table>}
           </section>
         </div>
         <p className="hint">Updated from EA {new Date(d.pulledAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" })} ET. {players.size.toLocaleString()} players.</p>
