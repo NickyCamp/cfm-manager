@@ -2,14 +2,14 @@
 // their Madden 27 franchise imported. Madden copies real contracts in year by
 // year, so for those players the real cap numbers are the best projection.
 // Checked against Madden's cap screens (NCL, 2026-10-28): unchanged real deals
-// land within ~1% in dollars, versus ~20% for any formula on these deals.
+// land within ~1% in dollars, versus ~15-20% for any formula on these deals.
 //
-// Server-only: the JSON is ~35 KB and shouldn't ship to the browser.
+// Server-only: the JSON is ~70 KB and shouldn't ship to the browser.
 import data from "./real-contracts.json";
 import { MAX_BONUS_PRORATION_YEARS, yearlyRaise, type ContractLike } from "./cap";
 
-type Entry = [first: string, last: string, draftYear: number | null, caps: number[], value: number, pro: number[], proAfter: number];
-const { firstYear, unit, players } = data as unknown as { firstYear: number; unit: number; players: Entry[] };
+type Entry = [first: string, last: string, draftYear: number | null, start: number, caps: number[], value: number, pros: number[], proAfter: number];
+const { unit, players } = data as unknown as { unit: number; players: Entry[] };
 
 export function normName(s: string) {
   return s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -42,15 +42,15 @@ export type RealSource = "real" | "real-restructured" | "real-extended";
 
 /**
  * Cap hit by year from the player's real contract, or null when it doesn't
- * describe his current Madden contract (different end year, re-signed, cut...).
+ * describe his current Madden contract (re-signed, cut, traded and redone...).
  * - Same deal: real numbers, shifted by any small gap Madden shows this season.
  * - Restructured in the franchise (Madden's cap hit is lower than the real one):
  *   the converted salary X became bonus spread over the rest of the bonus
  *   window, so this season drops by X - X/n and the next n-1 seasons rise X/n.
- * - Extended this season (contract restarted, longer than the real one): the
- *   real deal's remaining years stay as they were, then the new years follow
- *   Madden's even raises. EA's bonus is the real bonus not yet charged plus the
- *   new bonus, which starts the season after the old deal ends.
+ * - Extended in the franchise (contract restarted and runs past the real one):
+ *   the real deal's years stay as they were, then the new years follow
+ *   Madden's even raises. EA's bonus is the real bonus not yet charged when the
+ *   extension was signed plus the new bonus, which starts after the old deal.
  */
 export function realProjection(
   name: { first: string; last: string; draftYear: number | null },
@@ -59,21 +59,23 @@ export function realProjection(
   if (c.yearsLeft < 2) return null;
   const e = findEntry(name.first, name.last, name.draftYear);
   if (!e) return null;
-  const caps = e[3];
-  const cap = (y: number) => caps[y - firstYear] * unit;
-  const realEnd = firstYear + caps.length - 1;
+  const [, , , start, caps, value, pros, proAfter] = e;
+  const realEnd = start + caps.length - 1;
+  const has = (y: number) => y >= start && y <= realEnd;
+  const cap = (y: number) => caps[y - start] * unit;
+  const pro = (y: number) => pros[y - start] * unit;
   const maddenEnd = currentYear + c.yearsLeft - 1;
-  if (currentYear < firstYear || realEnd < currentYear) return null;
+  if (!has(currentYear)) return null;
   const c0 = cap(currentYear);
   if (!(c0 > 0)) return null;
   const gap = c0 - c.capHit;
   const hits: Record<number, number> = { [currentYear]: c.capHit };
   const el = c.length - c.yearsLeft;
 
-  if (el === 0 && realEnd < maddenEnd && Math.abs(gap) <= 0.15 * c.capHit) {
-    const pro = (y: number) => e[5][y - firstYear] * unit;
-    let oldSalary = 0, oldBonusLeft = e[6] * unit;
-    for (let y = currentYear; y <= realEnd; y++) { oldSalary += cap(y) - pro(y); oldBonusLeft += pro(y); }
+  const signed = currentYear - el;
+  if (realEnd < maddenEnd && has(signed) && Math.abs(gap) <= 0.15 * c.capHit) {
+    let oldSalary = 0, oldBonusLeft = proAfter * unit;
+    for (let y = signed; y <= realEnd; y++) { oldSalary += cap(y) - pro(y); oldBonusLeft += pro(y); }
     const n = maddenEnd - realEnd;
     const newSalary = c.salary - oldSalary;
     if (newSalary > 0) {
@@ -89,7 +91,7 @@ export function realProjection(
   }
 
   // Same contract: Madden's total equals the real contract's value (restructures move money, not add it).
-  const ratio = (c.salary + c.bonus) / (e[4] * unit);
+  const ratio = (c.salary + c.bonus) / (value * unit);
   if (!(ratio >= 0.7 && ratio <= 2.1)) return null;
   if (realEnd !== maddenEnd) return null;
   if (Math.abs(gap) <= 0.1 * c.capHit) {
