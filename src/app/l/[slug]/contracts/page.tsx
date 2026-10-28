@@ -27,7 +27,8 @@ export default async function ContractsPage({ params, searchParams }: Props) {
       id: p.id, n: `${p.first} ${p.last}`, pos: p.pos, t: p.team, age: p.age, ovr: p.ovr, dev: p.dev, ps: p.ps,
       c: [p.contract.length, p.contract.yearsLeft, p.contract.salary, p.contract.bonus, p.contract.capHit],
       h: years.slice(0, Math.max(0, p.contract.yearsLeft)).map((y) => Math.round(pr.hits[y] || 0)),
-      real: pr.source !== "formula",
+      real: pr.source !== "formula", yp: p.yearsPro,
+      d: p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0 ? [p.desired.length, p.desired.salary, p.desired.bonus] : null,
     };
   });
 
@@ -55,7 +56,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
       <div className="wrap">
         <h2>Contract tool</h2>
         <p className="muted" style={{ maxWidth: "68ch" }}>Look up any player&apos;s deal year by year, build an offer, and see what it does to a team&apos;s cap.</p>
-        <ContractTool slug={slug} year={year} years={years} players={players} teams={teams} initialPlayer={player ? Number(player) : null} />
+        <ContractTool slug={slug} year={year} years={years} leagueCaps={years.map((y) => projectedLeagueCap(baseCap, year, y))} players={players} teams={teams} initialPlayer={player ? Number(player) : null} />
       </div>
     </main>
   );

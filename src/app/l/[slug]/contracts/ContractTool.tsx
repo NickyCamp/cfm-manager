@@ -3,20 +3,23 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { calculateOffer, MAX_BONUS_PRORATION_YEARS } from "@/lib/league/cap";
 import { money, onColor } from "@/lib/league/format";
+import { apyOf, groupLabel, recommend, type Recommendation } from "@/lib/league/recommend";
 
 export type ToolPlayer = {
   id: number; n: string; pos: string; t: number; age: number; ovr: number; dev: number; ps: boolean;
   c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number];
   h: number[];     // cap hit by year from this season, current deal
   real: boolean;   // projected from his real NFL contract
+  yp: number;      // years pro (spots rookie-scale deals)
+  d: [length: number, salary: number, bonus: number] | null; // Madden's in-game ask
 };
 export type ToolTeam = { id: number; abbr: string; name: string; primary: string; committed: number[]; cap: number[] };
 
 const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
 const contractOf = (p: ToolPlayer) => ({ length: p.c[0], yearsLeft: p.c[1], salary: p.c[2], bonus: p.c[3], capHit: p.c[4] });
 
-export function ContractTool({ slug, year, years, players, teams, initialPlayer }: {
-  slug: string; year: number; years: number[]; players: ToolPlayer[]; teams: ToolTeam[]; initialPlayer: number | null;
+export function ContractTool({ slug, year, years, leagueCaps, players, teams, initialPlayer }: {
+  slug: string; year: number; years: number[]; leagueCaps: number[]; players: ToolPlayer[]; teams: ToolTeam[]; initialPlayer: number | null;
 }) {
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const [selected, setSelected] = useState<ToolPlayer | null>(() => players.find((p) => p.id === initialPlayer) || null);
@@ -62,14 +65,14 @@ export function ContractTool({ slug, year, years, players, teams, initialPlayer 
           )}
         </div>
       </div>
-      {selected ? <Detail key={selected.id} slug={slug} p={selected} year={year} years={years} players={players} teams={teams} teamById={teamById} />
+      {selected ? <Detail key={selected.id} slug={slug} p={selected} year={year} years={years} leagueCaps={leagueCaps} players={players} teams={teams} teamById={teamById} />
         : <p className="muted">Search for anyone in the league, including free agents.</p>}
     </>
   );
 }
 
-function Detail({ slug, p, year, years, players, teams, teamById }: {
-  slug: string; p: ToolPlayer; year: number; years: number[]; players: ToolPlayer[]; teams: ToolTeam[]; teamById: Map<number, ToolTeam>;
+function Detail({ slug, p, year, years, leagueCaps, players, teams, teamById }: {
+  slug: string; p: ToolPlayer; year: number; years: number[]; leagueCaps: number[]; players: ToolPlayer[]; teams: ToolTeam[]; teamById: Map<number, ToolTeam>;
 }) {
   const c = contractOf(p);
   const team = teamById.get(p.t);
@@ -90,6 +93,11 @@ function Detail({ slug, p, year, years, players, teams, teamById }: {
     startYear, length: Number(length) || 1, yearlySalary: (Number(salary) || 0) * 1e6, totalBonus: (Number(bonus) || 0) * 1e6,
     guaranteedYears: Number(gtd) || 0, voidYears: Number(voids) || 0,
   });
+  const rec = useMemo(() => recommend(p, players), [p, players]);
+  const loadRec = (r: Recommendation) => {
+    setLength(String(r.length)); setSalary((r.yearlySalary / 1e6).toFixed(2)); setBonus((r.bonus / 1e6).toFixed(2)); setGtd("0"); setVoids("0");
+    document.getElementById("offer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const effTeam = teamById.get(teamId);
   const comps = players
     .filter((x) => x.id !== p.id && x.pos === p.pos && x.c[0] > 0 && x.c[2] + x.c[3] > 0 && Math.abs(x.age - p.age) <= 3 && Math.abs(x.ovr - p.ovr) <= 5)
@@ -124,7 +132,9 @@ function Detail({ slug, p, year, years, players, teams, teamById }: {
           {p.real && currentYears.length > 1 && <p className="hint">Later years follow his real NFL contract, which Madden copied into the franchise.</p>}
         </section>
 
-        <section className="panel">
+        {rec && <RecPanel slug={slug} p={p} rec={rec} startYear={startYear} years={years} leagueCaps={leagueCaps} teamById={teamById} onLoad={() => loadRec(rec)} />}
+
+        <section className="panel" id="offer">
           <h3>Build an offer <span className="muted small">starts {startYear}{c.yearsLeft > 1 ? `, after the ${c.yearsLeft} years left on his current deal` : ""}</span></h3>
           <div className="offer-grid">
             <Num label="Length (years)" value={length} set={setLength} min={1} max={7} step={1} />
@@ -214,6 +224,51 @@ function Detail({ slug, p, year, years, players, teams, teamById }: {
         )}
       </aside>
     </div>
+  );
+}
+
+function RecPanel({ slug, p, rec, startYear, years, leagueCaps, teamById, onLoad }: {
+  slug: string; p: ToolPlayer; rec: Recommendation; startYear: number; years: number[]; leagueCaps: number[];
+  teamById: Map<number, ToolTeam>; onLoad: () => void;
+}) {
+  const sched = calculateOffer({ startYear, length: rec.length, yearlySalary: rec.yearlySalary, totalBonus: rec.bonus, guaranteedYears: 0, voidYears: 0 });
+  const capFor = (y: number) => { const i = years.indexOf(y); return i >= 0 ? leagueCaps[i] : null; };
+  const firstCap = capFor(startYear);
+  const barTeam = teamById.get(rec.bar.t);
+  const ask = p.d;
+  return (
+    <section className="panel rec">
+      <h3>Recommended contract <span className="muted small">what {p.n.split(" ").slice(-1)[0]} will likely ask for</span></h3>
+      <div className="stat-tiles three">
+        <div className="tile"><div className="tile-label">Expected ask</div><div className="tile-value">{money(rec.total)}</div><div className="tile-sub">{rec.length} yrs, starts {startYear}</div></div>
+        <div className="tile"><div className="tile-label">Per year</div><div className="tile-value">{money(rec.apy)}</div><div className="tile-sub">{firstCap ? `${((rec.apy / firstCap) * 100).toFixed(1)}% of the ${startYear} cap` : ""}</div></div>
+        <div className="tile"><div className="tile-label">Signing bonus</div><div className="tile-value">{money(rec.bonus)}</div><div className="tile-sub">{money(rec.yearlySalary)}/yr salary</div></div>
+      </div>
+      <p className="small">
+        {rec.keepsOwn
+          ? <>His current deal ({money(apyOf(p))}/yr) is already above anything comparable, and at {p.age} he won&apos;t take a pay cut, so the ask starts from his own deal, plus 2%.</>
+          : <>Priced off the best-paid {groupLabel(p.pos).replace(/s$/, "")} {rec.tierLabel}: <Link href={`/l/${slug}/players/${rec.bar.id}`}>{rec.bar.n}</Link> ({barTeam?.abbr || "FA"}, {rec.bar.ovr} OVR, age {rec.bar.age}) at {money(apyOf(rec.bar))}/yr, plus 2%.</>}
+      </p>
+      <div className="tbl-wrap">
+        <table className="tbl">
+          <thead><tr><th>Year</th><th className="num">Cap hit</th><th className="num">League cap</th><th className="num">Share</th></tr></thead>
+          <tbody>
+            {sched.rows.map((r) => { const cap = capFor(r.year); return (
+              <tr key={r.year}><td>{r.year}</td><td className="num strong">{money(r.capHit)}</td><td className="num muted">{cap ? money(cap) : "—"}</td><td className="num">{cap ? `${((r.capHit / cap) * 100).toFixed(1)}%` : "—"}</td></tr>
+            ); })}
+          </tbody>
+        </table>
+      </div>
+      <h4 className="rec-sub">Market at that level</h4>
+      <ul className="rec-market">
+        {rec.peers.slice(0, 4).map((x) => (
+          <li key={x.id}><Link href={`/l/${slug}/players/${x.id}`}>{x.n}</Link> <span className="muted small">{x.pos} · {teamById.get(x.t)?.abbr || "FA"} · {x.ovr} OVR · age {x.age}</span> <span className="small">{x.c[0]} yr{x.c[0] === 1 ? "" : "s"}, {money(apyOf(x))}/yr</span></li>
+        ))}
+      </ul>
+      {ask && <p className="small"><span className="muted">Madden&apos;s in-game ask right now:</span> {ask[0]} yrs / {money(ask[1] + ask[2])} ({money((ask[1] + ask[2]) / ask[0])}/yr, {money(ask[2])} bonus)</p>}
+      <button type="button" className="btn btn-primary" onClick={onLoad}>Load into offer builder</button>
+      <p className="hint">Estimate from the league&apos;s current contracts. Length follows age (27 and under 5 yrs, 28–29 4, 30–31 3, 32–33 2, 34+ 1); the bonus share is the median of the similar deals. Rookie-scale deals are left out of the market.</p>
+    </section>
   );
 }
 

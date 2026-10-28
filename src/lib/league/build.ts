@@ -114,6 +114,7 @@ export function buildLeagueData(files: Raw): LeagueData {
           capHit: Math.round(num(p.capHit) * 10000), releasePenalty: Math.round(num(p.capReleasePenalty) * 10000),
           releaseSavings: num(p.capReleaseNetSavings),
         },
+        desired: { salary: num(p.desiredSalary), bonus: num(p.desiredBonus), length: num(p.desiredLength) },
         abilities: (p.signatureSlotList || [])
           .filter((s: Any) => !s.isEmpty && s.signatureAbility?.signatureTitle)
           .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: TIER[s.signatureAbility.rank] || "" })),
