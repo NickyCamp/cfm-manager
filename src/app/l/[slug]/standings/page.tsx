@@ -63,7 +63,7 @@ export default async function Standings({ params }: Props) {
                     </li>
                   ))}
                 </ol>
-                <p className="hint">Seeds as Madden has them right now.</p>
+                <p className="hint">Seeds as Madden has them right now. <Link href={`/l/${slug}/playoffs`}>Full playoff picture with NFL tiebreakers →</Link></p>
               </div>
             )}
           </section>

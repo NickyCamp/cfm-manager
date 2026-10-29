@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 const TABS = [
   ["", "Home"],
   ["standings", "Standings"],
+  ["playoffs", "Playoffs"],
   ["scores", "Scores"],
   ["teams", "Teams"],
   ["cap", "Cap"],
   ["contracts", "Contract tool"],
+  ["draft", "Draft"],
   ["dev", "Dev tracker"],
   ["abilities", "Abilities"],
   ["leaders", "Leaders"],

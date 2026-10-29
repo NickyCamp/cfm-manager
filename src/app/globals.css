@@ -490,3 +490,26 @@ details.panel[open] summary { margin-bottom: 8px; }
 .rec .rec-sub { margin: 14px 0 6px; font-size: 0.95rem; }
 .rec .rec-market { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 4px; }
 .rec .btn { margin-top: 4px; }
+
+/* Playoff picture / draft order */
+.po-confs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.po-confs .panel { margin: 0; }
+.po-note { font-size: 0.78rem; color: var(--ink-soft); margin-top: 2px; line-height: 1.35; white-space: normal; }
+.po-mark { font: 700 0.75rem var(--text); color: var(--ink-soft); margin-left: 2px; }
+.po-sep td { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); background: var(--chalk); }
+.po-hunt { opacity: 0.92; }
+.po-out { opacity: 0.5; }
+.po-h { margin: 24px 0 10px; }
+.po-bracket { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.po-round, .po-divs .panel { margin: 0; }
+.po-round h4, .po-divs h4 { margin: 0 0 8px; }
+.po-match { display: block; padding: 6px 0; border-top: 1px solid var(--line); color: inherit; text-decoration: none; }
+.po-team { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; }
+.po-seed { width: 24px; display: inline-block; }
+.po-divs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.po-div { list-style: none; margin: 0; padding: 0; }
+.po-div li { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.po-div li:first-child { border-top: 0; }
+.po-div .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.po-why { white-space: normal; max-width: 42ch; }
+@media (max-width: 760px) { .po-confs { grid-template-columns: 1fr; } }
