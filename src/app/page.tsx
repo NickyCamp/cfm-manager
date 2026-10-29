@@ -47,6 +47,19 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className="section mb-promo">
+        <div className="wrap mb-promo-row">
+          <div>
+            <h2>Macro Builder</h2>
+            <p>
+              Pick any Madden 27 formation, offense or defense, and draw your macro on it: zones, blitzes, man
+              matchups, hot routes and pre-snap adjustments. Send the link to your friends. No account needed.
+            </p>
+          </div>
+          <Link className="btn btn-primary" href="/macro">Open Macro Builder</Link>
+        </div>
+      </section>
+
       <section className="section">
         <div className="wrap">
           <h2>Running in about five minutes</h2>
