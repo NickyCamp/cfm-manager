@@ -73,6 +73,10 @@ a { color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--display); font-weight: 800; font-size: 1.5rem; letter-spacing: 0.01em; }
 .brand img { width: 30px; height: 30px; }
 .head-links { display: flex; align-items: center; gap: 6px; }
+.brand, .head-links a, .head-links button { white-space: nowrap; }
+.site-head .wrap { flex-wrap: wrap; row-gap: 0; }
+.head-links { margin-left: auto; }
+@media (max-width: 420px) { .brand { font-size: 1.2rem; gap: 7px; } .brand img { width: 24px; height: 24px; } .head-links { gap: 0; margin-right: -8px; } .head-links a, .head-links button { padding: 8px 8px; font-size: 0.9rem; } .site-head .wrap { padding-bottom: 2px; } }
 .head-links a, .head-links button {
   color: #f3f7f4; text-decoration: none; font: 600 0.95rem var(--text);
   padding: 8px 12px; border-radius: var(--radius-control); background: none; border: 0; cursor: pointer;
@@ -515,8 +519,6 @@ details.panel[open] summary { margin-bottom: 8px; }
 @media (max-width: 760px) { .po-confs { grid-template-columns: 1fr; } }
 
 /* ================= macro builder ================= */
-.show-sm { display: none; }
-@media (max-width: 760px) { .show-sm { display: inline; } }
 
 .mb-promo { padding: 40px 0 0; }
 .mb-promo-row { display: flex; align-items: center; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; border-left: 5px solid var(--goalpost); padding-left: 20px; }

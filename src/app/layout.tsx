@@ -37,10 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               CFM Manager
             </Link>
             <nav className="head-links" aria-label="Account">
-              <Link href="/macro">
-                <span className="hide-sm">Macro Builder</span>
-                <span className="show-sm">Macros</span>
-              </Link>
+              <Link href="/macro">Macro Builder</Link>
               {user ? (
                 <>
                   <Link href="/dashboard">My leagues</Link>
