@@ -13,6 +13,24 @@ export function LoginForm({ next }: { next: string }) {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [code, setCode] = useState("");
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      const { error } = await supabaseBrowser().auth.verifyOtp({ email, token: code.replace(/\D/g, ""), type: "email" });
+      if (error) throw error;
+      router.replace(next);
+      router.refresh();
+    } catch (err) {
+      const m = (err as Error).message;
+      setError(/expired|invalid/i.test(m) ? "That code didn't work. It may have expired or been mistyped; check the newest email or send a new one." : m);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,7 +40,7 @@ export function LoginForm({ next }: { next: string }) {
     try {
       if (mode === "link") {
         const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-        const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+        const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo, shouldCreateUser: true } });
         if (error) throw error;
         setSent(true);
         return;
@@ -43,9 +61,23 @@ export function LoginForm({ next }: { next: string }) {
 
   if (sent) {
     return (
-      <div className="notice ok">
-        Check <strong>{email}</strong> for a link from CFM Manager and open it on this device. It can take a minute; check spam if it doesn&apos;t show up.
-      </div>
+      <form onSubmit={verifyCode} className="panel">
+        <div className="notice ok">
+          We emailed <strong>{email}</strong>. Type the code from the email here, or tap the link in it. It can take a minute; check spam if it doesn&apos;t show up.
+        </div>
+        {error && <div className="notice error" role="alert">{error}</div>}
+        <div className="field">
+          <label htmlFor="code">Code from the email</label>
+          <input id="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]*" maxLength={12} required
+            value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" />
+        </div>
+        <button className="btn btn-primary" type="submit" disabled={busy || code.replace(/\D/g, "").length < 6}>
+          {busy ? "One moment…" : "Sign in"}
+        </button>
+        <p className="hint" style={{ marginTop: 14 }}>
+          <a href="#" onClick={(e) => { e.preventDefault(); setSent(false); setCode(""); setError(""); }}>Use a different email or send a new code</a>
+        </p>
+      </form>
     );
   }
 
@@ -73,13 +105,13 @@ export function LoginForm({ next }: { next: string }) {
         </div>
       )}
       <button className="btn btn-primary" type="submit" disabled={busy}>
-        {busy ? "One moment…" : mode === "signup" ? "Create account" : mode === "link" ? "Email me a sign-in link" : "Sign in"}
+        {busy ? "One moment…" : mode === "signup" ? "Create account" : mode === "link" ? "Email me a sign-in code" : "Sign in"}
       </button>
       <p className="hint" style={{ marginTop: 14 }}>
         {mode === "link" ? (
           <a href="#" onClick={(e) => { e.preventDefault(); setMode("signin"); }}>Use a password instead</a>
         ) : (
-          <a href="#" onClick={(e) => { e.preventDefault(); setMode("link"); }}>Email me a sign-in link instead</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setMode("link"); }}>Email me a sign-in code instead</a>
         )}
       </p>
     </form>
@@ -87,7 +119,7 @@ export function LoginForm({ next }: { next: string }) {
 }
 
 function friendly(msg: string, mode: Mode) {
-  if (/invalid login credentials/i.test(msg)) return "That email and password don't match. If you signed up with an email link, use \"Email me a sign-in link instead.\"";
+  if (/invalid login credentials/i.test(msg)) return "That email and password don't match. If you signed up with an email link, use \"Email me a sign-in code instead.\"";
   if (/already registered/i.test(msg)) return "There's already an account with that email. Sign in instead.";
   if (/rate limit|too many/i.test(msg)) return mode === "link" ? "Too many sign-in emails were sent recently. Try again in a little while, or use a password." : "Too many attempts. Wait a minute and try again.";
   if (/password/i.test(msg) && /characters|weak|short/i.test(msg)) return "Pick a longer password (at least 8 characters).";
