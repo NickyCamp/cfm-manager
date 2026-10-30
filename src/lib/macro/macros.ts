@@ -86,10 +86,10 @@ const OPT: Record<string, DefOption> = {
   "vertical-hook": { key: "vertical-hook", label: "Vertical Hook", kind: "zone", color: ZC.hook, drop: "hooks", zone: (p) => E(nearMiddle(p) ? 50 : 50 + sideOf(p) * 12, 14, 7, 4) },
   "hook-curl": { key: "hook-curl", label: "Hook Curl", kind: "zone", color: ZC.hook, drop: "hooks", zone: (p) => E(nearMiddle(p) ? 50 : 50 + sideOf(p) * 14, 10, 8, 3) },
   "3-rec-hook": { key: "3-rec-hook", label: "3 Rec Hook", kind: "zone", color: ZC.hook, drop: "hooks", zone: (_p, c) => E(50 + c.strong * 16, 10, 8, 3) },
-  "hook-curl-left": { key: "hook-curl-left", label: "Hook Curl Left", kind: "zone", color: ZC.hook, drop: "hooks", zone: () => E(64, 10, 8, 3) },
-  "hook-curl-right": { key: "hook-curl-right", label: "Hook Curl Right", kind: "zone", color: ZC.hook, drop: "hooks", zone: () => E(36, 10, 8, 3) },
-  "curl-left": { key: "curl-left", label: "Curl Left", kind: "zone", color: ZC.curl, drop: "curls", zone: () => E(78, 10, 8, 3.2) },
-  "curl-right": { key: "curl-right", label: "Curl Right", kind: "zone", color: ZC.curl, drop: "curls", zone: () => E(22, 10, 8, 3.2) },
+  "hook-curl-left": { key: "hook-curl-left", label: "Hook Curl Left", kind: "zone", color: ZC.hook, drop: "hooks", zone: () => E(36, 10, 8, 3) },
+  "hook-curl-right": { key: "hook-curl-right", label: "Hook Curl Right", kind: "zone", color: ZC.hook, drop: "hooks", zone: () => E(64, 10, 8, 3) },
+  "curl-left": { key: "curl-left", label: "Curl Left", kind: "zone", color: ZC.curl, drop: "curls", zone: () => E(22, 10, 8, 3.2) },
+  "curl-right": { key: "curl-right", label: "Curl Right", kind: "zone", color: ZC.curl, drop: "curls", zone: () => E(78, 10, 8, 3.2) },
   blitz: { key: "blitz", label: "Blitz", kind: "blitz", color: ZC.rush },
   "bluff-blitz": { key: "bluff-blitz", label: "Bluff Blitz", kind: "bluff", color: ZC.rush },
   "qb-spy": { key: "qb-spy", label: "QB Spy", kind: "spy", color: ZC.spy },
@@ -254,15 +254,15 @@ export function applyAdjustments(players: Player[], adj: Record<string, string>,
     if (p.group === "DL") {
       if (adj.dt === "pinch") x = 50 + (x - 50) * 0.8;
       if (adj.dt === "spread") x = 50 + (x - 50) * 1.18;
-      // The defense's left is the right side of the chart (it faces the offense).
-      if (adj.dt === "left") x += 4;
-      if (adj.dt === "right") x -= 4;
+      // Left and right are as seen on screen, the same as the game's adjustment menu.
+      if (adj.dt === "left") x -= 4;
+      if (adj.dt === "right") x += 4;
     }
     if (p.group === "LB") {
       if (adj.slb === "pinch") x = 50 + (x - 50) * 0.75;
       if (adj.slb === "spread") x = 50 + (x - 50) * 1.25;
-      if (adj.slb === "left") x += 5;
-      if (adj.slb === "right") x -= 5;
+      if (adj.slb === "left") x -= 5;
+      if (adj.slb === "right") x += 5;
       if (adj.sb === "linebackers" || adj.sb === "both") y = Math.max(2.6, y - 2.8);
     }
     if (role === "CB" || role === "SLCB") {
@@ -289,7 +289,7 @@ export function applyAdjustments(players: Player[], adj: Record<string, string>,
         if (adj.sw === "spread") x = 50 + so * 20;
         if (adj.sw === "wide") x = 50 + so * 30;
       }
-      const shift = adj.sm === "left" ? 8 : adj.sm === "right" ? -8 : adj.sm === "strong" ? 8 * strong : adj.sm === "weak" ? -8 * strong : 0;
+      const shift = adj.sm === "left" ? -8 : adj.sm === "right" ? 8 : adj.sm === "strong" ? 8 * strong : adj.sm === "weak" ? -8 * strong : 0;
       x += shift;
       // Showing blitz walks the safeties down into the box, inside the slots.
       if (adj.sb === "secondary" || adj.sb === "both") {
@@ -318,30 +318,30 @@ export function settingsLines(side: "O" | "D", adj: Record<string, string>): { l
 export type StuntMove = { id: string; kind: "crash" | "loop"; dx: number };
 
 /**
- * Which linemen move and where, for each stunt. Linemen are taken left-to-right on the
- * chart; the defense's left is the right side of the chart. dx is how far across (field
- * units) the man ends up, positive toward the defense's left.
+ * Which linemen move and where, for each stunt. Left and right are as seen on screen,
+ * the same as the game's adjustment menu. dx is how far across (field units) the man
+ * ends up, positive toward the right of the chart.
  */
 export function stuntMoves(stunt: string, dl: Player[]): StuntMove[] {
   const line = [...dl].sort((a, b) => a.x - b.x);
   if (line.length < 2) return [];
   const n = line.length;
-  // Defense's left side runs from the right end of the chart inward.
-  const leftSide = [...line].reverse();
-  const rightSide = line;
+  // Each side runs from its end of the line inward.
+  const leftSide = line;
+  const rightSide = [...line].reverse();
   const pair = (side: Player[], first: "end" | "tackle"): StuntMove[] => {
     const [end, tackle] = side;
-    const dir = side === leftSide ? 1 : -1; // toward that side's sideline on the chart
+    const dir = side === leftSide ? -1 : 1; // toward that side's sideline on the chart
     return first === "end"
       ? [{ id: end.id, kind: "crash", dx: -dir * 8 }, { id: tackle.id, kind: "loop", dx: dir * 10 }]
       : [{ id: tackle.id, kind: "crash", dx: dir * 7 }, { id: end.id, kind: "loop", dx: -dir * 11 }];
   };
   const slant = (side: Player[], count: number): StuntMove[] => {
-    const dir = side === leftSide ? 1 : -1;
+    const dir = side === leftSide ? -1 : 1;
     return side.slice(0, Math.min(count, n)).map((p) => ({ id: p.id, kind: "crash" as const, dx: dir * 6 }));
   };
   const tom = (side: Player[]): StuntMove[] => {
-    const dir = side === leftSide ? 1 : -1;
+    const dir = side === leftSide ? -1 : 1;
     const t = side[1] ?? side[0];
     const inner = side[2] ?? side[1];
     if (!t || !inner || t === inner) return [];

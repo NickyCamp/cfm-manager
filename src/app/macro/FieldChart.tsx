@@ -320,11 +320,11 @@ function drawTeam(players: Player[], steps: Map<string, Step>, adj: Record<strin
   const out: React.ReactNode[] = [];
   const line = [...players.filter((p) => p.group === "DL")].sort((a, b) => a.x - b.x);
 
-  // QB contain: the edge on that side rushes outside-in. The defense's left is the right of the chart.
+  // QB contain: the edge on that side (as seen on screen) rushes outside-in.
   const contain: Player[] = [];
   if (adj.qc && line.length) {
-    if (adj.qc === "left" || adj.qc === "both") contain.push(line[line.length - 1]);
-    if ((adj.qc === "right" || adj.qc === "both") && line.length > 1) contain.push(line[0]);
+    if (adj.qc === "left" || adj.qc === "both") contain.push(line[0]);
+    if ((adj.qc === "right" || adj.qc === "both") && line.length > 1) contain.push(line[line.length - 1]);
   }
 
   // Stunts: worked out from the whole line, then drawn for the men who aren't doing something else.
