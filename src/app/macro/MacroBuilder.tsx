@@ -2,9 +2,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFENSE, OFFENSE, findD, findO } from "@/lib/macro/formations";
 import { layoutDefense, layoutOffense, personnelText, type Player } from "@/lib/macro/layout";
-import { ADJUSTMENTS, applyAdjustments, assignmentsFor, findAssignment, nearestSpot, type Assignment } from "@/lib/macro/macros";
+import {
+  applyAdjustments,
+  defCtx,
+  defOptionsFor,
+  findCat,
+  findDefOption,
+  findOffOption,
+  offOptionsFor,
+  roleOf,
+  ROLE_NAME,
+  sectionsFor,
+  settingsLines,
+} from "@/lib/macro/macros";
 import { DEFAULT_STATE, decodeState, encodeState, type MacroState, type Step } from "@/lib/macro/share";
-import { COLORS, FieldChart, H, W } from "./FieldChart";
+import { chartHeight, COLORS, FieldChart, W } from "./FieldChart";
 
 const DEFAULT_O = { f: "gun", s: "Trips TE" };
 const DEFAULT_D = { f: "34", s: "Over Solid" };
@@ -13,6 +25,12 @@ function layout(side: "O" | "D", f: string, s: string) {
   return side === "O" ? layoutOffense(f, s) : layoutDefense(f, s);
 }
 const mirror = (ps: Player[]) => ps.map((p) => ({ ...p, x: 100 - p.x }));
+
+/** Drops steps from older links whose option no longer exists. */
+function stepKnown(side: "O" | "D", s: Step) {
+  if (s.p === "*") return !!findCat(side, s.k)?.options.some((o) => o.key === s.s);
+  return !!(side === "D" ? findDefOption(s.k) : findOffOption(s.k));
+}
 
 export function MacroBuilder() {
   const [st, setSt] = useState<MacroState>(DEFAULT_STATE);
@@ -24,7 +42,7 @@ export function MacroBuilder() {
   // Load a shared macro from the address, then keep the address in sync.
   useEffect(() => {
     const fromHash = decodeState(window.location.hash);
-    if (fromHash) setSt(fromHash);
+    if (fromHash) setSt({ ...fromHash, st: fromHash.st.filter((x) => stepKnown(fromHash.side, x)) });
     setLoaded(true);
   }, []);
   useEffect(() => {
@@ -57,19 +75,27 @@ export function MacroBuilder() {
     return m;
   }, [st.st]);
 
-  const players = useMemo(() => {
-    let ps = layout(side, cur.fam.id, cur.set.name);
-    if (st.fl) ps = mirror(ps);
-    if (side === "D") ps = applyAdjustments(ps, adj);
-    return ps.map((p) => (st.mv[p.id] ? { ...p, x: st.mv[p.id][0], y: st.mv[p.id][1] } : p));
-  }, [side, cur.fam.id, cur.set.name, st.fl, st.mv, adj]);
   const oppFam = opp?.fam.id;
   const oppSet = opp?.set.name;
   const ghosts = useMemo(() => (oppFam && oppSet ? layout(oppSide, oppFam, oppSet) : []), [oppFam, oppSet, oppSide]);
+  // Offensive strength (the side with more receivers) decides "Strong", "Weak" and "3 Rec Hook".
+  const strong: 1 | -1 = useMemo(() => {
+    if (side !== "D" || !ghosts.length) return 1;
+    const rec = ghosts.filter((g) => g.group === "WR" || g.group === "TE");
+    return rec.filter((g) => g.x < 50).length > rec.filter((g) => g.x > 50).length ? -1 : 1;
+  }, [side, ghosts]);
+  const ctx = useMemo(() => defCtx(adj, strong), [adj, strong]);
+  const caption = useMemo(() => settingsLines(side, adj), [side, adj]);
+
+  const players = useMemo(() => {
+    let ps = layout(side, cur.fam.id, cur.set.name);
+    if (st.fl) ps = mirror(ps);
+    if (side === "D") ps = applyAdjustments(ps, adj, strong);
+    return ps.map((p) => (st.mv[p.id] ? { ...p, x: st.mv[p.id][0], y: st.mv[p.id][1] } : p));
+  }, [side, cur.fam.id, cur.set.name, st.fl, st.mv, adj, strong]);
 
   const sel = players.find((p) => p.id === selected) ?? null;
   const selStep = sel ? playerSteps.get(sel.id) : undefined;
-  const selAssign = selStep ? findAssignment(side, selStep.k) : undefined;
 
   const update = useCallback((fn: (s: MacroState) => MacroState) => setSt((s) => fn(s)), []);
 
@@ -80,9 +106,9 @@ export function MacroBuilder() {
     setSelected(null);
   }
   function setOpponent(f: string, s?: string) {
-    if (!f) return update((x) => ({ ...x, of: undefined, os: undefined, st: x.st.map((k) => ({ ...k, t: undefined })) }));
+    if (!f) return update((x) => ({ ...x, of: undefined, os: undefined }));
     const fam = (oppSide === "O" ? OFFENSE : DEFENSE).find((x) => x.id === f)!;
-    update((x) => ({ ...x, of: f, os: s ?? fam.sets[0].name, st: x.st.map((k) => ({ ...k, t: undefined })) }));
+    update((x) => ({ ...x, of: f, os: s ?? fam.sets[0].name }));
   }
   function switchSide(next: "O" | "D") {
     if (next === side) return;
@@ -94,25 +120,10 @@ export function MacroBuilder() {
   }
 
   // ---------- assignments ----------
-  function assign(a: Assignment) {
+  function assign(key: string) {
     if (!sel) return;
-    const spot = nearestSpot(a, sel);
-    let t: string | undefined;
-    if (a.kind === "man" && ghosts.length) {
-      const taken = new Set([...playerSteps.values()].filter((s) => s.k === "man" && s.p !== sel.id).map((s) => s.t));
-      const eligible = ghosts.filter((g) => ["WR", "TE", "RB"].includes(g.group) && !taken.has(g.id));
-      t = eligible.sort((u, v) => Math.hypot(u.x - sel.x, (u.y - sel.y) * 2) - Math.hypot(v.x - sel.x, (v.y - sel.y) * 2))[0]?.id;
-    }
-    const step: Step = { p: sel.id, k: a.key, ...(spot ? { s: spot.id } : {}), ...(t ? { t } : {}) };
-    update((x) => ({ ...x, st: [...x.st.filter((s) => s.p !== sel.id), step] }));
-  }
-  function setSpot(spotId: string) {
-    if (!sel) return;
-    update((x) => ({ ...x, st: x.st.map((s) => (s.p === sel.id ? { ...s, s: spotId } : s)) }));
-  }
-  function setTarget(t: string) {
-    if (!sel) return;
-    update((x) => ({ ...x, st: x.st.map((s) => (s.p === sel.id ? { ...s, t } : s)) }));
+    if (selStep?.k === key) return clearPlayer(sel.id);
+    update((x) => ({ ...x, st: [...x.st.filter((s) => s.p !== sel.id), { p: sel.id, k: key }] }));
   }
   function clearPlayer(id: string) {
     update((x) => ({ ...x, st: x.st.filter((s) => s.p !== id) }));
@@ -131,16 +142,10 @@ export function MacroBuilder() {
   const labelOf = (id: string) => players.find((p) => p.id === id)?.label ?? id;
   function stepText(s: Step) {
     if (s.p === "*") {
-      const a = ADJUSTMENTS.find((x) => x.cat === s.k);
-      return `${a?.label ?? s.k}: ${a?.options.find((o) => o.key === s.s)?.label ?? s.s}`;
+      const c = findCat(side, s.k);
+      return `${c?.label ?? s.k}: ${c?.options.find((o) => o.key === s.s)?.label ?? s.s}`;
     }
-    const a = findAssignment(side, s.k);
-    const spot = a?.spots?.find((x) => x.id === s.s);
-    const tgt = s.t ? ghosts.find((g) => g.id === s.t)?.label : undefined;
-    let txt = a?.label ?? s.k;
-    if (spot && (a?.spots?.length ?? 0) > 1) txt += ` (${spot.label.toLowerCase()})`;
-    if (a?.kind === "man") txt = tgt ? `Man on ${tgt}` : "Man";
-    return txt;
+    return (side === "D" ? findDefOption(s.k)?.label : findOffOption(s.k)?.label) ?? s.k;
   }
 
   const formationName = `${cur.fam.name} ${cur.set.name}`;
@@ -167,6 +172,7 @@ export function MacroBuilder() {
     const clone = svg.cloneNode(true) as SVGSVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     clone.setAttribute("width", String(W * 2));
+    const H = chartHeight(caption.length);
     clone.setAttribute("height", String(H * 2));
     const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
     style.textContent = CHART_CSS;
@@ -229,9 +235,12 @@ export function MacroBuilder() {
   // ---------- picker data ----------
   const families = side === "O" ? OFFENSE : DEFENSE;
   const oppFamilies = oppSide === "O" ? OFFENSE : DEFENSE;
-  const pickable = players.filter((p) => p.group !== "OL" && !(side === "O" && p.group === "QB"));
-  const options = sel ? assignmentsFor(side).filter((a) => a.for.includes(sel.group)) : [];
-  const optionGroups = [...new Set(options.map((a) => a.group))];
+  const pickable = side === "D" ? players.filter((p) => roleOf(p)) : players.filter((p) => p.group !== "OL" && p.group !== "QB");
+  const selRole = sel && side === "D" ? roleOf(sel) : null;
+  const defOpts = sel && side === "D" ? defOptionsFor(sel) : [];
+  const offOpts = sel && side === "O" ? offOptionsFor(sel) : [];
+  const offGroups = [...new Set(offOpts.map((a) => a.group))];
+  const sections = sectionsFor(side);
   const movedCount = Object.keys(st.mv).length;
   const allSets = useMemo(
     () => families.flatMap((f) => f.sets.map((s) => ({ f: f.id, s: s.name, label: `${f.name} ${s.name}` }))),
@@ -317,7 +326,9 @@ export function MacroBuilder() {
           players={players}
           ghosts={ghosts}
           steps={playerSteps}
-          slide={side === "O" ? adj.slide : undefined}
+          adj={adj}
+          ctx={ctx}
+          caption={caption}
           selected={selected}
           title={chartTitle}
           subtitle={chartSub}
@@ -331,7 +342,7 @@ export function MacroBuilder() {
 
       <div className="mb-grid">
         <section className="panel mb-build" aria-labelledby="mb-assign-h">
-          <h2 id="mb-assign-h" className="mb-h">Assignments</h2>
+          <h2 id="mb-assign-h" className="mb-h">{side === "D" ? "Individual adjustments" : "Hot routes"}</h2>
           <div className="mb-chips" role="group" aria-label="Pick a player">
             {pickable.map((p) => {
               const has = playerSteps.has(p.id);
@@ -356,27 +367,34 @@ export function MacroBuilder() {
             <div className="mb-assign">
               <div className="mb-assign-head">
                 <strong>{sel.label}</strong>
-                <span className="muted">{selAssign ? stepText(selStep!) : "No assignment yet"}</span>
+                <span className="muted">{selStep ? stepText(selStep) : selRole ? ROLE_NAME[selRole] : "No assignment yet"}</span>
                 {selStep && (
                   <button type="button" className="btn-link mb-clear" onClick={() => clearPlayer(sel.id)}>Clear</button>
                 )}
               </div>
-              {optionGroups.length === 0 && (
-                <p className="muted">Quarterbacks and linemen don&apos;t take routes here. Use slide protection below.</p>
+              {side === "D" && (
+                <div className="mb-opts mb-opts-8">
+                  {defOpts.map((o) => (
+                    <button
+                      key={o.key}
+                      type="button"
+                      className="mb-opt"
+                      aria-pressed={selStep?.k === o.key}
+                      style={{ ["--z" as string]: o.color }}
+                      onClick={() => assign(o.key)}
+                    >
+                      <span className="mb-swatch" aria-hidden="true" />
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
               )}
-              {optionGroups.map((g) => (
+              {side === "O" && offGroups.map((g) => (
                 <div key={g} className="mb-opt-group">
                   <div className="mb-opt-h">{g}</div>
                   <div className="mb-opts">
-                    {options.filter((a) => a.group === g).map((a) => (
-                      <button
-                        key={a.key}
-                        type="button"
-                        className="mb-opt"
-                        aria-pressed={selStep?.k === a.key}
-                        style={{ ["--z" as string]: a.kind === "route" ? "var(--ink-soft)" : a.color }}
-                        onClick={() => assign(a)}
-                      >
+                    {offOpts.filter((a) => a.group === g).map((a) => (
+                      <button key={a.key} type="button" className="mb-opt" aria-pressed={selStep?.k === a.key} style={{ ["--z" as string]: "var(--ink-soft)" }} onClick={() => assign(a.key)}>
                         <span className="mb-swatch" aria-hidden="true" />
                         {a.label}
                       </button>
@@ -384,50 +402,36 @@ export function MacroBuilder() {
                   </div>
                 </div>
               ))}
-              {selAssign?.spots && selAssign.spots.length > 1 && (
-                <div className="mb-opt-group">
-                  <div className="mb-opt-h">{selAssign.kind === "blitz" ? "Gap" : "Where"}</div>
-                  <div className="mb-opts">
-                    {selAssign.spots.map((s) => (
-                      <button key={s.id} type="button" className="mb-opt small-opt" aria-pressed={selStep?.s === s.id} onClick={() => setSpot(s.id)}>
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selAssign?.kind === "man" && (
-                <div className="mb-opt-group">
-                  <div className="mb-opt-h">Covering</div>
-                  {ghosts.length ? (
-                    <div className="mb-opts">
-                      {ghosts.filter((g) => ["WR", "TE", "RB"].includes(g.group)).map((g) => (
-                        <button key={g.id} type="button" className="mb-opt small-opt" aria-pressed={selStep?.t === g.id} onClick={() => setTarget(g.id)}>
-                          {g.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="muted small">Pick an offense to play against (above) to choose who he covers.</p>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
-          <h2 className="mb-h mb-h2">Pre-snap adjustments</h2>
-          {ADJUSTMENTS.filter((a) => a.side === side).map((a) => (
-            <div key={a.cat} className="mb-opt-group">
-              <div className="mb-opt-h">{a.label}</div>
-              <div className="mb-opts">
-                {a.options.map((o) => (
-                  <button key={o.key} type="button" className="mb-opt small-opt" aria-pressed={adj[a.cat] === o.key} onClick={() => setAdjust(a.cat, o.key)}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+          <h2 className="mb-h mb-h2">{side === "D" ? "Team adjustments" : "Protection"}</h2>
+          {side === "D" && <p className="muted small mb-sec-note">Same settings and order as the game&apos;s Create Adjustment screen. Tap an option again to clear it.</p>}
+          <div className="mb-sections">
+            {sections.map((sec, i) => {
+              const setCount = sec.cats.filter((k) => adj[k.cat]).length;
+              return (
+                <details key={sec.title} className="mb-sec" open={i === 0 || setCount > 0 || sections.length === 1}>
+                  <summary>
+                    <span>{sec.title}</span>
+                    {setCount > 0 && <span className="mb-sec-count">{setCount} set</span>}
+                  </summary>
+                  {sec.cats.map((k) => (
+                    <div key={k.cat} className="mb-opt-group">
+                      <div className="mb-opt-h">{k.label}</div>
+                      <div className="mb-opts">
+                        {k.options.map((o) => (
+                          <button key={o.key} type="button" className="mb-opt small-opt" aria-pressed={adj[k.cat] === o.key} onClick={() => setAdjust(k.cat, o.key)}>
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </details>
+              );
+            })}
+          </div>
         </section>
 
         <aside className="mb-side-col">
@@ -496,4 +500,8 @@ const CHART_CSS = `
   .mb-chip { font-size: 18px; font-weight: 700; fill: #e7efe9; letter-spacing: 0.5px; }
   .mb-credit { font-size: 15px; font-weight: 600; fill: #ffffff; opacity: 0.45; letter-spacing: 1px; }
   .mb-tag { font-size: 16px; font-weight: 800; letter-spacing: 1px; }
+  .mb-cap-h { font-size: 16px; font-weight: 800; letter-spacing: 2px; fill: #f2c200; }
+  .mb-cap { font-size: 17px; }
+  .mb-cap-k { font-weight: 600; fill: #9fb5a8; }
+  .mb-cap-v { font-weight: 800; fill: #f3f7f4; }
 `;

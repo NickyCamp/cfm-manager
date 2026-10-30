@@ -328,8 +328,8 @@ export function layoutDefense(famId: string, setName: string): Player[] {
   const cbs: [number, number, string][] = [];
   if (cbN >= 1) cbs.push([7, cbY, "CB1"]);
   if (cbN >= 2) cbs.push([93, cbY, "CB2"]);
-  if (cbN >= 3) cbs.push([79, 6, "NB"]);
-  if (cbN >= 4) cbs.push([21, 6, "DB"]);
+  if (cbN >= 3) cbs.push([79, 6, "SLCB1"]);
+  if (cbN >= 4) cbs.push([21, 6, "SLCB2"]);
   cbs.forEach(([x, y, l]) => out.push({ id: l, label: l, group: "CB", x, y }));
 
   const prevent = has(t, "prevent");
@@ -338,8 +338,8 @@ export function layoutDefense(famId: string, setName: string): Player[] {
   if (sN === 1) ss = [[50, deep + 1, "FS"]];
   else if (sN === 2) ss = has(t, "46") && !has(t, "bear under") ? [[75, 3.8, "SS"], [50, deep + 1, "FS"]] : [[36, deep, "SS"], [64, deep, "FS"]];
   else if (has(t, "3 high", "3 deep") || cbN >= 4) ss = [[26, deep, "SS"], [50, deep + 1.5, "FS"], [74, deep, "FS2"]];
-  else if (cbN <= 2) ss = [[36, deep, "SS"], [64, deep, "FS"], [79, 6, "SS2"]]; // big nickel: third safety in the slot
-  else ss = [[36, deep, "SS"], [64, deep, "FS"], [50, 10.4, "FS2"]]; // big dime: robber
+  else if (cbN <= 2) ss = [[36, deep, "SS"], [64, deep, "FS"], [79, 6, "SLCB1"]]; // big nickel: third safety in the slot
+  else ss = [[36, deep, "SS"], [64, deep, "FS"], [21, 6, "SLCB2"]]; // big dime: third safety plays the other slot
   ss.forEach(([x, y, l]) => out.push({ id: l, label: l, group: "S", x, y }));
 
   return out;
@@ -360,7 +360,7 @@ function labelLB(n: number): string[] {
   if (n === 1) return ["MIKE"];
   if (n === 2) return ["WILL", "MIKE"];
   if (n === 3) return ["WILL", "MIKE", "SAM"];
-  if (n === 4) return ["WILL", "MIKE", "BUCK", "SAM"];
+  if (n === 4) return ["WILL", "MIKE", "SLB1", "SAM"];
   return Array.from({ length: n }, (_, i) => `LB${i + 1}`);
 }
 
