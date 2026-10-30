@@ -13,6 +13,7 @@ import {
   type OffOption,
 } from "@/lib/macro/macros";
 import type { Step } from "@/lib/macro/share";
+import type { MatchPlan } from "@/lib/macro/match";
 
 // Chart geometry (SVG units). x: 0–100 field units → 0–1000. y: yards from the line.
 export const W = 1000;
@@ -49,6 +50,7 @@ export type ChartProps = {
   adj: Record<string, string>; // team settings
   ctx: DefCtx;
   caption: { label: string; value: string }[];
+  match?: MatchPlan | null;
   selected: string | null;
   title: string;
   subtitle: string;
@@ -60,7 +62,7 @@ export type ChartProps = {
 };
 
 export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldChart(props, ref) {
-  const { side, players, ghosts, steps, adj, ctx, caption, selected, title, subtitle, personnel, onSelect, onMove, big } = props;
+  const { side, players, ghosts, steps, adj, ctx, caption, match, selected, title, subtitle, personnel, onSelect, onMove, big } = props;
   const H = chartHeight(caption.length);
   const R = big ? 26 : 22;
   const k = big ? 1.18 : 1;
@@ -80,6 +82,7 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
   const qbSpot = (side === "D" ? ghosts : players).find((p) => p.label === "QB") ?? { x: 50, y: -5 };
 
   const yardLines = [-15, -10, -5, 5, 10, 15, 20, 25];
+  const matchDraw = match ? drawMatch(match, byId, R, k, [...players, ...ghosts]) : null;
 
   return (
     <svg
@@ -104,7 +107,7 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
         <filter id="mb-glow" x="-10%" y="-200%" width="120%" height="500%">
           <feGaussianBlur stdDeviation="5" />
         </filter>
-        {["#ffffff", "#ef4444", "#f97316", "#cbd5e1"].map((c) => (
+        {ARROW_COLORS.map((c) => (
           <marker key={c} id={`mb-arrow-${c.slice(1)}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill={c} />
           </marker>
@@ -158,6 +161,9 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
 
       {/* team-wide pressure: stunts, QB contain, LB blitzes */}
       {side === "D" && <g pointerEvents="none">{drawTeam(players, steps, adj)}</g>}
+
+      {/* match preview lines (labels go on top of the players, below) */}
+      {matchDraw && <g pointerEvents="none">{matchDraw.lines}</g>}
 
       {/* individual assignment lines */}
       {[...steps.values()].map((st) => {
@@ -232,6 +238,8 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
         );
       })}
 
+      {matchDraw && <g pointerEvents="none">{matchDraw.tags}</g>}
+
       {/* personnel chip + credit */}
       <g pointerEvents="none">
         <rect x="22" y={FIELD_H - 50} width={personnel.length * 10.5 + 32} height="34" rx="8" fill="#06180f" opacity="0.85" stroke="#ffffff" strokeOpacity="0.15" />
@@ -250,7 +258,7 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
             const col = Math.floor(i / rows);
             const row = i % rows;
             return (
-              <text key={c.label} x={30 + col * 323} y={FIELD_H + 66 + row * CAP_ROW} className="mb-cap">
+              <text key={`${c.label}-${i}`} x={30 + col * 323} y={FIELD_H + 66 + row * CAP_ROW} className="mb-cap">
                 <tspan className="mb-cap-k">{c.label}: </tspan>
                 <tspan className="mb-cap-v">{c.value}</tspan>
               </text>
@@ -266,9 +274,80 @@ function fontFor(label: string) {
   return label.length <= 2 ? 18 : label.length === 3 ? 15.5 : 12.5;
 }
 
+const MATCH_STYLE = {
+  lock: { color: "#ef4444", dash: undefined, w: 4 },
+  match: { color: "#22d3ee", dash: "10 6", w: 4 },
+  bracket: { color: "#c084fc", dash: "4 5", w: 4 },
+  zone: { color: "#facc15", dash: "2 6", w: 3.5 },
+  help: { color: "#e5e7eb", dash: "8 8", w: 3 },
+} as const;
+const ARROW_COLORS = ["#ffffff", "#ef4444", "#f97316", "#cbd5e1", "#22d3ee", "#c084fc", "#facc15", "#e5e7eb"];
+
 function arrowId(color: string) {
   const c = color.toLowerCase();
-  return ["#ffffff", "#ef4444", "#f97316", "#cbd5e1"].includes(c) ? `url(#mb-arrow-${c.slice(1)})` : "url(#mb-arrow-ffffff)";
+  return ARROW_COLORS.includes(c) ? `url(#mb-arrow-${c.slice(1)})` : "url(#mb-arrow-ffffff)";
+}
+
+function drawMatch(plan: MatchPlan, byId: Map<string, Player>, R: number, k: number, everyone: Player[]) {
+  const lines: React.ReactNode[] = [];
+  const tags: React.ReactNode[] = [];
+  // Receiver numbers under each eligible receiver.
+  for (const r of plan.recs) {
+    tags.push(
+      <g key={`rn-${r.id}`}>
+        <rect x={px(r.x) - 15 * k} y={py(r.y) + R - 2} width={30 * k} height={18 * k} rx={5} fill="#facc15" />
+        <text x={px(r.x)} y={py(r.y) + R - 2 + 13 * k} textAnchor="middle" className="mb-rec-n" style={{ fontSize: 13 * k }}>#{r.n}</text>
+      </g>,
+    );
+  }
+  // Labels go in the first spot along their line that clears every player and every other label.
+  const taken: { x: number; y: number; w: number; h: number }[] = plan.recs.map((r) => ({ x: px(r.x) - 15 * k, y: py(r.y) + R - 2, w: 30 * k, h: 18 * k }));
+  const circles = everyone.map((p) => ({ x: px(p.x), y: py(p.y) }));
+  const hits = (b: { x: number; y: number; w: number; h: number }) =>
+    taken.some((t) => b.x < t.x + t.w + 4 && b.x + b.w + 4 > t.x && b.y < t.y + t.h + 3 && b.y + b.h + 3 > t.y) ||
+    circles.some((c) => {
+      const nx = Math.max(b.x, Math.min(c.x, b.x + b.w));
+      const ny = Math.max(b.y, Math.min(c.y, b.y + b.h));
+      return Math.hypot(c.x - nx, c.y - ny) < R + 2;
+    });
+
+  plan.lines.forEach((l, i) => {
+    const d = byId.get(l.from);
+    if (!d) return;
+    const st = MATCH_STYLE[l.kind];
+    const x0 = px(d.x), y0 = py(d.y), x1 = px(l.to.x), y1 = py(l.to.y);
+    // Bow brackets so they don't sit on top of the other line to the same receiver.
+    const bow = l.kind === "bracket" ? 40 : 0;
+    const mx = (x0 + x1) / 2 + bow, my = (y0 + y1) / 2;
+    lines.push(
+      <path key={`ml-${i}`} d={`M ${x0} ${y0} Q ${mx} ${my} ${x1} ${y1}`} stroke={st.color} strokeWidth={st.w} strokeDasharray={st.dash} fill="none"
+        markerEnd={l.kind === "zone" ? undefined : arrowId(st.color)} strokeLinecap="round" />,
+    );
+    if (l.kind === "zone") lines.push(<circle key={`mz-${i}`} cx={x1} cy={y1} r={7} fill={st.color} fillOpacity="0.85" />);
+
+    const w = (l.tag.length * 7.2 + 14) * k;
+    const h = 20 * k;
+    const at = (t: number) => {
+      const u = 1 - t;
+      return { x: u * u * x0 + 2 * u * t * mx + t * t * x1, y: u * u * y0 + 2 * u * t * my + t * t * y1 };
+    };
+    const tries = [0.62, 0.5, 0.75, 0.38, 0.86].map(at);
+    for (const dy of [-26, 26, -48, 48]) tries.push({ x: x1, y: y1 + dy }, { x: (x0 + x1) / 2, y: (y0 + y1) / 2 + dy });
+    tries.push({ x: x1 + w / 2 + 14, y: y1 }, { x: x1 - w / 2 - 14, y: y1 }, { x: x0 + w / 2 + R + 6, y: y0 }, { x: x0 - w / 2 - R - 6, y: y0 });
+    let box = { x: tries[0].x - w / 2, y: tries[0].y - h / 2, w, h };
+    for (const c of tries) {
+      const b = { x: Math.min(W - w - 6, Math.max(6, c.x - w / 2)), y: c.y - h / 2, w, h };
+      if (!hits(b)) { box = b; break; }
+    }
+    taken.push(box);
+    tags.push(
+      <g key={`mt-${i}`}>
+        <rect x={box.x} y={box.y} width={w} height={h} rx={6} fill="#06180f" fillOpacity="0.92" stroke={st.color} strokeWidth="1.5" />
+        <text x={box.x + w / 2} y={box.y + h / 2 + 4.5 * k} textAnchor="middle" className="mb-match-tag" fill={st.color} style={{ fontSize: 12.5 * k }}>{l.tag}</text>
+      </g>,
+    );
+  });
+  return { lines, tags };
 }
 
 const GAPS = [30, 35, 41, 47, 53, 59, 65, 70];

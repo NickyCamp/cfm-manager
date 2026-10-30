@@ -16,6 +16,7 @@ import {
   settingsLines,
 } from "@/lib/macro/macros";
 import { DEFAULT_STATE, decodeState, encodeState, type MacroState, type Step } from "@/lib/macro/share";
+import { CHECK_INFO, familyFromShell, MATCH_FAMILIES, planMatch, type MatchFamily } from "@/lib/macro/match";
 import { chartHeight, COLORS, FieldChart, W } from "./FieldChart";
 
 const DEFAULT_O = { f: "gun", s: "Trips TE" };
@@ -89,7 +90,7 @@ export function MacroBuilder() {
     return rec.filter((g) => g.x < 50).length > rec.filter((g) => g.x > 50).length ? -1 : 1;
   }, [side, ghosts]);
   const ctx = useMemo(() => defCtx(adj, strong), [adj, strong]);
-  const caption = useMemo(() => settingsLines(side, adj), [side, adj]);
+  const matchFamily = (st.mp as MatchFamily | undefined) ?? familyFromShell(adj.sh);
 
   const players = useMemo(() => {
     let ps = layout(side, cur.fam.id, cur.set.name);
@@ -97,6 +98,17 @@ export function MacroBuilder() {
     if (side === "D") ps = applyAdjustments(ps, adj, strong);
     return ps.map((p) => (st.mv[p.id] ? { ...p, x: st.mv[p.id][0], y: st.mv[p.id][1] } : p));
   }, [side, cur.fam.id, cur.set.name, st.fl, st.mv, adj, strong]);
+
+  const matchPlan = useMemo(
+    () => (side === "D" && st.mo ? planMatch(matchFamily, adj, players, ghosts) : null),
+    [side, st.mo, matchFamily, adj, players, ghosts],
+  );
+  const caption = useMemo(() => {
+    const lines = settingsLines(side, adj);
+    if (!matchPlan) return lines;
+    const label = (id: string) => players.find((p) => p.id === id)?.label ?? id;
+    return [...lines, ...matchPlan.notes, ...matchPlan.lines.map((l) => ({ label: label(l.from), value: l.tag }))];
+  }, [side, adj, matchPlan, players]);
 
   const sel = players.find((p) => p.id === selected) ?? null;
   const selStep = sel ? playerSteps.get(sel.id) : undefined;
@@ -330,6 +342,25 @@ export function MacroBuilder() {
             </label>
           )}
         </div>
+        {side === "D" && (
+          <div className="mb-row mb-match-row">
+            <button
+              type="button"
+              className="mb-toggle"
+              aria-pressed={!!st.mo}
+              onClick={() => update((x) => ({ ...x, mo: x.mo ? undefined : 1, of: x.of ?? "gun", os: x.of ? x.os : "Trips TE" }))}
+            >
+              <span className="mb-toggle-box" aria-hidden="true" />
+              Match preview
+            </button>
+            <label className="mb-field mb-grow">
+              <span className="sr-only">Coverage to preview</span>
+              <select value={matchFamily} disabled={!st.mo} onChange={(e) => update((x) => ({ ...x, mp: e.target.value }))}>
+                {MATCH_FAMILIES.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+              </select>
+            </label>
+          </div>
+        )}
       </div>
 
       <div className="mb-stage-bar">
@@ -347,6 +378,7 @@ export function MacroBuilder() {
           adj={adj}
           ctx={ctx}
           caption={caption}
+          match={matchPlan}
           selected={selected}
           title={chartTitle}
           subtitle={chartSub}
@@ -452,6 +484,9 @@ export function MacroBuilder() {
                           </button>
                         ))}
                       </div>
+                      {CHECK_INFO[k.cat] && adj[k.cat] && CHECK_INFO[k.cat][adj[k.cat]] && (
+                        <p className="mb-check-info">{CHECK_INFO[k.cat][adj[k.cat]]}</p>
+                      )}
                     </div>
                   ))}
                 </details>
@@ -530,4 +565,6 @@ const CHART_CSS = `
   .mb-cap { font-size: 17px; }
   .mb-cap-k { font-weight: 600; fill: #9fb5a8; }
   .mb-cap-v { font-weight: 800; fill: #f3f7f4; }
+  .mb-rec-n { font-weight: 800; fill: #1d1700; }
+  .mb-match-tag { font-weight: 700; }
 `;

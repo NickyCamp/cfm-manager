@@ -24,6 +24,8 @@ export type MacroState = {
   mv: Record<string, [number, number]>; // dragged players
   t?: string; // title
   n?: string; // notes
+  mo?: 1; // match preview on
+  mp?: string; // match preview coverage
 };
 
 export const DEFAULT_STATE: MacroState = {
@@ -55,6 +57,8 @@ export function encodeState(st: MacroState): string {
   if (!slim.t) delete slim.t;
   if (!slim.n) delete slim.n;
   if (!slim.fl) delete slim.fl;
+  if (!slim.mo) delete slim.mo;
+  if (!slim.mp) delete slim.mp;
   if (!slim.of) { delete slim.of; delete slim.os; }
   return toB64Url(JSON.stringify(slim));
 }
@@ -77,6 +81,8 @@ export function decodeState(hash: string): MacroState | null {
       mv: raw.mv && typeof raw.mv === "object" ? raw.mv : {},
       t: typeof raw.t === "string" ? raw.t.slice(0, 80) : undefined,
       n: typeof raw.n === "string" ? raw.n.slice(0, 600) : undefined,
+      mo: raw.mo ? 1 : undefined,
+      mp: typeof raw.mp === "string" ? raw.mp.slice(0, 12) : undefined,
     };
   } catch {
     return null;
