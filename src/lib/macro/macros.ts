@@ -5,7 +5,7 @@
 // individual choices per position. Zone colors follow the game: dark blue deep,
 // light blue flats, yellow hooks, purple curl-to-flat, orange QB spy.
 
-import type { Group, Player } from "./layout";
+import type { Player } from "./layout";
 
 export type Ellipse = { x: number; y: number; rx: number; ry: number };
 export type ZoneDrop = "flats" | "curls" | "hooks";
@@ -222,8 +222,24 @@ export const DEF_SECTIONS: Section[] = [
 
 /* ====================== offense: team settings ====================== */
 
+const DEF_SLOTS = ["SS", "FS", "SLCB1", "SLCB2", "SAM", "WILL", "MIKE", "SLB1", "SLB2", "DT1", "DT2", "REDG", "LEDG", "NT"];
+
+// Same sections, settings and options, in the same order, as the game's offensive Create Adjustment screen.
 export const OFF_SECTIONS: Section[] = [
-  { title: "Protection", cats: [c("slide", "Slide Protection", ["Slide Left", "Slide Right"])] },
+  { title: "Offensive Line", cats: [
+    c("olt", "Technique", ["Empty", "Base", "Max Protect", "Half Slide Left", "Half Slide Right", "Full Slide Left", "Full Slide Right"]),
+    c("dbl", "Double Team", ["Highest OVR", "SAM", "WILL", "DT2", "DT1", "REDG", "LEDG"]),
+    c("idm", "ID the Mike", DEF_SLOTS),
+    c("utd", "Untargeted Defender", ["User Defender", ...DEF_SLOTS]),
+    c("bks", "Blocking Style", ABC),
+  ] },
+  { title: "General", cats: [
+    c("dpc", "Deep Pass Catching", ABC),
+    c("ipc", "Intermediate Pass Catching", ABC),
+    c("bc", "Ball Carrier", ABC),
+    c("wrh", "WR Help Scrambling QB", ["Aggressive", "Conservative"]),
+    c("zwa", "Zone Window Awareness", ["Off", "On"]),
+  ] },
 ];
 
 export function sectionsFor(side: "O" | "D") {
@@ -365,48 +381,112 @@ export function stuntMoves(stunt: string, dl: Player[]): StuntMove[] {
 }
 
 /* ====================== offense: individual ====================== */
-// Routes are drawn from the player's spot. dx is "toward the sideline on his side",
-// so the same route flips correctly for a receiver on either side of the ball.
-export type RoutePath = { pts: [number, number][]; curve?: boolean };
+// Routes are drawn from the player's spot in yards: dx is toward the sideline on his side
+// (so a route flips correctly for a receiver on either side), dy is downfield.
+// "abs" paths (Swing Left/Right) use screen directions instead.
+
+export type RoutePath = { pts: [number, number][]; curve?: boolean; abs?: boolean };
 
 export type OffOption = {
   key: string;
   label: string;
-  kind: "route" | "block" | "motion";
+  kind: "route" | "block" | "chip";
   color: string;
-  group: string;
-  for: Group[];
   path?: RoutePath;
 };
 
-const SKILL: Group[] = ["WR", "TE", "RB"];
-const BACKS: Group[] = ["RB", "TE"];
+const R = (key: string, label: string, pts: [number, number][], extra: Partial<RoutePath> = {}, kind: OffOption["kind"] = "route"): OffOption =>
+  ({ key, label, kind, color: "#ffffff", path: { pts, ...extra } });
 
-export const OFFENSE_ASSIGNMENTS: OffOption[] = [
-  { key: "streak", label: "Streak", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 24]] } },
-  { key: "fade", label: "Fade", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[3, 10], [6, 22]], curve: true } },
-  { key: "slant", label: "Slant", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 2], [-10, 7]] } },
-  { key: "in", label: "In", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 10], [-20, 10]] } },
-  { key: "out", label: "Out", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 10], [12, 10]] } },
-  { key: "quick-out", label: "Quick Out", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 5], [10, 5]] } },
-  { key: "curl", label: "Curl", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 11], [-2, 9]] } },
-  { key: "comeback", label: "Comeback", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 15], [3, 12.5]] } },
-  { key: "drag", label: "Drag", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[-3, 2], [-34, 3]] } },
-  { key: "post", label: "Post", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 10], [-12, 21]] } },
-  { key: "corner", label: "Corner", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 10], [11, 18]] } },
-  { key: "hitch", label: "Hitch", kind: "route", color: "#fff", group: "Routes", for: SKILL, path: { pts: [[0, 6], [-1, 4.5]] } },
-  { key: "wheel", label: "Wheel", kind: "route", color: "#fff", group: "Back routes", for: SKILL, path: { pts: [[10, 1], [14, 6], [14, 20]], curve: true } },
-  { key: "flat", label: "Flat", kind: "route", color: "#fff", group: "Back routes", for: BACKS, path: { pts: [[6, 3], [20, 4]], curve: true } },
-  { key: "swing", label: "Swing", kind: "route", color: "#fff", group: "Back routes", for: BACKS, path: { pts: [[8, -2], [18, 1]], curve: true } },
-  { key: "angle", label: "Angle", kind: "route", color: "#fff", group: "Back routes", for: BACKS, path: { pts: [[7, 4], [-3, 9]] } },
-  { key: "texas", label: "Texas", kind: "route", color: "#fff", group: "Back routes", for: BACKS, path: { pts: [[8, 3], [-6, 8]] } },
-  { key: "block", label: "Pass Block", kind: "block", color: "#cbd5e1", group: "Blocking & motion", for: SKILL },
-  { key: "motion", label: "Motion Across", kind: "motion", color: "#cbd5e1", group: "Blocking & motion", for: ["WR", "TE", "RB"] },
-];
+const ROUTES: Record<string, OffOption> = Object.fromEntries([
+  R("streak", "Streak", [[0, 22]]),
+  R("in", "In", [[0, 10], [-14, 10]]),
+  R("out", "Out", [[0, 10], [10, 10]]),
+  R("curl", "Curl", [[0, 12], [-2, 10]]),
+  R("fade", "Fade", [[3, 10], [6, 22]], { curve: true }),
+  R("post", "Post", [[0, 11], [-12, 22]]),
+  R("corner", "Corner", [[0, 11], [11, 20]]),
+  R("slant", "Slant", [[0, 2], [-11, 8]]),
+  R("drag", "Drag", [[-3, 2], [-32, 3]]),
+  R("deep-over", "Deep Over", [[0, 8], [-30, 17]]),
+  R("sluggo", "Sluggo", [[0, 2], [-4, 5], [-4, 22]]),
+  R("post-sit", "Post Sit", [[0, 10], [-6, 14], [-5, 12.5]]),
+  R("return", "Return", [[0, 7], [-7, 7], [-3, 6.5]]),
+  R("comeback", "Comeback", [[0, 15], [3, 12.5]]),
+  R("smoke-screen", "Smoke Screen", [[-1.5, -1.5]]),
+  R("speed-out", "Speed Out", [[0, 5], [10, 5.5]], { curve: true }),
+  R("deep-cross", "Deep Cross", [[0, 4], [-28, 14]]),
+  R("zig", "Zig", [[0, 5], [-4, 7], [4, 8]]),
+  R("short-cross", "Short Cross", [[0, 3], [-22, 6]]),
+  R("flat", "Flat", [[5, 2.5], [16, 3]], { curve: true }),
+  R("wheel", "Wheel", [[10, 1], [14, 6], [14, 20]], { curve: true }),
+  R("trail", "Trail", [[0, 3], [-18, 9]]),
+  R("stick-nod", "Stick Nod", [[0, 6], [-2, 6], [2, 18]]),
+  R("pass-block", "Pass Block", [], {}, "block"),
+  R("chip-and-release", "Chip and Release", [[5, 2.5], [14, 3.5]], { curve: true }, "chip"),
+  R("slot-short-cross", "Slot Short Cross", [[0, 3], [-20, 5]]),
+  R("slot-flat", "Slot Flat", [[5, 2.5], [16, 3]], { curve: true }),
+  R("slot-fade", "Slot Fade", [[4, 8], [8, 20]], { curve: true }),
+  R("swing-left", "Swing Left", [[-8, -2], [-18, 1]], { curve: true, abs: true }),
+  R("swing-right", "Swing Right", [[8, -2], [18, 1]], { curve: true, abs: true }),
+  R("triple-option", "Triple Option", [[6, -0.5], [14, -0.5]]),
+  R("texas", "Texas", [[8, 3], [-6, 8]]),
+  R("block-release", "Block & Release", [[5, 2.5], [14, 3.5]], { curve: true }, "chip"),
+].map((o) => [o.key, o]));
+
+// Same lists, same order as the game.
+const WR_ROUTES = ["streak", "in", "out", "curl", "fade", "post", "corner", "slant", "drag", "deep-over", "sluggo", "post-sit", "return", "comeback", "smoke-screen", "speed-out", "deep-cross", "zig", "short-cross", "flat"];
+const TE_ROUTES = ["streak", "in", "out", "curl", "post", "corner", "slant", "drag", "deep-cross", "wheel", "zig", "return", "trail", "stick-nod", "pass-block", "chip-and-release", "slot-short-cross", "slot-flat", "slot-fade"];
+const RB_ROUTES = ["streak", "in", "out", "curl", "swing-left", "swing-right", "flat", "triple-option", "texas", "post", "wheel", "corner", "block-release", "pass-block", "chip-and-release"];
 
 export function offOptionsFor(p: Player): OffOption[] {
-  return OFFENSE_ASSIGNMENTS.filter((a) => a.for.includes(p.group));
+  const list = p.group === "WR" ? WR_ROUTES : p.group === "TE" ? TE_ROUTES : p.group === "RB" ? RB_ROUTES : [];
+  return list.map((k) => ROUTES[k]);
 }
 export function findOffOption(key: string): OffOption | undefined {
-  return OFFENSE_ASSIGNMENTS.find((a) => a.key === key);
+  return ROUTES[key];
+}
+
+/**
+ * The game's macro menu sets routes by depth-chart slot (WR1–WR5, TE1–TE3, HB1, HB2, FB),
+ * while play art labels slot receivers SLWR1, SLWR2... This maps each player to the slot
+ * whose routes he'd take from the macro.
+ */
+export function gameSlots(players: Player[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  const taken = new Set<string>();
+  const claim = (id: string, slot: string) => {
+    out[id] = slot;
+    taken.add(slot);
+  };
+  const next = (prefix: string, max: number) => {
+    for (let i = 1; i <= max; i++) if (!taken.has(`${prefix}${i}`)) return `${prefix}${i}`;
+    return undefined;
+  };
+  for (const p of players) if (/^WR\d$/.test(p.label) || /^TE\d$/.test(p.label) || /^HB\d$/.test(p.label) || p.label === "FB") {
+    if (!taken.has(p.label)) claim(p.id, p.label);
+  }
+  for (const p of players) {
+    if (out[p.id]) continue;
+    if (p.group === "WR") { const s = next("WR", 5); if (s) claim(p.id, s); }
+    else if (p.group === "TE") { const s = next("TE", 3); if (s) claim(p.id, s); }
+    else if (p.group === "RB") {
+      const s = p.label.startsWith("FB") && !taken.has("FB") ? "FB" : next("HB", 2) ?? (!taken.has("FB") ? "FB" : undefined);
+      if (s) claim(p.id, s);
+    }
+  }
+  return out;
+}
+
+/** Finds the defender a game slot name refers to (the play art uses RRE/RLE, SLCB, DT, SLB). */
+export function findSlot(defense: Player[], slot: string): Player | undefined {
+  const alias: Record<string, string[]> = {
+    REDG: ["REDG", "RRE"], LEDG: ["LEDG", "RLE"], SLCB1: ["SLCB1", "SLCB"], DT1: ["DT1", "DT", "RDT"], NT: ["NT", "NT1"],
+    SLB1: ["SLB1", "SLB"], MIKE: ["MIKE", "MIKE1"], SS: ["SS", "SS1"], FS: ["FS", "FS1"],
+  };
+  for (const l of alias[slot] ?? [slot]) {
+    const hit = defense.find((p) => p.label === l);
+    if (hit) return hit;
+  }
+  return undefined;
 }

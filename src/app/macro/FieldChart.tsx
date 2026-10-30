@@ -4,6 +4,7 @@ import type { Group, Player } from "@/lib/macro/layout";
 import {
   findDefOption,
   findOffOption,
+  findSlot,
   roleOf,
   stuntMoves,
   zoneFor,
@@ -149,15 +150,8 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
         );
       })}
 
-      {/* slide protection */}
-      {side === "O" && adj.slide && (
-        <g pointerEvents="none">
-          <path
-            d={adj.slide === "slide-left" ? `M ${px(63)} ${py(0.75)} L ${px(36)} ${py(0.75)}` : `M ${px(37)} ${py(0.75)} L ${px(64)} ${py(0.75)}`}
-            stroke="#cbd5e1" strokeWidth="4" fill="none" markerEnd="url(#mb-arrow-cbd5e1)"
-          />
-        </g>
-      )}
+      {/* offensive line: slides, max protect, double team, ID the Mike, untargeted defender */}
+      {side === "O" && <g pointerEvents="none">{drawOffTeam(players, ghosts, steps, adj, R)}</g>}
 
       {/* team-wide pressure: stunts, QB contain, LB blitzes */}
       {side === "D" && <g pointerEvents="none">{drawTeam(players, steps, adj)}</g>}
@@ -443,35 +437,100 @@ function drawTeam(players: Player[], steps: Map<string, Step>, adj: Record<strin
   return out;
 }
 
+function routePath(r: { pts: [number, number][]; curve?: boolean; abs?: boolean }, p: Player, R: number, start?: { x: number; y: number }) {
+  const dir = r.abs ? 1 : p.x < 50 ? -1 : 1;
+  const sx = start ? start.x : px(p.x);
+  const sy = start ? start.y : py(p.y) - (p.y > -2.2 ? R : 0);
+  const pts = r.pts.map(([dx, dy]) => [px(p.x + dx * dir), py(p.y + dy)] as const);
+  let d = `M ${sx} ${sy}`;
+  if (r.curve && pts.length >= 2) {
+    d += ` Q ${pts[0][0]} ${pts[0][1]} ${pts[1][0]} ${pts[1][1]}`;
+    for (let i = 2; i < pts.length; i++) d += ` L ${pts[i][0]} ${pts[i][1]}`;
+  } else {
+    for (const [x, y] of pts) d += ` L ${x} ${y}`;
+  }
+  return d;
+}
+
+function blockT(x: number, y: number, color: string) {
+  return (
+    <g stroke={color} strokeWidth="5" strokeLinecap="round">
+      <line x1={x} y1={y} x2={x} y2={y - 16} />
+      <line x1={x - 14} y1={y - 16} x2={x + 14} y2={y - 16} />
+    </g>
+  );
+}
+
 function drawOff(a: OffOption, p: Player, R: number) {
   const x0 = px(p.x);
   const y0 = py(p.y);
-  switch (a.kind) {
-    case "route": {
-      const r = a.path;
-      if (!r) return null;
-      const dir = p.x < 50 ? -1 : 1;
-      const pts = r.pts.map(([dx, dy]) => [px(p.x + dx * dir), py(p.y + dy)] as const);
-      let d = `M ${x0} ${y0 - (p.y > -1.5 ? R : 0)}`;
-      if (r.curve && pts.length >= 2) {
-        d += ` Q ${pts[0][0]} ${pts[0][1]} ${pts[1][0]} ${pts[1][1]}`;
-        for (let i = 2; i < pts.length; i++) d += ` L ${pts[i][0]} ${pts[i][1]}`;
-      } else {
-        for (const [x, y] of pts) d += ` L ${x} ${y}`;
-      }
-      return <path d={d} stroke="#ffffff" strokeWidth="4" fill="none" strokeLinejoin="round" markerEnd={arrowId("#ffffff")} />;
-    }
-    case "block":
-      return (
-        <g stroke={a.color} strokeWidth="5" strokeLinecap="round">
-          <line x1={x0} y1={y0 - R} x2={x0} y2={y0 - R - 16} />
-          <line x1={x0 - 14} y1={y0 - R - 16} x2={x0 + 14} y2={y0 - R - 16} />
-        </g>
-      );
-    case "motion": {
-      const tx = px(100 - p.x > 50 ? Math.min(100 - p.x, 80) : Math.max(100 - p.x, 20));
-      return <path d={`M ${x0} ${y0 + R} Q ${(x0 + tx) / 2} ${y0 + 70} ${tx} ${y0 + R}`} stroke={a.color} strokeWidth="3.5" fill="none" strokeDasharray="9 7" markerEnd={arrowId(a.color)} />;
+  if (a.kind === "block") return blockT(x0, y0 - R, "#cbd5e1");
+  if (!a.path) return null;
+  if (a.kind === "chip") {
+    // Chip (a short block) first, then release into the route.
+    const start = { x: x0, y: y0 - R - 14 };
+    return (
+      <g>
+        {blockT(x0, y0 - R, "#cbd5e1")}
+        <path d={routePath(a.path, p, R, start)} stroke="#ffffff" strokeWidth="4" fill="none" strokeDasharray="9 6" strokeLinejoin="round" markerEnd={arrowId("#ffffff")} />
+      </g>
+    );
+  }
+  return <path d={routePath(a.path, p, R)} stroke="#ffffff" strokeWidth="4" fill="none" strokeLinejoin="round" markerEnd={arrowId("#ffffff")} />;
+}
+
+function drawOffTeam(players: Player[], ghosts: Player[], steps: Map<string, Step>, adj: Record<string, string>, R: number) {
+  const out: React.ReactNode[] = [];
+  const line = players.filter((p) => p.group === "OL").sort((a, b) => a.x - b.x);
+  const y = py(0.45);
+
+  // Technique: slide arrows over the line.
+  const t = adj.olt;
+  if (line.length >= 5 && t && t.includes("slide")) {
+    const left = t.endsWith("left");
+    const full = t.startsWith("full");
+    const c = line[2];
+    const from = full ? (left ? line[4] : line[0]) : c;
+    const to = left ? line[0] : line[4];
+    out.push(
+      <path key="slide" d={`M ${px(from.x)} ${y} L ${px(to.x) + (left ? -10 : 10)} ${y}`} stroke="#cbd5e1" strokeWidth="5" fill="none" markerEnd={arrowId("#cbd5e1")} />,
+    );
+  }
+  if (t === "max-protect") {
+    for (const p of players) if ((p.group === "TE" || p.group === "RB") && !steps.has(p.id)) out.push(<g key={`mp-${p.id}`}>{blockT(px(p.x), py(p.y) - R, "#cbd5e1")}</g>);
+  }
+
+  // Double team, ID the Mike and the untargeted defender point at a defender, so they need a defense on the chart.
+  const tag = (x: number, yy: number, text: string, color: string, key: string) => {
+    const w = text.length * 7.4 + 16;
+    return (
+      <g key={key}>
+        <rect x={x - w / 2} y={yy - 11} width={w} height={20} rx={6} fill="#06180f" fillOpacity="0.92" stroke={color} strokeWidth="1.5" />
+        <text x={x} y={yy + 4.5} textAnchor="middle" className="mb-match-tag" fill={color} style={{ fontSize: 12.5 }}>{text}</text>
+      </g>
+    );
+  };
+  if (adj.dbl && adj.dbl !== "highest-ovr" && line.length) {
+    const d = findSlot(ghosts, adj.dbl.toUpperCase());
+    if (d) {
+      const two = [...line].sort((a, b) => Math.abs(a.x - d.x) - Math.abs(b.x - d.x)).slice(0, 2);
+      for (const o of two) out.push(<line key={`dbl-${o.id}`} x1={px(o.x)} y1={py(o.y) - R + 4} x2={px(d.x)} y2={py(d.y) + R - 4} stroke="#cbd5e1" strokeWidth="5" strokeLinecap="round" />);
+      out.push(tag(px(d.x), py(d.y) - R - 14, "double team", "#cbd5e1", "dbl-tag"));
     }
   }
-  return null;
+  if (adj.idm) {
+    const d = findSlot(ghosts, adj.idm.toUpperCase());
+    if (d) {
+      out.push(<circle key="idm" cx={px(d.x)} cy={py(d.y)} r={R + 6} fill="none" stroke="#facc15" strokeWidth="4" />);
+      out.push(tag(px(d.x), py(d.y) - R - 16, "ID'd Mike", "#facc15", "idm-tag"));
+    }
+  }
+  if (adj.utd && adj.utd !== "user-defender") {
+    const d = findSlot(ghosts, adj.utd.toUpperCase());
+    if (d) {
+      out.push(<circle key="utd" cx={px(d.x)} cy={py(d.y)} r={R + 6} fill="none" stroke="#f472b6" strokeWidth="4" strokeDasharray="7 5" />);
+      out.push(tag(px(d.x), py(d.y) + R + 16, "unblocked", "#f472b6", "utd-tag"));
+    }
+  }
+  return out;
 }

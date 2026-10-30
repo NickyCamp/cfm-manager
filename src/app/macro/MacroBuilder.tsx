@@ -10,6 +10,7 @@ import {
   findDefOption,
   findOffOption,
   offOptionsFor,
+  gameSlots,
   roleOf,
   ROLE_NAME,
   sectionsFor,
@@ -263,7 +264,8 @@ export function MacroBuilder() {
   const selRole = sel && side === "D" ? roleOf(sel) : null;
   const defOpts = sel && side === "D" ? defOptionsFor(sel) : [];
   const offOpts = sel && side === "O" ? offOptionsFor(sel) : [];
-  const offGroups = [...new Set(offOpts.map((a) => a.group))];
+  const slots = useMemo(() => (side === "O" ? gameSlots(players) : {}), [side, players]);
+  const selSlot = sel ? slots[sel.id] : undefined;
   const sections = sectionsFor(side);
   const movedCount = Object.keys(st.mv).length;
   const allSets = useMemo(
@@ -400,7 +402,7 @@ export function MacroBuilder() {
         </div>
         <div className="mb-panel-scroll" ref={panelScroll}>
         <section className={`panel mb-build mb-pane${tab === "adjust" ? " is-active" : ""}`} aria-labelledby="mb-assign-h">
-          <h2 id="mb-assign-h" className="mb-h">{side === "D" ? "Individual adjustments" : "Hot routes"}</h2>
+          <h2 id="mb-assign-h" className="mb-h">{side === "D" ? "Individual adjustments" : "Receiver routes"}</h2>
           <div className="mb-chips" role="group" aria-label="Pick a player">
             {pickable.map((p) => {
               const has = playerSteps.has(p.id);
@@ -425,7 +427,10 @@ export function MacroBuilder() {
             <div className="mb-assign">
               <div className="mb-assign-head">
                 <strong>{sel.label}</strong>
-                <span className="muted">{selStep ? stepText(selStep) : selRole ? ROLE_NAME[selRole] : "No assignment yet"}</span>
+                <span className="muted">
+                  {selStep ? stepText(selStep) : selRole ? ROLE_NAME[selRole] : side === "O" && !offOpts.length ? "No routes for this position" : "No route yet"}
+                  {selSlot && selSlot !== sel.label ? ` · ${selSlot} in the macro menu` : ""}
+                </span>
                 {selStep && (
                   <button type="button" className="btn-link mb-clear" onClick={() => clearPlayer(sel.id)}>Clear</button>
                 )}
@@ -447,24 +452,20 @@ export function MacroBuilder() {
                   ))}
                 </div>
               )}
-              {side === "O" && offGroups.map((g) => (
-                <div key={g} className="mb-opt-group">
-                  <div className="mb-opt-h">{g}</div>
-                  <div className="mb-opts">
-                    {offOpts.filter((a) => a.group === g).map((a) => (
-                      <button key={a.key} type="button" className="mb-opt" aria-pressed={selStep?.k === a.key} style={{ ["--z" as string]: "var(--ink-soft)" }} onClick={() => assign(a.key)}>
-                        <span className="mb-swatch" aria-hidden="true" />
-                        {a.label}
-                      </button>
-                    ))}
-                  </div>
+              {side === "O" && offOpts.length > 0 && (
+                <div className="mb-opts mb-opts-8">
+                  {offOpts.map((a) => (
+                    <button key={a.key} type="button" className="mb-opt" aria-pressed={selStep?.k === a.key} onClick={() => assign(a.key)}>
+                      {a.label}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
 
-          <h2 className="mb-h mb-h2">{side === "D" ? "Team adjustments" : "Protection"}</h2>
-          {side === "D" && <p className="muted small mb-sec-note">Same settings and order as the game&apos;s Create Adjustment screen. Tap an option again to clear it.</p>}
+          <h2 className="mb-h mb-h2">Team adjustments</h2>
+          <p className="muted small mb-sec-note">Same settings and order as the game&apos;s Create Adjustment screen. Tap an option again to clear it.</p>
           <div className="mb-sections">
             {sections.map((sec, i) => {
               const setCount = sec.cats.filter((k) => adj[k.cat]).length;
