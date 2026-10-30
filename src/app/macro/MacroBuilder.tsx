@@ -19,7 +19,7 @@ import { DEFAULT_STATE, decodeState, encodeState, type MacroState, type Step } f
 import { chartHeight, COLORS, FieldChart, W } from "./FieldChart";
 
 const DEFAULT_O = { f: "gun", s: "Trips TE" };
-const DEFAULT_D = { f: "34", s: "Over Solid" };
+const DEFAULT_D = { f: "3-4", s: "Over Solid" };
 
 function layout(side: "O" | "D", f: string, s: string) {
   return side === "O" ? layoutOffense(f, s) : layoutDefense(f, s);

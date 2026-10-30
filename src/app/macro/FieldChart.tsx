@@ -16,7 +16,7 @@ import type { Step } from "@/lib/macro/share";
 
 // Chart geometry (SVG units). x: 0–100 field units → 0–1000. y: yards from the line.
 export const W = 1000;
-export const FIELD_H = 650;
+export const FIELD_H = 710;
 const CAP_COLS = 3;
 const CAP_ROW = 28;
 /** Total chart height: the field plus a caption listing the macro's team settings. */
@@ -62,8 +62,8 @@ export type ChartProps = {
 export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldChart(props, ref) {
   const { side, players, ghosts, steps, adj, ctx, caption, selected, title, subtitle, personnel, onSelect, onMove, big } = props;
   const H = chartHeight(caption.length);
-  const R = big ? 29 : 22;
-  const k = big ? 1.3 : 1;
+  const R = big ? 26 : 22;
+  const k = big ? 1.18 : 1;
   const drag = useRef<{ id: string; sx: number; sy: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -79,7 +79,7 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
   const byId = new Map(players.map((p) => [p.id, p]));
   const qbSpot = (side === "D" ? ghosts : players).find((p) => p.label === "QB") ?? { x: 50, y: -5 };
 
-  const yardLines = [-10, -5, 5, 10, 15, 20, 25];
+  const yardLines = [-15, -10, -5, 5, 10, 15, 20, 25];
 
   return (
     <svg
@@ -117,7 +117,7 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
       {yardLines.map((y) => (
         <line key={y} x1="20" x2={W - 20} y1={py(y)} y2={py(y)} stroke="#ffffff" strokeOpacity={y % 10 === 0 ? 0.16 : 0.08} strokeWidth="2" pointerEvents="none" />
       ))}
-      {Array.from({ length: 42 }, (_, i) => -13 + i).map((y) => (
+      {Array.from({ length: 46 }, (_, i) => -17 + i).map((y) => (
         <g key={y} stroke="#ffffff" strokeOpacity="0.18" strokeWidth="2" pointerEvents="none">
           <line x1="10" x2="26" y1={py(y)} y2={py(y)} />
           <line x1={W - 26} x2={W - 10} y1={py(y)} y2={py(y)} />
@@ -202,7 +202,7 @@ export const FieldChart = forwardRef<SVGSVGElement, ChartProps>(function FieldCh
               const f = toField(e);
               if (!d.moved && Math.hypot(f.sx - d.sx, f.sy - d.sy) < 6) return;
               d.moved = true;
-              const minY = side === "D" ? 0.8 : -14;
+              const minY = side === "D" ? 0.8 : -16.5;
               const maxY = side === "D" ? 26 : -0.6;
               onMove(p.id, Math.min(98, Math.max(2, f.x)), Math.min(maxY, Math.max(minY, f.y)));
             }}

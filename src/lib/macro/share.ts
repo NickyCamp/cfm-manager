@@ -29,7 +29,7 @@ export type MacroState = {
 export const DEFAULT_STATE: MacroState = {
   v: 1,
   side: "D",
-  f: "34",
+  f: "3-4",
   s: "Over Solid",
   of: "gun",
   os: "4WR Trips Strong",

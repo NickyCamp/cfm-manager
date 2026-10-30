@@ -40,14 +40,14 @@ export const ROLE_NAME: Record<DefRole, string> = {
 
 /** Which of the game's individual-adjustment lists a player uses. */
 export function roleOf(p: Player): DefRole | null {
-  const l = p.label;
-  if (l === "CB1" || l === "CB2") return "CB";
-  if (l.startsWith("SLCB")) return "SLCB";
-  if (l === "FS" || l === "SS" || l === "FS2") return "S";
-  if (l === "LEDG" || l === "REDG") return "EDGE";
-  if (l === "NT" || l.startsWith("DT")) return "DT";
+  const l = p.label.replace(/\d+$/, "");
+  if (p.label === "CB1" || p.label === "CB2") return "CB";
+  if (l === "SLCB" || l === "CB") return "SLCB"; // CB3/CB4 in Prevent play the slots
+  if (l === "FS" || l === "SS") return "S";
+  if (["LEDG", "REDG", "RRE", "RLE"].includes(l)) return "EDGE";
+  if (["NT", "DT", "RDT"].includes(l)) return "DT";
   if (l === "SAM" || l === "WILL") return "OLB";
-  if (l === "MIKE" || l.startsWith("SLB") || l.startsWith("LB")) return "MLB";
+  if (l === "MIKE" || l === "SLB" || l === "LB") return "MLB";
   return null;
 }
 
@@ -244,7 +244,7 @@ export function defCtx(adj: Record<string, string>, strong: 1 | -1): DefCtx {
 
 /** Moves the team settings make to where players line up. */
 export function applyAdjustments(players: Player[], adj: Record<string, string>, strong: 1 | -1): Player[] {
-  const safeties = players.filter((p) => roleOf(p) === "S" && p.label !== "FS2" && p.y > 9);
+  const safeties = players.filter((p) => roleOf(p) === "S" && p.y > 9);
   const twoHigh = safeties.length >= 2;
   return players.map((p) => {
     let { x, y } = p;
@@ -280,7 +280,7 @@ export function applyAdjustments(players: Player[], adj: Record<string, string>,
       if (adj.cbw === "tight") x -= 6 * out;
       if (adj.cbw === "wide") x = out < 0 ? 4 : 96;
     }
-    if (role === "S" && p.label !== "FS2") {
+    if (role === "S") {
       const d = num(adj.sd);
       if (d !== undefined) y = Math.min(26, Math.max(3, d));
       if (twoHigh && p.y > 9) {
