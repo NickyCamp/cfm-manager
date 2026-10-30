@@ -2,8 +2,10 @@
 // - token_hash links (our email template): send to /auth/confirm, which asks
 //   for a tap before using the link, so email scanners that pre-open links
 //   can't use it up. Works in any browser, including in-app ones on phones.
-// - code links (Supabase's default PKCE flow): only work in the browser that
-//   asked for the email; kept for old emails.
+// - code links (PKCE flow): only work in the browser that asked for the
+//   email; kept for old emails.
+// - fragment links (implicit flow, what the login form requests now):
+//   handed to /auth/finish in the browser.
 import { NextResponse } from "next/server";
 import { supabaseUser } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safeNext";
@@ -24,6 +26,13 @@ export async function GET(request: Request) {
     const sb = await supabaseUser();
     const { error } = await sb.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, url.origin));
+    return NextResponse.redirect(new URL("/login?error=link", url.origin));
   }
-  return NextResponse.redirect(new URL("/login?error=link", url.origin));
+  // No code: the session (or an error) is in the URL fragment, which the
+  // browser keeps across this redirect. /auth/finish reads it.
+  const finish = new URL("/auth/finish", url.origin);
+  finish.searchParams.set("next", next);
+  const err = url.searchParams.get("error_description");
+  if (err) finish.searchParams.set("error_description", err);
+  return NextResponse.redirect(finish);
 }

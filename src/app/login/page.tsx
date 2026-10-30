@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <h1>Sign in</h1>
         <p>New here? Choose Create account. You&apos;ll connect your EA account and pick your league next.</p>
         {error === "link" && (
-          <div className="notice error">That sign-in link didn&apos;t work. It may have expired or been opened already. Send yourself a new one below and type the code from the email instead.</div>
+          <div className="notice error">That sign-in link didn&apos;t work. It may have expired or been opened already. Send yourself a new one below.</div>
         )}
         <LoginForm next={next || "/dashboard"} />
       </div>
