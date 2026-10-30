@@ -37,6 +37,10 @@ export function MacroBuilder() {
   const [selected, setSelected] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Desktop side panel: open/closed and which tab is showing.
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [tab, setTab] = useState<"adjust" | "steps" | "share">("adjust");
+  const panelScroll = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   // Load a shared macro from the address, then keep the address in sync.
@@ -98,6 +102,14 @@ export function MacroBuilder() {
   const selStep = sel ? playerSteps.get(sel.id) : undefined;
 
   const update = useCallback((fn: (s: MacroState) => MacroState) => setSt((s) => fn(s)), []);
+
+  const selectPlayer = useCallback((id: string | null) => {
+    setSelected(id);
+    if (!id) return;
+    setPanelOpen(true);
+    setTab("adjust");
+    panelScroll.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   // ---------- formation changes ----------
   function setFormation(f: string, s?: string) {
@@ -249,7 +261,8 @@ export function MacroBuilder() {
   const [find, setFind] = useState("");
 
   return (
-    <div className="mb">
+    <div className={`mb mb-layout${panelOpen ? "" : " is-closed"}`}>
+      <div className="mb-stage">
       <div className="mb-controls panel">
         <div className="mb-row">
           <div className="seg mb-side" role="group" aria-label="Side of the ball">
@@ -319,7 +332,12 @@ export function MacroBuilder() {
         </div>
       </div>
 
-      <div className="mb-chart-wrap">
+      <div className="mb-stage-bar">
+        <button type="button" className="btn-link mb-panel-toggle" aria-expanded={panelOpen} aria-controls="mb-panel" onClick={() => setPanelOpen((o) => !o)}>
+          {panelOpen ? "Hide options ›" : "‹ Show options"}
+        </button>
+      </div>
+      <div className="mb-chart-wrap" style={{ ["--h" as string]: chartHeight(caption.length) }}>
         <FieldChart
           ref={svgRef}
           side={side}
@@ -333,15 +351,23 @@ export function MacroBuilder() {
           title={chartTitle}
           subtitle={chartSub}
           personnel={personnel}
-          onSelect={setSelected}
+          onSelect={selectPlayer}
           big={big}
           onMove={(id, x, y) => update((s) => ({ ...s, mv: { ...s.mv, [id]: [x, y] } }))}
         />
       </div>
       <p className="hint mb-hint">Tap a player to give him an assignment. Drag a player to move his alignment.<span className="mb-rotate"> Turn your phone sideways for a bigger field.</span></p>
+      </div>
 
-      <div className="mb-grid">
-        <section className="panel mb-build" aria-labelledby="mb-assign-h">
+      <div className="mb-panel" id="mb-panel">
+        <div className="mb-panel-inner">
+        <div className="mb-tabs" role="tablist" aria-label="Macro options">
+          {([["adjust", "Adjust"], ["steps", `Steps${st.st.length ? ` (${st.st.length})` : ""}`], ["share", "Share"]] as const).map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
+          ))}
+        </div>
+        <div className="mb-panel-scroll" ref={panelScroll}>
+        <section className={`panel mb-build mb-pane${tab === "adjust" ? " is-active" : ""}`} aria-labelledby="mb-assign-h">
           <h2 id="mb-assign-h" className="mb-h">{side === "D" ? "Individual adjustments" : "Hot routes"}</h2>
           <div className="mb-chips" role="group" aria-label="Pick a player">
             {pickable.map((p) => {
@@ -352,7 +378,7 @@ export function MacroBuilder() {
                   type="button"
                   className="mb-pchip"
                   aria-pressed={p.id === selected}
-                  onClick={() => setSelected(p.id === selected ? null : p.id)}
+                  onClick={() => selectPlayer(p.id === selected ? null : p.id)}
                   style={{ ["--c" as string]: COLORS[p.group].fill, ["--ci" as string]: COLORS[p.group].ink }}
                 >
                   {p.label}
@@ -434,8 +460,7 @@ export function MacroBuilder() {
           </div>
         </section>
 
-        <aside className="mb-side-col">
-          <section className="panel" aria-labelledby="mb-steps-h">
+          <section className={`panel mb-pane${tab === "steps" ? " is-active" : ""}`} aria-labelledby="mb-steps-h">
             <div className="section-head">
               <h2 id="mb-steps-h" className="mb-h">Macro steps</h2>
               {st.st.length > 0 && (
@@ -463,7 +488,7 @@ export function MacroBuilder() {
             )}
           </section>
 
-          <section className="panel" aria-labelledby="mb-share-h">
+          <section className={`panel mb-pane${tab === "share" ? " is-active" : ""}`} aria-labelledby="mb-share-h">
             <h2 id="mb-share-h" className="mb-h">Share</h2>
             <div className="field">
               <label htmlFor="mb-title">Name</label>
@@ -482,7 +507,8 @@ export function MacroBuilder() {
             </div>
             <p className="hint">The link opens this exact macro for anyone, no account needed.</p>
           </section>
-        </aside>
+        </div>
+        </div>
       </div>
 
       <div className={`mb-toast${toast ? " show" : ""}`} role="status" aria-live="polite">{toast}</div>
