@@ -89,15 +89,14 @@ export function PlayerCard(p: PlayerCardProps) {
               <div className="pcard-shade" />
               <div className="pcard-jersey">#{p.jersey}</div>
               <div className="pcard-side">
-                <b className="ovr">{p.ovr}</b>
+                <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
                 <span className="pos">{p.pos}</span>
                 <span className="team">{p.teamAbbr}</span>
-                {p.rookie && <span className="rc">RC</span>}
                 {sortAbilities(p.abilities).slice(0, 5).map((a) => (
                   <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${a.tier === "Single" ? "X-Factor" : a.tier})`}>{initials(a.title)}</span>
                 ))}
               </div>
-              <Nameplate first={p.first} last={p.last} />
+              <Nameplate first={p.first} last={p.last} rookie={p.rookie} />
               <div className="pcard-foil" /><div className="pcard-glare" />
             </div>
           </div>
@@ -143,11 +142,12 @@ export function PlayerCard(p: PlayerCardProps) {
   );
 }
 
-function Nameplate({ first, last, small = false }: { first: string; last: string; small?: boolean }) {
+function Nameplate({ first, last, small = false, rookie = false }: { first: string; last: string; small?: boolean; rookie?: boolean }) {
   return (
     <div className={`pcard-name ${small ? "small" : ""}`}>
       <span className="first">{first}</span>
       <span className="last">{last}</span>
+      {rookie && <span className="pcard-ribbon">Rookie edition</span>}
     </div>
   );
 }
