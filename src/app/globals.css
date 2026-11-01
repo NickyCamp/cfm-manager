@@ -718,7 +718,13 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard:focus-visible .pcard-face { box-shadow: 0 0 0 3px var(--goalpost); }
 .pcard-face { position: absolute; inset: 0; border-radius: 10px; padding: 2.8cqw; backface-visibility: hidden; -webkit-backface-visibility: hidden;
   box-shadow: 0 12px 26px rgba(0,0,0,.35); }
-.pcard-back { transform: rotateY(180deg); }
+.pcard-back { transform: rotateY(180deg) translateZ(1px); }
+.pcard-front { transform: translateZ(1px); }
+/* Safari doesn't always honor backface-visibility, so the hidden side is also
+   switched off halfway through the flip. */
+.pcard-front, .pcard-back { transition: visibility 0s .25s; }
+.pcard-back, .pcard.flipped .pcard-front { visibility: hidden; }
+.pcard.flipped .pcard-back { visibility: visible; }
 .pcard-inner { position: relative; width: 100%; height: 100%; border-radius: 4px; overflow: hidden; background: #0a0f18; color: #fff; }
 
 .pcard-art { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--tc1) 85%, #000) 0%, #0a0f18 75%); }
@@ -728,7 +734,7 @@ details.panel[open] summary { margin-bottom: 8px; }
     linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--tc2) 35%, transparent) 50%, transparent 65%); }
 .pcard-ph span { position: absolute; left: 2cqw; top: 6cqw; font: 800 78cqw/1 var(--display); letter-spacing: -2cqw;
   color: transparent; -webkit-text-stroke: 3px color-mix(in srgb, var(--tc2) 70%, transparent); opacity: .55; }
-.pcard-art.faded { opacity: .35; filter: blur(2px) saturate(.8); }
+.pcard-art.faded { opacity: .22; }
 .pcard-shade { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%),
     linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%); }
@@ -778,7 +784,7 @@ details.panel[open] summary { margin-bottom: 8px; }
 @media (prefers-reduced-motion: reduce) { .t-xf .pcard-foil { animation: none; } .pcard { transition: none; } }
 
 .pcard-keys { position: absolute; left: 3.5cqw; right: 3.5cqw; top: 3.5cqw; bottom: 22cqw; z-index: 2; display: flex; flex-direction: column; gap: 2cqw;
-  padding: 3cqw; border-radius: 2cqw; background: rgba(8,12,20,.82); border: 1px solid rgba(255,255,255,.14); }
+  padding: 3cqw; border-radius: 2cqw; background: rgba(8,12,20,.95); border: 1px solid rgba(255,255,255,.14); }
 .pcard-keys .khead { display: flex; justify-content: space-between; align-items: baseline; font: 800 4.6cqw/1 var(--display); text-transform: uppercase; letter-spacing: .8px; color: #c3cde0; }
 .pcard-keys .kmeta { font-weight: 700; letter-spacing: 0; }
 .pcard-keys .kmeta b { color: #fff; font-size: 6cqw; }
