@@ -772,15 +772,10 @@ details.panel[open] summary { margin-bottom: 8px; }
 .t-super .pcard-face { background: linear-gradient(135deg, #9c6b00, #ffe27a 25%, #b8860b 45%, #fff3b0 62%, #a07000 80%, #ffd54a); }
 .t-super .pcard-foil { background: repeating-linear-gradient(115deg, rgba(255,90,0,.18) 0 8%, rgba(255,220,0,.2) 8% 16%, rgba(255,250,200,.2) 16% 24%, rgba(255,170,40,.18) 24% 32%) var(--mx) var(--my) / 300% 300%;
   mix-blend-mode: color-dodge; opacity: .6; }
-.t-xf .pcard-face { background:
-    radial-gradient(circle, rgba(255,220,230,.95) .6px, transparent 1.1px) 0 0 / 5px 5px,
-    radial-gradient(circle, rgba(255,255,255,.8) .5px, transparent 1px) 2px 3px / 9px 9px,
-    linear-gradient(135deg, #5c0016, #e0115f 22%, #7a0020 42%, #ff4f7b 60%, #6b001b 80%, #c4103f); }
-.t-xf .pcard-foil { background:
-    radial-gradient(circle, rgba(255,210,225,.85) .7px, transparent 1.2px) 0 0 / 7px 7px,
-    repeating-linear-gradient(120deg, rgba(255,0,80,.24) 0 6%, rgba(255,120,160,.22) 6% 12%, rgba(200,0,60,.2) 12% 18%, rgba(255,200,220,.2) 18% 24%) var(--mx) var(--my) / 260% 260%;
-  mix-blend-mode: color-dodge; opacity: .7; animation: pcard-shimmer 3.5s ease-in-out infinite; }
-@keyframes pcard-shimmer { 50% { filter: hue-rotate(-12deg) brightness(1.2); } }
+.t-xf .pcard-face { background: linear-gradient(135deg, #5c0016, #e0115f 22%, #7a0020 42%, #ff4f7b 60%, #6b001b 80%, #c4103f); }
+.t-xf .pcard-foil { background: linear-gradient(115deg, transparent 28%, rgba(255,120,160,.32) 44%, rgba(255,220,230,.38) 50%, rgba(255,120,160,.32) 56%, transparent 72%) var(--mx) var(--my) / 230% 230%;
+  mix-blend-mode: screen; animation: pcard-shimmer 3.5s ease-in-out infinite; }
+@keyframes pcard-shimmer { 50% { filter: brightness(1.2); } }
 @media (prefers-reduced-motion: reduce) { .t-xf .pcard-foil { animation: none; } .pcard { transition: none; } }
 
 .pcard-keys { position: absolute; left: 3.5cqw; right: 3.5cqw; top: 3.5cqw; bottom: 22cqw; z-index: 2; display: flex; flex-direction: column; gap: 2cqw;
