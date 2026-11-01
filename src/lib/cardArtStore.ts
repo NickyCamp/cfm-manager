@@ -49,3 +49,23 @@ export async function signedCardArt(slug: string, playerId: number): Promise<str
     return undefined;
   }
 }
+
+/** Signed URLs for every player in the league that has uploaded art (members only). */
+export async function signedCardArtMap(slug: string): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  try {
+    await ensureCardArtBucket();
+    const store = supabaseAdmin().storage.from(CARD_ART_BUCKET);
+    const { data: files } = await store.list(slug, { limit: 1000 });
+    const paths = (files || []).map((f) => f.name).filter((n) => /^\d+\.jpg$/.test(n)).map((n) => `${slug}/${n}`);
+    if (!paths.length) return out;
+    const { data } = await store.createSignedUrls(paths, URL_TTL_SECONDS);
+    for (const r of data || []) {
+      const id = Number(r.path?.split("/")[1]?.replace(".jpg", ""));
+      if (r.signedUrl && id) out.set(id, r.signedUrl);
+    }
+  } catch (e) {
+    console.error("card art map", slug, e);
+  }
+  return out;
+}

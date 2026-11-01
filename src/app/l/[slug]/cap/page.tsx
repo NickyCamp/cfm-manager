@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CountUp } from "@/components/league/CountUp";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { capYears, inferredDeadCap, teamCapProjection, teamPlayers } from "@/lib/league/derive";
@@ -45,7 +46,7 @@ export default async function LeagueCap({ params, searchParams }: Props) {
               {rows.map(({ t, dead, top, expiring, next }) => (
                 <tr key={t.id}>
                   <td><Link className="team-link" href={`/l/${slug}/teams/${t.abbr.toLowerCase()}?tab=cap`}><TeamBadge team={t} size={22} />{t.name}</Link></td>
-                  <td className={`num strong ${t.cap.available < 0 ? "neg" : ""}`}>{money(t.cap.available)}</td>
+                  <td className={`num strong ${t.cap.available < 0 ? "neg" : ""}`}><CountUp value={t.cap.available} /></td>
                   <td className="bar-col"><span className={`bar ${t.cap.available < 0 ? "neg" : ""}`} style={{ width: `${Math.min(100, (Math.abs(t.cap.available) / max) * 100)}%` }} /></td>
                   <td className="num hide-sm">{money(t.cap.spent)}</td>
                   <td className={`num ${next.space < 0 ? "neg" : ""}`}>{money(next.space)}</td>
@@ -105,7 +106,7 @@ function FutureCap({ slug, d, years, pick }: { slug: string; d: NonNullable<Awai
                   <td><Link className="team-link" href={`/l/${slug}/teams/${t.abbr.toLowerCase()}?tab=cap`}><TeamBadge team={t} size={22} />{t.name}</Link></td>
                   <td className="num">{total.players}</td>
                   <td className="num">{money(total.committed)}</td>
-                  <td className={`num strong ${total.space < 0 ? "neg" : ""}`}>{money(total.space)}</td>
+                  <td className={`num strong ${total.space < 0 ? "neg" : ""}`}><CountUp value={total.space} /></td>
                   <td className="bar-col hide-sm"><span className={`bar ${total.space < 0 ? "neg" : ""}`} style={{ width: `${Math.min(100, (Math.abs(total.space) / max) * 100)}%` }} /></td>
                   <td className="hide-sm">{top ? <Link href={`/l/${slug}/players/${top.p.id}`}>{top.p.first[0]}. {top.p.last}</Link> : "—"} <span className="muted">{top ? money(top.hit) : ""}</span></td>
                 </tr>

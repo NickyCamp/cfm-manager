@@ -10,10 +10,10 @@ import { projectPlayer } from "@/lib/league/projection";
 import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
 import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
 import { PlayerCard } from "@/components/league/PlayerCard";
-import { cardStats } from "@/lib/league/cardStats";
-import { cardArt } from "@/lib/league/cardArt";
+import { cardProps } from "@/lib/league/cardProps";
 import { leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
+import { CountUp } from "@/components/league/CountUp";
 
 type Props = { params: Promise<{ slug: string; id: string }> };
 
@@ -39,7 +39,7 @@ export default async function PlayerPage({ params }: Props) {
   // Uploaded card art is members-only (photos of real players aren't ours to publish).
   const member = Boolean(await leagueMemberId(slug).catch(() => null));
   const uploaded = member ? await signedCardArt(slug, p.id) : undefined;
-  const art = uploaded ?? cardArt(slug, p.id);
+  const art = uploaded;
 
   return (
     <main className="league-page">
@@ -66,27 +66,16 @@ export default async function PlayerPage({ params }: Props) {
 
         <div className={p.gone ? "" : "player-hero"}>
           <div className="pcard-col">
-          <PlayerCard
-            first={p.first} last={p.last} pos={p.pos} jersey={p.jersey} ovr={p.ovr} dev={p.dev}
-            rookie={p.yearsPro === 0}
-            teamAbbr={team?.abbr ?? "FA"} primary={team?.primary || "#33415c"} secondary={team?.secondary || "#c9d1e0"}
-            setLabel={`${d.season.year} ${slug.length <= 5 ? slug.toUpperCase() : "Series"}`}
-            exp={p.yearsPro === 0 ? "Rookie" : `${ordinal(p.yearsPro + 1)} yr`}
-            age={p.age} height={heightText(p.height)} weight={p.weight} college={p.college}
-            draft={p.draft.round >= 1 && p.draft.round <= 7 ? `R${p.draft.round} #${p.draft.pick}${p.draft.year ? `, ${p.draft.year}` : ""}` : "Undrafted"}
-            art={art}
-            abilities={p.abilities}
-            stats={cardStats(p)}
-          />
+          <PlayerCard {...cardProps(d, slug, p, team, art)} />
           {member && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
           </div>
           {!p.gone && (
             <div>
               <div className="stat-tiles">
-            <div className="tile"><div className="tile-label">Cap hit this season</div><div className="tile-value">{money(c.capHit)}</div></div>
-            <div className="tile"><div className="tile-label">Contract</div><div className="tile-value">{money(c.salary + c.bonus)}</div><div className="tile-sub">{c.length} yrs, {c.yearsLeft} left</div></div>
-            <div className="tile"><div className="tile-label">Signing bonus</div><div className="tile-value">{money(c.bonus)}</div></div>
-            <div className="tile"><div className="tile-label">If cut today</div><div className="tile-value">{money(c.releaseSavings)}</div><div className="tile-sub">saved, {money(c.releasePenalty)} dead</div></div>
+            <div className="tile"><div className="tile-label">Cap hit this season</div><div className="tile-value"><CountUp value={c.capHit} /></div></div>
+            <div className="tile"><div className="tile-label">Contract</div><div className="tile-value"><CountUp value={c.salary + c.bonus} /></div><div className="tile-sub">{c.length} yrs, {c.yearsLeft} left</div></div>
+            <div className="tile"><div className="tile-label">Signing bonus</div><div className="tile-value"><CountUp value={c.bonus} /></div></div>
+            <div className="tile"><div className="tile-label">If cut today</div><div className="tile-value"><CountUp value={c.releaseSavings} /></div><div className="tile-sub">saved, {money(c.releasePenalty)} dead</div></div>
           </div>
             </div>
           )}
@@ -218,7 +207,3 @@ function AbilitiesPanel({ slug, p }: { slug: string; p: import("@/lib/league/typ
   );
 }
 
-function ordinal(n: number) {
-  const s = ["th", "st", "nd", "rd"], v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}

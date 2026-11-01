@@ -1,37 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { CardStat } from "@/lib/league/cardStats";
-
-export type PlayerCardProps = {
-  first: string;
-  last: string;
-  pos: string;
-  jersey: number;
-  ovr: number;
-  dev: 0 | 1 | 2 | 3;
-  rookie: boolean;
-  teamAbbr: string;
-  primary: string;
-  secondary: string;
-  setLabel: string;      // e.g. "2027 NCL"
-  exp: string;           // "Rookie", "4th yr"
-  age: number;
-  height: string;        // 6'2"
-  weight: number;
-  college: string;
-  draft: string;         // "R1 #12, 2024" or "Undrafted"
-  art?: string;
-  abilities: { title: string; tier: string }[];
-  stats: CardStat[];
-};
-
-const TIER = ["normal", "star", "super", "xf"] as const;
-const TIER_RANK: Record<string, number> = { single: 0, gold: 1, silver: 2, bronze: 3 };
-const tierClass = (t: string) => (t.toLowerCase() in TIER_RANK ? t.toLowerCase() : "bronze");
-const sortAbilities = (a: { title: string; tier: string }[]) =>
-  [...a].sort((x, y) => (TIER_RANK[tierClass(x.tier)] ?? 9) - (TIER_RANK[tierClass(y.tier)] ?? 9));
-const initials = (t: string) => t.replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+import { CARD_TIER, CardFrontInner, Nameplate, sortAbilities, tierClass, type PlayerCardProps } from "./CardFront";
+export type { PlayerCardProps };
 
 /** Football-card style player card: foil by dev trait, tilts with the pointer, tap to flip. */
 export function PlayerCard(p: PlayerCardProps) {
@@ -57,7 +28,7 @@ export function PlayerCard(p: PlayerCardProps) {
     ref.current?.classList.remove("live");
     set("--rx", "0deg"); set("--ry", "0deg"); set("--glare", "0");
   };
-  const tier = TIER[p.dev] ?? "normal";
+  const tier = CARD_TIER[p.dev] ?? "normal";
   const style = { "--tc1": p.primary, "--tc2": p.secondary } as React.CSSProperties;
 
   return (
@@ -79,26 +50,7 @@ export function PlayerCard(p: PlayerCardProps) {
           aria-label={`${p.first} ${p.last} card, ${flipped ? "back" : "front"}. Activate to flip.`}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFlipped((f) => !f); } }}>
           <div className="pcard-face pcard-front">
-            <div className="pcard-inner">
-              <div className={`pcard-art ${p.art ? "has-img" : ""}`}>
-                {p.art
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={p.art} alt="" />
-                  : <div className="pcard-ph" aria-hidden><span>{p.jersey}</span></div>}
-              </div>
-              <div className="pcard-shade" />
-              <div className="pcard-jersey">#{p.jersey}</div>
-              <div className="pcard-side">
-                <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
-                <span className="pos">{p.pos}</span>
-                <span className="team">{p.teamAbbr}</span>
-                {sortAbilities(p.abilities).slice(0, 5).map((a) => (
-                  <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${a.tier === "Single" ? "X-Factor" : a.tier})`}>{initials(a.title)}</span>
-                ))}
-              </div>
-              <Nameplate first={p.first} last={p.last} rookie={p.rookie} />
-              <div className="pcard-foil" /><div className="pcard-glare" />
-            </div>
+            <CardFrontInner {...p} />
           </div>
           <div className="pcard-face pcard-back">
             <div className="pcard-inner pcard-inner-back">
@@ -142,12 +94,3 @@ export function PlayerCard(p: PlayerCardProps) {
   );
 }
 
-function Nameplate({ first, last, small = false, rookie = false }: { first: string; last: string; small?: boolean; rookie?: boolean }) {
-  return (
-    <div className={`pcard-name ${small ? "small" : ""}`}>
-      <span className="first">{first}</span>
-      <span className="last">{last}</span>
-      {rookie && <span className="pcard-ribbon">Rookie edition</span>}
-    </div>
-  );
-}

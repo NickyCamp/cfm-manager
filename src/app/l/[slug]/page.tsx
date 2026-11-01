@@ -5,6 +5,7 @@ import { gamesForWeek, indexes, leaders, record, streakText } from "@/lib/league
 import { money } from "@/lib/league/format";
 import { GameCard, NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
 import { supabaseUser } from "@/lib/supabase/server";
+import { Ticker } from "@/components/league/Ticker";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ new?: string; joined?: string }> };
 
@@ -37,6 +38,7 @@ export default async function LeagueHome({ params, searchParams }: Props) {
     <main className="page league-page">
       <div className="wrap">
         {notices}
+        <Ticker d={d} slug={slug} teams={teams} />
         <section>
           <div className="section-head">
             <h2>{d.season.title}</h2>

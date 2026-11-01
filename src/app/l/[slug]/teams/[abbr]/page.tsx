@@ -9,8 +9,13 @@ import { CAP_GROWTH_PER_YEAR } from "@/lib/league/cap";
 import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
+import { CountUp } from "@/components/league/CountUp";
+import { StaticCard } from "@/components/league/CardFront";
+import { CardStack } from "@/components/league/CardStack";
+import { cardProps } from "@/lib/league/cardProps";
+import { leagueMemberId, signedCardArtMap } from "@/lib/cardArtStore";
 
-type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string }> };
+type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"]] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TeamPage({ params, searchParams }: Props) {
   const { slug, abbr } = await params;
-  const { tab = "roster", view } = await searchParams;
+  const { tab = "roster", view, unit } = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
   const { byAbbr } = indexes(d);
@@ -58,7 +63,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
         {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" ? "details" : "years"} base={base} />
           : tab === "schedule" ? <ScheduleTab d={d} team={team} slug={slug} />
           : tab === "stats" ? <StatsTab d={d} team={team} slug={slug} />
-          : <RosterTab roster={roster} slug={slug} />}
+          : <RosterTab d={d} team={team} roster={roster} slug={slug} list={view === "list"} unit={unit} base={base} />}
       </div>
     </main>
   );
@@ -76,7 +81,7 @@ function CapOutlook({ d, team, base }: { d: LeagueData; team: Team; base: string
         {totals.map((t, i) => (
           <div className="outlook-card" key={t.year}>
             <div className="oc-year">{t.year}{i === 0 ? <span className="muted"> now</span> : <span className="proj-inline">proj.</span>}</div>
-            <div className={`oc-space ${t.space < 0 ? "neg" : ""}`}>{money(t.space)}</div>
+            <div className={`oc-space ${t.space < 0 ? "neg" : ""}`}><CountUp value={t.space} /></div>
             <div className="oc-label">cap space</div>
             <div className="oc-row"><span>{t.players}</span> signed</div>
             <div className="oc-row"><span>{money(t.committed)}</span> committed</div>
@@ -87,10 +92,14 @@ function CapOutlook({ d, team, base }: { d: LeagueData; team: Team; base: string
   );
 }
 
-function RosterTab({ roster, slug }: { roster: Player[]; slug: string }) {
+async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: LeagueData; team: Team; roster: Player[]; slug: string; list: boolean; unit?: string; base: string }) {
   const groups = rosterGroups(roster);
   const active = roster.filter((p) => !p.ps);
   const avgAge = active.length ? active.reduce((a, p) => a + p.age, 0) / active.length : 0;
+  // Uploaded card art is members-only.
+  const art = (await leagueMemberId(slug).catch(() => null)) ? await signedCardArtMap(slug) : new Map<number, string>();
+  const card = (p: Player) => cardProps(d, slug, p, team, art.get(p.id));
+  const top = [...active].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
   return (
     <>
       <div className="stat-tiles">
@@ -99,7 +108,48 @@ function RosterTab({ roster, slug }: { roster: Player[]; slug: string }) {
         <Tile label="Average age" value={avgAge.toFixed(1)} />
         <Tile label="X-Factors / Superstars" value={`${active.filter((p) => p.dev === 3).length} / ${active.filter((p) => p.dev === 2).length}`} />
       </div>
-      {groups.map((g) => (
+      <div className="seg" role="tablist" aria-label="Roster view">
+        <Link href={base} aria-current={!list ? "page" : undefined}>Card binder</Link>
+        <Link href={`${base}?view=list`} aria-current={list ? "page" : undefined}>List</Link>
+      </div>
+      {!list && top.length > 0 && (
+        <div className="top-hand">
+          <h3>Top players <span className="muted small">swipe or tap a card</span></h3>
+          <CardStack label={`${team.name} top players`} items={top.map((p) => ({ href: `/l/${slug}/players/${p.id}`, card: card(p) }))} />
+        </div>
+      )}
+      {!list ? (() => {
+        const u = UNITS.find((x) => x.key === unit) ?? UNITS[0];
+        const cards = roster.filter(u.match).sort((a, b) => b.ovr - a.ovr || a.last.localeCompare(b.last));
+        return (
+          <>
+            <nav className="unit-tabs" aria-label="Unit">
+              {UNITS.map((x) => {
+                const n = roster.filter(x.match).length;
+                return n || x.key !== "ps" ? (
+                  <Link key={x.key} href={x.key === "offense" ? base : `${base}?unit=${x.key}`} aria-current={x.key === u.key ? "page" : undefined}>
+                    {x.label} <span>{n}</span>
+                  </Link>
+                ) : null;
+              })}
+            </nav>
+            <section className="binder-page" aria-label={`${u.label}, best to worst`}>
+              <div className="binder-head"><h3>{u.label}</h3><span>{cards.length} cards · best to worst</span></div>
+              {cards.length ? (
+                <div className="binder-grid">
+                  {cards.map((p, i) => (
+                    <Link key={p.id} href={`/l/${slug}/players/${p.id}`} className="sleeve" aria-label={`${i + 1}. ${p.first} ${p.last}, ${p.pos}, ${p.ovr} overall`}>
+                      <span className="sleeve-rank">{i + 1}</span>
+                      <StaticCard {...card(p)} />
+                      <span className="sleeve-tag"><b>{money(p.contract.capHit)}</b> · {p.contract.yearsLeft} yr{p.contract.yearsLeft === 1 ? "" : "s"} left{p.injury > 0 ? " · Inj" : ""}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : <p className="muted">No players here.</p>}
+            </section>
+          </>
+        );
+      })() : groups.map((g) => (
         <div className="panel tbl-wrap" key={g.label}>
           <table className="tbl">
             <caption>{g.label} <span className="muted">{g.players.length}</span></caption>
@@ -125,6 +175,15 @@ function RosterTab({ roster, slug }: { roster: Player[]; slug: string }) {
   );
 }
 
+const OFFENSE = new Set(["QB", "HB", "FB", "WR", "TE", "LT", "LG", "C", "RG", "RT"]);
+const SPECIAL = new Set(["K", "P", "LS"]);
+const UNITS: { key: string; label: string; match: (p: Player) => boolean }[] = [
+  { key: "offense", label: "Offense", match: (p) => !p.ps && OFFENSE.has(p.pos) },
+  { key: "defense", label: "Defense", match: (p) => !p.ps && !OFFENSE.has(p.pos) && !SPECIAL.has(p.pos) },
+  { key: "special", label: "Special teams", match: (p) => !p.ps && SPECIAL.has(p.pos) },
+  { key: "ps", label: "Practice squad", match: (p) => p.ps },
+];
+
 function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details"; base: string }) {
   const active = roster.filter((p) => !p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
   const ps = roster.filter((p) => p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
@@ -145,9 +204,9 @@ function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Te
   return (
     <>
       <div className="stat-tiles">
-        <Tile label="Cap space" value={money(team.cap.available)} neg={team.cap.available < 0} />
-        <Tile label="Spent" value={money(team.cap.spent)} sub={`of ${money(team.cap.room)}`} />
-        <Tile label="Dead money (est.)" value={money(dead)} sub="cap spent not on the roster" />
+        <Tile label="Cap space" value={<CountUp value={team.cap.available} />} neg={team.cap.available < 0} />
+        <Tile label="Spent" value={<CountUp value={team.cap.spent} />} sub={`of ${money(team.cap.room)}`} />
+        <Tile label="Dead money (est.)" value={<CountUp value={dead} />} sub="cap spent not on the roster" />
         <Tile label="Expiring deals" value={`${expiring.length}`} sub={money(expiring.reduce((a, p) => a + p.contract.capHit, 0))} />
       </div>
       <div className="cap-meter" role="img" aria-label={`${usedPct.toFixed(0)}% of the cap used`}>
@@ -301,7 +360,7 @@ function Stat({ title, head, rows }: { title: string; head: string[]; rows: Reac
   );
 }
 
-function Tile({ label, value, sub, neg }: { label: string; value: string; sub?: string; neg?: boolean }) {
+function Tile({ label, value, sub, neg }: { label: string; value: React.ReactNode; sub?: string; neg?: boolean }) {
   return (
     <div className="tile">
       <div className="tile-label">{label}</div>
