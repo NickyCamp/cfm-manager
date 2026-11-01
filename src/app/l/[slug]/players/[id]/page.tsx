@@ -68,6 +68,7 @@ export default async function PlayerPage({ params }: Props) {
             age={p.age} height={heightText(p.height)} weight={p.weight} college={p.college}
             draft={p.draft.round >= 1 && p.draft.round <= 7 ? `R${p.draft.round} #${p.draft.pick}${p.draft.year ? `, ${p.draft.year}` : ""}` : "Undrafted"}
             art={cardArt(slug, p.id)}
+            abilities={p.abilities}
             stats={cardStats(p)}
           />
           {!p.gone && (

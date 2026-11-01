@@ -22,11 +22,16 @@ export type PlayerCardProps = {
   college: string;
   draft: string;         // "R1 #12, 2024" or "Undrafted"
   art?: string;
+  abilities: { title: string; tier: string }[];
   stats: CardStat[];
 };
 
 const TIER = ["normal", "star", "super", "xf"] as const;
-const CHIP = ["", "Star", "Superstar", "X-Factor"];
+const TIER_RANK: Record<string, number> = { single: 0, gold: 1, silver: 2, bronze: 3 };
+const tierClass = (t: string) => (t.toLowerCase() in TIER_RANK ? t.toLowerCase() : "bronze");
+const sortAbilities = (a: { title: string; tier: string }[]) =>
+  [...a].sort((x, y) => (TIER_RANK[tierClass(x.tier)] ?? 9) - (TIER_RANK[tierClass(y.tier)] ?? 9));
+const initials = (t: string) => t.replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 3).toUpperCase();
 
 /** Football-card style player card: foil by dev trait, tilts with the pointer, tap to flip. */
 export function PlayerCard(p: PlayerCardProps) {
@@ -79,46 +84,54 @@ export function PlayerCard(p: PlayerCardProps) {
                 {p.art
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={p.art} alt="" />
-                  : <div className="pcard-ph"><div className="num">{p.jersey}</div><div className="pos">{p.pos}</div></div>}
+                  : <div className="pcard-ph" aria-hidden><span>{p.jersey}</span></div>}
               </div>
-              <div className="pcard-band" />
-              <div className="pcard-setno">{p.setLabel}</div>
-              <div className="pcard-plate">
-                <div className="name">{p.first} {p.last}</div>
-                <div className="meta"><span>{p.teamAbbr} · {p.pos} · #{p.jersey}</span><span>{p.exp}</span></div>
+              <div className="pcard-shade" />
+              <div className="pcard-jersey">#{p.jersey}</div>
+              <div className="pcard-side">
+                <b className="ovr">{p.ovr}</b>
+                <span className="pos">{p.pos}</span>
+                <span className="team">{p.teamAbbr}</span>
+                {p.rookie && <span className="rc">RC</span>}
+                {sortAbilities(p.abilities).slice(0, 5).map((a) => (
+                  <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${a.tier === "Single" ? "X-Factor" : a.tier})`}>{initials(a.title)}</span>
+                ))}
               </div>
-              <div className="pcard-ovr"><b>{p.ovr}</b><span>OVR</span></div>
-              {CHIP[p.dev] && <div className="pcard-chip">{CHIP[p.dev]}</div>}
-              {p.rookie && <div className="pcard-rc">RC</div>}
+              <Nameplate first={p.first} last={p.last} />
               <div className="pcard-foil" /><div className="pcard-glare" />
             </div>
           </div>
           <div className="pcard-face pcard-back">
             <div className="pcard-inner pcard-inner-back">
-              <div className="pcard-bhead">
-                <span className="bnum">{p.jersey}</span>
-                <span className="bname">{p.first} {p.last}</span>
-                <span className="bpos">{p.pos}</span>
+              <div className="pcard-art faded" aria-hidden>
+                {p.art
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={p.art} alt="" />
+                  : <div className="pcard-ph"><span>{p.jersey}</span></div>}
               </div>
-              <div className="pcard-bio">
-                <div><span>Age</span><b>{p.age}</b></div>
-                <div><span>Height</span><b>{p.height || "—"}</b></div>
-                <div><span>Weight</span><b>{p.weight ? `${p.weight} lb` : "—"}</b></div>
-                <div><span>Exp</span><b>{p.exp}</b></div>
-                <div className="wide"><span>College</span><b>{p.college || "—"}</b></div>
-                <div className="wide"><span>Draft</span><b>{p.draft}</b></div>
-              </div>
-              <div className="pcard-attrs">
+              <div className="pcard-keys">
+                <div className="khead">
+                  <span>Key attributes</span>
+                  <span className="kmeta"><b>{p.ovr}</b> OVR · #{p.jersey}</span>
+                </div>
+                <div className="kteam"><span className="team">{p.teamAbbr}</span><span>{p.pos}</span><span className="muted">{p.exp}</span></div>
+                <div className="kgrid">
+                  <div><span>HT</span><b>{p.height || "—"}</b></div>
+                  <div><span>WT</span><b>{p.weight || "—"}</b></div>
+                  <div><span>AGE</span><b>{p.age}</b></div>
+                  {p.stats.map((s) => (
+                    <div key={s.abbr + s.label} title={s.label} className={s.value >= 90 ? "hi" : ""}><span>{s.abbr}</span><b>{s.value}</b></div>
+                  ))}
+                </div>
                 {p.stats.length === 0 && <p className="pcard-none">Ratings arrive with the next sync.</p>}
-                {p.stats.map((s, i) => (
-                  <div key={s.label} className={`attr ${!s.core && i > 0 && p.stats[i - 1].core ? "first-pos" : ""}`}>
-                    <span className="lbl">{s.label}</span>
-                    <span className="bar"><i style={{ width: `${Math.max(0, Math.min(99, s.value))}%` }} className={s.value >= 90 ? "hi" : s.value >= 80 ? "good" : ""} /></span>
-                    <b>{s.value}</b>
-                  </div>
-                ))}
+                {p.abilities.length > 0 && (
+                  <div className="kabil">{sortAbilities(p.abilities).map((a) => (
+                    <span key={a.title} className={`ab-${tierClass(a.tier)}`}>{a.title}</span>
+                  ))}</div>
+                )}
+                <div className="kbio">{p.college || "No college"} · {p.draft}</div>
               </div>
-              <div className="pcard-bfoot">{p.setLabel} · {p.teamAbbr}</div>
+              <Nameplate first={p.first} last={p.last} small />
             </div>
           </div>
         </div>
@@ -126,6 +139,15 @@ export function PlayerCard(p: PlayerCardProps) {
       <button type="button" className="pcard-flip" onClick={() => setFlipped((f) => !f)}>
         {flipped ? "Show front" : "Flip card"}
       </button>
+    </div>
+  );
+}
+
+function Nameplate({ first, last, small = false }: { first: string; last: string; small?: boolean }) {
+  return (
+    <div className={`pcard-name ${small ? "small" : ""}`}>
+      <span className="first">{first}</span>
+      <span className="last">{last}</span>
     </div>
   );
 }

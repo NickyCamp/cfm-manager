@@ -46,7 +46,22 @@ const SHORT: Partial<Record<RatingKey, string>> = {
   awareRating: "Awareness",
 };
 
-export type CardStat = { label: string; value: number; core: boolean };
+// Madden-style three-letter abbreviations for the card back.
+const ABBR: Partial<Record<RatingKey, string>> = {
+  speedRating: "SPD", accelRating: "ACC", strengthRating: "STR", awareRating: "AWR",
+  throwPowerRating: "THP", throwAccShortRating: "SAC", throwAccMidRating: "MAC", throwAccDeepRating: "DAC",
+  throwOnRunRating: "TOR", throwUnderPressureRating: "TUP", carryRating: "CAR", bCVRating: "BCV",
+  breakTackleRating: "BTK", jukeMoveRating: "JKM", truckRating: "TRK", catchRating: "CTH",
+  leadBlockRating: "LBK", impactBlockRating: "IBL", runBlockRating: "RBK", cITRating: "CIT",
+  specCatchRating: "SPC", routeRunShortRating: "SRR", routeRunMedRating: "MRR", routeRunDeepRating: "DRR",
+  releaseRating: "RLS", passBlockRating: "PBK", passBlockPowerRating: "PBP", passBlockFinesseRating: "PBF",
+  runBlockPowerRating: "RBP", powerMovesRating: "PMV", finesseMovesRating: "FMV", blockShedRating: "BSH",
+  pursuitRating: "PUR", tackleRating: "TAK", playRecRating: "PRC", hitPowerRating: "HPW",
+  zoneCoverRating: "ZCV", manCoverRating: "MCV", pressRating: "PRS", changeOfDirectionRating: "COD",
+  kickPowerRating: "KPW", kickAccRating: "KAC",
+};
+
+export type CardStat = { abbr: string; label: string; value: number; core: boolean };
 
 export function cardStats(p: Player): CardStat[] {
   if (!p.ratings) return [];
@@ -55,7 +70,7 @@ export function cardStats(p: Player): CardStat[] {
   const core = CORE;
   const pos = BY_GROUP[group] ?? ["awareRating"];
   return [
-    ...core.map((k) => ({ label: SHORT[k] ?? k, value: val(k), core: true })),
-    ...pos.map((k) => ({ label: SHORT[k] ?? k, value: val(k), core: false })),
+    ...core.map((k) => ({ abbr: ABBR[k] ?? "", label: SHORT[k] ?? k, value: val(k), core: true })),
+    ...pos.map((k) => ({ abbr: ABBR[k] ?? "", label: SHORT[k] ?? k, value: val(k), core: false })),
   ];
 }
