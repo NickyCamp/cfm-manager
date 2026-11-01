@@ -12,6 +12,8 @@ import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/Abi
 import { PlayerCard } from "@/components/league/PlayerCard";
 import { cardStats } from "@/lib/league/cardStats";
 import { cardArt } from "@/lib/league/cardArt";
+import { leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
+import { CardArtEditor } from "@/components/league/CardArtEditor";
 
 type Props = { params: Promise<{ slug: string; id: string }> };
 
@@ -34,6 +36,10 @@ export default async function PlayerPage({ params }: Props) {
     .sort((a, b) => a.g.stage - b.g.stage || a.g.week - b.g.week);
   const c = p.contract;
   const bg = team?.primary || "#0f3d2e";
+  // Uploaded card art is members-only (photos of real players aren't ours to publish).
+  const member = Boolean(await leagueMemberId(slug).catch(() => null));
+  const uploaded = member ? await signedCardArt(slug, p.id) : undefined;
+  const art = uploaded ?? cardArt(slug, p.id);
 
   return (
     <main className="league-page">
@@ -59,6 +65,7 @@ export default async function PlayerPage({ params }: Props) {
         </p>
 
         <div className={p.gone ? "" : "player-hero"}>
+          <div className="pcard-col">
           <PlayerCard
             first={p.first} last={p.last} pos={p.pos} jersey={p.jersey} ovr={p.ovr} dev={p.dev}
             rookie={p.yearsPro === 0}
@@ -67,10 +74,12 @@ export default async function PlayerPage({ params }: Props) {
             exp={p.yearsPro === 0 ? "Rookie" : `${ordinal(p.yearsPro + 1)} yr`}
             age={p.age} height={heightText(p.height)} weight={p.weight} college={p.college}
             draft={p.draft.round >= 1 && p.draft.round <= 7 ? `R${p.draft.round} #${p.draft.pick}${p.draft.year ? `, ${p.draft.year}` : ""}` : "Undrafted"}
-            art={cardArt(slug, p.id)}
+            art={art}
             abilities={p.abilities}
             stats={cardStats(p)}
           />
+          {member && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
+          </div>
           {!p.gone && (
             <div>
               <div className="stat-tiles">
