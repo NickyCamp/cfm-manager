@@ -3,37 +3,35 @@
    Barlow Condensed (jersey/scoreboard lettering) for headings and numbers,
    Barlow for reading text. */
 
+/* Night broadcast theme (2026-11-02, Nick asked for a sleek modern dark look with
+   an electric blue/violet accent). One dark palette for everyone: the cards and
+   team colors read best on it. Numbers are the heroes (Barlow Condensed); panels
+   stay quiet; the violet-to-blue accent marks only the current page, focus and
+   the main action. Token names are older (field, chalk, goalpost) and kept so
+   every page picks the new palette up. */
 :root {
-  --field: #0f3d2e;
-  --field-deep: #0a2c21;
-  --chalk: #eef2ec;
-  --paper: #ffffff;
-  --ink: #12201a;
-  --ink-soft: #4a5a51;
-  --line: #cbd5cc;
-  --goalpost: #f2c200;
-  --goalpost-ink: #1d1700;
-  --danger: #b42318;
-  --ok: #1f7a4d;
-  --radius-control: 6px;
-  --radius-panel: 12px;
+  --night: #070a14;
+  --field: #7a5cff;          /* accent: volt violet */
+  --field-deep: #0b1022;     /* league header */
+  --arc: #3e8bff;            /* accent partner: arc blue */
+  --chalk: #070a14;          /* page */
+  --paper: #0d1324;          /* panels */
+  --rail: #141b31;           /* raised / hover */
+  --ink: #eceff8;
+  --ink-soft: #8a93b2;
+  --line: #222a44;
+  --goalpost: #7a5cff;       /* primary action + focus */
+  --goalpost-ink: #ffffff;
+  --accent-grad: linear-gradient(100deg, #7a5cff 0%, #3e8bff 100%);
+  --danger: #ff4d63;
+  --ok: #2fd69c;
+  --warn: #ffb547;
+  --radius-control: 10px;
+  --radius-panel: 16px;
   --gutter: 16px;
   --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --text: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chalk: #0c1a15;
-    --paper: #13241d;
-    --ink: #e7efe9;
-    --ink-soft: #a3b4aa;
-    --line: #2a3d34;
-    --field: #0b3326;
-    --field-deep: #07231a;
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -924,3 +922,85 @@ details.panel[open] summary { margin-bottom: 8px; }
   .league-menu.open a { opacity: 1; transform: none; }
   .league-menu a[aria-current="page"] { background: var(--goalpost); color: var(--goalpost-ink); }
 }
+
+
+/* ================= Night broadcast overrides ================= */
+body { background: radial-gradient(1200px 520px at 12% -120px, rgba(122,92,255,.16), transparent 60%), var(--night); background-attachment: fixed; }
+::selection { background: rgba(122,92,255,.45); }
+:focus-visible { outline: 2px solid var(--arc); outline-offset: 2px; }
+input:focus, textarea:focus, .num-field input:focus, .mb-field select:focus, .addr:focus-within { border-color: var(--field); box-shadow: 0 0 0 3px rgba(122,92,255,.35); }
+input[type="text"], input[type="email"], input[type="password"], input[type="search"], textarea, select { background: var(--rail); color: var(--ink); border-color: var(--line); }
+
+/* Header: transparent bar with a thin accent seam. */
+.site-head { background: rgba(7,10,20,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 0; position: sticky; top: 0; z-index: 40; }
+.site-head::after { content: ""; display: block; height: 2px; background: var(--accent-grad); opacity: .9; }
+.head-links a, .head-links button { color: var(--ink); }
+.head-links a:hover, .head-links button:hover { background: var(--rail); }
+
+/* Buttons */
+.btn-primary, .art-editor-actions .btn-primary { background: var(--accent-grad); color: #fff; border: 0; box-shadow: 0 6px 20px rgba(80,90,255,.35); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-quiet { border-color: var(--line); }
+.pcard-flip { background: var(--rail); border-color: var(--line); color: var(--ink); }
+.pcard-flip:hover { border-color: #3a4468; }
+.btn-link { color: #b6a8ff; }
+
+/* League header: the one bold moment. */
+.league-head { background: radial-gradient(600px 220px at 0% 0%, rgba(122,92,255,.32), transparent 70%), radial-gradient(500px 200px at 100% 0%, rgba(62,139,255,.18), transparent 70%), var(--field-deep);
+  color: var(--ink); border-bottom: 1px solid var(--line); }
+.league-title h1 { letter-spacing: -0.01em; }
+.league-sub { color: var(--ink-soft); }
+.league-nav a { color: var(--ink-soft); border-bottom: 3px solid transparent; }
+.league-nav a:hover { color: var(--ink); }
+.league-nav a[aria-current="page"] { color: #fff; border-image: var(--accent-grad) 1; border-bottom-width: 3px; border-bottom-style: solid; }
+.league-menu-btn { background: var(--rail) !important; border-color: var(--line) !important; }
+.league-menu a { background: var(--rail) !important; color: var(--ink) !important; }
+.league-menu a[aria-current="page"] { background: var(--accent-grad) !important; color: #fff !important; }
+
+/* Surfaces: thin seam + a faint top highlight instead of shadows. */
+.panel, .tile, .game-card, .outlook-card, .art-editor, .notice, .capsheet { background: var(--paper); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.game-card:hover { border-color: #34406a; }
+.tile-label, .oc-label { color: var(--ink-soft); }
+.tile-value, .oc-space { color: #fff; letter-spacing: -0.01em; }
+
+/* Tables */
+.tbl th { color: var(--ink-soft); border-bottom-color: var(--line); font-weight: 600; }
+.tbl td { border-color: var(--line); }
+.tbl tbody tr:hover td { background: rgba(122,92,255,.07); }
+
+/* Tabs, segments, chips */
+.tabs { border-bottom-color: var(--line); }
+.tabs a[aria-current="page"] { color: #fff; border-bottom-color: var(--field); }
+.seg { background: var(--paper); border-color: var(--line); }
+.seg a[aria-current="page"], .week-chips a[aria-current="page"], .mb .seg button[aria-pressed="true"], .mb-flip[aria-pressed="true"], .mb-opt[aria-pressed="true"] { background: var(--accent-grad); border-color: transparent; color: #fff; }
+.unit-tabs a[aria-current="page"] { background: var(--accent-grad); color: #fff; border-color: transparent; }
+
+/* Tags */
+.tag, .status { background: var(--rail); border-color: var(--line); color: var(--ink-soft); }
+.dev-1 { background: rgba(190,200,225,.14); color: #d6dcec; }
+.dev-2 { background: rgba(255,200,70,.16); color: #ffd36b; }
+.dev-3 { background: rgba(255,77,120,.18); color: #ff8aa6; }
+.tier-gold { background: rgba(255,200,70,.16); color: #ffd36b; border-color: rgba(255,200,70,.35); }
+.tier-silver { background: rgba(190,200,225,.14); color: #d6dcec; }
+.tier-bronze { background: rgba(214,140,80,.18); color: #f0b080; }
+.tier-x-factor { background: rgba(255,77,120,.18); color: #ff8aa6; border-color: rgba(255,77,120,.35); }
+.o-on { background: rgba(47,214,156,.14); }
+.o-blocked, .o-close { color: var(--warn); background: rgba(255,181,71,.14); }
+.combo-list { box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+
+/* Home ticker + binder pick up the new palette */
+.ticker { background: var(--paper); border: 1px solid var(--line); border-bottom: 0; box-shadow: inset 0 -2px 0 0 var(--field); }
+.ticker-badge { background: var(--accent-grad); }
+.tk-tag.lead { background: var(--accent-grad); color: #fff; }
+.binder-page { background: linear-gradient(160deg, #10172b, #0a0f1d); border: 1px solid var(--line); }
+.binder-page::before { background: radial-gradient(circle at 11px 50%, var(--night) 0 5px, rgba(122,92,255,.4) 5.5px 6.5px, transparent 7px) 0 0 / 22px 72px repeat-y, #090d1a; }
+.cap-gauge { background: var(--rail); }
+.toast { background: #151c33; border: 1px solid var(--line); border-left: 4px solid var(--field); }
+.hold-btn { background: transparent; }
+.flap-tile { background: linear-gradient(180deg, #1b2340 0 49%, #121831 51% 100%); }
+.site-foot { border-top-color: var(--line); }
+.hero { background: radial-gradient(800px 360px at 15% 0%, rgba(122,92,255,.28), transparent 65%), radial-gradient(700px 320px at 90% 10%, rgba(62,139,255,.18), transparent 65%), var(--night); }
+.steps li { border-top-color: var(--field); }
+.steps li::before { color: var(--field); }
+.wizard-step .n { background: var(--accent-grad); }
+.choice:has(input:checked) { border-color: var(--field); box-shadow: 0 0 0 3px rgba(122,92,255,.25); }

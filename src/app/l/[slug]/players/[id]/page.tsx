@@ -35,7 +35,7 @@ export default async function PlayerPage({ params }: Props) {
   const log = d.lines.filter((l) => l.p === p.id).map((l) => ({ l, g: games.get(l.g)! })).filter((x) => x.g)
     .sort((a, b) => a.g.stage - b.g.stage || a.g.week - b.g.week);
   const c = p.contract;
-  const bg = team?.primary || "#0f3d2e";
+  const bg = team?.primary || "#1b2340";
   // Uploaded card art is members-only (photos of real players aren't ours to publish).
   const member = Boolean(await leagueMemberId(slug).catch(() => null));
   const uploaded = member ? await signedCardArt(slug, p.id) : undefined;
