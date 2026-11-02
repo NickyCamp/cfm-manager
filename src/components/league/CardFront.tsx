@@ -30,7 +30,13 @@ const TIER_RANK: Record<string, number> = { single: 0, gold: 1, silver: 2, bronz
 export const tierClass = (t: string) => (t.toLowerCase() in TIER_RANK ? t.toLowerCase() : "bronze");
 export const sortAbilities = (a: { title: string; tier: string }[]) =>
   [...a].sort((x, y) => (TIER_RANK[tierClass(x.tier)] ?? 9) - (TIER_RANK[tierClass(y.tier)] ?? 9));
-const initials = (t: string) => t.replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+/** The ability's name stacked word by word inside its circle, sized so the longest word fits. */
+function AbilityName({ title }: { title: string }) {
+  const words = title.replace(/[^A-Za-z0-9'& -]/g, " ").split(/[\s-]+/).filter(Boolean);
+  const longest = Math.max(4, ...words.map((w) => w.length));
+  const size = Math.min(3.1, 23 / longest) - (words.length > 2 ? 0.25 : 0);
+  return <span className="abil-name" style={{ fontSize: `${size.toFixed(2)}cqw` }}>{words.map((w, i) => <span key={i}>{w}</span>)}</span>;
+}
 
 export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "art" | "abilities">) {
   return (
@@ -47,8 +53,8 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
         <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
         <span className="pos">{p.pos}</span>
         <span className="team">{p.teamAbbr}</span>
-        {sortAbilities(p.abilities).slice(0, 5).map((a) => (
-          <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${a.tier === "Single" ? "X-Factor" : a.tier})`}>{initials(a.title)}</span>
+        {sortAbilities(p.abilities).slice(0, 4).map((a) => (
+          <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${a.tier === "Single" ? "X-Factor" : a.tier})`}><AbilityName title={a.title} /></span>
         ))}
       </div>
       <Nameplate first={p.first} last={p.last} rookie={p.rookie} />

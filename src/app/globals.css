@@ -746,12 +746,14 @@ details.panel[open] summary { margin-bottom: 8px; }
   background: var(--tc1); border: 0.9cqw solid var(--tc2); color: #fff; font: 800 4.4cqw/1 var(--display); text-shadow: none; }
 .pcard-side .team { width: 13.5cqw; height: 13.5cqw; }
 .pcard-side .rc { padding: 0.6cqw 1.8cqw; border-radius: 1.2cqw; background: #fff; color: #c8102e; font: 800 5cqw/1.1 var(--display); text-shadow: none; }
-.pcard-side .abil { width: 12cqw; height: 12cqw; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font: 800 4.2cqw/1 var(--display); letter-spacing: -.2px; text-shadow: none; box-shadow: 0 1px 4px rgba(0,0,0,.5); border: 0.6cqw solid rgba(255,255,255,.75); }
+.pcard-side .abil { width: 16.5cqw; height: 16.5cqw; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  text-shadow: none; box-shadow: 0 1px 4px rgba(0,0,0,.5), inset 0 0 0 0.5cqw rgba(255,255,255,.55); }
+.abil-name { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 88%; font-family: var(--display); font-weight: 800;
+  line-height: 1.02; text-transform: uppercase; letter-spacing: -0.02em; text-align: center; }
 .ab-gold { background: linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10); color: #3a2a00; }
 .ab-silver { background: linear-gradient(135deg, #8e97a8, #f4f6fa 45%, #a7b0c0); color: #1e2a44; }
 .ab-bronze { background: linear-gradient(135deg, #7a4a1f, #e2a86a 45%, #8a5a2b); color: #2e1a05; }
-.ab-single { background: linear-gradient(135deg, #7a0f2b, #ff4d6d 45%, #5a1aa0); color: #fff; }
+.ab-single { background: linear-gradient(135deg, #5c0016, #e0115f 45%, #8a0026 80%, #ff4f7b); color: #fff; }
 
 .pcard-name { position: absolute; left: 4.5cqw; right: 24cqw; bottom: 4cqw; z-index: 3; display: flex; flex-direction: column; line-height: 1; text-shadow: 0 2px 6px rgba(0,0,0,.7); }
 .pcard-name .first { font: 700 5.2cqw/1.1 var(--display); text-transform: uppercase; letter-spacing: .6px; color: #d7deea; }
@@ -979,11 +981,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .tag, .status { background: var(--rail); border-color: var(--line); color: var(--ink-soft); }
 .dev-1 { background: rgba(190,200,225,.14); color: #d6dcec; }
 .dev-2 { background: rgba(255,200,70,.16); color: #ffd36b; }
-.dev-3 { background: rgba(255,77,120,.18); color: #ff8aa6; }
+.dev-3 { background: rgba(224,17,95,.25); color: #ff7aa0; }
 .tier-gold { background: rgba(255,200,70,.16); color: #ffd36b; border-color: rgba(255,200,70,.35); }
 .tier-silver { background: rgba(190,200,225,.14); color: #d6dcec; }
 .tier-bronze { background: rgba(214,140,80,.18); color: #f0b080; }
-.tier-x-factor { background: rgba(255,77,120,.18); color: #ff8aa6; border-color: rgba(255,77,120,.35); }
+.tier-x-factor { background: linear-gradient(135deg, rgba(224,17,95,.35), rgba(138,0,38,.35)); color: #ff7aa0; border-color: rgba(224,17,95,.6); }
 .o-on { background: rgba(47,214,156,.14); }
 .o-blocked, .o-close { color: var(--warn); background: rgba(255,181,71,.14); }
 .combo-list { box-shadow: 0 16px 40px rgba(0,0,0,.5); }
