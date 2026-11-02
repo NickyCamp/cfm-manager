@@ -7,6 +7,7 @@ import { SyncNowButton } from "@/components/league/SyncNowButton";
 import { getLeagueData, getLeagueRow } from "@/lib/league/load";
 import { LeagueNav } from "@/components/league/LeagueNav";
 import { syncStatusText } from "@/lib/format";
+import { Toaster } from "@/components/league/Toaster";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ export default async function LeagueLayout({ children, params }: { children: Rea
             </div>
           </div>
           {data && <LeagueNav slug={slug} />}
+          <Toaster />
         </div>
       </div>
       {children}

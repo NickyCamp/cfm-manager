@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { DRAFT_GROUP, draftOrder, recText, roundOrder } from "@/lib/league/playoffs";
 import { NoData, TeamBadge } from "@/components/league/bits";
+import { DecryptText } from "@/components/league/DecryptText";
 
 export const metadata: Metadata = { title: "Draft order" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ round?: string }> };
@@ -39,7 +40,7 @@ export default async function Draft({ params, searchParams }: Props) {
                 <tr key={x.c.id}>
                   <td className="num strong">{(r - 1) * n + i + 1}{r > 1 && <span className="muted small"> ({r}.{String(i + 1).padStart(2, "0")})</span>}</td>
                   <td>
-                    <Link className="team-link" href={`/l/${slug}/teams/${x.c.abbr.toLowerCase()}`}><TeamBadge team={x.c.team} size={22} /><span>{x.c.name}</span></Link>
+                    <Link className="team-link" href={`/l/${slug}/teams/${x.c.abbr.toLowerCase()}`}><TeamBadge team={x.c.team} size={22} /><span><DecryptText text={x.c.name} delay={Math.min(i, 12) * 40} /></span></Link>
                     {x.c.team.user && <div className="muted small">{x.c.team.user}</div>}
                   </td>
                   <td className="num">{recText(x.c.w, x.c.l, x.c.t)}</td>

@@ -3,6 +3,7 @@ import type { Game, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
 import { onColor } from "@/lib/league/format";
 import { record } from "@/lib/league/derive";
+import { FlapNumber } from "@/components/league/FlapNumber";
 
 export function TeamBadge({ team, size = 28 }: { team: Team | undefined; size?: number }) {
   if (!team) return <span className="team-badge tbd" style={{ width: size, height: size }}>?</span>;
@@ -42,7 +43,7 @@ export function GameCard({ slug, game, teams }: { slug: string; game: Game; team
       <TeamBadge team={t} size={26} />
       <span className="gc-name">{t ? t.name : "TBD"}</span>
       {t && <span className="gc-rec">{record(t)}</span>}
-      <span className="gc-score">{game.final ? score : ""}</span>
+      <span className="gc-score">{game.final ? <FlapNumber value={score} /> : ""}</span>
     </div>
   );
   const body = (

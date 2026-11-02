@@ -14,6 +14,7 @@ import { StaticCard } from "@/components/league/CardFront";
 import { CardStack } from "@/components/league/CardStack";
 import { cardProps } from "@/lib/league/cardProps";
 import { leagueMemberId, signedCardArtMap } from "@/lib/cardArtStore";
+import { CapGauge } from "@/components/league/CapGauge";
 
 type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"]] as const;
@@ -189,7 +190,6 @@ function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Te
   const ps = roster.filter((p) => p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
   const dead = inferredDeadCap(team, roster);
   const expiring = active.filter((p) => p.contract.yearsLeft <= 1);
-  const usedPct = team.cap.room ? Math.min(100, (team.cap.spent / team.cap.room) * 100) : 0;
   const capRows = (list: Player[]) => list.map((p) => (
     <tr key={p.id}>
       <td className="cap-name"><PlayerLink slug={slug} player={p} /> <span className="muted small">{p.pos}</span></td>
@@ -209,9 +209,7 @@ function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Te
         <Tile label="Dead money (est.)" value={<CountUp value={dead} />} sub="cap spent not on the roster" />
         <Tile label="Expiring deals" value={`${expiring.length}`} sub={money(expiring.reduce((a, p) => a + p.contract.capHit, 0))} />
       </div>
-      <div className="cap-meter" role="img" aria-label={`${usedPct.toFixed(0)}% of the cap used`}>
-        <span style={{ width: `${usedPct}%`, background: team.primary }} />
-      </div>
+      <CapGauge used={team.cap.room ? (team.cap.spent / team.cap.room) * 100 : 0} color={team.primary} />
       <div className="seg" role="tablist" aria-label="Cap view">
         <Link href={`${base}?tab=cap`} aria-current={view === "years" ? "page" : undefined}>Cap by year</Link>
         <Link href={`${base}?tab=cap&view=details`} aria-current={view === "details" ? "page" : undefined}>Contract details</Link>

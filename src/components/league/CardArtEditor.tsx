@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { HoldButton } from "./HoldButton";
+import { toast } from "./Toaster";
 
 const W = 750, H = 1050; // 5:7, the card's shape
 
@@ -47,6 +49,7 @@ export function CardArtEditor({ slug, playerId, hasArt }: { slug: string; player
     setBusy(false);
     if (!res?.ok) { setMsg(j.error || "Couldn't save. Try again."); return; }
     setOpen(false); setImg(null);
+    toast("Card art saved");
     router.refresh();
   };
 
@@ -54,6 +57,7 @@ export function CardArtEditor({ slug, playerId, hasArt }: { slug: string; player
     setBusy(true);
     await fetch(`/api/leagues/${slug}/card-art/${playerId}`, { method: "DELETE" }).catch(() => null);
     setBusy(false); setOpen(false);
+    toast("Card art removed");
     router.refresh();
   };
 
@@ -81,7 +85,7 @@ export function CardArtEditor({ slug, playerId, hasArt }: { slug: string; player
       <div className="art-editor-actions">
         <button type="button" className="btn-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save card art"}</button>
         <button type="button" className="pcard-flip" disabled={busy} onClick={() => { setOpen(false); setImg(null); setMsg(""); }}>Cancel</button>
-        {hasArt && <button type="button" className="pcard-flip" disabled={busy} onClick={remove}>Remove art</button>}
+        {hasArt && <HoldButton disabled={busy} onConfirm={remove}>Hold to remove art</HoldButton>}
       </div>
     </div>
   );
