@@ -746,7 +746,7 @@ details.panel[open] summary { margin-bottom: 8px; }
   background: var(--tc1); border: 0.9cqw solid var(--tc2); color: #fff; font: 800 4.4cqw/1 var(--display); text-shadow: none; }
 .pcard-side .team { width: 13.5cqw; height: 13.5cqw; }
 .pcard-side .rc { padding: 0.6cqw 1.8cqw; border-radius: 1.2cqw; background: #fff; color: #c8102e; font: 800 5cqw/1.1 var(--display); text-shadow: none; }
-.pcard-side .abil { width: 16.5cqw; height: 16.5cqw; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden;
+.pcard-side .abil { width: 13.5cqw; height: 13.5cqw; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden;
   text-shadow: none; box-shadow: 0 1px 4px rgba(0,0,0,.5), inset 0 0 0 0.5cqw rgba(255,255,255,.55); }
 .abil-name { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 88%; font-family: var(--display); font-weight: 800;
   line-height: 1.02; text-transform: uppercase; letter-spacing: -0.02em; text-align: center; }
