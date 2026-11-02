@@ -7,6 +7,7 @@ import { gunzipSync } from "node:zlib";
 import fs from "node:fs";
 import { supabaseUser } from "@/lib/supabase/server";
 import type { LeagueData } from "./types";
+import { findAbility } from "./abilities";
 
 export type LeagueRow = {
   id: string; slug: string; name: string; console: string;
@@ -50,6 +51,7 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
   if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
   try {
     const data = await fetchData(slug);
+    if (data) markXFactorAbilities(data);
     memo.set(slug, { at: Date.now(), data });
     return data;
   } catch (e) {
@@ -57,3 +59,16 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
     return hit?.data ?? null;
   }
 });
+
+/** EA's rank on an X-Factor ability isn't reliable (Escape Artist came through as
+ *  Bronze), so an ability counts as X-Factor when it sits in the X-Factor slot
+ *  (unlock overall 0) or is an X-Factor ability by definition. */
+function markXFactorAbilities(d: LeagueData) {
+  for (const p of d.players) {
+    for (const a of p.abilities) {
+      if (a.tier === "X-Factor") continue;
+      if (p.slots?.some((s) => s.ovr === 0 && s.title === a.title) || findAbility(a.title)?.kind === "X-Factor") a.tier = "X-Factor";
+    }
+    for (const s of p.slots || []) if (s.ovr === 0 && s.title) s.tier = "X-Factor";
+  }
+}

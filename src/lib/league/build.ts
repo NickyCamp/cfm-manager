@@ -117,7 +117,7 @@ export function buildLeagueData(files: Raw): LeagueData {
         desired: { salary: num(p.desiredSalary), bonus: num(p.desiredBonus), length: num(p.desiredLength) },
         abilities: (p.signatureSlotList || [])
           .filter((s: Any) => !s.isEmpty && s.signatureAbility?.signatureTitle)
-          .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: TIER[s.signatureAbility.rank] || "" })),
+          .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: num(s.ovrThreshold) === 0 ? "X-Factor" : TIER[s.signatureAbility.rank] || "" })),
         ratings: RATING_KEYS.map((k) => num(p[k])),
         slots: (p.signatureSlotList || []).map((s: Any) => ({
           ovr: num(s.ovrThreshold), locked: Boolean(s.locked),
