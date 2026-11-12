@@ -2,6 +2,7 @@
 import type { PlayerCardProps } from "@/components/league/CardFront";
 import { cardStats } from "./cardStats";
 import { cardArt } from "./cardArt";
+import { isHeadshotUrl } from "./headshots";
 import { heightText } from "./format";
 import type { LeagueData, Player, Team } from "./types";
 
@@ -20,6 +21,7 @@ export function cardProps(d: LeagueData, slug: string, p: Player, team: Team | u
     age: p.age, height: heightText(p.height), weight: p.weight, college: p.college,
     draft: p.draft.round >= 1 && p.draft.round <= 7 ? `R${p.draft.round} #${p.draft.pick}${p.draft.year ? `, ${p.draft.year}` : ""}` : "Undrafted",
     art: art ?? cardArt(slug, p.id),
+    cutout: isHeadshotUrl(art),
     abilities: p.abilities,
     stats: cardStats(p),
   };

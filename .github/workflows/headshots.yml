@@ -1,0 +1,32 @@
+name: Refresh headshots
+
+# Weekly: re-pulls nflverse's players file so new signings and rookies get their
+# NFL.com headshot as stand-in card art. Commits only when something changed
+# (the push redeploys the app on Vercel).
+
+on:
+  schedule:
+    - cron: "41 9 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/headshots/update.mjs
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- src/lib/league/headshots.json; then echo "No changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/league/headshots.json
+          git commit -m "Refresh nflverse headshots"
+          git push

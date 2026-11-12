@@ -13,6 +13,7 @@ import { PlayerCard } from "@/components/league/PlayerCard";
 import { cardProps } from "@/lib/league/cardProps";
 import { leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
+import { headshotUrl } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
 
 type Props = { params: Promise<{ slug: string; id: string }> };
@@ -36,10 +37,11 @@ export default async function PlayerPage({ params }: Props) {
     .sort((a, b) => a.g.stage - b.g.stage || a.g.week - b.g.week);
   const c = p.contract;
   const bg = team?.primary || "#1b2340";
-  // Uploaded card art is members-only (photos of real players aren't ours to publish).
+  // Card art is members-only (photos of real players aren't ours to publish): an uploaded
+  // photo if there is one, else the player's NFL.com headshot as a stand-in.
   const member = Boolean(await leagueMemberId(slug).catch(() => null));
   const uploaded = member ? await signedCardArt(slug, p.id) : undefined;
-  const art = uploaded;
+  const art = uploaded ?? (member ? headshotUrl(p) : undefined);
 
   return (
     <main className="league-page">

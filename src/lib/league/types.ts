@@ -67,6 +67,7 @@ export type Player = {
   slots?: { ovr: number; locked: boolean; title: string; tier: string }[]; // ability slots; ovr 0 = X-Factor slot
   desired?: { salary: number; bonus: number; length: number }; // Madden's in-game ask (added 2026-10-28)
   gone?: boolean;        // no longer in the league (kept so old stat lines keep a name)
+  born?: string;         // "YYYY-MM-DD" from EA (added 2026-11-12; used to match real-player headshots)
 };
 
 export type Game = {

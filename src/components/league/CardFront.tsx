@@ -21,6 +21,7 @@ export type PlayerCardProps = {
   college: string;
   draft: string;         // "R1 #12, 2024" or "Undrafted"
   art?: string;
+  cutout?: boolean;      // art is a transparent headshot: show it over the number backdrop
   abilities: { title: string; tier: string }[];
   stats: CardStat[];
 };
@@ -43,14 +44,13 @@ function AbilityName({ title }: { title: string }) {
   return <span className="abil-name" style={{ fontSize: `${size.toFixed(2)}cqw` }}>{words.map((w, i) => <span key={i}>{w}</span>)}</span>;
 }
 
-export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "art" | "abilities">) {
+export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "art" | "cutout" | "abilities">) {
   return (
     <div className="pcard-inner">
-      <div className={`pcard-art ${p.art ? "has-img" : ""}`}>
-        {p.art
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={p.art} alt="" loading="lazy" />
-          : <div className="pcard-ph" aria-hidden><span>{p.jersey}</span></div>}
+      <div className={`pcard-art ${p.art ? "has-img" : ""} ${p.art && p.cutout ? "cutout" : ""}`}>
+        {(!p.art || p.cutout) && <div className="pcard-ph" aria-hidden><span>{p.jersey}</span></div>}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {p.art && <img src={p.art} alt="" loading="lazy" />}
       </div>
       <div className="pcard-shade" />
       <div className="pcard-jersey">#{p.jersey}</div>

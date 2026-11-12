@@ -733,6 +733,9 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard-ph span { position: absolute; left: 2cqw; top: 6cqw; font: 800 78cqw/1 var(--display); letter-spacing: -2cqw;
   color: transparent; -webkit-text-stroke: 3px color-mix(in srgb, var(--tc2) 70%, transparent); opacity: .55; }
 .pcard-art.faded { opacity: .22; }
+/* Headshot stand-ins: a transparent cut-out over the number backdrop, nudged left of the ovr/abilities column. */
+.pcard-art.cutout img { object-fit: cover; object-position: 50% 100%; transform: translateX(-6%) scale(1.04); transform-origin: 50% 100%;
+  filter: drop-shadow(0 2cqw 4cqw rgba(0,0,0,.45)); }
 .pcard-shade { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%),
     linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%); }
