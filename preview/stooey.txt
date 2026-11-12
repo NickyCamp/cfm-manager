@@ -1,0 +1,282 @@
+autocomplete 'mah': [
+  'Patrick Mahomes',
+  'Christian Mahogany',
+  'Carter Mahoney',
+  'Felix Anudike-Uzomah',
+  'Jamree Kromah'
+]
+
+===== player (top) (855 bytes) =====
+{
+ "title": "Ja'Marr Chase",
+ "url": "https://example.test/l/stooey12-5/players/555221458",
+ "color": 16469780,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "description": "**WR · Cincinnati Bengals** · #1\n99 OVR · X-Factor · Age 27 · 6 yrs pro",
+ "fields": [
+  {
+   "name": "Contract",
+   "value": "5 yrs, $177M ($70.8M bonus)\n3 years left",
+   "inline": true
+  },
+  {
+   "name": "2027 cap hit",
+   "value": "**$21.4M**\nCut: saves $0, $52.8M dead",
+   "inline": true
+  },
+  {
+   "name": "Cap hit by year",
+   "value": "2027: **$21.4M**\n2028: **$47.4M**\n2029: **$59.2M**\n-# Future years follow his real NFL contract."
+  },
+  {
+   "name": "Abilities",
+   "value": "Double Me (X-Factor), Mid In Elite (Bronze), Runoff Elite (Bronze), Mid Out Elite (Gold), Acrobat (Gold)"
+  }
+ ],
+ "thumbnail": {
+  "url": "https://static.www.nfl.com/image/upload/c_fill,g_face,ar_5:7,w_750,f_auto,q_auto/league/qya3dtjb5kgofcuj2tuw"
+ }
+}
+
+===== player (FA) (341 bytes) =====
+{
+ "title": "Nasir Adderley",
+ "url": "https://example.test/l/stooey12-5/players/555221005",
+ "color": 998702,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "description": "**FS · Free agent** · #25\n68 OVR · Normal · Age 30 · 5 yrs pro",
+ "fields": [
+  {
+   "name": "Asking",
+   "value": "1 yrs, $1.7M salary + $0 bonus",
+   "inline": true
+  }
+ ]
+}
+
+===== contract (591 bytes) =====
+{
+ "title": "Micah Parsons: next contract",
+ "url": "https://example.test/l/stooey12-5/contracts?player=555223062",
+ "color": 1846565,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "description": "REDG · 99 OVR · Age 28 · Green Bay Packers",
+ "fields": [
+  {
+   "name": "Likely ask",
+   "value": "**4 yrs, $149M**\n$37.3M/yr · $59.4M bonus",
+   "inline": true
+  },
+  {
+   "name": "Market (within 3 OVR (at or below) and 3 years of age)",
+   "value": "Will Anderson Jr (96, age 25) $36.5M/yr\nMaxx Crosby (97, age 30) $31.9M/yr\nMyles Garrett (99, age 31) $27.8M/yr\nAidan Hutchinson (96, age 27) $27.7M/yr"
+  }
+ ]
+}
+
+===== cap league (785 bytes) =====
+{
+ "title": "Cap space",
+ "url": "https://example.test/l/stooey12-5/cap",
+ "color": 998702,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "fields": [
+  {
+   "name": "Most room",
+   "value": "`GB ` $4.29B now · $24.8M in 2028\n`MIA` $84.7M now · $98.7M in 2028\n`SEA` $79.9M now · $132M in 2028\n`CLE` $70.4M now · $105M in 2028\n`AZ ` $52.3M now · $58.2M in 2028\n`DEN` $39.0M now · −$64.6M in 2028\n`TB ` $32.6M now · $32.2M in 2028\n`PIT` $29.8M now · $78.8M in 2028"
+  },
+  {
+   "name": "Least room",
+   "value": "`CAR` $10.8M now · −$24.1M in 2028\n`CHI` $9.0M now · $59.5M in 2028\n`DAL` $7.7M now · −$34.1M in 2028\n`BUF` $7.0M now · −$18.9M in 2028\n`KC ` $6.5M now · −$30.6M in 2028\n`NYG` $6.4M now · $25.5M in 2028\n`IND` $1.5M now · $8.2M in 2028\n`JAX` $1.1M now · −$4.6M in 2028"
+  }
+ ]
+}
+
+===== cap team (904 bytes) =====
+{
+ "title": "Baltimore Ravens: cap",
+ "url": "https://example.test/l/stooey12-5/teams/bal?tab=cap",
+ "color": 2364255,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "fields": [
+  {
+   "name": "Cap space by year",
+   "value": "2027: **$11.3M** space ($315M of $326M, 75 signed)\n2028 proj.: **−$2.1M** space ($343M of $341M, 58 signed)\n2029 proj.: **$98.2M** space ($258M of $356M, 29 signed)\n2030 proj.: **$188M** space ($183M of $371M, 14 signed)\n2031 proj.: **$315M** space ($70.7M of $386M, 4 signed)"
+  },
+  {
+   "name": "Biggest cap hits",
+   "value": "Lamar Jackson (QB) $52.3M\nZay Flowers (WR) $27.3M\nRoquan Smith (MIKE) $22.2M\nNnamdi Madubuike (DT) $19.3M\nKyle Hamilton (SS) $18.6M",
+   "inline": true
+  },
+  {
+   "name": "Expiring (17)",
+   "value": "Cam Robinson $10.6M\nMike Gesicki $8.9M\nJaylinn Hawkins $6.8M\nNate Hobbs $6.0M\nTommy Dillard $5.3M",
+   "inline": true
+  },
+  {
+   "name": "Dead money",
+   "value": "$0",
+   "inline": true
+  }
+ ]
+}
+
+===== team (711 bytes) =====
+{
+ "title": "Baltimore Ravens",
+ "url": "https://example.test/l/stooey12-5/teams/bal",
+ "color": 2364255,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "description": "CPU team · AFC North · 84 OVR",
+ "fields": [
+  {
+   "name": "Record",
+   "value": "0-0 (—)\nDiv 0-0 · PF 0 PA 0",
+   "inline": true
+  },
+  {
+   "name": "Cap space",
+   "value": "$11.3M\n75 on the active roster",
+   "inline": true
+  },
+  {
+   "name": "Next game",
+   "value": "Preseason Week 1: vs Philadelphia Eagles",
+   "inline": true
+  },
+  {
+   "name": "Best players",
+   "value": "QB Lamar Jackson **95** · X-Factor\nMIKE Roquan Smith **94** · X-Factor\nSS Kyle Hamilton **93** · X-Factor\nDT Nnamdi Madubuike **91** · Superstar\nTE Mark Andrews **89** · Superstar\nWR Zay Flowers **89** · Star"
+  }
+ ]
+}
+
+===== standings (875 bytes) =====
+{
+ "title": "Standings",
+ "url": "https://example.test/l/stooey12-5/standings",
+ "color": 998702,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "fields": [
+  {
+   "name": "AFC East",
+   "value": "`MIA` 0-0\n`NYJ` 0-0\n`NE ` 0-0\n`BUF` 0-0",
+   "inline": true
+  },
+  {
+   "name": "AFC North",
+   "value": "`BAL` 0-0\n`PIT` 0-0\n`CIN` 0-0\n`CLE` 0-0",
+   "inline": true
+  },
+  {
+   "name": "AFC South",
+   "value": "`JAX` 0-0\n`TEN` 0-0\n`HOU` 0-0\n`IND` 0-0",
+   "inline": true
+  },
+  {
+   "name": "AFC West",
+   "value": "`LV ` 0-0\n`DEN` 0-0\n`LAC` 0-0\n`KC ` 0-0",
+   "inline": true
+  },
+  {
+   "name": "NFC East",
+   "value": "`DAL` 0-0\n`PHI` 0-0\n`NYG` 0-0\n`WAS` 0-0",
+   "inline": true
+  },
+  {
+   "name": "NFC North",
+   "value": "`DET` 0-0\n`GB ` 0-0\n`MIN` 0-0\n`CHI` 0-0",
+   "inline": true
+  },
+  {
+   "name": "NFC South",
+   "value": "`ATL` 0-0\n`CAR` 0-0\n`NO ` 0-0\n`TB ` 0-0",
+   "inline": true
+  },
+  {
+   "name": "NFC West",
+   "value": "`SF ` 0-0\n`LAR` 0-0\n`SEA` 0-0\n`AZ ` 0-0",
+   "inline": true
+  }
+ ]
+}
+
+===== playoffs (635 bytes) =====
+{
+ "title": "Playoff picture through week 0",
+ "url": "https://example.test/l/stooey12-5/playoffs",
+ "color": 998702,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "fields": [
+  {
+   "name": "AFC",
+   "value": "1. BAL 0-0\n2. BUF 0-0\n3. DEN 0-0\n4. HOU 0-0\n5. CIN 0-0\n6. CLE 0-0\n7. IND 0-0\n-# In the hunt: JAX 0-0, KC 0-0, LV 0-0",
+   "inline": true
+  },
+  {
+   "name": "NFC",
+   "value": "1. AZ 0-0\n2. ATL 0-0\n3. CHI 0-0\n4. DAL 0-0\n5. CAR 0-0\n6. DET 0-0\n7. GB 0-0\n-# In the hunt: LAR 0-0, MIN 0-0, NO 0-0",
+   "inline": true
+  }
+ ],
+ "description": "-# * #1 seed · z division · x playoff spot · e eliminated. NFL tiebreakers; tie notes on the site."
+}
+
+===== scores (631 bytes) =====
+{
+ "title": "Scores: Preseason Week 1",
+ "url": "https://example.test/l/stooey12-5/scores",
+ "color": 998702,
+ "footer": {
+  "text": "stooey12-5"
+ },
+ "description": "CAR @ HOU · not played yet\nLAC @ MIN · not played yet\nGB @ TEN · not played yet\nMIA @ WAS · not played yet\nPHI @ BAL · not played yet\nNE @ LAR · not played yet\nNO @ LV · not played yet\nKC @ DET · not played yet\nDEN @ NYG · not played yet\nJAX @ SF · not played yet\nNYJ @ ATL · not played yet\nIND @ AZ · not played yet\nPIT @ TB · not played yet\nSEA @ CLE · not played yet\nCHI @ BUF · not played yet\nDAL @ CIN · not played yet"
+}
+
+----- update -----
+{
+ "color": 998702,
+ "title": "STOOEY12-5 advanced to 2027 Preseason Week 1",
+ "url": "https://example.test/l/stooey12-5",
+ "footer": {
+  "text": "STOOEY12-5 · 2027 Preseason Week 1"
+ }
+}
+
+----- update -----
+{
+ "color": 998702,
+ "title": "Roster moves",
+ "url": "https://example.test/l/stooey12-5/cap",
+ "description": "🔧 CHI restructured **Coby Bryant** (FS, 79): cap hit $10.6M → $10.6M\n🔁 **Austin Booker** (LEDG, 75) traded BAL → CHI\n✍️ CHI signed **Kiran Amegadjie** (RT, 70): 4 yrs, $5.9M\n📝 CHI extended **Tyson Bagent** (QB, 61): 3 yrs, $11.0M, $4.8M this year",
+ "footer": {
+  "text": "STOOEY12-5 · 2027 Preseason Week 1"
+ }
+}
+
+----- update -----
+{
+ "color": 2364255,
+ "title": "⚠️ Baltimore Ravens are over the cap",
+ "url": "https://example.test/l/stooey12-5/teams/bal?tab=cap",
+ "description": "−$1.0M in space",
+ "footer": {
+  "text": "STOOEY12-5 · 2027 Preseason Week 1"
+ }
+}
