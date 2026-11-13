@@ -13,7 +13,7 @@ import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
 import { cardImageUrl, packImageUrl } from "./cardLink";
-import { ODDS, PACK_COOLDOWN_MS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack } from "./packs";
+import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
@@ -320,12 +320,6 @@ async function openPackReply(i: Interaction, lg: LinkedLeague, d: LeagueData, ba
   const uid = userId(i);
   if (!uid) return reply("Couldn't tell who you are.");
   const stats = await loadPackStats(lg.slug);
-  const me = stats.users[uid];
-  const wait = me ? Date.parse(me.last) + PACK_COOLDOWN_MS - Date.now() : 0;
-  if (wait > 0) {
-    const mins = Math.ceil(wait / 60000);
-    return reply(`Your next pack is ready in ${mins >= 60 ? "1 hr" : `${mins} min`}. Check \`/packs\` for the leaderboard.`);
-  }
   const cards = openPack(d);
   if (!cards.length) return reply("This league has no players to pull yet.");
   const pts = cards.map(cardPoints);
@@ -353,7 +347,7 @@ async function openPackReply(i: Interaction, lg: LinkedLeague, d: LeagueData, ba
       color: RARITY_COLOR[top.dev] ?? BRAND,
       description: `${lines.join("\n")}\n\nPack total: **${total} pts**`,
       image: { url: packImageUrl(base, lg.slug, cards.map((c) => c.id)) },
-      footer: { text: `${name}: ${u.points} pts from ${u.packs} pack${u.packs === 1 ? "" : "s"} · #${rank} in ${footer.text.split(" · ")[0]} · next pack in 1 hr` },
+      footer: { text: `${name}: ${u.points} pts from ${u.packs} pack${u.packs === 1 ? "" : "s"} · #${rank} in ${footer.text.split(" · ")[0]}` },
     }],
   };
 }
@@ -373,7 +367,7 @@ async function packsLeaderboard(i: Interaction, lg: LinkedLeague, d: LeagueData,
     description: board.join("\n") || "Nobody has opened a pack yet. Run `/pack`!",
     fields: [
       ...(me ? [{ name: "You", value: `#${meIdx + 1} · ${me.points} pts · ${me.packs} packs · best pack ${me.best}${me.bestPull ? ` (${me.bestPull})` : ""}` }] : []),
-      { name: `Odds (${PACK_SIZE} cards a pack, one pack per hour)`, value: `${odds}\n-# Each card also gets +1 per 5 overall over 70 (up to +5), and 99s count double.` },
+      { name: `Odds (${PACK_SIZE} cards a pack)`, value: `${odds}\n-# Each card also gets +1 per 5 overall over 70 (up to +5), and 99s count double.` },
     ],
   };
 }

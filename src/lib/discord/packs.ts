@@ -5,7 +5,6 @@ import { randomInt } from "node:crypto";
 import type { LeagueData, Player } from "../league/types";
 
 export const PACK_SIZE = 5;
-export const PACK_COOLDOWN_MS = 60 * 60 * 1000; // one pack per person per hour
 
 // Chance per card slot, by dev trait (index = Player.dev). Must add up to 1000.
 export const ODDS = [740, 200, 50, 10] as const; // Normal 74%, Star 20%, Superstar 5%, X-Factor 1%

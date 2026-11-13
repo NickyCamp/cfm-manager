@@ -59,7 +59,7 @@ export const COMMANDS = [
     ...ANYWHERE,
     options: [team(true), { type: INTEGER, name: "week", description: "Week 1-18; playoffs: 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl", required: false, min_value: 1, max_value: 22 }],
   },
-  { name: "pack", description: "Open a pack of 5 league player cards (X-Factors are the rarest); one per hour", ...ANYWHERE },
+  { name: "pack", description: "Open a pack of 5 league player cards (X-Factors are the rarest)", ...ANYWHERE },
   { name: "packs", description: "Pack leaderboard: most points from pulls, plus your own stats and the odds", ...ANYWHERE },
   { name: "standings", description: "Division standings", ...ANYWHERE },
   { name: "playoffs", description: "Playoff picture with NFL tiebreakers", ...ANYWHERE },
