@@ -11,7 +11,7 @@ import { money } from "@/lib/league/format";
 import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
-import { headshotUrl } from "@/lib/league/headshots";
+import { standInArt } from "@/lib/league/headshots";
 import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
@@ -489,7 +489,7 @@ function playerEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed 
   const s = statLine(d, p);
   if (s) fields.push({ name: `${d.season.year} regular season`, value: s });
   if (p.abilities.length) fields.push({ name: "Abilities", value: p.abilities.map((a) => `${a.title} (${a.tier})`).join(", ") });
-  const img = headshotUrl(p);
+  const img = standInArt(p);
   return {
     title: fullName(p), url: url(`/players/${p.id}`), color: hexColor(t?.primary), footer,
     description: [`**${p.pos} · ${teamLabel(t)}**${p.jersey ? ` · #${p.jersey}` : ""}`, `${p.ovr} OVR · ${DEV_LABEL[p.dev]} · Age ${p.age} · ${p.yearsPro ? `${p.yearsPro} yrs pro` : "Rookie"}`, flags].filter(Boolean).join("\n"),

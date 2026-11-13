@@ -2,11 +2,12 @@
 // players file (headshots.json, refreshed weekly by scripts/headshots/update.mjs).
 // The headshots are transparent cut-outs, so they sit on the card's team-colored
 // background. Uploaded art always wins; generated players (draft classes made in
-// the franchise) never match and keep the jersey-number card.
+// the franchise) never match here and fall back to EA's portrait (portraits.ts).
 // Like uploaded art, these are photos we don't own, so pages only show them to
 // signed-in league members.
 import data from "./headshots.json";
 import type { Player } from "./types";
+import { eaPortraitUrl, isEaPortraitUrl } from "./portraits";
 
 type Row = [names: string[], born: string, college: string, rookie: number, group: string, img: string, last: string];
 
@@ -109,3 +110,9 @@ export function headshotUrl(p: Player): string | undefined {
 }
 
 export const isHeadshotUrl = (u: string | undefined) => Boolean(u?.startsWith(HOST));
+
+/** Stand-in card art when nothing was uploaded: NFL.com headshot, else EA's in-game portrait
+ *  (covers generated draft-class players). Both are transparent cut-outs. */
+export const standInArt = (p: Player) => headshotUrl(p) ?? eaPortraitUrl(p);
+
+export const isCutoutUrl = (u: string | undefined) => isHeadshotUrl(u) || isEaPortraitUrl(u);

@@ -68,6 +68,9 @@ export type Player = {
   desired?: { salary: number; bonus: number; length: number }; // Madden's in-game ask (added 2026-10-28)
   gone?: boolean;        // no longer in the league (kept so old stat lines keep a name)
   born?: string;         // "YYYY-MM-DD" from EA (added 2026-11-12; used to match real-player headshots)
+  // EA's portrait for the player (added 2026-11-13). game: which EA ratings-site folder has the
+  // picture (27 for real players; generated draft-class faces only exist under 26). Set by the worker.
+  portrait?: { id: number; game?: number };
   nick?: string;         // nickname set by the team's manager; not in data.json, applied at read time (nicknameStore.ts)
 };
 

@@ -123,6 +123,7 @@ export function buildLeagueData(files: Raw): LeagueData {
         born: num(p.birthYear) > 1900 && num(p.birthMonth) && num(p.birthDay)
           ? `${num(p.birthYear)}-${String(num(p.birthMonth)).padStart(2, "0")}-${String(num(p.birthDay)).padStart(2, "0")}`
           : undefined,
+        portrait: num(p.portraitId) > 0 ? { id: num(p.portraitId) } : undefined,
         abilities: (p.signatureSlotList || [])
           .filter((s: Any) => !s.isEmpty && s.signatureAbility?.signatureTitle)
           .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: num(s.ovrThreshold) === 0 ? "X-Factor" : TIER[s.signatureAbility.rank] || "" })),

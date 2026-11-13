@@ -15,7 +15,7 @@ import { CardStack } from "@/components/league/CardStack";
 import { cardProps } from "@/lib/league/cardProps";
 import { canSeeCardArt, cardFramePath, signedCardArtFor } from "@/lib/cardArtStore";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
-import { headshotUrl } from "@/lib/league/headshots";
+import { standInArt } from "@/lib/league/headshots";
 import { CapGauge } from "@/components/league/CapGauge";
 
 type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string }> };
@@ -99,7 +99,7 @@ async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: Leagu
   const groups = rosterGroups(roster);
   const active = roster.filter((p) => !p.ps);
   const avgAge = active.length ? active.reduce((a, p) => a + p.age, 0) / active.length : 0;
-  // Card art shows to anyone signed in: uploaded photos first, NFL.com headshots as stand-ins.
+  // Card art shows to anyone signed in: uploaded photos first, NFL.com headshots, then EA portraits, as stand-ins.
   const viewer = await canSeeCardArt();
   const [art, layouts] = await Promise.all([
     viewer ? signedCardArtFor(slug, roster.map((p) => p.id)) : Promise.resolve(new Map<number, string>()),
@@ -107,7 +107,7 @@ async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: Leagu
   ]);
   const framed = roster.filter((p) => layouts.get(p.id)?.customFrame).map((p) => p.id);
   const frames = viewer && framed.length ? await signedCardArtFor(slug, framed, cardFramePath) : new Map<number, string>();
-  const card = (p: Player) => ({ ...cardProps(d, slug, p, team, art.get(p.id) ?? (viewer ? headshotUrl(p) : undefined)), layout: layouts.get(p.id), frameArt: frames.get(p.id) });
+  const card = (p: Player) => ({ ...cardProps(d, slug, p, team, art.get(p.id) ?? (viewer ? standInArt(p) : undefined)), layout: layouts.get(p.id), frameArt: frames.get(p.id) });
   const top = [...active].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
   return (
     <>

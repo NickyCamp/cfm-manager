@@ -18,7 +18,7 @@ import { canSeeCardArt, cardArtAccess, nicknameAccess, cardFramePath, signedCard
 import { CardArtEditor } from "@/components/league/CardArtEditor";
 import { NicknameEditor } from "@/components/league/NicknameEditor";
 import { NICKNAME_MAX, leagueNicknames, withNicknames } from "@/lib/nicknameStore";
-import { headshotUrl } from "@/lib/league/headshots";
+import { standInArt } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
 
 type Props = { params: Promise<{ slug: string; id: string }>; searchParams?: Promise<{ tab?: string }> };
@@ -45,7 +45,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   const bg = team?.primary || "#1b2340";
   // Card art shows to anyone signed in (photos of real players aren't ours to publish, so
   // never to signed-out visitors): an uploaded photo if there is one, else the player's
-  // NFL.com headshot as a stand-in. Only the player's team owner or the commissioner can change it.
+  // NFL.com headshot (else EA's in-game portrait) as a stand-in. Only the player's team owner or the commissioner can change it.
   const [viewer, canEditArt, canNick] = await Promise.all([
     canSeeCardArt(),
     cardArtAccess(slug, p.gone ? undefined : p.team || undefined).then((a) => a.canEdit).catch(() => false),
@@ -54,7 +54,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   const [uploaded, layout] = await Promise.all([viewer ? signedCardArt(slug, p.id) : Promise.resolve(undefined), cardLayout(slug, p.id)]);
   // An uploaded custom border follows the same visibility as uploaded art (signed in).
   const frameArt = viewer && layout?.customFrame ? await signedCardArt(slug, p.id, undefined, cardFramePath) : undefined;
-  const art = uploaded ?? (viewer ? headshotUrl(p) : undefined);
+  const art = uploaded ?? (viewer ? standInArt(p) : undefined);
 
   return (
     <main className="league-page">

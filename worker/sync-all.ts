@@ -25,6 +25,7 @@ import { blazeLogin, refreshToken, type EaToken } from "../src/lib/ea/client";
 import { decryptJson, encryptJson } from "../src/lib/crypto";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
+import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
 import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
@@ -155,6 +156,7 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
     let prev: LeagueData | null = null;
     try { prev = prevBuf ? JSON.parse(gunzipSync(prevBuf).toString("utf8")) : null; } catch { prev = null; }
     const data = mergeHistory(prev, buildLeagueData(files));
+    await resolvePortraits(prev, data, log);
     const gz = gzipSync(Buffer.from(JSON.stringify(data)));
     const up = await db.storage.from("league-data").upload(`${slug}/data.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
     if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return null; }
