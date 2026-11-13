@@ -178,6 +178,15 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const t = findTeam(d, opt(i, "team"));
       return t ? { embeds: [teamEmbed(d, t, url, footer)] } : reply("No team by that name.");
     }
+    case "rookie": {
+      const v = opt(i, "team");
+      let t: Team | undefined;
+      if (v != null && v !== "") {
+        t = findTeam(d, v);
+        if (!t) return reply("No team by that name.");
+      }
+      return { embeds: [rookiesEmbed(d, t, url, footer)] };
+    }
     case "tws": {
       const t = findTeam(d, opt(i, "team"));
       if (!t) return reply("No team by that name.");
@@ -545,6 +554,26 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
       ...(next && opp ? [{ name: "Next game", value: `${weekTitle(d, next.stage, next.week)}: ${next.home === t.id ? "vs" : "@"} ${teamLabel(opp)}`, inline: true }] : []),
       { name: "Best players", value: best.join("\n") || "—" },
     ],
+  };
+}
+
+/** Top 10 rookies (yearsPro 0) by overall, league-wide (rostered players only) or one team's. */
+function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Footer): Embed {
+  const rookies = d.players
+    .filter((p) => p.yearsPro === 0 && !p.gone && (t ? p.team === t.id : p.team > 0))
+    .sort((a, b) => b.ovr - a.ovr || b.dev - a.dev || a.draft.round - b.draft.round || a.draft.pick - b.draft.pick)
+    .slice(0, 10);
+  const pick = (p: Player) => (p.draft.round > 0 && p.draft.round < 8 ? `Rd ${p.draft.round}, #${p.draft.pick}` : "Undrafted");
+  const lines = rookies.map((p, k) => {
+    const team = t ? "" : ` · ${teamOf(d, p.team)?.abbr || "FA"}`;
+    const extra = [p.dev ? DEV_LABEL[p.dev] : "", pick(p), p.ps ? "PS" : ""].filter(Boolean).join(" · ");
+    return `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)})${team} · **${p.ovr}** · ${extra}`;
+  });
+  return {
+    title: t ? `${teamLabel(t)}: top rookies` : "Top rookies in the league",
+    url: t ? url(`/teams/${t.abbr.toLowerCase()}`) : url(),
+    color: t ? hexColor(t.primary) : BRAND, footer,
+    description: lines.join("\n") || (t ? `No rookies on the ${teamLabel(t)}.` : "No rookies on any roster yet."),
   };
 }
 

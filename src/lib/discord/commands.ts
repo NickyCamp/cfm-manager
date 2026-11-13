@@ -65,6 +65,7 @@ export const COMMANDS = [
     options: [team(false), { type: INTEGER, name: "year", description: "Season, e.g. 2028 (this season and the next 4)", required: false, min_value: 2000, max_value: 2100 }],
   },
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
+  { name: "rookie", description: "Top 10 rookies by overall; pick a team for just its rookies", ...ANYWHERE, options: [team(false)] },
   {
     name: "tws",
     description: "A team's game: this week's matchup with ranks, or a past week's score and stats",
