@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { backScale, sortAbilities, tierClass } from "@/components/league/CardFront";
+import { abilityInitials, backScale, initialsSize, sortAbilities, tierClass } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
 
@@ -50,17 +50,6 @@ export function cardFonts() {
   return fonts;
 }
 
-function AbilityName({ title, U }: { title: string; U: number }) {
-  const words = title.replace(/[^A-Za-z0-9'& -]/g, " ").split(/[\s-]+/).filter(Boolean);
-  const longest = Math.max(4, ...words.map((w) => w.length));
-  const size = (Math.min(2.6, 18.5 / longest) - (words.length > 2 ? 0.2 : 0)) * U;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "88%", fontSize: size, fontWeight: 800, lineHeight: 1.02, textTransform: "uppercase", letterSpacing: -0.3, textAlign: "center" }}>
-      {words.map((w, i) => <span key={i}>{w}</span>)}
-    </div>
-  );
-}
-
 /** art: a data: URL (or nothing for the jersey-number card). cutout: art is a transparent headshot. */
 /** The card front as a Satori element, W pixels wide (5:7). art: a data: URL; cutout: art is a transparent headshot. */
 export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = CARD_W) {
@@ -101,10 +90,23 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
           <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>
           <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>
           {sortAbilities(p.abilities).slice(0, 5).map((a) => {
-            const s = ABIL[tierClass(a.tier)] || ABIL.bronze;
+            const t = tierClass(a.tier), s = ABIL[t] || ABIL.bronze, ini = abilityInitials(a.title);
+            if (t === "single") {
+              // Cut ruby square: bevelled facets from per-side border colors, a lighter table in the middle.
+              const g = 12.5 * U;
+              return (
+                <div key={a.title} style={{ position: "relative", width: g, height: g, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 1.2 * U,
+                  borderStyle: "solid", borderWidth: 2.6 * U, borderTopColor: "#ff6f93", borderRightColor: "#8a0026", borderBottomColor: "#4a0012", borderLeftColor: "#c4103f",
+                  backgroundImage: "linear-gradient(135deg, #ff8fab 0%, #e0115f 38%, #a3002c 70%, #6b001b 100%)", boxShadow: "0 1px 5px rgba(0,0,0,.6)",
+                  color: "#fff", fontSize: initialsSize(ini.length) * badge, fontWeight: 800, lineHeight: 1, textShadow: "0 1px 2px rgba(60,0,15,.8)" }}>
+                  {ini}
+                </div>
+              );
+            }
             return (
-              <div key={a.title} style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundImage: s.bg, color: s.color, textShadow: "none", boxShadow: "0 1px 4px rgba(0,0,0,.5)", border: `${0.5 * U}px solid rgba(255,255,255,.55)` }}>
-                <AbilityName title={a.title} U={U} />
+              <div key={a.title} style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundImage: s.bg, color: s.color, textShadow: "none",
+                boxShadow: "0 1px 4px rgba(0,0,0,.5)", border: `${0.5 * U}px solid rgba(255,255,255,.55)`, fontSize: initialsSize(ini.length) * badge, fontWeight: 800, lineHeight: 1 }}>
+                {ini}
               </div>
             );
           })}
