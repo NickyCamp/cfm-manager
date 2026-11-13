@@ -29,11 +29,13 @@ const ABIL: Record<string, { bg: string; color: string }> = {
 let gems: Promise<Record<string, string>> | null = null;
 let gemSrc: Record<string, string> | null = null; // filled once xfGems() resolves; cardNode reads it
 let tileSrc: Record<string, string> = {};
+let xfFrame: string | null = null; // Nick's crystal ruby X-Factor frame (public/frames/xf.png)
 const dataUrl = async (rel: string) => `data:image/png;base64,${(await readFile(path.join(process.cwd(), rel))).toString("base64")}`;
 /** Loads the ruby X-Factor letters and the blank tier tiles (gold, ...) once. */
 export function xfGems() {
-  gems ??= Promise.all([...TILE_ART].map(async (t) => [t, await dataUrl(`public/abilities/${t}.png`)] as const))
-    .then((e) => { tileSrc = Object.fromEntries(e); })
+  gems ??= dataUrl("public/frames/xf.png").then((u) => { xfFrame = u; })
+    .then(() => Promise.all([...TILE_ART].map(async (t) => [t, await dataUrl(`public/abilities/${t}.png`)] as const))
+    .then((e) => { tileSrc = Object.fromEntries(e); }))
     .then(() => Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) =>
     [c, `data:image/png;base64,${(await readFile(path.join(process.cwd(), "public/abilities/xf", `${c}.png`))).toString("base64")}`] as const,
   ))).then((e) => (gemSrc = Object.fromEntries(e)));
@@ -56,6 +58,15 @@ function logoData(url: string) {
 export async function withLogo<T extends { teamLogo?: string }>(p: T): Promise<T> {
   return { ...p, teamLogo: p.teamLogo && !p.teamLogo.startsWith("data:") ? await logoData(p.teamLogo) : p.teamLogo };
 }
+
+/** Outer card frame: X-Factor uses Nick's ruby frame image over the card, other tiers the metallic gradient. */
+const frameStyle = (tier: number, U: number) =>
+  tier === 3 && xfFrame
+    ? { position: "relative" as const, paddingTop: 3.6 * U, paddingLeft: 4 * U, paddingRight: 4 * U, paddingBottom: 4.4 * U }
+    : { padding: 2.8 * U, backgroundImage: FACE[tier] };
+const frameOverlay = (tier: number, W: number, H: number) =>
+  // eslint-disable-next-line @next/next/no-img-element
+  tier === 3 && xfFrame ? <img src={xfFrame} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
 
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16) || 0;
@@ -87,7 +98,7 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
   const badge = 13.5 * U;
   const A = U * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
   return (
-    <div style={{ width: W, height: H, display: "flex", padding: pad, borderRadius: 1.9 * U, backgroundImage: FACE[tier] }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U, ...frameStyle(tier, U) }}>
       <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
         {/* art background */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: `linear-gradient(160deg, ${darken(p.primary, 0.85)} 0%, #0a0f18 75%)` }} />
@@ -172,6 +183,7 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         </div>
         <div style={{ position: "absolute", right: 3 * U, bottom: 2.2 * U, display: "flex", fontSize: 3 * U, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.55)", textTransform: "uppercase" }}>{p.setLabel}</div>
       </div>
+      {frameOverlay(tier, W, H)}
     </div>
   );
 }
@@ -188,7 +200,6 @@ const ABIL_CHIP: Record<string, { bg: string; color: string }> = {
 export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   const H = Math.round(W * 1.4), U0 = W / 100;
   const U = U0 * backScale(p); // body sizes shrink when there's more to fit; the frame and header keep U0
-  const pad = 2.8 * U0;
   const tier = p.dev ?? 0;
   const muted = "#9aa6bd";
   const cell = (label: string, value: string | number, hi = false, key?: string) => (
@@ -215,7 +226,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   );
   const cells = [cell("HT", p.height || "—"), cell("WT", p.weight || "—"), cell("AGE", p.age), ...p.stats.map((st) => cell(st.abbr, st.value, st.value >= 90, st.abbr + st.label))];
   return (
-    <div style={{ width: W, height: H, display: "flex", padding: pad, borderRadius: 1.9 * U0, backgroundImage: FACE[tier] }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0) }}>
       <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", borderRadius: 0.8 * U0, overflow: "hidden", color: "#fff", fontFamily: "Barlow Condensed",
         backgroundImage: `linear-gradient(180deg, ${mix(p.primary, "#0a0f18", 0.55)} 0%, #0a0f18 32%, #0a0f18 100%)` }}>
         {/* header: name, team line, overall */}
@@ -254,6 +265,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
           <span style={{ marginTop: "auto", fontSize: 3.6 * U, fontWeight: 700, color: muted }}>{`${p.college || "No college"} · ${p.draft}`}</span>
         </div>
       </div>
+      {frameOverlay(tier, W, H)}
     </div>
   );
 }

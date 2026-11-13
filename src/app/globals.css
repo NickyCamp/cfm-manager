@@ -824,7 +824,10 @@ details.panel[open] summary { margin-bottom: 8px; }
 .t-super .pcard-face { background: linear-gradient(135deg, #9c6b00, #ffe27a 25%, #b8860b 45%, #fff3b0 62%, #a07000 80%, #ffd54a); }
 .t-super .pcard-foil { background: repeating-linear-gradient(115deg, rgba(255,90,0,.18) 0 8%, rgba(255,220,0,.2) 8% 16%, rgba(255,250,200,.2) 16% 24%, rgba(255,170,40,.18) 24% 32%) var(--mx) var(--my) / 300% 300%;
   mix-blend-mode: color-dodge; opacity: .6; }
-.t-xf .pcard-face { background: linear-gradient(135deg, #5c0016, #e0115f 22%, #7a0020 42%, #ff4f7b 60%, #6b001b 80%, #c4103f); }
+/* X-Factor: Nick's crystal ruby frame (public/frames/xf.webp) laid over the card; the padding tucks the card's edge just under it. */
+.t-xf .pcard-face, .pcard.static.t-xf .pcard-face { background: none; padding: 3.6cqw 4cqw 4.4cqw; box-shadow: none; }
+.t-xf .pcard-face::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: url("/frames/xf.webp") center / 100% 100% no-repeat; filter: drop-shadow(0 1.5cqw 3cqw rgba(0,0,0,.4)); }
 .t-xf .pcard-foil { background: linear-gradient(115deg, transparent 28%, rgba(255,120,160,.32) 44%, rgba(255,220,230,.38) 50%, rgba(255,120,160,.32) 56%, transparent 72%) var(--mx) var(--my) / 230% 230%;
   mix-blend-mode: screen; animation: pcard-shimmer 3.5s ease-in-out infinite; }
 @keyframes pcard-shimmer { 50% { filter: brightness(1.2); } }
