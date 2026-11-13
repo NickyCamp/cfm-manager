@@ -46,6 +46,23 @@ export function xfGems() {
   return gems;
 }
 
+// Team logos for the Discord images (Nick's request 2026-11-13): fetched from the logo URL once per
+// server instance and inlined as data: URLs. On any failure the card keeps the abbreviation badge.
+const logoCache = new Map<string, Promise<string | undefined>>();
+function logoData(url: string) {
+  if (!logoCache.has(url)) {
+    logoCache.set(url, fetch(url, { signal: AbortSignal.timeout(4000) })
+      .then(async (r) => (r.ok ? `data:${r.headers.get("content-type") || "image/png"};base64,${Buffer.from(await r.arrayBuffer()).toString("base64")}` : undefined))
+      .catch(() => undefined)
+      .then((v) => { if (!v) logoCache.delete(url); return v; }));
+  }
+  return logoCache.get(url)!;
+}
+/** The card props with teamLogo swapped for an inline data: URL (or removed if it can't be fetched). */
+export async function withLogo<T extends { teamLogo?: string }>(p: T): Promise<T> {
+  return { ...p, teamLogo: p.teamLogo && !p.teamLogo.startsWith("data:") ? await logoData(p.teamLogo) : p.teamLogo };
+}
+
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16) || 0;
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -105,7 +122,10 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         <div style={{ position: "absolute", top: 2.6 * U, right: 3 * U, width: 19 * U, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
           <span style={{ fontSize: 17 * U, fontWeight: 800, lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
           <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>
-          <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>
+          {p.teamLogo?.startsWith("data:")
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={p.teamLogo} alt="" width={badge} height={badge} style={{ width: badge, height: badge, objectFit: "contain" }} />
+            : <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>}
           {sortAbilities(p.abilities).map((a) => {
             const t = tierClass(a.tier), s = ABIL[t] || ABIL.bronze, ini = abilityInitials(a.title);
             const gem = t === "single" && gemSrc ? gemSrc[xfLetter(a.title) ?? ""] : undefined;
@@ -206,7 +226,10 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
             <span style={{ fontSize: 4.4 * U0, fontWeight: 700, color: "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
             <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U0, fontWeight: 800, textTransform: "uppercase", lineHeight: 0.95 }}>{p.last}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 1.6 * U0, marginTop: 1.8 * U0, fontSize: 4 * U0, fontWeight: 700, color: "#c3cde0" }}>
-              <div style={{ width: 8.4 * U0, height: 8.4 * U0, borderRadius: 8.4 * U0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.7 * U0}px solid ${p.secondary}`, color: "#fff", fontSize: 2.9 * U0, fontWeight: 800 }}>{p.teamAbbr}</div>
+              {p.teamLogo?.startsWith("data:")
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={p.teamLogo} alt="" width={8.4 * U0} height={8.4 * U0} style={{ width: 8.4 * U0, height: 8.4 * U0, objectFit: "contain" }} />
+                : <div style={{ width: 8.4 * U0, height: 8.4 * U0, borderRadius: 8.4 * U0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.7 * U0}px solid ${p.secondary}`, color: "#fff", fontSize: 2.9 * U0, fontWeight: 800 }}>{p.teamAbbr}</div>}
               <span>{`${p.pos} · #${p.jersey} · ${p.exp}`}</span>
             </div>
           </div>
@@ -253,6 +276,7 @@ export const pairSize = (W = 600) => ({ width: 2 * W + 24 + 40, height: Math.rou
 export async function renderCard(p: PlayerCardProps, art?: string, cutout = false, side: "front" | "both" = "front") {
   const size = side === "both" ? pairSize() : { width: CARD_W, height: CARD_H };
   await xfGems();
+  p = await withLogo(p);
   return new ImageResponse(side === "both" ? cardPairNode(p, art, cutout) : cardNode(p, art, cutout), {
     ...size, fonts: await cardFonts(),
     headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },

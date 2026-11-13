@@ -226,8 +226,11 @@ input:focus, textarea:focus { border-color: var(--field); outline: none; box-sha
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 /* NFL logos (signed-in visitors only: .logos-on is set by the league layout). White disc so dark logos read on the dark theme. */
-.logos-on .team-badge.has-logo, .logos-on .team.has-logo { background: var(--logo) center / 82% no-repeat, #f4f6fa !important; color: transparent !important;
-  text-shadow: none !important; border-color: rgba(255,255,255,.85) !important; }
+.logos-on .team-badge.has-logo { background: var(--logo) center / 82% no-repeat, #f4f6fa !important; color: transparent !important;
+  text-shadow: none !important; }
+/* On player cards the logo sits straight on the card (no disc), with a soft glow so dark logos still read. */
+.logos-on .team.has-logo { background: var(--logo) center / contain no-repeat !important; border: 0 !important; border-radius: 0 !important;
+  color: transparent !important; text-shadow: none !important; filter: drop-shadow(0 0 0.5cqw rgba(255,255,255,.28)) drop-shadow(0 0.3cqw 0.6cqw rgba(0,0,0,.6)); }
 .team-badge.tbd { background: var(--line); color: var(--ink-soft); font-weight: 700; }
 .team-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; }
 .team-link:hover span:not(.team-badge) { text-decoration: underline; }

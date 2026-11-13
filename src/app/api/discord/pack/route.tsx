@@ -3,7 +3,7 @@
 // links only, like /api/discord/card.
 import { ImageResponse } from "next/og";
 import { checkCardLink } from "@/lib/discord/cardLink";
-import { cardFonts, cardNode, xfGems } from "@/lib/discord/cardImage";
+import { cardFonts, cardNode, withLogo, xfGems } from "@/lib/discord/cardImage";
 import { cardArtFor } from "@/lib/discord/cardArtLoad";
 import { getLeagueData } from "@/lib/league/load";
 import { cardProps } from "@/lib/league/cardProps";
@@ -24,12 +24,13 @@ export async function GET(req: Request) {
   const arts = await Promise.all(players.map((p) => cardArtFor(slug, p)));
   const n = players.length;
   await xfGems();
+  const props = await Promise.all(players.map((p) => withLogo(cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)))));
   return new ImageResponse(
     (
       <div style={{ display: "flex", gap: GAP, padding: PAD, backgroundColor: "#070a14", width: n * W + (n - 1) * GAP + 2 * PAD, height: Math.round(W * 1.4) + 2 * PAD }}>
         {players.map((p, i) => (
           <div key={p.id} style={{ display: "flex" }}>
-            {cardNode(cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), arts[i].art, arts[i].cutout, W)}
+            {cardNode(props[i], arts[i].art, arts[i].cutout, W)}
           </div>
         ))}
       </div>
