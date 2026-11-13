@@ -3,7 +3,7 @@
 import { RATING_KEYS, RATING_LABEL, type RatingKey } from "./ratings";
 import type { Player } from "./types";
 
-const GROUPS: [string, RatingKey[]][] = [
+export const RATING_GROUPS: [string, RatingKey[]][] = [
   ["Physical", ["speedRating", "accelRating", "agilityRating", "changeOfDirectionRating", "strengthRating", "jumpRating", "staminaRating", "toughRating", "injuryRating", "awareRating"]],
   ["Passing", ["throwPowerRating", "throwAccShortRating", "throwAccMidRating", "throwAccDeepRating", "throwAccRating", "throwOnRunRating", "throwUnderPressureRating", "playActionRating", "breakSackRating"]],
   ["Ball carrying", ["carryRating", "bCVRating", "breakTackleRating", "jukeMoveRating", "spinMoveRating", "stiffArmRating", "truckRating"]],
@@ -32,7 +32,7 @@ export function ratingGroups(p: Player): { name: string; rows: RatingRow[] }[] {
   if (!p.ratings) return [];
   const val = (k: RatingKey) => p.ratings![RATING_KEYS.indexOf(k)] ?? 0;
   const first = FIRST[p.pos] || [];
-  const ordered = [...GROUPS].sort(([a], [b]) => {
+  const ordered = [...RATING_GROUPS].sort(([a], [b]) => {
     const ia = first.indexOf(a), ib = first.indexOf(b);
     const ra = ia >= 0 ? ia : a === "Physical" ? first.length : 99;
     const rb = ib >= 0 ? ib : b === "Physical" ? first.length : 99;

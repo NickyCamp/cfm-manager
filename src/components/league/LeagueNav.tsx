@@ -9,6 +9,7 @@ const TABS = [
   ["playoffs", "Playoffs"],
   ["scores", "Scores"],
   ["teams", "Teams"],
+  ["players", "Players"],
   ["cap", "Cap"],
   ["contracts", "Contract tool"],
   ["draft", "Draft"],
@@ -23,7 +24,8 @@ export function LeagueNav({ slug }: { slug: string }) {
   const active = (seg: string) => {
     if (!seg) return path === base;
     if (seg === "scores") return path.startsWith(`${base}/scores`) || path.startsWith(`${base}/games`);
-    if (seg === "teams") return path.startsWith(`${base}/teams`) || path.startsWith(`${base}/players`);
+    if (seg === "teams") return path.startsWith(`${base}/teams`) || path.startsWith(`${base}/players/`);
+    if (seg === "players") return path === `${base}/players`;
     return path.startsWith(`${base}/${seg}`);
   };
   const [open, setOpen] = useState(false);
