@@ -749,17 +749,17 @@ details.panel[open] summary { margin-bottom: 8px; }
   background: linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%),
     linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%); }
 
-.pcard-side { position: absolute; top: 2.6cqw; right: 3.4cqw; width: 19cqw; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1.6cqw;
+.pcard-side { position: absolute; top: 2.6cqw; right: 4.6cqw; width: 19cqw; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1.6cqw;
   text-shadow: 0 1px 4px rgba(0,0,0,.6);
   /* HUD at 78% (Nick, 2026-11-13: smaller, inside the border), anchored to the top-right corner */
   transform: scale(0.78); transform-origin: top right; }
 .pcard-side .ovr { font: 800 17cqw/0.9 var(--display); font-variant-numeric: tabular-nums; }
 .pcard-side .pos { font: 800 7.2cqw/1 var(--display); letter-spacing: .5px; margin-top: -0.6cqw; color: #fff; }
 /* Nick's overall + position art (public/ovr): white numbers, gold at 99, a thin rule between like his samples. */
-.pcard-side .ovr-img { width: 25cqw; height: auto; display: block; margin: -1.6cqw 0 -1.8cqw; }
+.pcard-side .ovr-img { width: 21cqw; height: auto; display: block; margin: -1.3cqw 0 -1.5cqw; }
 .pcard-side .ovr-rule { width: 9.5cqw; height: 0.6cqw; border-radius: 0.3cqw; background: #e8ecf2; box-shadow: 0 0.3cqw 0.6cqw rgba(0,0,0,.5); }
 .pcard-side .ovr-rule.gold { background: linear-gradient(180deg, #ffd54a, #c98a00); }
-.pcard-side .pos-img { width: 25cqw; height: auto; display: block; margin: -0.6cqw 0 -0.6cqw; }
+.pcard-side .pos-img { width: 21cqw; height: auto; display: block; margin: -0.5cqw 0 -0.5cqw; }
 .pcard-side .team, .pcard-keys .team { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
   background: var(--tc1); border: 0.9cqw solid var(--tc2); color: #fff; font: 800 4.4cqw/1 var(--display); text-shadow: none; }
 .pcard-side .team { width: 13.5cqw; height: 13.5cqw; }
@@ -864,7 +864,8 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard.no-shade .pcard-shade { display: none; }
 .pcard.no-holo .pcard-foil, .pcard.no-holo .pcard-glare { display: none; }
 .pcard-face::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
-  background: var(--frame) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5cqw 3cqw rgba(0,0,0,.4)); }
+  background: var(--frame) center / 100% 100% no-repeat; }
+/* (No drop-shadow on the frame: iOS Safari drew it as a dark box poking out past the card's right and bottom edges.) */
 .t-xf .pcard-foil { background: linear-gradient(115deg, transparent 28%, rgba(255,120,160,.32) 44%, rgba(255,220,230,.38) 50%, rgba(255,120,160,.32) 56%, transparent 72%) var(--mx) var(--my) / 230% 230%;
   mix-blend-mode: screen; animation: pcard-shimmer 3.5s ease-in-out infinite; }
 @keyframes pcard-shimmer { 50% { filter: brightness(1.2); } }

@@ -159,16 +159,16 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
 
 
         {/* right column: overall, position, team, abilities */}
-        <div style={{ position: "absolute", top: 2.6 * U, right: 3.4 * U, width: 19 * UH, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * UH, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
+        <div style={{ position: "absolute", top: 2.6 * U, right: 4.6 * U, width: 19 * UH, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * UH, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
           {show("ovr") && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * UH }}>
           {artOf(ovrArt(p.ovr)) && !numF
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={25 * UH} height={25 * UH * 140 / 192} style={{ width: 25 * UH, height: 25 * UH * 140 / 192, marginTop: -1.6 * UH, marginBottom: -1.8 * UH }} />
+            ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={21 * UH} height={21 * UH * 140 / 192} style={{ width: 21 * UH, height: 21 * UH * 140 / 192, marginTop: -1.3 * UH, marginBottom: -1.5 * UH }} />
             : <span style={{ fontSize: 17 * UH, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>}
           <div style={{ width: 9.5 * UH, height: 0.6 * UH, borderRadius: 0.3 * UH, display: "flex", backgroundImage: ovr99 ? "linear-gradient(180deg, #ffd54a, #c98a00)" : "linear-gradient(180deg, #e8ecf2, #e8ecf2)" }} />
           {artOf(posArt(p.pos, ovr99)) && !numF
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={25 * UH} height={25 * UH * 58 / 192} style={{ width: 25 * UH, height: 25 * UH * 58 / 192, marginTop: -0.6 * UH, marginBottom: -0.6 * UH }} />
+            ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={21 * UH} height={21 * UH * 58 / 192} style={{ width: 21 * UH, height: 21 * UH * 58 / 192, marginTop: -0.5 * UH, marginBottom: -0.5 * UH }} />
             : <span style={{ fontSize: 7.2 * UH, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 1, marginTop: -0.6 * UH, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.pos}</span>}
           </div>}
           {show("team") && (p.teamLogo?.startsWith("data:")
