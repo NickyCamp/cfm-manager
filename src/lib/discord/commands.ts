@@ -51,7 +51,12 @@ export const COMMANDS = [
   },
   { name: "player", description: "A player's ratings, contract and cap hit by year", ...ANYWHERE, options: [player] },
   { name: "contract", description: "What a player will likely ask for on his next deal", ...ANYWHERE, options: [player] },
-  { name: "cap", description: "Cap space now and projected; pick a team for its breakdown", ...ANYWHERE, options: [team(false)] },
+  {
+    name: "cap",
+    description: "Cap space now and projected; pick a team for its breakdown and a season to focus on",
+    ...ANYWHERE,
+    options: [team(false), { type: INTEGER, name: "year", description: "Season, e.g. 2028 (this season and the next 4)", required: false, min_value: 2000, max_value: 2100 }],
+  },
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
   {
     name: "tws",
