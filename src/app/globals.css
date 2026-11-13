@@ -1030,20 +1030,38 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .kb-ovr b { font: 800 14cqw/0.9 var(--display); font-variant-numeric: tabular-nums; }
 .kb-ovr b.ovr-99 { color: #ffd54a; }
 .kb-ovr span { font: 800 3.6cqw/1 var(--display); letter-spacing: 1px; color: #c3cde0; }
-.kb-body { flex: 1; display: flex; flex-direction: column; gap: 2.6cqw; padding: 3cqw 4cqw 3.4cqw; min-height: 0; }
-.kb-body .kgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8cqw 3cqw; }
-.kb-body .kgrid div { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 0.6cqw; }
-.kb-body .kgrid span { font: 700 3.6cqw/1 var(--display); color: #9aa6bd; }
-.kb-body .kgrid b { font: 800 5.4cqw/1 var(--display); font-variant-numeric: tabular-nums; }
+.kb-body { flex: 1; display: flex; flex-direction: column; gap: calc(2.6cqw * var(--k, 1)); padding: calc(3cqw * var(--k, 1)) calc(4cqw * var(--k, 1)) calc(3.4cqw * var(--k, 1)); min-height: 0; }
+.kb-body .kgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(1.8cqw * var(--k, 1)) calc(3cqw * var(--k, 1)); }
+.kb-body .kgrid div { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: calc(0.6cqw * var(--k, 1)); }
+.kb-body .kgrid span { font: 700 calc(3.6cqw * var(--k, 1))/1 var(--display); color: #9aa6bd; }
+.kb-body .kgrid b { font: 800 calc(5.4cqw * var(--k, 1))/1 var(--display); font-variant-numeric: tabular-nums; }
 .kb-body .kgrid .hi b { color: #ffd54a; }
-.kb-box { border-radius: 1.6cqw; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); padding: 1.6cqw 2.4cqw 2cqw; }
-.kb-label { font: 800 3.3cqw/1 var(--display); text-transform: uppercase; letter-spacing: 1px; color: #9aa6bd; margin-bottom: 1.4cqw; }
-.kb-row { display: flex; gap: 2cqw; }
+.kb-box { border-radius: calc(1.6cqw * var(--k, 1)); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); padding: calc(1.6cqw * var(--k, 1)) calc(2.4cqw * var(--k, 1)) calc(2cqw * var(--k, 1)); }
+.kb-label { font: 800 calc(3.3cqw * var(--k, 1))/1 var(--display); text-transform: uppercase; letter-spacing: 1px; color: #9aa6bd; margin-bottom: calc(1.4cqw * var(--k, 1)); }
+.kb-row { display: flex; gap: calc(2cqw * var(--k, 1)); }
 .kb-row div { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.kb-row b { font: 800 5.6cqw/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.kb-row span { font: 700 2.9cqw/1.2 var(--display); color: #9aa6bd; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
-.kb-body .kabil { display: flex; flex-wrap: wrap; gap: 1.2cqw; }
-.kb-body .kabil span { font: 700 3.4cqw/1.2 var(--display); padding: 0.5cqw 1.6cqw; border-radius: 1cqw; white-space: nowrap; }
-.kb-body .kbio { margin-top: auto; font: 600 3.6cqw/1.2 var(--display); color: #9aa6bd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kb-row em { font: 800 3.1cqw/1 var(--display); font-style: normal; margin-top: 0.8cqw; padding: 0.4cqw 1.4cqw; border-radius: 1cqw; background: rgba(255,255,255,.08); color: #c3cde0; white-space: nowrap; }
+.kb-row b { font: 800 calc(5.6cqw * var(--k, 1))/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kb-row span { font: 700 calc(2.9cqw * var(--k, 1))/1.2 var(--display); color: #9aa6bd; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.kb-body .kabil { display: flex; flex-wrap: wrap; gap: calc(1.2cqw * var(--k, 1)); }
+.kb-body .kabil span { font: 700 calc(3.4cqw * var(--k, 1))/1.2 var(--display); padding: calc(0.5cqw * var(--k, 1)) calc(1.6cqw * var(--k, 1)); border-radius: calc(1cqw * var(--k, 1)); white-space: nowrap; }
+.kb-body .kbio { margin-top: auto; font: 600 calc(3.6cqw * var(--k, 1))/1.2 var(--display); color: #9aa6bd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-row em { font: 800 calc(3.1cqw * var(--k, 1))/1 var(--display); font-style: normal; margin-top: calc(0.8cqw * var(--k, 1)); padding: calc(0.4cqw * var(--k, 1)) calc(1.4cqw * var(--k, 1)); border-radius: calc(1cqw * var(--k, 1)); background: rgba(255,255,255,.08); color: #c3cde0; white-space: nowrap; }
 .kb-row em.top { background: linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10); color: #3a2a00; }
+
+/* ---- Player page tabs (Ratings / Abilities / Game log / Contract) beside the card ---- */
+.player-tabs { min-width: 0; }
+.player-tabs .tabs { margin-top: 0; }
+.rt-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-items: start; }
+.rt-group { margin: 0; }
+.rt-group h3 { margin: 0 0 8px; font-size: 1rem; }
+.rt-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 30px; align-items: center; gap: 10px; padding: 3px 0; }
+.rt-label { font-size: .9rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+.rt-bar span { display: block; height: 100%; border-radius: 3px; background: #6b7591; }
+.rt-val { font: 800 1.05rem/1 var(--display); text-align: right; font-variant-numeric: tabular-nums; }
+.rt-row.good .rt-bar span { background: var(--accent-grad, #3e8bff); }
+.rt-row.hi .rt-bar span { background: linear-gradient(90deg, #c99a10, #ffd54a); }
+.rt-row.hi .rt-val { color: #ffd54a; }
+.rt-row.low .rt-val { color: var(--ink-soft); }
+.rt-groups > .panel { margin: 0 !important; }
+@media (max-width: 640px) { .player-tabs .tabs a { padding: 10px 9px; } }

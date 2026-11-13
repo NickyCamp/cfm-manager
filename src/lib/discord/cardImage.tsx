@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { sortAbilities, tierClass } from "@/components/league/CardFront";
+import { backScale, sortAbilities, tierClass } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
 
@@ -135,8 +135,9 @@ const ABIL_CHIP: Record<string, { bg: string; color: string }> = {
 
 /** The card back as a Satori element, W pixels wide. Mirrors CardBackInner + the .kb-* CSS. */
 export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
-  const H = Math.round(W * 1.4), U = W / 100;
-  const pad = 2.8 * U;
+  const H = Math.round(W * 1.4), U0 = W / 100;
+  const U = U0 * backScale(p); // body sizes shrink when there's more to fit; the frame and header keep U0
+  const pad = 2.8 * U0;
   const tier = p.dev ?? 0;
   const muted = "#9aa6bd";
   const cell = (label: string, value: string | number, hi = false, key?: string) => (
@@ -163,22 +164,22 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   );
   const cells = [cell("HT", p.height || "—"), cell("WT", p.weight || "—"), cell("AGE", p.age), ...p.stats.map((st) => cell(st.abbr, st.value, st.value >= 90, st.abbr + st.label))];
   return (
-    <div style={{ width: W, height: H, display: "flex", padding: pad, borderRadius: 1.9 * U, backgroundImage: FACE[tier] }}>
-      <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", color: "#fff", fontFamily: "Barlow Condensed",
+    <div style={{ width: W, height: H, display: "flex", padding: pad, borderRadius: 1.9 * U0, backgroundImage: FACE[tier] }}>
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", borderRadius: 0.8 * U0, overflow: "hidden", color: "#fff", fontFamily: "Barlow Condensed",
         backgroundImage: `linear-gradient(180deg, ${mix(p.primary, "#0a0f18", 0.55)} 0%, #0a0f18 32%, #0a0f18 100%)` }}>
         {/* header: name, team line, overall */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: `${3.2 * U}px ${4 * U}px ${2.6 * U}px`, borderBottom: `${0.6 * U}px solid ${p.secondary}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: `${3.2 * U0}px ${4 * U0}px ${2.6 * U0}px`, borderBottom: `${0.6 * U0}px solid ${p.secondary}` }}>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-            <span style={{ fontSize: 4.4 * U, fontWeight: 700, color: "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
-            <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U, fontWeight: 800, textTransform: "uppercase", lineHeight: 0.95 }}>{p.last}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 1.6 * U, marginTop: 1.8 * U, fontSize: 4 * U, fontWeight: 700, color: "#c3cde0" }}>
-              <div style={{ width: 8.4 * U, height: 8.4 * U, borderRadius: 8.4 * U, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.7 * U}px solid ${p.secondary}`, color: "#fff", fontSize: 2.9 * U, fontWeight: 800 }}>{p.teamAbbr}</div>
+            <span style={{ fontSize: 4.4 * U0, fontWeight: 700, color: "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
+            <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U0, fontWeight: 800, textTransform: "uppercase", lineHeight: 0.95 }}>{p.last}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 1.6 * U0, marginTop: 1.8 * U0, fontSize: 4 * U0, fontWeight: 700, color: "#c3cde0" }}>
+              <div style={{ width: 8.4 * U0, height: 8.4 * U0, borderRadius: 8.4 * U0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.7 * U0}px solid ${p.secondary}`, color: "#fff", fontSize: 2.9 * U0, fontWeight: 800 }}>{p.teamAbbr}</div>
               <span>{`${p.pos} · #${p.jersey} · ${p.exp}`}</span>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ fontSize: 14 * U, fontWeight: 800, lineHeight: 0.9, color: p.ovr >= 99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
-            <span style={{ fontSize: 3.6 * U, fontWeight: 800, letterSpacing: 1.2, color: "#c3cde0" }}>OVR</span>
+            <span style={{ fontSize: 14 * U0, fontWeight: 800, lineHeight: 0.9, color: p.ovr >= 99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
+            <span style={{ fontSize: 3.6 * U0, fontWeight: 800, letterSpacing: 1.2, color: "#c3cde0" }}>OVR</span>
           </div>
         </div>
         {/* body */}

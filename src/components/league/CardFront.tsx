@@ -73,6 +73,16 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
 
 const moneyShort = (n: number) => (n >= 1e6 ? `$${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1)}M` : n >= 1e3 ? `$${Math.round(n / 1e3)}K` : `$${n}`);
 
+/** How much to shrink the back's body so everything fits: more rating rows (WRs have 7 position
+ *  ratings) and longer ability lists need smaller type. 1 = normal size. */
+export function backScale(p: Pick<PlayerCardProps, "stats" | "abilities">) {
+  const rows = Math.ceil((3 + p.stats.length) / 3);
+  const chipChars = p.abilities.reduce((a, x) => a + x.title.length + 4, 0);
+  const abilLines = p.abilities.length ? Math.ceil(chipChars / 44) : 0;
+  const load = rows + abilLines; // 4 rows + 1 line of chips fits at full size
+  return load <= 5 ? 1 : load === 6 ? 0.94 : load === 7 ? 0.88 : 0.8;
+}
+
 /** The card back: fills the whole card like a real trading card's back. */
 export function CardBackInner(p: PlayerCardProps) {
   return (
@@ -85,7 +95,7 @@ export function CardBackInner(p: PlayerCardProps) {
         </div>
         <div className="kb-ovr"><b className={p.ovr >= 99 ? "ovr-99" : ""}>{p.ovr}</b><span>OVR</span></div>
       </div>
-      <div className="kb-body">
+      <div className="kb-body" style={{ "--k": backScale(p) } as React.CSSProperties}>
         <div className="kgrid">
           <div><span>HT</span><b>{p.height || "—"}</b></div>
           <div><span>WT</span><b>{p.weight || "—"}</b></div>
