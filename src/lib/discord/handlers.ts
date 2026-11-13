@@ -15,6 +15,7 @@ import { headshotUrl } from "@/lib/league/headshots";
 import { cardImageUrl, matchupImageUrl, packImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
+import { STAT_CATS, statLeaders, type StatCat } from "./stats";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -195,6 +196,14 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "pack": return openPackReply(i, lg, d, base, url, footer);
     case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
+    case "stats": {
+      const cat = STAT_CATS.find((c) => c.key === opt(i, "category"));
+      if (!cat) return reply("Pick a category from the list.");
+      const v = opt(i, "team");
+      const t = v != null && v !== "" ? findTeam(d, v) : undefined;
+      if (v != null && v !== "" && !t) return reply("No team by that name.");
+      return { embeds: [statsEmbed(d, cat, t, url, footer)] };
+    }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
     case "scores": {
@@ -638,6 +647,26 @@ function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: nu
     { name: "\u200b", value: `-# Per game, ${d.season.year} regular season + playoffs (${t.abbr} ${ts.gp} games, ${opp.abbr} ${os.gp}). #1 = best in the league. Turnovers: given up on offense, forced on defense. Sacks: allowed on offense, made on defense.` },
   ];
   return embed;
+}
+
+function statsEmbed(d: LeagueData, cat: StatCat, t: Team | undefined, url: Url, footer: Footer): Embed {
+  const { rows, total } = statLeaders(d, cat, t?.id);
+  const medal = ["🥇", "🥈", "🥉"];
+  const lines = rows.map((r) => {
+    const p = r.player;
+    const who = p ? `[${fullName(p)}](${url(`/players/${p.id}`)})` : "Unknown player";
+    const team = t ? "" : ` · ${teamOf(d, r.team)?.abbr || "FA"}`;
+    return `${medal[r.rank - 1] || `\`${String(r.rank).padStart(2)}.\``} ${p?.pos || ""} ${who}${team} · **${r.value}**${r.detail ? ` (${r.detail})` : ""}`;
+  });
+  const scope = t ? `${t.city} ${t.name}` : "League";
+  return {
+    title: `${scope} leaders: ${cat.label}`,
+    url: url("/leaders"),
+    color: t ? hexColor(t.primary) : BRAND,
+    footer,
+    description: (lines.join("\n") || "Nobody has a stat in this category yet.")
+      + `\n\n-# ${d.season.year} regular season${cat.minNote ? ` · minimum ${cat.minNote}` : ""}${total > rows.length ? ` · ${total} players qualify` : ""}`,
+  };
 }
 
 function standingsEmbed(d: LeagueData, url: Url, footer: Footer): Embed {

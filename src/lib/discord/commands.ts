@@ -4,6 +4,7 @@
 // is all it takes to add or change a command.
 
 import { ALERT_EVENTS } from "./api";
+import { STAT_CATS } from "./stats";
 
 const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
@@ -74,6 +75,15 @@ export const COMMANDS = [
   },
   { name: "pack", description: "Open a pack of 5 league player cards (X-Factors are the rarest)", ...ANYWHERE },
   { name: "packs", description: "Pack leaderboard: most points from pulls, plus your own stats and the odds", ...ANYWHERE },
+  {
+    name: "stats",
+    description: "Top 10 in a stat this regular season (passing yards, INTs thrown, sacks…), league-wide or one team",
+    ...ANYWHERE,
+    options: [
+      { type: STRING, name: "category", description: "Which stat", required: true, choices: STAT_CATS.map((c) => ({ name: c.label, value: c.key })) },
+      team(false),
+    ],
+  },
   { name: "standings", description: "Division standings", ...ANYWHERE },
   { name: "playoffs", description: "Playoff picture with NFL tiebreakers", ...ANYWHERE },
   {
