@@ -16,6 +16,7 @@ const TABS = [
   ["dev", "Dev tracker"],
   ["abilities", "Abilities"],
   ["leaders", "Leaders"],
+  ["markets", "Markets"],
 ] as const;
 
 export function LeagueNav({ slug }: { slug: string }) {
