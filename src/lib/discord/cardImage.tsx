@@ -26,19 +26,24 @@ const ABIL: Record<string, { bg: string; color: string }> = {
 };
 
 // Nick's ruby X-Factor badges as data: URLs (Satori needs inline images), loaded once.
-let gems: Promise<Record<string, string>> | null = null;
+let gems: Promise<void> | null = null;
 let gemSrc: Record<string, string> | null = null; // filled once xfGems() resolves; cardNode reads it
 let tileSrc: Record<string, string> = {};
 let xfFrame: string | null = null; // Nick's crystal ruby X-Factor frame (public/frames/xf.png)
 const dataUrl = async (rel: string) => `data:image/png;base64,${(await readFile(path.join(process.cwd(), rel))).toString("base64")}`;
 /** Loads the ruby X-Factor letters and the blank tier tiles (gold, ...) once. */
 export function xfGems() {
-  gems ??= dataUrl("public/frames/xf.png").then((u) => { xfFrame = u; })
-    .then(() => Promise.all([...TILE_ART].map(async (t) => [t, await dataUrl(`public/abilities/${t}.png`)] as const))
-    .then((e) => { tileSrc = Object.fromEntries(e); }))
-    .then(() => Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) =>
-    [c, `data:image/png;base64,${(await readFile(path.join(process.cwd(), "public/abilities/xf", `${c}.png`))).toString("base64")}`] as const,
-  ))).then((e) => (gemSrc = Object.fromEntries(e)));
+  // Each asset loads on its own: a missing file only drops that piece of art (the card falls back to
+  // the code-drawn look) instead of failing every card image, as happened when public/frames wasn't
+  // traced into the function bundle (2026-11-13).
+  const safe = (rel: string) => dataUrl(rel).catch((e) => { console.error("card asset missing", rel, e); return null; });
+  gems ??= Promise.all([
+    safe("public/frames/xf.png").then((u) => { xfFrame = u; }),
+    Promise.all([...TILE_ART].map(async (t) => [t, await safe(`public/abilities/${t}.png`)] as const))
+      .then((e) => { tileSrc = Object.fromEntries(e.filter(([, u]) => u)) as Record<string, string>; }),
+    Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) => [c, await safe(`public/abilities/xf/${c}.png`)] as const))
+      .then((e) => { gemSrc = Object.fromEntries(e.filter(([, u]) => u)) as Record<string, string>; }),
+  ]).then(() => undefined);
   return gems;
 }
 
