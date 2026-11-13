@@ -51,6 +51,15 @@ export const xfLetter = (title: string) => { const c = title.trim().charAt(0).to
 export const TILE_ART = new Set(["gold", "silver", "bronze"]);
 /** Ability badges shrink to fit when a player has more than 5 (QBs often do), so none get dropped. 1 = full size. */
 export const abScale = (n: number) => (n <= 5 ? 1 : Math.max(0.5, (78 / n - 1.6) / 14));
+/** Nick's overall/position art (public/ovr): r/<00-99>.png (white, gold at 99) and pos/<W|G>_<POS>.png.
+ *  Madden 26 codes his pack doesn't have map to the nearest one; anything else falls back to text. */
+const POS_ART = new Set(["C","CB","DT","EDGE","FB","FS","HB","ILB","K","LB","LDE","LE","LG","LOLB","LS","LT","MLB","NT","OLB","P","QB","RB","RDE","RE","RG","ROLB","RT","S","SS","TE","WR"]);
+const POS_ALIAS: Record<string, string> = { LEDG: "EDGE", REDG: "EDGE", MIKE: "MLB", SAM: "OLB", WILL: "OLB" };
+export const ovrArt = (ovr: number) => (Number.isInteger(ovr) && ovr >= 0 && ovr <= 99 ? `/ovr/r/${String(ovr).padStart(2, "0")}.png` : null);
+export const posArt = (pos: string, gold: boolean) => {
+  const k = POS_ALIAS[pos.toUpperCase()] ?? pos.toUpperCase();
+  return POS_ART.has(k) ? `/ovr/pos/${gold ? "G" : "W"}_${k}.png` : null;
+};
 /** Font size for the initials, as a fraction of the medallion width. */
 export const initialsSize = (n: number) => (n <= 1 ? 0.5 : n === 2 ? 0.42 : n === 3 ? 0.33 : 0.27);
 
@@ -64,8 +73,11 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
       </div>
       <div className="pcard-shade" />
       <div className="pcard-side" style={{ "--abk": abScale(p.abilities.length) } as React.CSSProperties}>
-        <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
-        <span className="pos">{p.pos}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {ovrArt(p.ovr) ? <img className="ovr-img" src={ovrArt(p.ovr)!} alt={String(p.ovr)} /> : <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>}
+        <span className={`ovr-rule ${p.ovr >= 99 ? "gold" : ""}`} aria-hidden />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {posArt(p.pos, p.ovr >= 99) ? <img className="pos-img" src={posArt(p.pos, p.ovr >= 99)!} alt={p.pos} /> : <span className="pos">{p.pos}</span>}
         <span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>
         {sortAbilities(p.abilities).map((a) => (
           tierClass(a.tier) === "single" && xfLetter(a.title)

@@ -3,7 +3,7 @@
 // links only, like /api/discord/card.
 import { ImageResponse } from "next/og";
 import { checkCardLink } from "@/lib/discord/cardLink";
-import { cardFonts, cardNode, withLogo, xfGems } from "@/lib/discord/cardImage";
+import { cardFonts, cardNode, preloadOvrArt, withLogo, xfGems } from "@/lib/discord/cardImage";
 import { cardArtFor } from "@/lib/discord/cardArtLoad";
 import { getLeagueData } from "@/lib/league/load";
 import { cardProps } from "@/lib/league/cardProps";
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   if (!players.length) return new Response("Not found", { status: 404 });
   const arts = await Promise.all(players.map((p) => cardArtFor(slug, p)));
   const n = players.length;
-  await xfGems();
+  await Promise.all([xfGems(), preloadOvrArt(players.map((p) => ({ ovr: p.ovr, pos: p.pos })))]);
   const props = await Promise.all(players.map((p) => withLogo(cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)))));
   return new ImageResponse(
     (

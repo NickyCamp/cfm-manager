@@ -753,6 +753,11 @@ details.panel[open] summary { margin-bottom: 8px; }
   text-shadow: 0 1px 4px rgba(0,0,0,.6); }
 .pcard-side .ovr { font: 800 17cqw/0.9 var(--display); font-variant-numeric: tabular-nums; }
 .pcard-side .pos { font: 800 7.2cqw/1 var(--display); letter-spacing: .5px; margin-top: -0.6cqw; color: #fff; }
+/* Nick's overall + position art (public/ovr): white numbers, gold at 99, a thin rule between like his samples. */
+.pcard-side .ovr-img { width: 25cqw; height: auto; display: block; margin: -1.6cqw 0 -1.8cqw; }
+.pcard-side .ovr-rule { width: 9.5cqw; height: 0.6cqw; border-radius: 0.3cqw; background: #e8ecf2; box-shadow: 0 0.3cqw 0.6cqw rgba(0,0,0,.5); }
+.pcard-side .ovr-rule.gold { background: linear-gradient(180deg, #ffd54a, #c98a00); }
+.pcard-side .pos-img { width: 25cqw; height: auto; display: block; margin: -0.6cqw 0 -0.6cqw; }
 .pcard-side .team, .pcard-keys .team { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
   background: var(--tc1); border: 0.9cqw solid var(--tc2); color: #fff; font: 800 4.4cqw/1 var(--display); text-shadow: none; }
 .pcard-side .team { width: 13.5cqw; height: 13.5cqw; }

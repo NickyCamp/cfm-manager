@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { abilityInitials, abScale, backScale, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
+import { abilityInitials, abScale, backScale, ovrArt, posArt, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
 
@@ -77,6 +77,17 @@ const frameOverlay = (tier: number, W: number, H: number) =>
   // eslint-disable-next-line @next/next/no-img-element
   frames[tier] ? <img src={frames[tier]!} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
 
+// Nick's overall/position art, loaded per card (only the files that card needs) and cached as data: URLs.
+const artCache = new Map<string, string | null>();
+/** Load the overall + position images a card needs; call before cardNode. Missing files fall back to text. */
+export async function preloadOvrArt(cards: { ovr: number; pos: string }[]) {
+  const want = new Set(cards.flatMap((c) => [ovrArt(c.ovr), posArt(c.pos, c.ovr >= 99)]).filter((x): x is string => !!x && !artCache.has(x)));
+  await Promise.all([...want].map(async (u) => {
+    artCache.set(u, await dataUrl(`public${u}`).catch((e) => { console.error("card asset missing", u, e); return null; }));
+  }));
+}
+const artOf = (u: string | null) => (u ? artCache.get(u) ?? null : null);
+
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16) || 0;
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -133,8 +144,15 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
 
         {/* right column: overall, position, team, abilities */}
         <div style={{ position: "absolute", top: 2.6 * U, right: 3 * U, width: 19 * U, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
-          <span style={{ fontSize: 17 * U, fontWeight: 800, lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
-          <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>
+          {artOf(ovrArt(p.ovr))
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={25 * U} height={25 * U * 140 / 192} style={{ width: 25 * U, height: 25 * U * 140 / 192, marginTop: -1.6 * U, marginBottom: -1.8 * U }} />
+            : <span style={{ fontSize: 17 * U, fontWeight: 800, lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>}
+          <div style={{ width: 9.5 * U, height: 0.6 * U, borderRadius: 0.3 * U, display: "flex", backgroundImage: ovr99 ? "linear-gradient(180deg, #ffd54a, #c98a00)" : "linear-gradient(180deg, #e8ecf2, #e8ecf2)" }} />
+          {artOf(posArt(p.pos, ovr99))
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={25 * U} height={25 * U * 58 / 192} style={{ width: 25 * U, height: 25 * U * 58 / 192, marginTop: -0.6 * U, marginBottom: -0.6 * U }} />
+            : <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>}
           {p.teamLogo?.startsWith("data:")
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={p.teamLogo} alt="" width={badge} height={badge} style={{ width: badge, height: badge, objectFit: "contain" }} />
@@ -293,7 +311,7 @@ export const pairSize = (W = 600) => ({ width: 2 * W + 24 + 40, height: Math.rou
 /** The card as a PNG: the front alone (750×1050), or front and back side by side. */
 export async function renderCard(p: PlayerCardProps, art?: string, cutout = false, side: "front" | "both" = "front") {
   const size = side === "both" ? pairSize() : { width: CARD_W, height: CARD_H };
-  await xfGems();
+  await Promise.all([xfGems(), preloadOvrArt([p])]);
   p = await withLogo(p);
   return new ImageResponse(side === "both" ? cardPairNode(p, art, cutout) : cardNode(p, art, cutout), {
     ...size, fonts: await cardFonts(),
