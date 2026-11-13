@@ -12,7 +12,7 @@ import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
-import { cardImageUrl, packImageUrl } from "./cardLink";
+import { cardImageUrl, matchupImageUrl, packImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
@@ -191,7 +191,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const t = findTeam(d, opt(i, "team"));
       if (!t) return reply("No team by that name.");
       const w = Number(opt(i, "week")) || 0;
-      return { embeds: [twsEmbed(d, t, url, footer, w || undefined)] };
+      return { embeds: [twsEmbed(d, t, url, footer, w || undefined, { base, slug: lg.slug })] };
     }
     case "pack": return openPackReply(i, lg, d, base, url, footer);
     case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
@@ -577,7 +577,8 @@ function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Foot
   };
 }
 
-function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: number): Embed {
+/** pic: when given, the reply is a short caption plus the chart image (/api/discord/matchup) instead of text tables. */
+function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: number, pic?: { base: string; slug: string }): Embed {
   let game, bye = false;
   if (weekNum) {
     const wi = weekIndex(weekNum);
@@ -603,6 +604,19 @@ function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: nu
   const met = d.games.filter((g) => g.final && g.id !== game.id && g.stage === 1 && ((g.home === t.id && g.away === opp.id) || (g.home === opp.id && g.away === t.id)));
   if (met.length) lines.push(`Other meetings: ${met.map((g) => `${teamOf(d, g.away)?.abbr} ${g.as} @ ${teamOf(d, g.home)?.abbr} ${g.hs} (${weekTitle(d, g.stage, g.week)})`).join("; ")}`);
   const embed: Embed = { title: `${wk}: ${t.abbr} vs ${opp.abbr}`, url: url(`/teams/${t.abbr.toLowerCase()}?tab=schedule`), color: hexColor(t.primary), footer, description: lines.join("\n") };
+  if (pic) {
+    // The chart carries the matchup or box score; the text keeps only what the picture doesn't show.
+    const caption = [
+      bye ? `**${t.abbr} has no game this week.** Next up:` : "",
+      game.final ? `[Box score](${url(`/games/${game.id}`)})` : `[Game page](${url(`/games/${game.id}`)})`,
+      met.length ? `Other meetings: ${met.map((g) => `${teamOf(d, g.away)?.abbr} ${g.as} @ ${teamOf(d, g.home)?.abbr} ${g.hs} (${weekTitle(d, g.stage, g.week)})`).join("; ")}` : "",
+    ].filter(Boolean);
+    if (!game.final) {
+      const e = ts && os ? edges(t, ts, opp, os) : [];
+      if (e.length) caption.push(e.join("\n"));
+    }
+    return { ...embed, url: url(`/games/${game.id}`), description: caption.join("\n"), image: { url: matchupImageUrl(pic.base, pic.slug, game.id) } };
+  }
   // A finished game: the box score instead of the season matchup.
   if (game.final) {
     const table = gameTable(d, game, away, home);

@@ -5,6 +5,7 @@ import { getLeagueData } from "@/lib/league/load";
 import { boxScore, indexes, weekKey, weekTitle } from "@/lib/league/derive";
 import { avg } from "@/lib/league/format";
 import { NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
+import { MatchupChart } from "@/components/league/MatchupChart";
 import type { LeagueData, StatLine, Team, TeamGame } from "@/lib/league/types";
 
 export const metadata: Metadata = { title: "Box score" };
@@ -32,13 +33,14 @@ export default async function BoxScore({ params }: Props) {
         </div>
 
         {away && home && ts(away.id) && ts(home.id) && <TeamCompare away={away} home={home} a={ts(away.id)!} h={ts(home.id)!} />}
+        {!g.final && away && home && <MatchupChart d={d} away={away} home={home} />}
 
-        {!lines.length && <p className="muted">EA has no player stats for this game{g.stage === 0 ? " (it doesn't keep them for preseason games)" : ""}.</p>}
-        <div className="box-teams">
+        {g.final && !lines.length && <p className="muted">EA has no player stats for this game{g.stage === 0 ? " (it doesn't keep them for preseason games)" : ""}.</p>}
+        {g.final && <div className="box-teams">
           {[away, home].map((t) => t && (
             <TeamLines key={t.id} slug={slug} team={t} lines={lines.filter((l) => l.t === t.id)} players={players} />
           ))}
-        </div>
+        </div>}
       </div>
     </main>
   );

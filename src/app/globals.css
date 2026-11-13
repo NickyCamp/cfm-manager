@@ -1175,3 +1175,25 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .cb-slider { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
 .cb-slider input { flex: 1; }
 .cb-slider span { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Matchup chart (MatchupChart.tsx): offense vs defense, bars out from the middle by rank ---- */
+.mu h3 { margin: 0 0 12px; }
+.mu-side + .mu-side { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.mu-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font: 800 1.05rem/1 var(--display); text-transform: uppercase; letter-spacing: .4px; }
+.mu-team { display: inline-flex; align-items: center; gap: 8px; }
+.mu-vs { color: var(--ink-soft); font-size: .85rem; }
+.mu-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) 104px minmax(0, 1fr) 74px; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; }
+.mu-row.edge-off, .mu-row.edge-def { background: rgba(255, 213, 74, .07); }
+.mu-val { font: 800 1rem/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mu-val.right { text-align: right; }
+.mu-val em { font-style: normal; font-weight: 700; font-size: .8rem; color: var(--ink-soft); }
+.mu-val i { font-style: normal; color: #ffd54a; margin: 0 3px; font-size: .75rem; }
+.mu-label { text-align: center; font: 700 .85rem/1.1 var(--display); color: var(--ink-soft); text-transform: uppercase; letter-spacing: .3px; }
+.mu-bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,.06); display: flex; overflow: hidden; }
+.mu-bar.left { justify-content: flex-end; }
+.mu-bar > span { display: block; height: 100%; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+@media (max-width: 560px) {
+  .mu-row { grid-template-columns: 58px minmax(0, 1fr) 76px minmax(0, 1fr) 58px; gap: 5px; padding: 4px 2px; }
+  .mu-label { font-size: .72rem; }
+  .mu-val { font-size: .9rem; }
+}

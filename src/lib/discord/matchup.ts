@@ -171,3 +171,31 @@ export function edges(a: Team, aS: TeamStats, b: Team, bS: TeamStats, max = 3) {
   }
   return out.sort((x, y) => y.gap - x.gap).slice(0, max).map((x) => x.text);
 }
+
+// ---------- structured matchup, for the charts (site game page + /tws image) ----------
+
+export type MatchRow = { label: string; off: { v: string; rank: number }; def: { v: string; rank: number }; edge: "off" | "def" | null };
+export type MatchSide = { off: Team; def: Team; rows: MatchRow[] };
+
+/** Each offense against the other defense, row by row, with the side holding a 10+ rank edge marked. */
+export function matchupSides(d: LeagueData, away: Team, home: Team): { sides: [MatchSide, MatchSide]; gp: [number, number] } | null {
+  const stats = teamStats(d);
+  const as = stats.get(away.id), hs = stats.get(home.id);
+  if (!as || !hs) return null;
+  const side = (off: Team, offS: TeamStats, def: Team, defS: TeamStats): MatchSide => ({
+    off, def,
+    rows: PAIRS.map(([o, dk, label]) => {
+      const gap = defS.rank[dk] - offS.rank[o];
+      return {
+        label,
+        off: { v: fmt(o, offS.v[o]), rank: offS.rank[o] },
+        def: { v: fmt(dk, defS.v[dk]), rank: defS.rank[dk] },
+        edge: o === "pts" ? null : gap >= 10 ? "off" : gap <= -10 ? "def" : null,
+      };
+    }),
+  });
+  return { sides: [side(away, as, home, hs), side(home, hs, away, as)], gp: [as.gp, hs.gp] };
+}
+
+/** A bar length (0..1) for a rank among `teams` teams: #1 is full, last is a sliver. */
+export const rankBar = (rank: number, teams = 32) => Math.max(0.06, (teams + 1 - rank) / teams);
