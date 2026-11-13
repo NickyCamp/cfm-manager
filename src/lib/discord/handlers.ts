@@ -13,6 +13,7 @@ import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
 import { cardImageUrl } from "./cardLink";
+import { currentGame, edges, sideTable, teamStats } from "./matchup";
 import { BRAND, EPHEMERAL, hexColor, postToChannel, type Embed, type Message } from "./api";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
@@ -162,6 +163,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "team": {
       const t = findTeam(d, opt(i, "team"));
       return t ? { embeds: [teamEmbed(d, t, url, footer)] } : reply("No team by that name.");
+    }
+    case "tws": {
+      const t = findTeam(d, opt(i, "team"));
+      return t ? { embeds: [twsEmbed(d, t, url, footer)] } : reply("No team by that name.");
     }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
@@ -374,6 +379,36 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   };
 }
 
+function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
+  const { game, bye } = currentGame(d, t);
+  if (!game) return { title: `${teamLabel(t)}: no game scheduled`, color: hexColor(t.primary), footer, description: `Nothing left on the ${teamLabel(t)} schedule this season.` };
+  const home = teamOf(d, game.home)!, away = teamOf(d, game.away)!;
+  const opp = game.home === t.id ? away : home;
+  const stats = teamStats(d);
+  const ts = stats.get(t.id), os = stats.get(opp.id);
+  const wk = weekTitle(d, game.stage, game.week);
+  const rec = (x: Team) => `${record(x)}${x.rec.streak ? `, ${streakText(x.rec.streak)}` : ""}`;
+  const lines = [
+    bye ? `**${t.abbr} has no game this week.** Next up:` : "",
+    `**${away.city} ${away.name}** (${rec(away)}) @ **${home.city} ${home.name}** (${rec(home)})`,
+    game.final ? `Final: ${away.abbr} ${game.as}, ${home.abbr} ${game.hs}${game.simmed ? " (sim)" : ""} · [box score](${url(`/games/${game.id}`)})` : "",
+    [away, home].map((x) => (x.user ? `${x.abbr}: ${x.user}` : `${x.abbr}: CPU`)).join(" · "),
+  ].filter(Boolean);
+  // Earlier meetings this season.
+  const met = d.games.filter((g) => g.final && g.id !== game.id && g.stage === 1 && ((g.home === t.id && g.away === opp.id) || (g.home === opp.id && g.away === t.id)));
+  if (met.length) lines.push(`Earlier: ${met.map((g) => `${teamOf(d, g.away)?.abbr} ${g.as} @ ${teamOf(d, g.home)?.abbr} ${g.hs} (${weekTitle(d, g.stage, g.week)})`).join("; ")}`);
+  const embed: Embed = { title: `${wk}: ${t.abbr} vs ${opp.abbr}`, url: url(`/teams/${t.abbr.toLowerCase()}?tab=schedule`), color: hexColor(t.primary), footer, description: lines.join("\n") };
+  if (!ts || !os) return { ...embed, fields: [{ name: "Matchup stats", value: "Not enough games played yet this season." }] };
+  const e = edges(t, ts, opp, os);
+  embed.fields = [
+    { name: `${t.abbr} offense vs ${opp.abbr} defense`, value: sideTable(t, ts, opp, os) },
+    { name: `${opp.abbr} offense vs ${t.abbr} defense`, value: sideTable(opp, os, t, ts) },
+    ...(e.length ? [{ name: "Biggest mismatches", value: e.join("\n") }] : []),
+    { name: "\u200b", value: `-# Per game, ${d.season.year} regular season + playoffs (${t.abbr} ${ts.gp} games, ${opp.abbr} ${os.gp}). #1 = best in the league. Turnovers: given up on offense, forced on defense. Sacks: allowed on offense, made on defense.` },
+  ];
+  return embed;
+}
+
 function standingsEmbed(d: LeagueData, url: Url, footer: Footer): Embed {
   const fields = standings(d).flatMap((c) => c.divisions.map((dv) => ({
     name: dv.div,
@@ -410,4 +445,4 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
 }
 
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
-export const _preview = { playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
+export const _preview = { twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };

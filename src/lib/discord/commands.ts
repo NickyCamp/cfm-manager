@@ -41,6 +41,7 @@ export const COMMANDS = [
   { name: "contract", description: "What a player will likely ask for on his next deal", ...ANYWHERE, options: [player] },
   { name: "cap", description: "Cap space now and projected; pick a team for its breakdown", ...ANYWHERE, options: [team(false)] },
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
+  { name: "tws", description: "A team's game this week: opponent and offense vs defense matchup with league ranks", ...ANYWHERE, options: [team(true)] },
   { name: "standings", description: "Division standings", ...ANYWHERE },
   { name: "playoffs", description: "Playoff picture with NFL tiebreakers", ...ANYWHERE },
   {
