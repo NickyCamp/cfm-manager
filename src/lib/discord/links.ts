@@ -33,3 +33,34 @@ export async function setDiscord(leagueId: string, discord: DiscordSettings | nu
 }
 
 export const discordOf = (lg: LinkedLeague) => (lg.settings?.discord || null) as DiscordSettings | null;
+
+// ---------- personal leagues (user-installed bot: DMs, group DMs, unlinked servers) ----------
+// Kept in leagues.settings.discordUsers: Discord user ids that picked this league with /myleague.
+
+export async function leagueForUser(userId: string): Promise<LinkedLeague | null> {
+  const { data } = await supabaseAdmin()
+    .from("leagues")
+    .select("id, slug, name, is_public, settings")
+    .contains("settings", { discordUsers: [userId] })
+    .limit(1)
+    .maybeSingle();
+  return data as LinkedLeague | null;
+}
+
+/** Makes `leagueId` this user's league (or, with null, clears it), removing them from any other league. */
+export async function setUserLeague(userId: string, leagueId: string | null) {
+  const db = supabaseAdmin();
+  const { data: rows } = await db.from("leagues").select("id, settings").contains("settings", { discordUsers: [userId] });
+  const ids = new Set((rows || []).map((r) => r.id as string));
+  if (leagueId) ids.add(leagueId);
+  for (const id of ids) {
+    const { data } = await db.from("leagues").select("settings").eq("id", id).single();
+    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+    const users = new Set(((settings.discordUsers as string[]) || []).filter((u) => u !== userId));
+    if (id === leagueId) users.add(userId);
+    if (users.size) settings.discordUsers = [...users];
+    else delete settings.discordUsers;
+    const { error } = await db.from("leagues").update({ settings }).eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+}

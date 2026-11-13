@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (i.type === COMMAND) {
     const base = new URL(req.url).origin;
     // Settings changes reply only to the person who ran them; everything else is public.
-    const quiet = ["link", "unlink", "notify"].includes(i.data?.name || "");
+    const quiet = ["link", "unlink", "notify", "myleague"].includes(i.data?.name || "");
     after(async () => {
       try {
         await editOriginal(i.application_id, i.token, await runCommand(i, base));

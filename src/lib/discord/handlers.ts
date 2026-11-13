@@ -13,7 +13,7 @@ import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
 import { BRAND, EPHEMERAL, hexColor, postToChannel, type Embed, type Message } from "./api";
-import { discordOf, leagueBySlug, leagueForGuild, setDiscord, type LinkedLeague } from "./links";
+import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
 export type Interaction = {
@@ -23,8 +23,23 @@ export type Interaction = {
   token: string;
   guild_id?: string;
   member?: { user: { id: string; username: string }; permissions?: string };
+  user?: { id: string; username: string };   // set instead of member in DMs
+  context?: number;                           // 0 server, 1 bot DM, 2 group DM / other DM
   data?: { name: string; options?: Option[] };
 };
+
+const userId = (i: Interaction) => i.member?.user.id || i.user?.id || "";
+
+/** The server's league if this server is linked, otherwise the person's own league (/myleague). */
+async function resolveLeague(i: Interaction): Promise<{ lg: LinkedLeague; via: "server" | "user" } | null> {
+  if (i.guild_id) {
+    const lg = await leagueForGuild(i.guild_id);
+    if (lg) return { lg, via: "server" };
+  }
+  const uid = userId(i);
+  const lg = uid ? await leagueForUser(uid) : null;
+  return lg ? { lg, via: "user" } : null;
+}
 
 const opt = (i: Interaction, name: string) => i.data?.options?.find((o) => o.name === name)?.value;
 const reply = (text: string, ephemeral = true): Message => ({ content: text, flags: ephemeral ? EPHEMERAL : undefined });
@@ -73,8 +88,7 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 // ---------- autocomplete ----------
 
 export async function autocomplete(i: Interaction): Promise<{ name: string; value: string }[]> {
-  if (!i.guild_id) return [];
-  const lg = await leagueForGuild(i.guild_id);
+  const lg = (await resolveLeague(i))?.lg;
   if (!lg) return [];
   const d = await getLeagueData(lg.slug);
   if (!d) return [];
@@ -98,14 +112,24 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
   const name = i.data?.name || "";
-  if (!i.guild_id) return reply("Use CFM Manager's commands inside a server.");
+  if (name === "myleague") return myLeague(i, base);
+  if (name === "link" || name === "unlink" || name === "notify") {
+    if (!i.guild_id || i.context !== undefined && i.context !== 0) return reply("That command sets up a server. In DMs, use `/myleague` instead.");
+    if (name === "link") return link(i, base);
+    if (name === "unlink") return unlink(i);
+  }
 
-  if (name === "link") return link(i, base);
-  if (name === "unlink") return unlink(i);
-
-  const lg = await leagueForGuild(i.guild_id);
-  if (!lg) return reply(`This server isn't linked to a league yet. Someone with **Manage Server** runs \`/link league:<web address>\` (the part after /l/ in ${base}/l/…).`);
-  if (name === "notify") return notify(i, lg);
+  const found = await resolveLeague(i);
+  if (!found) {
+    return reply(i.guild_id
+      ? `No league set. Run \`/myleague league:<web address>\` to pick yours (the part after /l/ in ${base}/l/…), or a server admin can \`/link\` this server.`
+      : `No league set. Run \`/myleague league:<web address>\` to pick yours (the part after /l/ in ${base}/l/…).`);
+  }
+  const { lg, via } = found;
+  if (name === "notify") {
+    if (via !== "server") return reply("Link this server first with `/link league:<web address>`.");
+    return notify(i, lg);
+  }
 
   const d = await getLeagueData(lg.slug);
   if (!d) return reply(`${lg.name} hasn't finished its first sync yet. Try again in a few minutes.`);
@@ -141,14 +165,14 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { embeds: [scoresEmbed(d, pick.stage, pick.week, url, footer)] };
     }
     case "league": {
-      const ch = discordOf(lg)?.channelId;
+      const ch = via === "server" ? discordOf(lg)?.channelId : null;
       return {
         embeds: [{
           title: lg.name, url: url(), color: BRAND, footer,
           description: [
             `**${d.season.year} ${d.season.title}** · data from ${new Date(d.pulledAt).toUTCString().replace(" GMT", " UTC")}`,
             `[Standings](${url("/standings")}) · [Cap](${url("/cap")}) · [Contract tool](${url("/contracts")}) · [Playoffs](${url("/playoffs")}) · [Draft](${url("/draft")})`,
-            ch ? `Updates post in <#${ch}>.` : "Updates aren't posting anywhere yet (`/notify`).",
+            via === "user" ? "This is your league (`/myleague`)." : ch ? `This server's league. Updates post in <#${ch}>.` : "This server's league. Updates aren't posting anywhere yet (`/notify`).",
           ].join("\n"),
         }],
       };
@@ -171,6 +195,26 @@ async function link(i: Interaction, base: string): Promise<Message> {
   const keepChannel = prev && prev.guildId === i.guild_id ? prev.channelId ?? null : null;
   await setDiscord(lg.id, { guildId: i.guild_id!, channelId: keepChannel, linkedBy: i.member?.user.id, linkedAt: new Date().toISOString() });
   return reply(`Linked to **${lg.name}** (${base}/l/${lg.slug}). Try \`/player\`, \`/cap\` or \`/playoffs\`. To get updates after each sync, run \`/notify channel:#your-channel\`.`, false);
+}
+
+async function myLeague(i: Interaction, base: string): Promise<Message> {
+  const uid = userId(i);
+  if (!uid) return reply("Couldn't tell who you are.");
+  const raw = String(opt(i, "league") || "").trim().toLowerCase();
+  if (!raw) {
+    const cur = await leagueForUser(uid);
+    return reply(cur ? `Your league is **${cur.name}** (${base}/l/${cur.slug}). Run \`/myleague league:<web address>\` to change it, or \`/myleague league:none\` to clear it.` : "You haven't picked a league. Run `/myleague league:<web address>`.");
+  }
+  if (raw === "none" || raw === "clear") {
+    await setUserLeague(uid, null);
+    return reply("Cleared your league.");
+  }
+  const slug = raw.replace(/^.*\/l\//, "").replace(/[/?#].*$/, "");
+  const lg = await leagueBySlug(slug);
+  if (!lg) return reply(`No league at **${slug}**. Use the part after /l/ in the league's address, e.g. \`ncl\` for ${base}/l/ncl.`);
+  if (!lg.is_public) return reply(`${lg.name} is private, so it can't be shown in Discord.`);
+  await setUserLeague(uid, lg.id);
+  return reply(`Your league is now **${lg.name}**. \`/player\`, \`/cap\` and the rest use it in DMs, group DMs and any server that isn't linked to its own league.`);
 }
 
 async function unlink(i: Interaction): Promise<Message> {
