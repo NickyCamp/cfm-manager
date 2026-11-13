@@ -141,9 +141,9 @@ export function propMarkets(d: LeagueData, games: Game[], label: string): Market
       const outs = sideMarkets[grp];
       if (!outs.length) continue;
       out.push({
-        key: `props-${g.id}-${grp}`, cat: "props", title: `${a.name} at ${h.name}: ${titles[grp]}`, subtitle: `${label} · player props, each line its own yes/no`,
+        key: `props-${g.id}-${grp}`, gameId: g.id, cat: "props", title: `${a.name} at ${h.name}: ${titles[grp]}`, subtitle: `${label} · player props, each line its own yes/no`,
         kind: "independent", settled: g.final, status: g.final ? "Settled" : "Open until kickoff",
-        rules: `Each line settles on the player's stats in this game's box score (${a.city} ${a.name} at ${h.city} ${h.name}). If he has no stat line in the game, Yes loses. Chances come from his per-game averages in earlier games this season, nudged toward what the opponent allows; yards, attempts and catches use his own game-to-game spread, TDs, INTs and sacks a Poisson count. Play money only.`,
+        rules: `Each line settles on the player's stats in this game's box score (${a.city} ${a.name} at ${h.city} ${h.name}). If he has no stat line in the game, Yes loses. Trading stops as soon as EA reports the game played (checked live on every trade), even before the site syncs the result. Chances come from his per-game averages in earlier games this season, nudged toward what the opponent allows; yards, attempts and catches use his own game-to-game spread, TDs, INTs and sacks a Poisson count. Play money only.`,
         outcomes: outs,
       });
     }

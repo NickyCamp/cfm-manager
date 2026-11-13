@@ -8,7 +8,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   const url = new URL(req.url);
   const d = await getLeagueData(slug);
   if (!d) return new Response("No league data", { status: 404 });
-  const { book, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex);
+  const { book, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
   if (!leagueId) return new Response("Shared trading isn't set up", { status: 404 });
   const index = priceIndex(book);
   const all = [];

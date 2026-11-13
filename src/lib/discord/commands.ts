@@ -99,4 +99,14 @@ export const COMMANDS = [
     options: [{ type: INTEGER, name: "week", description: "Regular-season week number", required: false, min_value: 1, max_value: 18 }],
   },
   { name: "league", description: "Which league you're seeing here, with links", ...ANYWHERE },
+  {
+    name: "kickoff",
+    description: "Set when betting closes on a game this week (its kickoff); leave time empty to see this week's",
+    ...SERVER_ONLY,
+    options: [
+      team(false),
+      { type: STRING, name: "time", description: "e.g. 9pm, tomorrow 8:30pm, sat 7pm, in 45m, now", required: false },
+      { type: STRING, name: "timezone", description: "Time zone you typed the time in (default Eastern)", required: false, choices: [{ name: "Eastern", value: "ET" }, { name: "Central", value: "CT" }, { name: "Mountain", value: "MT" }, { name: "Pacific", value: "PT" }] },
+    ],
+  },
 ];

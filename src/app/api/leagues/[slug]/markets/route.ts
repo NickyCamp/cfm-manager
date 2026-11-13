@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+
+export const maxDuration = 30;
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
-import { marketsShared, placeTrade, viewer } from "@/lib/marketStore";
+import { closeTimes, fmtET, marketsShared, placeTrade, viewer } from "@/lib/marketStore";
+import { liveWeek, weekMoved } from "@/lib/eaLive";
+import { requestSync } from "@/lib/sync";
 
 // POST { market, outcome, side: "yes"|"no", kind: "buy"|"sell", dollars?, qty? }
 // League members only. Prices are worked out here from the simulation + members' trades.
@@ -26,6 +30,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const o = m?.outcomes.find((x) => x.id === outcome);
   if (!m || !o) return NextResponse.json({ error: "That market doesn't exist any more." }, { status: 404 });
   if (m.settled || o.state !== "open") return NextResponse.json({ error: "That market has closed." }, { status: 409 });
+
+  // Game and player-prop markets: closed at the scheduled kickoff, and the moment EA says the game was played.
+  if (m.gameId) {
+    const c = (await closeTimes(v.leagueId, d.season.year)).get(m.gameId);
+    if (c && Date.parse(c.closeAt) <= Date.now()) return NextResponse.json({ error: `Betting on this game closed at kickoff (${fmtET(c.closeAt)}).` }, { status: 409 });
+    const live = await liveWeek(slug, { fresh: true });
+    if (live && (live.played.has(m.gameId) || weekMoved(live, d.season))) {
+      after(() => requestSync(slug, { minGapMs: 10 * 60_000, mode: "auto", by: "market-close" }).then(() => {}, () => {}));
+      return NextResponse.json({ error: "EA says this game has been played, so betting is closed. It settles at the next sync." }, { status: 409 });
+    }
+    if (!live && !(c && Date.parse(c.closeAt) > Date.now())) {
+      return NextResponse.json({ error: "Couldn't check with EA that this game hasn't been played yet. Set a kickoff time for it (/kickoff in Discord or on the market page) and betting stays open until then." }, { status: 503 });
+    }
+  }
 
   const r = await placeTrade({ leagueId: v.leagueId, season: d.season.year, userId: v.userId, market, outcome, side, kind, model: o.p, dollars, qty });
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 409 });

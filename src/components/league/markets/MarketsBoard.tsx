@@ -9,7 +9,7 @@ import type { SharedState } from "@/lib/marketStore";
 
 export type BoardOutcome = { id: string; label: string; sub?: string; team?: number; p: number; prev: number | null; state: OutcomeState };
 export type BoardMarket = {
-  key: string; cat: MarketCat; title: string; subtitle: string; kind: "exclusive" | "independent"; settled: boolean; status: string;
+  key: string; cat: MarketCat; title: string; subtitle: string; kind: "exclusive" | "independent"; settled: boolean; status: string; closed?: boolean;
   outcomes: BoardOutcome[]; spark: (number | null)[]; count: number;
 };
 
@@ -68,13 +68,13 @@ export function MarketsBoard({ slug, markets, teams, index, sinceLabel, initialC
                   {o.sub && <span className="mk-row-sub">{o.sub}</span>}
                 </span>
                 <span className="mk-row-chance"><Chance p={o.p} state={o.state} /><Delta p={o.p} prev={o.prev} state={o.state} /></span>
-                {o.state === "open" && !m.settled ? (
+                {o.state === "open" && !m.settled && !m.closed ? (
                   <span className="mk-btns">
                     <Link className="mk-btn yes" href={href("yes")} aria-label={`Buy Yes on ${o.label} at ${pr.yes} cents`}>Yes {pr.yes}¢</Link>
                     <Link className="mk-btn no" href={href("no")} aria-label={`Buy No on ${o.label} at ${pr.no} cents`}>No {pr.no}¢</Link>
                   </span>
                 ) : (
-                  <span className="mk-btns"><span className={`mk-result ${o.state}`}>{o.state === "won" ? "Yes ✓" : "No"}</span></span>
+                  <span className="mk-btns"><span className={`mk-result ${o.state}`}>{o.state === "won" ? "Yes ✓" : o.state === "lost" ? "No" : "Closed"}</span></span>
                 )}
               </li>
             );
@@ -82,7 +82,7 @@ export function MarketsBoard({ slug, markets, teams, index, sinceLabel, initialC
         </ul>
         <Link href={`/l/${slug}/markets/${m.key}`} className="mk-card-foot">
           <span>{m.count > rows.length ? `+${m.count - rows.length} more` : m.kind === "independent" ? "Each line is its own yes/no" : "One winner"}</span>
-          <span className={m.settled ? "mk-status settled" : "mk-status"}>{m.status}</span>
+          <span className={m.settled || m.closed ? "mk-status settled" : "mk-status"}>{m.status}</span>
         </Link>
       </article>
     );

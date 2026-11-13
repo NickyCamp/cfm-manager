@@ -484,9 +484,9 @@ function buildBook(d: LeagueData): MarketBook {
     if (!h || !a) continue;
     const hp = series((s) => s.games.get(g.id));
     const m: Market = {
-      key: `game-${g.id}`, cat: "games", title: `${a.name} at ${h.name}`, subtitle: `${cur.title} · who wins?`, kind: "exclusive",
+      key: `game-${g.id}`, gameId: g.id, cat: "games", title: `${a.name} at ${h.name}`, subtitle: `${cur.title} · who wins?`, kind: "exclusive",
       settled: false, status: g.final ? "Settled" : "Open until kickoff",
-      rules: `Settles on the final score of ${a.city} ${a.name} at ${h.city} ${h.name}. ${g.week === 22 ? "Neutral site." : "Home field is worth about 1.5 points in the model."} ${modelRule}`,
+      rules: `Settles on the final score of ${a.city} ${a.name} at ${h.city} ${h.name}. Trading stops as soon as EA reports the game played (checked live on every trade), even before the site syncs the result. ${g.week === 22 ? "Neutral site." : "Home field is worth about 1.5 points in the model."} ${modelRule}`,
       outcomes: [
         mk(String(a.id), tname(a), hp.map((x) => (x == null ? null : 1 - x)), { team: a.id, sub: a.user || "CPU" }),
         mk(String(h.id), tname(h), hp, { team: h.id, sub: h.user || "CPU" }),

@@ -17,13 +17,13 @@ export default async function MarketsPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex);
+  const { book, shared } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
 
   const markets: BoardMarket[] = book.markets.map((m) => {
     const visible = m.outcomes.filter((o) => o.state !== "lost" || m.kind === "independent" || Math.max(...o.history.map((x) => x ?? 0)) >= 0.01);
     const lead = m.outcomes[0];
     return {
-      key: m.key, cat: m.cat, title: m.title, subtitle: m.subtitle, kind: m.kind, settled: m.settled, status: m.status,
+      key: m.key, cat: m.cat, title: m.title, subtitle: m.subtitle, kind: m.kind, settled: m.settled, status: m.status, closed: m.closed,
       outcomes: m.outcomes.slice(0, 4).map((o) => ({ id: o.id, label: o.label, sub: o.sub, team: o.team, p: o.p, prev: o.prev, state: o.state })),
       spark: lead ? lead.history : [],
       count: visible.length,

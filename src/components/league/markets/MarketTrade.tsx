@@ -1,4 +1,5 @@
 "use client";
+import type React from "react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { prices, quoteBuy, type PriceIndex } from "@/lib/league/marketTypes";
@@ -10,8 +11,8 @@ import { money, sellValue, usePortfolio, type Side } from "./usePortfolio";
 
 export type TradeOutcome = BoardOutcome & { player?: number; color?: string; model?: number; net?: number };
 
-export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, teams, index, initialO, initialSide, shared }: {
-  slug: string; mkey: string; title: string; settled: boolean; outcomes: TradeOutcome[]; hidden: number;
+export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidden, teams, index, initialO, initialSide, shared, kickoff }: {
+  slug: string; mkey: string; title: string; settled: boolean; closed?: boolean; kickoff?: React.ReactNode; outcomes: TradeOutcome[]; hidden: number;
   teams: TeamLite[]; index: PriceIndex; initialO?: string; initialSide?: string; shared?: SharedState | null;
 }) {
   const port = usePortfolio(slug, index, shared);
@@ -54,7 +55,7 @@ export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, team
     <div className="mk-layout detail">
       <div className="mk-main">
         <div className="panel mk-outcomes">
-          <div className="mk-out-head"><span>Outcome</span><span>Chance</span><span className="mk-btns-h">{settled ? "Result" : "Buy"}</span></div>
+          <div className="mk-out-head"><span>Outcome</span><span>Chance</span><span className="mk-btns-h">{settled ? "Result" : closed ? "Closed" : "Buy"}</span></div>
           <ul className="mk-rows big">
             {list.map((x) => {
               const p = prices(x);
@@ -69,13 +70,13 @@ export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, team
                     {x.sub && <span className="mk-row-sub">{x.sub}</span>}
                   </span>
                   <span className="mk-row-chance"><Chance p={x.p} state={x.state} /><Delta p={x.p} prev={x.prev} state={x.state} /></span>
-                  {x.state === "open" ? (
+                  {x.state === "open" && !closed ? (
                     <span className="mk-btns">
                       <button type="button" className={`mk-btn yes${active && side === "yes" ? " on" : ""}`} onClick={() => choose(x.id, "yes")}>Yes {p.yes}¢</button>
                       <button type="button" className={`mk-btn no${active && side === "no" ? " on" : ""}`} onClick={() => choose(x.id, "no")}>No {p.no}¢</button>
                     </span>
                   ) : (
-                    <span className="mk-btns"><span className={`mk-result ${x.state}`}>{x.state === "won" ? "Yes ✓" : "No"}</span></span>
+                    <span className="mk-btns"><span className={`mk-result ${x.state}`}>{x.state === "won" ? "Yes ✓" : x.state === "lost" ? "No" : "Closed"}</span></span>
                   )}
                 </li>
               );
@@ -87,7 +88,9 @@ export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, team
       </div>
 
       <div className="mk-side-col">
-        {!settled && o && pr && (
+        {kickoff}
+        {closed && !settled && <div className="panel mk-ticket"><p className="mk-msg err">Betting on this game is closed. Positions pay out when the result syncs.</p></div>}
+        {!settled && !closed && o && pr && (
           <div className="panel mk-ticket" aria-label="Order ticket">
             <div className="mk-ticket-head">
               {o.team ? <MiniBadge team={teamMap.get(o.team)} size={30} /> : null}

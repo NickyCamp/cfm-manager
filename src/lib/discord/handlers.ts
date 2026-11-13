@@ -21,6 +21,8 @@ import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { closeTimes, fmtET, marketsShared, setCloseTime } from "@/lib/marketStore";
+import { kickoffProblem, parseKickoff, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
@@ -195,6 +197,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (!t) return reply("No team by that name.");
       const w = Number(opt(i, "week")) || 0;
       return { embeds: [twsEmbed(d, t, url, footer, w || undefined, { base, slug: lg.slug })] };
+    }
+    case "kickoff": {
+      if (via !== "server") return reply("Kickoff times can only be set in the league's own Discord server (linked with `/link`).");
+      return kickoff(i, lg, d, url);
     }
     case "pack": return openPackReply(i, lg, d, base, url, footer);
     case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
@@ -735,3 +741,39 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
 
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
 export const _preview = { statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
+
+// ---------- /kickoff: when betting closes on a game (Nick, 2026-11-13) ----------
+// Anyone in the league's linked server can set it; every change is kept and shown
+// publicly on the site's trade log with the Discord name of whoever set it.
+async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?: string) => string): Promise<Message> {
+  if (!(await marketsShared())) return reply("League betting isn't switched on yet (the commissioner needs to run the markets setup in Supabase).");
+  const tv = opt(i, "team");
+  const timeRaw = String(opt(i, "time") ?? "").trim();
+  const closes = await closeTimes(lg.id, d.season.year);
+  const name = (t?: Team) => (t ? `${t.city} ${t.name}` : "TBD");
+  const teams = new Map(d.teams.map((t) => [t.id, t]));
+  const line = (g: (typeof d.games)[number]) => {
+    const c = closes.get(g.id);
+    const status = g.final ? "final" : c ? (Date.parse(c.closeAt) <= Date.now() ? `closed ${fmtET(c.closeAt)}` : `closes **${fmtET(c.closeAt)}** (set by ${c.by})`) : "no kickoff set";
+    return `${teams.get(g.away)?.abbr ?? "?"} @ ${teams.get(g.home)?.abbr ?? "?"}: ${status}`;
+  };
+  if (!tv) {
+    if (timeRaw) return reply("Pick a team too, e.g. `/kickoff team:Bears time:9pm`.");
+    const week = d.games.filter((g) => g.stage === d.season.stage && g.week === d.season.week && g.home && g.away);
+    if (!week.length) return reply("No games this week.");
+    return reply(`**Kickoffs, ${d.season.title}**\n${week.map(line).join("\n")}\n${url("/markets?cat=games")}`, false);
+  }
+  const t = findTeam(d, tv);
+  if (!t) return reply("No team by that name.");
+  const g = teamGameThisWeek(d, t.id);
+  const problem = kickoffProblem(d, g);
+  if (problem) return reply(problem);
+  if (!timeRaw) return reply(line(g!), false);
+  const tz = TIMEZONES[String(opt(i, "timezone") ?? "ET")] || TIMEZONES.ET;
+  const when = parseKickoff(timeRaw, tz);
+  if (!when) return reply("I couldn't read that time. Try `9pm`, `tomorrow 8:30pm`, `sat 7pm`, `in 45m` or `now` (within the next two weeks).");
+  const who = i.member?.user || i.user;
+  await setCloseTime(lg.id, d.season.year, g!.id, when, { kind: "discord", id: who?.id || "", name: who?.global_name || who?.username || "Discord user" });
+  const now = when.getTime() <= Date.now() + 60_000;
+  return reply(`${now ? "🔒 Betting is now **closed**" : "⏰ Betting closes"} on **${name(teams.get(g!.away))} at ${name(teams.get(g!.home))}**${now ? "" : ` at **${fmtET(when)}**`} (game and player-prop markets). Set by ${who?.global_name || who?.username}; logged publicly. ${url(`/markets/game-${g!.id}`)}`, false);
+}

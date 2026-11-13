@@ -146,3 +146,23 @@ end;
 $$;
 create trigger market_trades_no_edits before update or delete on public.market_trades
   for each row execute function public.market_trades_append_only();
+
+-- Kickoff / betting close times for game and player-prop markets (Nick, 2026-11-13):
+-- people schedule games in chat, so anyone in the league can set when a game's
+-- markets close (Discord /kickoff or the market page). Every change is a new row,
+-- shown publicly with who set it; the latest row per game is the one in force.
+create table public.market_game_close (
+  id bigint generated always as identity primary key,
+  league_id uuid not null references public.leagues (id) on delete cascade,
+  season int not null,
+  game_id bigint not null,
+  close_at timestamptz not null,
+  set_by_kind text not null check (set_by_kind in ('site', 'discord')),
+  set_by_id text not null,
+  set_by_name text not null,
+  created_at timestamptz not null default now()
+);
+create index market_game_close_idx on public.market_game_close (league_id, season, game_id, id desc);
+alter table public.market_game_close enable row level security;
+create trigger market_game_close_no_edits before update or delete on public.market_game_close
+  for each row execute function public.market_trades_append_only();

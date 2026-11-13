@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueData } from "@/lib/league/load";
 import { CATS, marketBook, priceIndex } from "@/lib/league/markets";
-import { auditTrades, marketsForPage, type AuditRow } from "@/lib/marketStore";
+import { auditTrades, closeLog, fmtET, marketsForPage, type AuditRow, type CloseRow } from "@/lib/marketStore";
+import { KickoffForm } from "@/components/league/markets/KickoffForm";
 import { AuditTable } from "@/components/league/markets/AuditTable";
 import { NoData } from "@/components/league/bits";
 import { CHART_COLORS, PriceChart } from "@/components/league/markets/bits";
@@ -23,11 +24,27 @@ export default async function MarketPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex);
+  const { book, shared, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
   const m = book.markets.find((x) => x.key === key);
   if (!m) notFound();
   let trades: AuditRow[] = [];
-  if (leagueId) trades = await auditTrades(leagueId, d.season.year, { market: m.key, limit: 50 }).catch(() => []);
+  let closes: CloseRow[] = [];
+  if (leagueId) [trades, closes] = await Promise.all([
+    auditTrades(leagueId, d.season.year, { market: m.key, limit: 50 }).catch(() => []),
+    m.gameId ? closeLog(leagueId, d.season.year, m.gameId).catch(() => []) : Promise.resolve([]),
+  ]);
+  const kickoff = shared && m.gameId && !m.settled ? (
+    <div className="panel mk-ticket">
+      <h3>Kickoff</h3>
+      <KickoffForm slug={slug} gameId={m.gameId} current={closes[0] ? fmtET(closes[0].closeAt) : null} canSet={shared.member} why={shared.signedIn ? "Only league members can set the kickoff." : "Sign in as a league member to set the kickoff."} />
+      {closes.length > 0 && (
+        <details className="mk-fills">
+          <summary>Kickoff changes ({closes.length})</summary>
+          <ul>{closes.map((c) => <li key={c.id}><span>{fmtET(c.closeAt)}</span><span className="muted">{c.by} via {c.kind === "discord" ? "Discord" : "site"}, {fmtET(c.at)}</span></li>)}</ul>
+        </details>
+      )}
+    </div>
+  ) : null;
 
   // Hide long shots that never reached 1% (still listed in independent markets, where every line matters).
   const peak = (h: (number | null)[]) => Math.max(0, ...h.map((x) => x ?? 0));
@@ -56,7 +73,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
             <h2>{m.title}</h2>
             <p className="muted">{m.subtitle}</p>
           </div>
-          <span className={m.settled ? "mk-status settled" : "mk-status"}>{m.status}</span>
+          <span className={m.settled || m.closed ? "mk-status settled" : "mk-status"}>{m.status}</span>
         </div>
 
         {hasChart && <div className="panel mk-chart-panel">
@@ -69,7 +86,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
           <p className="hint small">Chance after each finished week{book.checkpoints.at(-1)?.label === "Now" ? ", plus now (this week's games played so far)" : ""}.</p>
         </div>}
 
-        <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} shared={shared} />
+        <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} closed={m.closed} kickoff={kickoff} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} shared={shared} />
 
         {shared && (
           <section className="panel mk-audit-panel">

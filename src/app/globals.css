@@ -1460,3 +1460,8 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .mk-board li.you { color: #fff; font-weight: 700; }
 .mk-board .rk { color: var(--ink-soft); }
 .mk-board .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-kickoff p { margin-bottom: 8px; }
+.mk-kickoff-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mk-kickoff-row input { flex: 1 1 180px; min-height: 40px; padding: 6px 10px; background: var(--rail); color-scheme: dark; }
+.mk-kickoff-row .btn { min-height: 40px; padding: 0 14px; font-size: 0.95rem; }
+.mk-ticket h3 { margin-bottom: 6px; }

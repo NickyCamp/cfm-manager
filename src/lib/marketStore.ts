@@ -2,6 +2,7 @@
 // Server only: everything goes through the service role after checking who the user is.
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getLeagueRow } from "@/lib/league/load";
+import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
 import { crowdP, quoteBuy, quoteSell, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 
 export const START_CASH = 1000;
@@ -181,17 +182,65 @@ export async function auditTrades(leagueId: string, season: number, opts: { mark
 
 /** What a markets page needs: the book (with crowd prices once shared trading is on),
  *  the viewer's wallet/leaderboard, and the league id. Settles finished outcomes first. */
-export async function marketsForPage(slug: string, book: MarketBook, season: number, index: (b: MarketBook) => PriceIndex) {
+export async function marketsForPage(slug: string, book: MarketBook, season: number, index: (b: MarketBook) => PriceIndex, dataWeek?: { stage: number; week: number }) {
   if (!(await marketsShared())) return { book, shared: null as SharedState | null, leagueId: null as string | null };
   try {
     const v = await viewer(slug);
     if (!v.leagueId) return { book, shared: null, leagueId: null };
     await settleFinished(v.leagueId, season, book);
-    const crowd = withCrowd(book, await loadPools(v.leagueId, season));
+    // EA's live "played" flags: use what's cached, refresh in the background (never slows the page)
+    const live = liveWeekCached(slug);
+    refreshLiveWeek(slug);
+    const closes = await closeTimes(v.leagueId, season);
+    const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && dataWeek && weekMoved(live, dataWeek)));
+    const crowd = withCrowd(closed, await loadPools(v.leagueId, season));
     const shared = await sharedState(v.leagueId, season, v.userId, v.member, index(crowd));
     return { book: crowd, shared, leagueId: v.leagueId };
   } catch (e) {
     console.error("markets shared state", slug, e);
     return { book, shared: null, leagueId: null };
   }
+}
+
+// ---------------------------------------------------------------- kickoff / close times
+
+export type CloseRow = { id: number; gameId: number; closeAt: string; by: string; kind: "site" | "discord"; at: string };
+
+/** Every close time ever set this season, newest first (public log). */
+export async function closeLog(leagueId: string, season: number, gameId?: number): Promise<CloseRow[]> {
+  let q = supabaseAdmin().from("market_game_close").select("id, game_id, close_at, set_by_kind, set_by_name, created_at")
+    .eq("league_id", leagueId).eq("season", season).order("id", { ascending: false }).limit(500);
+  if (gameId) q = q.eq("game_id", gameId);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data || []).map((r) => ({ id: Number(r.id), gameId: Number(r.game_id), closeAt: r.close_at, by: r.set_by_name, kind: r.set_by_kind, at: r.created_at }));
+}
+/** The close time in force for each game (latest row wins). */
+export async function closeTimes(leagueId: string, season: number) {
+  const out = new Map<number, CloseRow>();
+  for (const r of await closeLog(leagueId, season).catch(() => [])) if (!out.has(r.gameId)) out.set(r.gameId, r);
+  return out;
+}
+export async function setCloseTime(leagueId: string, season: number, gameId: number, closeAt: Date, by: { kind: "site" | "discord"; id: string; name: string }) {
+  const { error } = await supabaseAdmin().from("market_game_close").insert({
+    league_id: leagueId, season, game_id: gameId, close_at: closeAt.toISOString(), set_by_kind: by.kind, set_by_id: by.id, set_by_name: by.name.slice(0, 64),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export const fmtET = (iso: string | Date) => new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET";
+
+/** Marks game/prop markets closed once their kickoff has passed or EA says the game was played. */
+export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, played: Set<number> | null, weekMovedOn: boolean, now = Date.now()): MarketBook {
+  return {
+    ...book,
+    markets: book.markets.map((m) => {
+      if (!m.gameId || m.settled) return m;
+      const c = closes.get(m.gameId);
+      if (weekMovedOn || played?.has(m.gameId)) return { ...m, closed: true, status: "Closed: game played, settles at the next sync" };
+      if (c && Date.parse(c.closeAt) <= now) return { ...m, closed: true, status: `Closed at kickoff (${fmtET(c.closeAt)})` };
+      if (c) return { ...m, status: `Closes ${fmtET(c.closeAt)}` };
+      return { ...m, status: "Open until played (no kickoff set)" };
+    }),
+  };
 }
