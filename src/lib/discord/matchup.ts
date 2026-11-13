@@ -78,6 +78,58 @@ export function teamStats(d: LeagueData): Map<number, TeamStats> {
   return out;
 }
 
+/** Week number people type (1-18, then 19-22 for the playoff rounds) → Madden's stage-1 week index. */
+export function weekIndex(n: number) {
+  if (n <= 18) return n - 1;
+  return { 19: 18, 20: 19, 21: 20, 22: 22 }[n] ?? n - 1;
+}
+
+/** The team's game in a given regular-season/playoff week (null on a bye). */
+export function gameInWeek(d: LeagueData, team: Team, week: number): Game | null {
+  return d.games.find((g) => g.stage === 1 && g.week === week && g.home && g.away && (g.home === team.id || g.away === team.id)) || null;
+}
+
+/** Side-by-side team stats for one finished game. */
+export function gameTable(d: LeagueData, g: Game, away: Team, home: Team) {
+  const a = d.teamGames.find((r) => r.g === g.id && r.t === away.id), h = d.teamGames.find((r) => r.g === g.id && r.t === home.id);
+  if (!a || !h) return null;
+  const frac = ([m, n]: [number, number]) => `${m}/${n}`;
+  const rows: [string, string, string][] = [
+    ["Total yds", String(a.yds), String(h.yds)],
+    ["Pass yds", String(a.passYds), String(h.passYds)],
+    ["Rush yds", String(a.rushYds), String(h.rushYds)],
+    ["1st downs", String(a.firstDowns), String(h.firstDowns)],
+    ["3rd down", frac(a.third), frac(h.third)],
+    ["4th down", frac(a.fourth), frac(h.fourth)],
+    ["Red zone TD", frac(a.redZone), frac(h.redZone)],
+    ["Turnovers", String(a.turnovers), String(h.turnovers)],
+    ["Sacks made", String(a.sacks), String(h.sacks)],
+    ["Penalties", `${a.penalties}-${a.penaltyYds}`, `${h.penalties}-${h.penaltyYds}`],
+  ];
+  const head = `${"".padEnd(12)}${away.abbr.padStart(7)}${home.abbr.padStart(7)}`;
+  return "```\n" + [head, ...rows.map(([l, x, y]) => `${l.padEnd(12)}${x.padStart(7)}${y.padStart(7)}`)].join("\n") + "\n```";
+}
+
+/** Each team's top passer, rusher, receiver and defender in one game. */
+export function gameLeaders(d: LeagueData, g: Game, team: Team) {
+  const lines = d.lines.filter((l) => l.g === g.id && l.t === team.id);
+  const name = (id: number) => { const p = d.players.find((x) => x.id === id); return p ? `${p.first[0]}. ${p.last}` : "Unknown"; };
+  const top = <K extends keyof (typeof lines)[number]>(k: K) => lines.filter((l) => ((l[k] as number) || 0) > 0).sort((x, y) => ((y[k] as number) || 0) - ((x[k] as number) || 0))[0];
+  const out: string[] = [];
+  const pa = top("py");
+  if (pa) out.push(`${name(pa.p)}: ${pa.pc ?? 0}/${pa.pa ?? 0}, ${pa.py} yds, ${pa.ptd ?? 0} TD, ${pa.pint ?? 0} INT`);
+  const ru = top("ry");
+  if (ru) out.push(`${name(ru.p)}: ${ru.ra ?? 0} car, ${ru.ry} yds${ru.rtd ? `, ${ru.rtd} TD` : ""}`);
+  const re = top("rcy");
+  if (re) out.push(`${name(re.p)}: ${re.rc ?? 0} rec, ${re.rcy} yds${re.rctd ? `, ${re.rctd} TD` : ""}`);
+  const def = lines.map((l) => ({ l, s: (l.tk || 0) + 3 * (l.sk || 0) + 5 * (l.int || 0) + 3 * (l.ff || 0) })).filter((x) => x.s > 0).sort((x, y) => y.s - x.s)[0];
+  if (def) {
+    const l = def.l;
+    out.push(`${name(l.p)}: ${[l.tk ? `${l.tk} tkl` : "", l.sk ? `${l.sk} sk` : "", l.int ? `${l.int} INT` : "", l.ff ? `${l.ff} FF` : ""].filter(Boolean).join(", ")}`);
+  }
+  return out.join("\n") || "No player stats for this game.";
+}
+
 /** The team's game this week, or (on a bye or if it's been played and the week hasn't moved) its next unplayed one. */
 export function currentGame(d: LeagueData, team: Team): { game: Game | null; bye: boolean } {
   const mine = (g: Game) => g.home && g.away && (g.home === team.id || g.away === team.id);
