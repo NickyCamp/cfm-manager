@@ -749,8 +749,10 @@ details.panel[open] summary { margin-bottom: 8px; }
   background: linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%),
     linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%); }
 
-.pcard-side { position: absolute; top: 2.6cqw; right: 3cqw; width: 19cqw; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1.6cqw;
-  text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.pcard-side { position: absolute; top: 2.6cqw; right: 3.4cqw; width: 19cqw; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1.6cqw;
+  text-shadow: 0 1px 4px rgba(0,0,0,.6);
+  /* HUD at 78% (Nick, 2026-11-13: smaller, inside the border), anchored to the top-right corner */
+  transform: scale(0.78); transform-origin: top right; }
 .pcard-side .ovr { font: 800 17cqw/0.9 var(--display); font-variant-numeric: tabular-nums; }
 .pcard-side .pos { font: 800 7.2cqw/1 var(--display); letter-spacing: .5px; margin-top: -0.6cqw; color: #fff; }
 /* Nick's overall + position art (public/ovr): white numbers, gold at 99, a thin rule between like his samples. */

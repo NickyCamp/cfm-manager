@@ -127,11 +127,12 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
   const pad = 2.8 * U;
   const tier = p.dev ?? 0;
   const ovr99 = p.ovr >= 99;
-  const badge = 13.5 * U;
+  const UH = U * 0.78; // right-column HUD at 78% (Nick, 2026-11-13), matches the site's scale(0.78)
+  const badge = 13.5 * UH;
   const show = (k: CardLayerKey) => !p.layout || p.layout[k]; // card builder layers
   const custom = p.layout?.customFrame && p.frameArt?.startsWith("data:") ? p.frameArt : undefined; // uploaded border
   const nameF = cardFont(p.layout?.nameFont ?? "barlow"), numF = p.layout && p.layout.numFont !== "art" ? cardFont(p.layout.numFont) : null;
-  const A = U * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
+  const A = UH * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
   return (
     <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U, ...frameStyle(tier, U, show("frame"), custom ? { inset: p.layout!.frameInset } : undefined) }}>
       <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
@@ -158,22 +159,22 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
 
 
         {/* right column: overall, position, team, abilities */}
-        <div style={{ position: "absolute", top: 2.6 * U, right: 3 * U, width: 19 * U, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
-          {show("ovr") && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U }}>
+        <div style={{ position: "absolute", top: 2.6 * U, right: 3.4 * U, width: 19 * UH, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * UH, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
+          {show("ovr") && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * UH }}>
           {artOf(ovrArt(p.ovr)) && !numF
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={25 * U} height={25 * U * 140 / 192} style={{ width: 25 * U, height: 25 * U * 140 / 192, marginTop: -1.6 * U, marginBottom: -1.8 * U }} />
-            : <span style={{ fontSize: 17 * U, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>}
-          <div style={{ width: 9.5 * U, height: 0.6 * U, borderRadius: 0.3 * U, display: "flex", backgroundImage: ovr99 ? "linear-gradient(180deg, #ffd54a, #c98a00)" : "linear-gradient(180deg, #e8ecf2, #e8ecf2)" }} />
+            ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={25 * UH} height={25 * UH * 140 / 192} style={{ width: 25 * UH, height: 25 * UH * 140 / 192, marginTop: -1.6 * UH, marginBottom: -1.8 * UH }} />
+            : <span style={{ fontSize: 17 * UH, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>}
+          <div style={{ width: 9.5 * UH, height: 0.6 * UH, borderRadius: 0.3 * UH, display: "flex", backgroundImage: ovr99 ? "linear-gradient(180deg, #ffd54a, #c98a00)" : "linear-gradient(180deg, #e8ecf2, #e8ecf2)" }} />
           {artOf(posArt(p.pos, ovr99)) && !numF
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={25 * U} height={25 * U * 58 / 192} style={{ width: 25 * U, height: 25 * U * 58 / 192, marginTop: -0.6 * U, marginBottom: -0.6 * U }} />
-            : <span style={{ fontSize: 7.2 * U, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 1, marginTop: -0.6 * U, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.pos}</span>}
+            ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={25 * UH} height={25 * UH * 58 / 192} style={{ width: 25 * UH, height: 25 * UH * 58 / 192, marginTop: -0.6 * UH, marginBottom: -0.6 * UH }} />
+            : <span style={{ fontSize: 7.2 * UH, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 1, marginTop: -0.6 * UH, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.pos}</span>}
           </div>}
           {show("team") && (p.teamLogo?.startsWith("data:")
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={p.teamLogo} alt="" width={badge} height={badge} style={{ width: badge, height: badge, objectFit: "contain" }} />
-            : <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>)}
+            : <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * UH}px solid ${p.secondary}`, fontSize: 4.4 * UH, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>)}
           {show("abilities") && sortAbilities(p.abilities).map((a) => {
             const t = tierClass(a.tier), s = ABIL[t] || ABIL.bronze, ini = abilityInitials(a.title);
             const gem = t === "single" && gemSrc ? gemSrc[xfLetter(a.title) ?? ""] : undefined;
