@@ -4,12 +4,10 @@
 // mail app's built-in one, unlike the PKCE "?code=" flow.
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useSearchParams } from "next/navigation";
 import { safeNext } from "@/lib/safeNext";
 
 export function FinishSignIn() {
-  const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState("");
 
@@ -22,13 +20,22 @@ export function FinishSignIn() {
       setError(why && /expired|invalid/i.test(why) ? "That sign-in link has expired or was already used." : why || "That sign-in link didn't work.");
       return;
     }
-    supabaseBrowser().auth.setSession({ access_token, refresh_token }).then(({ error }) => {
-      if (error) { setError(error.message); return; }
-      window.history.replaceState(null, "", window.location.pathname);
-      router.replace(next);
-      router.refresh();
-    });
-  }, [params, router]);
+    const stop = setTimeout(() => setError("Signing in is taking too long."), 15000);
+    fetch("/auth/finish/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token, refresh_token }),
+    })
+      .then(async (res) => {
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(/expired|invalid/i.test(out.error || "") ? "That sign-in link has expired or was already used." : out.error || "That sign-in link didn't work.");
+        clearTimeout(stop);
+        // Full page load so every part of the app sees the new sign-in cookies.
+        window.location.replace(next);
+      })
+      .catch((err: Error) => { clearTimeout(stop); setError(err.message); });
+    return () => clearTimeout(stop);
+  }, [params]);
 
   if (!error) return <p className="muted">One moment.</p>;
   return <div className="notice error">{error} <Link href="/login">Send yourself a new one.</Link></div>;

@@ -1,25 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { useState } from "react";
 
-export function ResetPasswordForm() {
-  const router = useRouter();
-  const [ready, setReady] = useState<"checking" | "yes" | "no">("checking");
-  const [email, setEmail] = useState("");
+export function ResetPasswordForm({ email }: { email: string }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    supabaseBrowser().auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? "");
-      setReady(data.user ? "yes" : "no");
-    });
-  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,10 +14,16 @@ export function ResetPasswordForm() {
     if (password !== confirm) { setError("The two passwords don't match."); return; }
     setBusy(true);
     try {
-      const { error } = await supabaseBrowser().auth.updateUser({ password });
-      if (error) throw error;
+      const res = await fetch("/reset-password/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (res.status === 401) throw new Error("Your reset link has expired. Request a new one from the Forgot password tab on the sign-in page.");
+      if (!res.ok) throw new Error(out.error || "Couldn't save the password.");
       setDone(true);
-      setTimeout(() => { router.replace("/dashboard"); router.refresh(); }, 1200);
+      setTimeout(() => window.location.replace("/dashboard"), 1200);
     } catch (err) {
       const m = (err as Error).message;
       setError(
@@ -43,14 +36,6 @@ export function ResetPasswordForm() {
     }
   }
 
-  if (ready === "checking") return <p className="muted">One moment.</p>;
-  if (ready === "no") {
-    return (
-      <div className="notice error">
-        This reset link has expired or was already used. <Link href="/login">Request a new one</Link> from the Forgot password tab.
-      </div>
-    );
-  }
   if (done) return <div className="notice ok">Password updated. Taking you to your leagues…</div>;
 
   return (
