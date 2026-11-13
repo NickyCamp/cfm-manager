@@ -130,7 +130,6 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%)" }} />
         {/* No holo foil sheen here (Nick, 2026-11-13): the site animates it, but on a static image it just looks hazy. */}
 
-        <div style={{ position: "absolute", top: 3.4 * U, left: 4 * U, display: "flex", fontSize: 6 * U, fontWeight: 800, color: "rgba(255,255,255,.85)", textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>#{p.jersey}</div>
 
         {/* right column: overall, position, team, abilities */}
         <div style={{ position: "absolute", top: 2.6 * U, right: 3 * U, width: 19 * U, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>

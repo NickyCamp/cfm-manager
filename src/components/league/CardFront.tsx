@@ -63,7 +63,6 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
         {p.art && <img src={p.art} alt="" loading="lazy" />}
       </div>
       <div className="pcard-shade" />
-      <div className="pcard-jersey">#{p.jersey}</div>
       <div className="pcard-side" style={{ "--abk": abScale(p.abilities.length) } as React.CSSProperties}>
         <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
         <span className="pos">{p.pos}</span>

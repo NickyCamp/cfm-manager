@@ -748,7 +748,6 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard-shade { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%),
     linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%); }
-.pcard-jersey { position: absolute; top: 3.4cqw; left: 4cqw; font: 800 6cqw/1 var(--display); color: rgba(255,255,255,.85); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 
 .pcard-side { position: absolute; top: 2.6cqw; right: 3cqw; width: 19cqw; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1.6cqw;
   text-shadow: 0 1px 4px rgba(0,0,0,.6); }
