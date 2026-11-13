@@ -26,6 +26,15 @@ export function ensureCardArtBucket() {
 
 export const cardArtPath = (slug: string, playerId: number) => `${slug}/${playerId}.jpg`;
 
+/**
+ * Whether the visitor may SEE card art: anyone signed in (Nick's call, 2026-11-13:
+ * accounts are tied to EA leagues, so signed-in visitors are league people).
+ * Changing art still needs leagueMemberId().
+ */
+export async function canSeeCardArt(): Promise<boolean> {
+  return Boolean(await currentUser().catch(() => null));
+}
+
 /** The signed-in user's id if they own or belong to the league, else null. */
 export async function leagueMemberId(slug: string): Promise<string | null> {
   const user = await currentUser().catch(() => null);

@@ -13,7 +13,7 @@ import { CountUp } from "@/components/league/CountUp";
 import { StaticCard } from "@/components/league/CardFront";
 import { CardStack } from "@/components/league/CardStack";
 import { cardProps } from "@/lib/league/cardProps";
-import { leagueMemberId, signedCardArtFor } from "@/lib/cardArtStore";
+import { canSeeCardArt, signedCardArtFor } from "@/lib/cardArtStore";
 import { headshotUrl } from "@/lib/league/headshots";
 import { CapGauge } from "@/components/league/CapGauge";
 
@@ -98,10 +98,10 @@ async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: Leagu
   const groups = rosterGroups(roster);
   const active = roster.filter((p) => !p.ps);
   const avgAge = active.length ? active.reduce((a, p) => a + p.age, 0) / active.length : 0;
-  // Card art is members-only: uploaded photos first, NFL.com headshots as stand-ins.
-  const member = Boolean(await leagueMemberId(slug).catch(() => null));
-  const art = member ? await signedCardArtFor(slug, roster.map((p) => p.id)) : new Map<number, string>();
-  const card = (p: Player) => cardProps(d, slug, p, team, art.get(p.id) ?? (member ? headshotUrl(p) : undefined));
+  // Card art shows to anyone signed in: uploaded photos first, NFL.com headshots as stand-ins.
+  const viewer = await canSeeCardArt();
+  const art = viewer ? await signedCardArtFor(slug, roster.map((p) => p.id)) : new Map<number, string>();
+  const card = (p: Player) => cardProps(d, slug, p, team, art.get(p.id) ?? (viewer ? headshotUrl(p) : undefined));
   const top = [...active].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
   return (
     <>

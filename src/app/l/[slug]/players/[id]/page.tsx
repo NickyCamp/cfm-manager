@@ -13,7 +13,7 @@ import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
 import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
 import { PlayerCard } from "@/components/league/PlayerCard";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
-import { leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
+import { canSeeCardArt, leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
 import { headshotUrl } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
@@ -39,11 +39,12 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   if (!p) notFound();
   const team = teams.get(p.team);
   const bg = team?.primary || "#1b2340";
-  // Card art is members-only (photos of real players aren't ours to publish): an uploaded
-  // photo if there is one, else the player's NFL.com headshot as a stand-in.
-  const member = Boolean(await leagueMemberId(slug).catch(() => null));
-  const uploaded = member ? await signedCardArt(slug, p.id) : undefined;
-  const art = uploaded ?? (member ? headshotUrl(p) : undefined);
+  // Card art shows to anyone signed in (photos of real players aren't ours to publish, so
+  // never to signed-out visitors): an uploaded photo if there is one, else the player's
+  // NFL.com headshot as a stand-in. Only league members can change it.
+  const [viewer, member] = await Promise.all([canSeeCardArt(), leagueMemberId(slug).then(Boolean).catch(() => false)]);
+  const uploaded = viewer ? await signedCardArt(slug, p.id) : undefined;
+  const art = uploaded ?? (viewer ? headshotUrl(p) : undefined);
 
   return (
     <main className="league-page">
