@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { abilityInitials, backScale, initialsSize, sortAbilities, tierClass } from "@/components/league/CardFront";
+import { abilityInitials, backScale, initialsSize, sortAbilities, tierClass, xfLetter } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
 
@@ -30,6 +30,16 @@ const ABIL: Record<string, { bg: string; color: string }> = {
   bronze: { bg: "linear-gradient(135deg, #7a4a1f, #e2a86a 45%, #8a5a2b)", color: "#2e1a05" },
   single: { bg: "linear-gradient(135deg, #5c0016, #e0115f 45%, #8a0026 80%, #ff4f7b)", color: "#fff" },
 };
+
+// Nick's ruby X-Factor badges as data: URLs (Satori needs inline images), loaded once.
+let gems: Promise<Record<string, string>> | null = null;
+let gemSrc: Record<string, string> | null = null; // filled once xfGems() resolves; cardNode reads it
+export function xfGems() {
+  gems ??= Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) =>
+    [c, `data:image/png;base64,${(await readFile(path.join(process.cwd(), "public/abilities/xf", `${c}.png`))).toString("base64")}`] as const,
+  )).then((e) => (gemSrc = Object.fromEntries(e)));
+  return gems;
+}
 
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16) || 0;
@@ -91,6 +101,9 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
           <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>
           {sortAbilities(p.abilities).slice(0, 5).map((a) => {
             const t = tierClass(a.tier), s = ABIL[t] || ABIL.bronze, ini = abilityInitials(a.title);
+            const gem = t === "single" && gemSrc ? gemSrc[xfLetter(a.title) ?? ""] : undefined;
+            // eslint-disable-next-line @next/next/no-img-element
+            if (gem) return <img key={a.title} src={gem} alt="" width={14 * U} height={14 * U} style={{ width: 14 * U, height: 14 * U }} />;
             if (t === "single") {
               // Cut ruby square: bevelled facets from per-side border colors, a lighter table in the middle.
               const g = 12.5 * U;
@@ -221,6 +234,7 @@ export const pairSize = (W = 600) => ({ width: 2 * W + 24 + 40, height: Math.rou
 /** The card as a PNG: the front alone (750×1050), or front and back side by side. */
 export async function renderCard(p: PlayerCardProps, art?: string, cutout = false, side: "front" | "both" = "front") {
   const size = side === "both" ? pairSize() : { width: CARD_W, height: CARD_H };
+  await xfGems();
   return new ImageResponse(side === "both" ? cardPairNode(p, art, cutout) : cardNode(p, art, cutout), {
     ...size, fonts: await cardFonts(),
     headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },

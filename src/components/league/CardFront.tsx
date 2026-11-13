@@ -42,6 +42,8 @@ export const sortAbilities = (a: { title: string; tier: string }[]) =>
 /** An ability's initials for the card front ("Bazooka" → B, "Pocket Passer" → PP). The back spells names out. */
 export const abilityInitials = (title: string) =>
   title.replace(/[^A-Za-z0-9 -]/g, " ").split(/[\s-]+/).filter(Boolean).map((w) => w[0]).join("").toUpperCase().slice(0, 4);
+/** X-Factor badges are Nick's ruby art, one per letter (public/abilities/xf/<A-Z>.png), using the name's first letter. */
+export const xfLetter = (title: string) => { const c = title.trim().charAt(0).toUpperCase(); return c >= "A" && c <= "Z" ? c : null; };
 /** Font size for the initials, as a fraction of the medallion width. */
 export const initialsSize = (n: number) => (n <= 1 ? 0.5 : n === 2 ? 0.42 : n === 3 ? 0.33 : 0.27);
 
@@ -60,7 +62,10 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
         <span className="pos">{p.pos}</span>
         <span className="team">{p.teamAbbr}</span>
         {sortAbilities(p.abilities).slice(0, 5).map((a) => (
-          <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${tierClass(a.tier) === "single" ? "X-Factor" : a.tier})`}><span className="abil-ini" data-n={abilityInitials(a.title).length}>{abilityInitials(a.title)}</span></span>
+          tierClass(a.tier) === "single" && xfLetter(a.title)
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img key={a.title} className="abil-gem" src={`/abilities/xf/${xfLetter(a.title)}.png`} alt={xfLetter(a.title)!} title={`${a.title} (X-Factor)`} />
+            : <span key={a.title} className={`abil ab-${tierClass(a.tier)}`} title={`${a.title} (${tierClass(a.tier) === "single" ? "X-Factor" : a.tier})`}><span className="abil-ini" data-n={abilityInitials(a.title).length}>{abilityInitials(a.title)}</span></span>
         ))}
       </div>
       <Nameplate first={p.first} last={p.last} rookie={p.rookie} />

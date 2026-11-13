@@ -768,6 +768,7 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard-side .abil.ab-single::after { content: ""; position: absolute; left: 6%; top: 6%; width: 30%; height: 22%; border-radius: 50%;
   background: radial-gradient(closest-side, rgba(255,255,255,.75), transparent); pointer-events: none; }
 .pcard-side .abil.ab-single { position: relative; }
+.pcard-side .abil-gem { width: 14cqw; height: 14cqw; display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
 .ab-gold { background: linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10); color: #3a2a00; }
 .ab-silver { background: linear-gradient(135deg, #8e97a8, #f4f6fa 45%, #a7b0c0); color: #1e2a44; }
 .ab-bronze { background: linear-gradient(135deg, #7a4a1f, #e2a86a 45%, #8a5a2b); color: #2e1a05; }
