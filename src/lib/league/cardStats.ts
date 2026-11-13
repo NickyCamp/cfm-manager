@@ -3,6 +3,7 @@
 // ratings that matter for the player's position.
 import { RATING_KEYS, type RatingKey } from "./ratings";
 import type { Player } from "./types";
+import type { Totals } from "./derive";
 
 const CORE: RatingKey[] = ["speedRating", "accelRating", "strengthRating"];
 
@@ -73,4 +74,39 @@ export function cardStats(p: Player): CardStat[] {
     ...core.map((k) => ({ abbr: ABBR[k] ?? "", label: SHORT[k] ?? k, value: val(k), core: true })),
     ...pos.map((k) => ({ abbr: ABBR[k] ?? "", label: SHORT[k] ?? k, value: val(k), core: false })),
   ];
+}
+
+// ---------- card back: this season's numbers ----------
+
+
+export type SeasonItem = { label: string; value: string; rank?: string };
+
+const ordinal = (n: number) => { const t = ["th", "st", "nd", "rd"], v = n % 100; return n + (t[(v - 20) % 10] || t[v] || t[0]); };
+
+/** Up to four regular-season numbers for the card back, picked by position, each with the
+ *  player's rank among his position group (QBs among QBs, as on the dev tracker; 1st = most;
+ *  rates only count players with enough attempts). posOf: player id → position. */
+export function seasonCardStats(p: Player, all: Map<number, Totals>, posOf: Map<number, string>): SeasonItem[] {
+  const t = all.get(p.id);
+  const n = (v: number) => v.toLocaleString("en-US");
+  const gp: SeasonItem = { label: "GP", value: String(t?.gp ?? 0) };
+  if (!t || !t.gp) return [gp];
+  const myGroup = GROUP[p.pos] ?? p.pos;
+  const rows = [...all.entries()].filter(([id]) => { const pos = posOf.get(id) || ""; return (GROUP[pos] ?? pos) === myGroup; }).map(([, x]) => x);
+  const item = (label: string, value: string, f: (x: Totals) => number, qualifies: (x: Totals) => boolean = () => true): SeasonItem => {
+    const mine = f(t);
+    if (!(mine > 0) || !qualifies(t)) return { label, value };
+    const better = rows.filter((x) => qualifies(x) && f(x) > mine).length;
+    const tied = rows.filter((x) => qualifies(x) && f(x) === mine).length > 1;
+    return { label, value, rank: `${tied ? "T-" : ""}${ordinal(better + 1)}` };
+  };
+  const g = GROUP[p.pos] ?? "";
+  if (g === "QB") return [gp, item("Pass yds", n(t.py), (x) => x.py), item("TD", String(t.ptd), (x) => x.ptd), item("INT", String(t.pint), (x) => x.pint)];
+  if (g === "HB" || g === "FB") return [gp, item("Rush yds", n(t.ry), (x) => x.ry), item("YPC", t.ra ? (t.ry / t.ra).toFixed(1) : "0.0", (x) => (x.ra ? x.ry / x.ra : 0), (x) => x.ra >= 50), item("TD", String(t.rtd + t.rctd), (x) => x.rtd + x.rctd)];
+  if (g === "WR" || g === "TE") return [gp, item("Rec", String(t.rc), (x) => x.rc), item("Rec yds", n(t.rcy), (x) => x.rcy), item("TD", String(t.rctd), (x) => x.rctd)];
+  if (g === "CB" || g === "S") return [gp, item("Tkl", String(t.tk), (x) => x.tk), item("INT", String(t.int), (x) => x.int), item("PD", String(t.pd), (x) => x.pd)];
+  if (g === "EDGE" || g === "DT" || g === "LB") return [gp, item("Tkl", String(t.tk), (x) => x.tk), item("Sacks", String(t.sk), (x) => x.sk), item("FF", String(t.ff), (x) => x.ff)];
+  if (p.pos === "K") return [gp, item("FG", `${t.fgm}/${t.fga}`, (x) => x.fgm), item("Long", String(t.fglng), (x) => x.fglng), item("XP", `${t.xpm}/${t.xpa}`, (x) => x.xpm)];
+  if (p.pos === "P") return [gp, item("Punts", String(t.pnt), (x) => x.pnt), item("Avg", t.pnt ? (t.pnty / t.pnt).toFixed(1) : "0.0", (x) => (x.pnt ? x.pnty / x.pnt : 0), (x) => x.pnt >= 15), item("In 20", String(t.pnt20), (x) => x.pnt20)];
+  return [gp]; // linemen: Madden exports no blocking stats
 }

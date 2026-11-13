@@ -1,6 +1,7 @@
 // Turns a Player into the props for his trading card.
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { cardStats } from "./cardStats";
+import { cardStats, seasonCardStats } from "./cardStats";
+import { seasonTotals } from "./derive";
 import { cardArt } from "./cardArt";
 import { isHeadshotUrl } from "./headshots";
 import { heightText } from "./format";
@@ -24,5 +25,22 @@ export function cardProps(d: LeagueData, slug: string, p: Player, team: Team | u
     cutout: isHeadshotUrl(art),
     abilities: p.abilities,
     stats: cardStats(p),
+  };
+}
+
+// Every player's season totals, worked out once per loaded league (the ranks need all of them).
+const totalsCache = new WeakMap<LeagueData, { all: ReturnType<typeof seasonTotals>; posOf: Map<number, string> }>();
+function leagueTotals(d: LeagueData) {
+  let t = totalsCache.get(d);
+  if (!t) { t = { all: seasonTotals(d), posOf: new Map(d.players.map((x) => [x.id, x.pos])) }; totalsCache.set(d, t); }
+  return t;
+}
+
+/** The card back's season stats and contract, for cards that can be flipped. */
+export function cardBackProps(d: LeagueData, p: Player): Pick<PlayerCardProps, "season" | "deal"> {
+  const c = p.contract;
+  return {
+    season: { year: d.season.year, items: seasonCardStats(p, leagueTotals(d).all, leagueTotals(d).posOf) },
+    deal: p.team && c.length ? { capHit: c.capHit, yearsLeft: c.yearsLeft, length: c.length, total: c.salary + c.bonus } : null,
   };
 }

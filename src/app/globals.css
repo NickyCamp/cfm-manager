@@ -1012,3 +1012,38 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .steps li::before { color: var(--field); }
 .wizard-step .n { background: var(--accent-grad); }
 .choice:has(input:checked) { border-color: var(--field); box-shadow: 0 0 0 3px rgba(122,92,255,.25); }
+
+/* ---- Card back (CardBackInner): fills the whole card ----
+   Team-tinted header with the name and overall, then measurables + ratings,
+   this season's numbers, the contract, abilities, and college/draft at the foot. */
+.pcard-inner-back { display: flex; flex-direction: column;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc1) 55%, #0a0f18) 0%, #0a0f18 32%, #0a0f18 100%); }
+.kb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 2cqw; padding: 3.6cqw 4cqw 3cqw;
+  border-bottom: 0.6cqw solid var(--tc2); }
+.kb-name { display: flex; flex-direction: column; min-width: 0; line-height: 1; }
+.kb-name .first { font: 700 4.4cqw/1.1 var(--display); text-transform: uppercase; letter-spacing: .6px; color: #d7deea; }
+.kb-name .last { font: 800 9.4cqw/0.95 var(--display); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-sub { display: flex; align-items: center; gap: 1.6cqw; margin-top: 1.8cqw; font: 700 4cqw/1 var(--display); color: #c3cde0; }
+.kb-sub .team { display: inline-flex; align-items: center; justify-content: center; width: 8.4cqw; height: 8.4cqw; border-radius: 50%;
+  background: var(--tc1); border: 0.7cqw solid var(--tc2); color: #fff; font: 800 2.9cqw/1 var(--display); }
+.kb-ovr { display: flex; flex-direction: column; align-items: center; line-height: 0.9; }
+.kb-ovr b { font: 800 14cqw/0.9 var(--display); font-variant-numeric: tabular-nums; }
+.kb-ovr b.ovr-99 { color: #ffd54a; }
+.kb-ovr span { font: 800 3.6cqw/1 var(--display); letter-spacing: 1px; color: #c3cde0; }
+.kb-body { flex: 1; display: flex; flex-direction: column; gap: 2.6cqw; padding: 3cqw 4cqw 3.4cqw; min-height: 0; }
+.kb-body .kgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8cqw 3cqw; }
+.kb-body .kgrid div { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 0.6cqw; }
+.kb-body .kgrid span { font: 700 3.6cqw/1 var(--display); color: #9aa6bd; }
+.kb-body .kgrid b { font: 800 5.4cqw/1 var(--display); font-variant-numeric: tabular-nums; }
+.kb-body .kgrid .hi b { color: #ffd54a; }
+.kb-box { border-radius: 1.6cqw; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); padding: 1.6cqw 2.4cqw 2cqw; }
+.kb-label { font: 800 3.3cqw/1 var(--display); text-transform: uppercase; letter-spacing: 1px; color: #9aa6bd; margin-bottom: 1.4cqw; }
+.kb-row { display: flex; gap: 2cqw; }
+.kb-row div { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.kb-row b { font: 800 5.6cqw/1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kb-row span { font: 700 2.9cqw/1.2 var(--display); color: #9aa6bd; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.kb-body .kabil { display: flex; flex-wrap: wrap; gap: 1.2cqw; }
+.kb-body .kabil span { font: 700 3.4cqw/1.2 var(--display); padding: 0.5cqw 1.6cqw; border-radius: 1cqw; white-space: nowrap; }
+.kb-body .kbio { margin-top: auto; font: 600 3.6cqw/1.2 var(--display); color: #9aa6bd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-row em { font: 800 3.1cqw/1 var(--display); font-style: normal; margin-top: 0.8cqw; padding: 0.4cqw 1.4cqw; border-radius: 1cqw; background: rgba(255,255,255,.08); color: #c3cde0; white-space: nowrap; }
+.kb-row em.top { background: linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10); color: #3a2a00; }

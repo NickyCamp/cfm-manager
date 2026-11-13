@@ -10,7 +10,7 @@ import { projectPlayer } from "@/lib/league/projection";
 import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
 import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
 import { PlayerCard } from "@/components/league/PlayerCard";
-import { cardProps } from "@/lib/league/cardProps";
+import { cardBackProps, cardProps } from "@/lib/league/cardProps";
 import { leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
 import { headshotUrl } from "@/lib/league/headshots";
@@ -68,7 +68,7 @@ export default async function PlayerPage({ params }: Props) {
 
         <div className={p.gone ? "" : "player-hero"}>
           <div className="pcard-col">
-          <PlayerCard {...cardProps(d, slug, p, team, art)} />
+          <PlayerCard {...cardProps(d, slug, p, team, art)} {...cardBackProps(d, p)} />
           {member && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
           </div>
           {!p.gone && (

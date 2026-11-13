@@ -11,9 +11,10 @@ function sig(slug: string, key: string, exp: number) {
 }
 const expiry = () => Math.floor(Date.now() / 1000) + LINK_DAYS * 86400;
 
-export function cardImageUrl(base: string, slug: string, id: number) {
+/** side "both": front and back side by side. */
+export function cardImageUrl(base: string, slug: string, id: number, side: "front" | "both" = "front") {
   const exp = expiry();
-  return `${base}/api/discord/card?l=${encodeURIComponent(slug)}&p=${id}&e=${exp}&s=${sig(slug, String(id), exp)}`;
+  return `${base}/api/discord/card?l=${encodeURIComponent(slug)}&p=${id}&e=${exp}&s=${sig(slug, String(id), exp)}${side === "both" ? "&side=both" : ""}`;
 }
 
 export function packImageUrl(base: string, slug: string, ids: number[]) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CARD_TIER, CardFrontInner, Nameplate, sortAbilities, tierClass, type PlayerCardProps } from "./CardFront";
+import { CARD_TIER, CardBackInner, CardFrontInner, type PlayerCardProps } from "./CardFront";
 export type { PlayerCardProps };
 
 /** Football-card style player card: foil by dev trait, tilts with the pointer, tap to flip. */
@@ -53,37 +53,7 @@ export function PlayerCard(p: PlayerCardProps) {
             <CardFrontInner {...p} />
           </div>
           <div className="pcard-face pcard-back">
-            <div className="pcard-inner pcard-inner-back">
-              <div className="pcard-art faded" aria-hidden>
-                {p.art
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={p.art} alt="" />
-                  : <div className="pcard-ph"><span>{p.jersey}</span></div>}
-              </div>
-              <div className="pcard-keys">
-                <div className="khead">
-                  <span>Key attributes</span>
-                  <span className="kmeta"><b>{p.ovr}</b> OVR · #{p.jersey}</span>
-                </div>
-                <div className="kteam"><span className="team">{p.teamAbbr}</span><span>{p.pos}</span><span className="muted">{p.exp}</span></div>
-                <div className="kgrid">
-                  <div><span>HT</span><b>{p.height || "—"}</b></div>
-                  <div><span>WT</span><b>{p.weight || "—"}</b></div>
-                  <div><span>AGE</span><b>{p.age}</b></div>
-                  {p.stats.map((s) => (
-                    <div key={s.abbr + s.label} title={s.label} className={s.value >= 90 ? "hi" : ""}><span>{s.abbr}</span><b>{s.value}</b></div>
-                  ))}
-                </div>
-                {p.stats.length === 0 && <p className="pcard-none">Ratings arrive with the next sync.</p>}
-                {p.abilities.length > 0 && (
-                  <div className="kabil">{sortAbilities(p.abilities).map((a) => (
-                    <span key={a.title} className={`ab-${tierClass(a.tier)}`}>{a.title}</span>
-                  ))}</div>
-                )}
-                <div className="kbio">{p.college || "No college"} · {p.draft}</div>
-              </div>
-              <Nameplate first={p.first} last={p.last} small />
-            </div>
+            <CardBackInner {...p} />
           </div>
         </div>
       </div>

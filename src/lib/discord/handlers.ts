@@ -146,11 +146,14 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "player": {
       const p = findPlayer(d, opt(i, "player"));
       if (!p) return reply("No player by that name. Pick one from the list as you type.");
-      const embed = playerEmbed(d, p, url, footer);
-      // The full trading card (uploaded art, else the headshot, else the jersey number), shown big.
-      embed.image = { url: cardImageUrl(base, lg.slug, p.id) };
-      delete embed.thumbnail;
-      return { embeds: [embed] };
+      // The card says it all: front and back side by side, with a one-line caption.
+      const t = teamOf(d, p.team);
+      const flags = [p.ps && "practice squad", p.ir && "IR", p.injury > 0 && `injured ${p.injury} wk`].filter(Boolean).join(" · ");
+      return { embeds: [{
+        title: fullName(p), url: url(`/players/${p.id}`), color: hexColor(t?.primary), footer,
+        description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR ${DEV_LABEL[p.dev]}${flags ? ` · ${flags}` : ""}`,
+        image: { url: cardImageUrl(base, lg.slug, p.id, "both") },
+      }] };
     }
     case "contract": {
       const p = findPlayer(d, opt(i, "player"));
