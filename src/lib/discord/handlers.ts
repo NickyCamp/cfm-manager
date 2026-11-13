@@ -118,7 +118,8 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
   const name = i.data?.name || "";
   if (name === "myleague") return myLeague(i, base);
-  if (name === "link" || name === "unlink" || name === "notify" || name === "alertvideo") {
+  const VIDEO_CMDS = ["alertvideo", "removealertvideo"];
+  if (name === "link" || name === "unlink" || name === "notify" || VIDEO_CMDS.includes(name)) {
     if (!i.guild_id || i.context !== undefined && i.context !== 0) return reply("That command sets up a server. In DMs, use `/myleague` instead.");
     if (name === "link") return link(i, base);
     if (name === "unlink") return unlink(i);
@@ -131,7 +132,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       : `No league set. Run \`/myleague league:<web address>\` to pick yours (the part after /l/ in ${base}/l/…).`);
   }
   const { lg, via } = found;
-  if (name === "notify" || name === "alertvideo") {
+  if (name === "notify" || VIDEO_CMDS.includes(name)) {
     if (via !== "server") return reply("Link this server first with `/link league:<web address>`.");
     return name === "notify" ? notify(i, lg) : alertVideo(i, lg);
   }
@@ -280,7 +281,8 @@ async function alertVideo(i: Interaction, lg: LinkedLeague): Promise<Message> {
   const cur = discordOf(lg)!;
   const videos = { ...(cur.videos || {}) };
   const db = supabaseAdmin().storage.from("league-data");
-  const attId = opt(i, "video");
+  const attId = i.data?.name === "removealertvideo" ? undefined : opt(i, "video");
+  if (i.data?.name === "alertvideo" && !attId) return reply("Attach the video in the `video` box.");
 
   if (!attId) {
     const old = videos[event];

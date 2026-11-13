@@ -35,13 +35,20 @@ export const COMMANDS = [
   },
   {
     name: "alertvideo",
-    description: "Bot owner only: a video that plays with an update (e.g. a team over the cap); no video = remove",
+    description: "Bot owner only: upload a video that plays with an update (e.g. a team over the cap)",
     default_member_permissions: MANAGE_SERVER,
     ...SERVER_ONLY,
     options: [
       { type: STRING, name: "event", description: "When to post it", required: true, choices: Object.entries(ALERT_EVENTS).map(([value, name]) => ({ name, value })) },
-      { type: ATTACHMENT, name: "video", description: "The video (MP4/MOV/WebM, up to 10 MB); leave empty to remove", required: false },
+      { type: ATTACHMENT, name: "video", description: "The video (MP4/MOV/WebM, up to 10 MB)", required: true },
     ],
+  },
+  {
+    name: "removealertvideo",
+    description: "Bot owner only: stop playing the video for an update",
+    default_member_permissions: MANAGE_SERVER,
+    ...SERVER_ONLY,
+    options: [{ type: STRING, name: "event", description: "Which update", required: true, choices: Object.entries(ALERT_EVENTS).map(([value, name]) => ({ name, value })) }],
   },
   {
     name: "myleague",
