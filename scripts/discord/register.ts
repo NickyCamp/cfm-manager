@@ -1,6 +1,6 @@
 // Registers the bot's slash commands (src/lib/discord/commands.ts) with Discord.
 // Run by .github/workflows/discord-commands.yml; needs DISCORD_BOT_TOKEN.
-// Global commands: every server the bot is in gets them (can take a few minutes to show).
+// Global commands (all servers): every server the bot is in gets them (can take a few minutes to show).
 import { COMMANDS } from "../../src/lib/discord/commands";
 
 // "::error::" / "::notice::" lines show up as annotations on the Actions run page.
