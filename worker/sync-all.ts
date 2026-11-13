@@ -26,6 +26,8 @@ import { decryptJson, encryptJson } from "../src/lib/crypto";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
 import type { LeagueData } from "../src/lib/league/types";
+import { leagueChanges } from "../src/lib/discord/changes";
+import { postToChannel } from "../src/lib/discord/api";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -39,7 +41,27 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
+  settings: { discord?: { channelId?: string | null } } | null;
 };
+
+const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
+
+/** Posts what changed to the league's Discord update channel (/notify), if it has one. Never fails the sync. */
+async function postDiscordUpdates(lg: League, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+  const channel = lg.settings?.discord?.channelId;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!channel || !token) return;
+  try {
+    const msgs = leagueChanges(prev, data, lg.name, APP_URL, lg.slug);
+    for (const m of msgs) {
+      const err = await postToChannel(token, channel, m);
+      if (err) { log(`- Discord: ${err}`); return; }
+    }
+    if (msgs.length) log(`- Posted ${msgs.length} update${msgs.length === 1 ? "" : "s"} to Discord.`);
+  } catch (e) {
+    log(`- Discord post failed: ${(e as Error).message}`);
+  }
+}
 
 async function syncLeague(lg: League): Promise<string> {
   const report: string[] = [];
@@ -106,6 +128,7 @@ async function syncLeague(lg: League): Promise<string> {
   );
   log(`- Saved ${Object.keys(files).length} files (${(bundle.length / 1024).toFixed(0)} KB compressed).`);
   const built = await buildAndSave(lg.slug, files, log);
+  if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);
 }
 
@@ -115,7 +138,7 @@ async function download(path: string): Promise<Buffer | null> {
   return Buffer.from(await data.arrayBuffer());
 }
 
-async function buildAndSave(slug: string, files: Record<string, unknown>, log: (s: string) => void): Promise<boolean> {
+async function buildAndSave(slug: string, files: Record<string, unknown>, log: (s: string) => void): Promise<{ prev: LeagueData | null; data: LeagueData } | null> {
   try {
     const prevBuf = await download(`${slug}/data.json.gz`);
     let prev: LeagueData | null = null;
@@ -123,12 +146,12 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
     const data = mergeHistory(prev, buildLeagueData(files));
     const gz = gzipSync(Buffer.from(JSON.stringify(data)));
     const up = await db.storage.from("league-data").upload(`${slug}/data.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
-    if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return false; }
+    if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return null; }
     log(`- Built league data: ${data.teams.length} teams, ${data.players.length} players, ${data.games.length} games, ${data.lines.length} stat lines (${(gz.length / 1024).toFixed(0)} KB).`);
-    return true;
+    return { prev, data };
   } catch (e) {
     log(`- **Couldn't build the league data:** ${(e as Error).message}`);
-    return false;
+    return null;
   }
 }
 
@@ -141,7 +164,7 @@ async function rebuildLeague(lg: League): Promise<string> {
 }
 
 (async () => {
-  let q = db.from("leagues").select("id, slug, name, ea_league_id, console, ea_connection_id, last_sync_key, last_synced_at").order("created_at");
+  let q = db.from("leagues").select("id, slug, name, ea_league_id, console, ea_connection_id, last_sync_key, last_synced_at, settings").order("created_at");
   if (ONLY) q = q.eq("slug", ONLY);
   const { data: leagues, error } = await q;
   if (error) { console.error(error.message); process.exit(1); }

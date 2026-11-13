@@ -1,0 +1,26 @@
+name: Register Discord commands
+
+# Tells Discord about the bot's slash commands whenever their list changes.
+# Needs the DISCORD_BOT_TOKEN repository secret.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/lib/discord/commands.ts
+      - scripts/discord/register.ts
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Register
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: npx --yes tsx scripts/discord/register.ts
