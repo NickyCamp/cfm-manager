@@ -4,11 +4,12 @@ import { DEV_LABEL } from "@/lib/league/types";
 import { onColor } from "@/lib/league/format";
 import { record } from "@/lib/league/derive";
 import { FlapNumber } from "@/components/league/FlapNumber";
+import { logoVar, teamLogo } from "@/lib/league/logos";
 
 export function TeamBadge({ team, size = 28 }: { team: Team | undefined; size?: number }) {
   if (!team) return <span className="team-badge tbd" style={{ width: size, height: size }}>?</span>;
   return (
-    <span className="team-badge" style={{ background: team.primary, color: onColor(team.primary), width: size, height: size, fontSize: size * 0.36 }} aria-hidden>
+    <span className={`team-badge${teamLogo(team) ? " has-logo" : ""}`} style={{ background: team.primary, color: onColor(team.primary), width: size, height: size, fontSize: size * 0.36, ...logoVar(teamLogo(team)) }} aria-hidden>
       {team.abbr}
     </span>
   );

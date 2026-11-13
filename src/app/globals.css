@@ -225,6 +225,9 @@ input:focus, textarea:focus { border-color: var(--field); outline: none; box-sha
   font-family: var(--display); font-weight: 800; letter-spacing: 0.02em; line-height: 1;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
+/* NFL logos (signed-in visitors only: .logos-on is set by the league layout). White disc so dark logos read on the dark theme. */
+.logos-on .team-badge.has-logo, .logos-on .team.has-logo { background: var(--logo) center / 82% no-repeat, #f4f6fa !important; color: transparent !important;
+  text-shadow: none !important; border-color: rgba(255,255,255,.85) !important; }
 .team-badge.tbd { background: var(--line); color: var(--ink-soft); font-weight: 700; }
 .team-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; }
 .team-link:hover span:not(.team-badge) { text-decoration: underline; }

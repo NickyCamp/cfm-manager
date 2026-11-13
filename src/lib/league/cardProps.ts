@@ -1,3 +1,4 @@
+import { teamLogo } from "./logos";
 // Turns a Player into the props for his trading card.
 import type { PlayerCardProps } from "@/components/league/CardFront";
 import { cardStats, seasonCardStats } from "./cardStats";
@@ -16,7 +17,7 @@ export function cardProps(d: LeagueData, slug: string, p: Player, team: Team | u
   return {
     first: p.first, last: p.last, pos: p.pos, jersey: p.jersey, ovr: p.ovr, dev: p.dev,
     rookie: p.yearsPro === 0,
-    teamAbbr: team?.abbr ?? "FA", primary: team?.primary || "#33415c", secondary: team?.secondary || "#c9d1e0",
+    teamAbbr: team?.abbr ?? "FA", teamLogo: teamLogo(team), primary: team?.primary || "#33415c", secondary: team?.secondary || "#c9d1e0",
     setLabel: `${d.season.year} ${slug.length <= 5 ? slug.toUpperCase() : "Series"}`,
     exp: p.yearsPro === 0 ? "Rookie" : `${ordinal(p.yearsPro + 1)} yr`,
     age: p.age, height: heightText(p.height), weight: p.weight, college: p.college,

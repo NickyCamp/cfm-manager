@@ -2,6 +2,7 @@ import type React from "react";
 // Card front, shared by the flippable PlayerCard (player pages) and the static
 // cards in the team binder and top-players stack. No hooks: works on the server.
 import type { CardStat, SeasonItem } from "@/lib/league/cardStats";
+import { logoVar } from "@/lib/league/logos";
 
 export type PlayerCardProps = {
   first: string;
@@ -12,6 +13,7 @@ export type PlayerCardProps = {
   dev: 0 | 1 | 2 | 3;
   rookie: boolean;
   teamAbbr: string;
+  teamLogo?: string;     // NFL logo URL; only drawn for signed-in visitors (.logos-on)
   primary: string;
   secondary: string;
   setLabel: string;      // e.g. "2027 NCL"
@@ -52,7 +54,7 @@ export const abScale = (n: number) => (n <= 5 ? 1 : Math.max(0.5, (78 / n - 1.6)
 /** Font size for the initials, as a fraction of the medallion width. */
 export const initialsSize = (n: number) => (n <= 1 ? 0.5 : n === 2 ? 0.42 : n === 3 ? 0.33 : 0.27);
 
-export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "art" | "cutout" | "abilities">) {
+export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "teamLogo" | "art" | "cutout" | "abilities">) {
   return (
     <div className="pcard-inner">
       <div className={`pcard-art ${p.art ? "has-img" : ""} ${p.art && p.cutout ? "cutout" : ""}`}>
@@ -65,7 +67,7 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
       <div className="pcard-side" style={{ "--abk": abScale(p.abilities.length) } as React.CSSProperties}>
         <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
         <span className="pos">{p.pos}</span>
-        <span className="team">{p.teamAbbr}</span>
+        <span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>
         {sortAbilities(p.abilities).map((a) => (
           tierClass(a.tier) === "single" && xfLetter(a.title)
             // eslint-disable-next-line @next/next/no-img-element
@@ -99,7 +101,7 @@ export function CardBackInner(p: PlayerCardProps) {
         <div className="kb-name">
           <span className="first">{p.first}</span>
           <span className="last">{p.last}</span>
-          <span className="kb-sub"><span className="team">{p.teamAbbr}</span>{p.pos} · #{p.jersey} · {p.exp}</span>
+          <span className="kb-sub"><span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>{p.pos} · #{p.jersey} · {p.exp}</span>
         </div>
         <div className="kb-ovr"><b className={p.ovr >= 99 ? "ovr-99" : ""}>{p.ovr}</b><span>OVR</span></div>
       </div>
