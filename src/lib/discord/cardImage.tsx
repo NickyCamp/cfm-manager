@@ -67,15 +67,16 @@ export async function withLogo<T extends { teamLogo?: string }>(p: T): Promise<T
 }
 
 /** Outer card frame: Nick's frame image over the card (deeper padding so it doesn't cover corner text); the metallic gradient if the image is missing. */
-const frameStyle = (tier: number, U: number) =>
-  frames[tier]
+const frameStyle = (tier: number, U: number, on = true) =>
+  !on ? { padding: 0 }
+  : frames[tier]
     ? tier === 3
       ? { position: "relative" as const, paddingTop: 2.7 * U, paddingLeft: 3 * U, paddingRight: 3 * U, paddingBottom: 3.3 * U }
       : { position: "relative" as const, paddingTop: 3.4 * U, paddingLeft: 3.4 * U, paddingRight: 3.4 * U, paddingBottom: 3.6 * U }
     : { padding: 2.8 * U, backgroundImage: FACE[tier] };
-const frameOverlay = (tier: number, W: number, H: number) =>
+const frameOverlay = (tier: number, W: number, H: number, on = true) =>
   // eslint-disable-next-line @next/next/no-img-element
-  frames[tier] ? <img src={frames[tier]!} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
+  on && frames[tier] ? <img src={frames[tier]!} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
 
 // Nick's overall/position art, loaded per card (only the files that card needs) and cached as data: URLs.
 const artCache = new Map<string, string | null>();
@@ -116,9 +117,10 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
   const tier = p.dev ?? 0;
   const ovr99 = p.ovr >= 99;
   const badge = 13.5 * U;
+  const show = (k: keyof NonNullable<PlayerCardProps["layout"]>) => !p.layout || p.layout[k]; // card builder layers
   const A = U * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
   return (
-    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U, ...frameStyle(tier, U) }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U, ...frameStyle(tier, U, show("frame")) }}>
       <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
         {/* art background */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: `linear-gradient(160deg, ${darken(p.primary, 0.85)} 0%, #0a0f18 75%)` }} />
@@ -137,13 +139,14 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
           // eslint-disable-next-line @next/next/no-img-element
           : <img src={art} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />)}
         {/* shade for legibility */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%)" }} />
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%)" }} />
+        {show("shade") && <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%)" }} />}
+        {show("shade") && <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%)" }} />}
         {/* No holo foil sheen here (Nick, 2026-11-13): the site animates it, but on a static image it just looks hazy. */}
 
 
         {/* right column: overall, position, team, abilities */}
         <div style={{ position: "absolute", top: 2.6 * U, right: 3 * U, width: 19 * U, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
+          {show("ovr") && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U }}>
           {artOf(ovrArt(p.ovr))
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={25 * U} height={25 * U * 140 / 192} style={{ width: 25 * U, height: 25 * U * 140 / 192, marginTop: -1.6 * U, marginBottom: -1.8 * U }} />
@@ -153,11 +156,12 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={25 * U} height={25 * U * 58 / 192} style={{ width: 25 * U, height: 25 * U * 58 / 192, marginTop: -0.6 * U, marginBottom: -0.6 * U }} />
             : <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>}
-          {p.teamLogo?.startsWith("data:")
+          </div>}
+          {show("team") && (p.teamLogo?.startsWith("data:")
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={p.teamLogo} alt="" width={badge} height={badge} style={{ width: badge, height: badge, objectFit: "contain" }} />
-            : <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>}
-          {sortAbilities(p.abilities).map((a) => {
+            : <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>)}
+          {show("abilities") && sortAbilities(p.abilities).map((a) => {
             const t = tierClass(a.tier), s = ABIL[t] || ABIL.bronze, ini = abilityInitials(a.title);
             const gem = t === "single" && gemSrc ? gemSrc[xfLetter(a.title) ?? ""] : undefined;
             // eslint-disable-next-line @next/next/no-img-element
@@ -199,17 +203,17 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         </div>
 
         {/* name */}
-        <div style={{ position: "absolute", left: 4.5 * U, right: 24 * U, bottom: 4 * U, display: "flex", flexDirection: "column", lineHeight: 1, textShadow: "0 2px 6px rgba(0,0,0,.7)" }}>
+        {show("name") && <div style={{ position: "absolute", left: 4.5 * U, right: 24 * U, bottom: 4 * U, display: "flex", flexDirection: "column", lineHeight: 1, textShadow: "0 2px 6px rgba(0,0,0,.7)" }}>
           <span style={{ fontSize: 5.2 * U, fontWeight: 700, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: 0.8, color: "#d7deea" }}>{p.first}</span>
           <span style={{ fontSize: (p.last.length > 11 ? 12 * 11 / p.last.length : 12) * U, fontWeight: 800, lineHeight: 0.95, textTransform: "uppercase" }}>{p.last}</span>
           {p.rookie && (
             <span style={{ alignSelf: "flex-start", marginTop: 1.6 * U, padding: `${0.9 * U}px ${5 * U}px ${0.9 * U}px ${3 * U}px`, fontSize: 4.2 * U, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#3a2a00", textShadow: "none",
               backgroundImage: "linear-gradient(135deg, #a77a00, #ffe27a 40%, #d4a017 60%, #fff3b0 80%, #b8860b)" }}>Rookie edition</span>
           )}
-        </div>
-        <div style={{ position: "absolute", right: 3 * U, bottom: 2.2 * U, display: "flex", fontSize: 3 * U, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.55)", textTransform: "uppercase" }}>{p.setLabel}</div>
+        </div>}
+        {show("name") && <div style={{ position: "absolute", right: 3 * U, bottom: 2.2 * U, display: "flex", fontSize: 3 * U, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.55)", textTransform: "uppercase" }}>{p.setLabel}</div>}
       </div>
-      {frameOverlay(tier, W, H)}
+      {frameOverlay(tier, W, H, show("frame"))}
     </div>
   );
 }
@@ -252,7 +256,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   );
   const cells = [cell("HT", p.height || "—"), cell("WT", p.weight || "—"), cell("AGE", p.age), ...p.stats.map((st) => cell(st.abbr, st.value, st.value >= 90, st.abbr + st.label))];
   return (
-    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0) }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0, !p.layout || p.layout.frame) }}>
       <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", borderRadius: 0.8 * U0, overflow: "hidden", color: "#fff", fontFamily: "Barlow Condensed",
         backgroundImage: `linear-gradient(180deg, ${mix(p.primary, "#0a0f18", 0.55)} 0%, #0a0f18 32%, #0a0f18 100%)` }}>
         {/* header: name, team line, overall */}
@@ -291,7 +295,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
           <span style={{ marginTop: "auto", fontSize: 3.6 * U, fontWeight: 700, color: muted }}>{`${p.college || "No college"} · ${p.draft}`}</span>
         </div>
       </div>
-      {frameOverlay(tier, W, H)}
+      {frameOverlay(tier, W, H, !p.layout || p.layout.frame)}
     </div>
   );
 }

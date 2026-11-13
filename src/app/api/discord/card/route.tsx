@@ -5,6 +5,7 @@ import { checkCardLink } from "@/lib/discord/cardLink";
 import { renderCard } from "@/lib/discord/cardImage";
 import { cardArtFor } from "@/lib/discord/cardArtLoad";
 import { getLeagueData } from "@/lib/league/load";
+import { leagueCardLayouts } from "@/lib/cardLayoutStore";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
 
 export const runtime = "nodejs";
@@ -16,8 +17,8 @@ export async function GET(req: Request) {
   const d = await getLeagueData(slug);
   const p = d?.players.find((x) => x.id === id);
   if (!d || !p) return new Response("Not found", { status: 404 });
-  const { art, cutout } = await cardArtFor(slug, p);
+  const [{ art, cutout }, layouts] = await Promise.all([cardArtFor(slug, p), leagueCardLayouts(slug)]);
   const both = q.get("side") === "both";
-  const props = { ...cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), ...(both ? cardBackProps(d, p) : {}) };
+  const props = { ...cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), ...(both ? cardBackProps(d, p) : {}), layout: layouts.get(p.id) };
   return renderCard(props, art, cutout, both ? "both" : "front");
 }

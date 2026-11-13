@@ -11,7 +11,8 @@ import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
 import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
-import { PlayerCard } from "@/components/league/PlayerCard";
+import { CardBuilder } from "@/components/league/CardBuilder";
+import { cardLayout } from "@/lib/cardLayoutStore";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
 import { canSeeCardArt, cardArtAccess, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
@@ -46,7 +47,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
     canSeeCardArt(),
     cardArtAccess(slug, p.gone ? undefined : p.team || undefined).then((a) => a.canEdit).catch(() => false),
   ]);
-  const uploaded = viewer ? await signedCardArt(slug, p.id) : undefined;
+  const [uploaded, layout] = await Promise.all([viewer ? signedCardArt(slug, p.id) : Promise.resolve(undefined), cardLayout(slug, p.id)]);
   const art = uploaded ?? (viewer ? headshotUrl(p) : undefined);
 
   return (
@@ -74,7 +75,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
 
         <div className="player-hero">
           <div className="pcard-col">
-          <PlayerCard {...cardProps(d, slug, p, team, art)} {...cardBackProps(d, p)} />
+          <CardBuilder card={{ ...cardProps(d, slug, p, team, art), ...cardBackProps(d, p), layout }} slug={slug} playerId={p.id} canEdit={canEditArt} />
           {canEditArt && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
           </div>
           <div className="player-tabs">

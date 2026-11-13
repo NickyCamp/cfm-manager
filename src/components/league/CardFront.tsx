@@ -3,6 +3,7 @@ import type React from "react";
 // cards in the team binder and top-players stack. No hooks: works on the server.
 import type { CardStat, SeasonItem } from "@/lib/league/cardStats";
 import { logoVar } from "@/lib/league/logos";
+import { layoutClasses, type CardLayout } from "@/lib/league/cardLayout";
 
 export type PlayerCardProps = {
   first: string;
@@ -26,6 +27,7 @@ export type PlayerCardProps = {
   art?: string;
   cutout?: boolean;      // art is a transparent headshot: show it over the number backdrop
   abilities: { title: string; tier: string }[];
+  layout?: CardLayout;   // card builder: which built-in layers show (default: all)
   stats: CardStat[];
   // Card back extras (player page and the Discord bot; not needed for front-only cards):
   season?: { year: number; items: SeasonItem[] };
@@ -63,7 +65,9 @@ export const posArt = (pos: string, gold: boolean) => {
 /** Font size for the initials, as a fraction of the medallion width. */
 export const initialsSize = (n: number) => (n <= 1 ? 0.5 : n === 2 ? 0.42 : n === 3 ? 0.33 : 0.27);
 
-export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "teamLogo" | "art" | "cutout" | "abilities">) {
+export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "teamLogo" | "art" | "cutout" | "abilities" | "layout">) {
+  const L = p.layout;
+  const show = (k: keyof CardLayout) => !L || L[k];
   return (
     <div className="pcard-inner">
       <div className={`pcard-art ${p.art ? "has-img" : ""} ${p.art && p.cutout ? "cutout" : ""}`}>
@@ -73,20 +77,22 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
       </div>
       <div className="pcard-shade" />
       <div className="pcard-side" style={{ "--abk": abScale(p.abilities.length) } as React.CSSProperties}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {ovrArt(p.ovr) ? <img className="ovr-img" src={ovrArt(p.ovr)!} alt={String(p.ovr)} /> : <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>}
-        <span className={`ovr-rule ${p.ovr >= 99 ? "gold" : ""}`} aria-hidden />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {posArt(p.pos, p.ovr >= 99) ? <img className="pos-img" src={posArt(p.pos, p.ovr >= 99)!} alt={p.pos} /> : <span className="pos">{p.pos}</span>}
-        <span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>
-        {sortAbilities(p.abilities).map((a) => (
+        {show("ovr") && <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {ovrArt(p.ovr) ? <img className="ovr-img" src={ovrArt(p.ovr)!} alt={String(p.ovr)} /> : <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>}
+          <span className={`ovr-rule ${p.ovr >= 99 ? "gold" : ""}`} aria-hidden />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {posArt(p.pos, p.ovr >= 99) ? <img className="pos-img" src={posArt(p.pos, p.ovr >= 99)!} alt={p.pos} /> : <span className="pos">{p.pos}</span>}
+        </>}
+        {show("team") && <span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>}
+        {show("abilities") && sortAbilities(p.abilities).map((a) => (
           tierClass(a.tier) === "single" && xfLetter(a.title)
             // eslint-disable-next-line @next/next/no-img-element
             ? <img key={a.title} className="abil-gem" src={`/abilities/xf/${xfLetter(a.title)}.png`} alt={xfLetter(a.title)!} title={`${a.title} (X-Factor)`} />
             : <span key={a.title} className={`abil ab-${tierClass(a.tier)}${TILE_ART.has(tierClass(a.tier)) ? " tile" : ""}`} title={`${a.title} (${tierClass(a.tier) === "single" ? "X-Factor" : a.tier})`}><span className="abil-ini" data-n={abilityInitials(a.title).length}>{abilityInitials(a.title)}</span></span>
         ))}
       </div>
-      <Nameplate first={p.first} last={p.last} rookie={p.rookie} />
+      {show("name") && <Nameplate first={p.first} last={p.last} rookie={p.rookie} />}
       <div className="pcard-foil" /><div className="pcard-glare" />
     </div>
   );
@@ -161,7 +167,7 @@ export function CardBackInner(p: PlayerCardProps) {
 export function StaticCard(p: PlayerCardProps & { className?: string }) {
   const style = { "--tc1": p.primary, "--tc2": p.secondary } as React.CSSProperties;
   return (
-    <div className={`pcard static t-${CARD_TIER[p.dev] ?? "normal"} ${p.className ?? ""}`} style={style}>
+    <div className={`pcard static t-${CARD_TIER[p.dev] ?? "normal"} ${layoutClasses(p.layout)} ${p.className ?? ""}`} style={style}>
       <div className="pcard-face pcard-front"><CardFrontInner {...p} /></div>
     </div>
   );

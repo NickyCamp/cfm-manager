@@ -834,6 +834,12 @@ details.panel[open] summary { margin-bottom: 8px; }
 .t-super { --frame: url("/frames/gold.webp"); } .t-xf { --frame: url("/frames/xf.webp"); }
 .pcard .pcard-face, .pcard.static .pcard-face { background: none; box-shadow: none; padding: 3.4cqw 3.4cqw 3.6cqw; }
 .pcard.t-xf .pcard-face { padding: 2.7cqw 3cqw 3.3cqw; }
+/* Card builder: layers the card's owner switched off (src/lib/league/cardLayout.ts). */
+.pcard.no-frame .pcard-face { padding: 0; }
+.pcard.no-frame .pcard-face::after { display: none; }
+.pcard.no-frame .pcard-inner { border-radius: 10px; box-shadow: 0 1.5cqw 3cqw rgba(0,0,0,.4); }
+.pcard.no-shade .pcard-shade { display: none; }
+.pcard.no-holo .pcard-foil, .pcard.no-holo .pcard-glare { display: none; }
 .pcard-face::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
   background: var(--frame) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5cqw 3cqw rgba(0,0,0,.4)); }
 .t-xf .pcard-foil { background: linear-gradient(115deg, transparent 28%, rgba(255,120,160,.32) 44%, rgba(255,220,230,.38) 50%, rgba(255,120,160,.32) 56%, transparent 72%) var(--mx) var(--my) / 230% 230%;
@@ -1122,3 +1128,18 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .rt-row.low .rt-val { color: var(--ink-soft); }
 .rt-groups > .panel { margin: 0 !important; }
 @media (max-width: 640px) { .player-tabs .tabs a { padding: 10px 9px; } }
+
+/* Card builder panel (CardBuilder.tsx) */
+.card-builder { margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); max-width: 360px; }
+.cb-presets { display: flex; gap: 8px; margin: 8px 0; }
+.cb-presets .chip { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.cb-presets .chip:hover { border-color: var(--accent, #7a5cff); }
+.cb-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
+.cb-row { display: flex; align-items: center; gap: 10px; padding: 6px 2px; cursor: pointer; }
+.cb-row > span:last-child { display: flex; flex-direction: column; line-height: 1.2; }
+.cb-row input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cb-switch { flex: none; width: 34px; height: 20px; border-radius: 999px; background: var(--line); position: relative; transition: background .15s; }
+.cb-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.cb-row input:checked + .cb-switch { background: linear-gradient(90deg, #7a5cff, #3e8bff); }
+.cb-row input:checked + .cb-switch::after { transform: translateX(14px); }
+.cb-row input:focus-visible + .cb-switch { box-shadow: 0 0 0 2px var(--goalpost); }
