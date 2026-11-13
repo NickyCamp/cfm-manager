@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 import { CONSOLE_LABEL } from "@/lib/ea/constants";
 import { syncStatusText } from "@/lib/format";
+import { RemoveLeague } from "./RemoveLeague";
 
 export const metadata: Metadata = { title: "My leagues" };
 export const dynamic = "force-dynamic";
@@ -44,7 +45,10 @@ export default async function Dashboard() {
                       {" "}<span className={`status ${l.last_sync_status || ""}`}>{syncStatusText(l.last_sync_status, l.last_synced_at)}</span>
                     </div>
                   </div>
-                  <Link className="btn btn-quiet" href={`/l/${l.slug}`}>Open</Link>
+                  <div className="league-row-actions">
+                    <Link className="btn btn-quiet" href={`/l/${l.slug}`}>Open</Link>
+                    <RemoveLeague slug={l.slug} name={l.name} />
+                  </div>
                 </div>
               ))}
             </div>

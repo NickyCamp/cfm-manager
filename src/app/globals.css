@@ -163,6 +163,9 @@ input:focus, textarea:focus { border-color: var(--field); outline: none; box-sha
 .league-row:first-child { border-top: 0; }
 .league-row .name { font-family: var(--display); font-weight: 700; font-size: 1.3rem; }
 .league-row .meta { color: var(--ink-soft); font-size: 0.92rem; }
+.league-row-actions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; justify-content: flex-end; }
+.remove-league { display: flex; flex-direction: column; gap: 8px; max-width: 320px; font-size: 0.92rem; }
+.remove-league-btns { display: flex; gap: 8px; }
 .status { display: inline-block; font-size: 0.85rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--chalk); border: 1px solid var(--line); }
 .status.synced { color: var(--ok); }
 .status.failed { color: var(--danger); }

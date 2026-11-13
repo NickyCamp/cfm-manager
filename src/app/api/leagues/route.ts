@@ -35,12 +35,12 @@ export async function POST(req: Request) {
   // Already on CFM Manager? Join it.
   const { data: existing } = await admin
     .from("leagues")
-    .select("id, slug")
+    .select("id, slug, owner_id")
     .eq("ea_league_id", body.eaLeagueId)
     .eq("console", conn.console)
     .maybeSingle();
   if (existing) {
-    await admin.from("league_members").upsert({ league_id: existing.id, user_id: user.id }, { onConflict: "league_id,user_id", ignoreDuplicates: true });
+    await admin.from("league_members").upsert({ league_id: existing.id, user_id: user.id, role: existing.owner_id === user.id ? "commissioner" : "member" }, { onConflict: "league_id,user_id", ignoreDuplicates: true });
     return NextResponse.json({ slug: existing.slug, joined: true });
   }
 
