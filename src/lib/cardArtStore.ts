@@ -50,22 +50,28 @@ export async function signedCardArt(slug: string, playerId: number, ttlSeconds =
   }
 }
 
-/** Signed URLs for every player in the league that has uploaded art (members only). */
-export async function signedCardArtMap(slug: string): Promise<Map<number, string>> {
+/**
+ * Signed URLs for whichever of these players have uploaded art (members only).
+ * Signs each player's path directly rather than listing the folder: the old
+ * folder listing failed silently on the live site, so team pages showed
+ * headshots even where art had been uploaded. Paths with no file come back
+ * without a URL and are skipped.
+ */
+export async function signedCardArtFor(slug: string, playerIds: number[]): Promise<Map<number, string>> {
   const out = new Map<number, string>();
+  const ids = [...new Set(playerIds)].filter((id) => id > 0);
+  if (!ids.length) return out;
   try {
     await ensureCardArtBucket();
     const store = supabaseAdmin().storage.from(CARD_ART_BUCKET);
-    const { data: files } = await store.list(slug, { limit: 1000 });
-    const paths = (files || []).map((f) => f.name).filter((n) => /^\d+\.jpg$/.test(n)).map((n) => `${slug}/${n}`);
-    if (!paths.length) return out;
-    const { data } = await store.createSignedUrls(paths, URL_TTL_SECONDS);
-    for (const r of data || []) {
-      const id = Number(r.path?.split("/")[1]?.replace(".jpg", ""));
-      if (r.signedUrl && id) out.set(id, r.signedUrl);
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      const { data, error } = await store.createSignedUrls(chunk.map((id) => cardArtPath(slug, id)), URL_TTL_SECONDS);
+      if (error) { console.error("card art urls", slug, error.message); continue; }
+      (data || []).forEach((r, k) => { if (r.signedUrl && !r.error) out.set(chunk[k], r.signedUrl); });
     }
   } catch (e) {
-    console.error("card art map", slug, e);
+    console.error("card art urls", slug, e);
   }
   return out;
 }
