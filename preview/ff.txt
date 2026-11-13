@@ -1,146 +1,557 @@
-\n## Lamar Jackson QB 99
-  [3.5] Cutting Jackson would leave **$84.3M of dead money** and save only $0, so the Ravens are stuck with him through 2027.
+## Lamar Jackson QB 99
   [4.5] Jackson threw **4 interceptions** against the Chargers in Week 8.
-\n## Patrick Mahomes QB 95
+## Patrick Mahomes QB 95
   [3.5] Cutting Mahomes would leave **$537.5M of dead money** and save only $0, so the Chiefs are stuck with him through 2033.
   [4] Mahomes is **31** and signed for **7 more seasons**. He'll be 37 when the deal ends, still costing about $70.0M that year.
-\n## Jared Goff QB 88
-  [5.5] Goff has the **3rd-biggest cap hit among quarterbacks** ($62.6M) and ranks **48th of 73** in passing yards.
+## Jared Goff QB 88
   [5.5] Goff has a **$62.6M cap hit** and hasn't recorded **a single stat** this season.
   [3.5] Cutting Goff would leave **$132.2M of dead money** and save only $0, so the Lions are stuck with him through 2028.
-\n## Justin Herbert QB 96
-  [3.5] Cutting Herbert would leave **$189.0M of dead money** and save only $0, so the Chargers are stuck with him through 2029.
+## Justin Herbert QB 96
   [4.5] Herbert threw **6 interceptions** against the Raiders in Week 7.
-\n## Nick Bosa LEDG 95
-  [3.5] Cutting Bosa would leave **$102.0M of dead money** and save only $0, so the 49ers are stuck with him through 2028.
-\n## Joe Burrow QB 99
-  [3.5] Cutting Burrow would leave **$170.5M of dead money** and save only $0, so the Bengals are stuck with him through 2029.
+## Joe Burrow QB 99
   [4.5] Burrow threw **6 interceptions** against the Bears in Week 13.
-\n## Justin Jefferson WR 96
-  [3.5] Cutting Jefferson would leave **$103.0M of dead money** and save only $0, so the Vikings are stuck with him through 2028.
-\n## Josh Allen QB 98
+## Josh Allen QB 98
   [3.5] Cutting Allen would leave **$290.5M of dead money** and save only $0, so the Bills are stuck with him through 2030.
   [4] Allen is **31** and signed for **4 more seasons**. He'll be 34 when the deal ends, still costing about $82.8M that year.
   [5.5] Allen has thrown **more interceptions (49) than touchdowns (33)**.
-  [4.5] Allen has the **3rd-most interceptions thrown** in the league (49).
+  [4.5] Allen has **the 3rd-most interceptions thrown** in the league (49).
   [4] Allen averages **3.1 yards a carry** on 65 carries. A QB sneak gets about that.
   [4.5] Allen threw **5 interceptions** against the Titans in Week 9.
-\n## Daniel Jones QB 82
+## Daniel Jones QB 82
   [5.5] Jones has the **7th-biggest cap hit among quarterbacks** ($46.8M) and ranks **44th of 73** in passing yards. That's **$234K per passing yard**.
-\n## George Pickens WR 91
-  [3.5] Cutting Pickens would leave **$93.1M of dead money** and save only $0, so the Cowboys are stuck with him through 2031.
-\n## Brian Burns REDG 90
-  [3.5] Cutting Burns would leave **$88.2M of dead money** and save only $0, so the Giants are stuck with him through 2028.
-\n## Puka Nacua WR 99
-  [3.5] Cutting Nacua would leave **$42.9M of dead money** and save only $0, so the Rams are stuck with him through 2027.
-\n## Jordan Love QB 90
-  [3.5] Cutting Love would leave **$116.7M of dead money** and save only $0, so the Packers are stuck with him through 2028.
+## Jordan Love QB 90
   [4.5] Love threw **3 interceptions** against the Rams in Week 1.
-\n## Jalen Hurts QB 84
+## Jalen Hurts QB 84
   [5.5] Hurts has the **9th-biggest cap hit among quarterbacks** ($42.1M) and ranks **48th of 73** in passing yards.
   [3.5] Cutting Hurts would leave **$89.7M of dead money** and save only $0, so the Eagles are stuck with him through 2028.
-\n## Nico Collins WR 93
-  [3.5] Cutting Collins would leave **$88.8M of dead money** and save only $0, so the Texans are stuck with him through 2030.
-\n## T.J. Watt LEDG 92
+## T.J. Watt LEDG 92
   [3.5] Cutting Watt would leave **$88.0M of dead money** and save only $0, so the Steelers are stuck with him through 2028.
-\n## Sam Darnold QB 89
-  [5.5] Darnold has the **10th-biggest cap hit among quarterbacks** ($41.9M) and ranks **48th of 73** in passing yards.
+## Sam Darnold QB 89
   [5.5] Darnold has a **$41.9M cap hit** and hasn't recorded **a single stat** this season.
   [3.5] Cutting Darnold would leave **$54.7M of dead money** and save only $0, so the Seahawks are stuck with him through 2027.
-\n## Brandon Aiyuk WR 78
+## Brandon Aiyuk WR 78
   [5.5] Aiyuk has the **5th-biggest cap hit among receivers** ($41.4M) and ranks **198th of 280** in receiving yards. That's **$1.26M per receiving yard**.
-\n## Alec Pierce WR 88
-  [3.5] Cutting Pierce would leave **$79.8M of dead money** and save only $0, so the Colts are stuck with him through 2029.
-\n## Terry McLaurin WR 92
+## Terry McLaurin WR 92
   [3.5] Cutting McLaurin would leave **$54.4M of dead money** and save only $0, so the Commanders are stuck with him through 2028.
-\n## Ja'Marr Chase WR 99
-  [3.5] Cutting Chase would leave **$128.0M of dead money** and save only $0, so the Bengals are stuck with him through 2029.
-\n## CeeDee Lamb WR 94
-  [3.5] Cutting Lamb would leave **$117.2M of dead money** and save only $1.41M, so the Cowboys are stuck with him through 2032.
-\n## Roquan Smith MIKE 94
-  [3.5] Cutting Smith would leave **$32.7M of dead money** and save only $0, so the Ravens are stuck with him through 2027.
-\n## Trevor Lawrence QB 93
-  [3.5] Cutting Lawrence would leave **$235.3M of dead money** and save only $0, so the Jaguars are stuck with him through 2030.
+## Trevor Lawrence QB 93
   [4.5] Lawrence threw **7 interceptions** against the Jets in Week 15.
-\n## Tristan Wirfs LT 95
-  [3.5] Cutting Wirfs would leave **$122.4M of dead money** and save only $0, so the Buccaneers are stuck with him through 2029.
-\n## Penei Sewell LT 99
-  [3.5] Cutting Sewell would leave **$93.0M of dead money** and save only $0, so the Lions are stuck with him through 2029.
-\n## Rashawn Slater LT 94
-  [3.5] Cutting Slater would leave **$50.4M of dead money** and save only $0, so the Chargers are stuck with him through 2029.
-\n## Jeffery Simmons DT 95
-  [3.5] Cutting Simmons would leave **$136.9M of dead money** and save only $0, so the Titans are stuck with him through 2030.
-\n## Trent McDuffie CB 97
-  [3.5] Cutting McDuffie would leave **$71.9M of dead money** and save only $0, so the Rams are stuck with him through 2030.
-\n## Nnamdi Madubuike DT 92
-  [3.5] Cutting Madubuike would leave **$41.2M of dead money** and save only $0, so the Ravens are stuck with him through 2027.
-\n## Milton Williams DT 89
-  [3.5] Cutting Williams would leave **$39.0M of dead money** and save only $0, so the Patriots are stuck with him through 2028.
-\n## Denzel Ward CB 93
-  [3.5] Cutting Ward would leave **$82.3M of dead money** and save only $0, so the Bills are stuck with him through 2032.
-\n## Andrew Thomas LT 94
-  [3.5] Cutting Thomas would leave **$67.3M of dead money** and save only $0, so the Giants are stuck with him through 2029.
-\n## Chris Godwin Jr WR 81
+## Chris Godwin Jr WR 81
   [5.5] Godwin Jr has the **11th-biggest cap hit among receivers** ($29.9M) and ranks **177th of 280** in receiving yards. That's **$499K per receiving yard**.
   [3.5] Cutting Godwin Jr would leave **$29.9M of dead money** and save only $0, so the Buccaneers are stuck with him through 2027.
-\n## Maxx Crosby LEDG 97
-  [3.5] Cutting Crosby would leave **$31.3M of dead money** and save only $0, so the Raiders are stuck with him through 2029.
-\n## Derek Stingley Jr CB 96
-  [3.5] Cutting Stingley Jr would leave **$49.7M of dead money** and save only $0, so the Texans are stuck with him through 2029.
-\n## Quenton Nelson LG 94
+## Quenton Nelson LG 94
   [3.5] Cutting Nelson would leave **$69.1M of dead money** and save only $0, so the Colts are stuck with him through 2029.
   [4] Nelson is **31** and signed for **3 more seasons**. He'll be 33 when the deal ends, still costing about $27.4M that year.
-\n## Josh Hines-Allen REDG 90
-  [3.5] Cutting Hines-Allen would leave **$81.0M of dead money** and save only $0, so the Jaguars are stuck with him through 2028.
-\n## Amon-Ra St. Brown WR 96
-  [3.5] Cutting St. Brown would leave **$70.0M of dead money** and save only $0, so the Lions are stuck with him through 2028.
-\n## Courtland Sutton WR 88
+## Courtland Sutton WR 88
   [3.5] Cutting Sutton would leave **$44.6M of dead money** and save only $0, so the Broncos are stuck with him through 2029.
   [4] Sutton is **31** and signed for **3 more seasons**. He'll be 33 when the deal ends, still costing about $30.6M that year.
-\n## Taylor Moton RT 84
+## Taylor Moton RT 84
   [3.5] Cutting Moton would leave **$35.4M of dead money** and save only $0, so the Panthers are stuck with him through 2027.
-\n## Will Anderson Jr LEDG 99
-  [3.5] Cutting Anderson Jr would leave **$169.5M of dead money** and save only $0, so the Texans are stuck with him through 2030.
-\n## Chris Lindstrom RG 94
-  [3.5] Cutting Lindstrom would leave **$35.0M of dead money** and save only $15.8M, so the Falcons are stuck with him through 2030.
-\n## Davante Adams WR 88
+## Davante Adams WR 88
   [5.5] Adams has the **14th-biggest cap hit among receivers** ($27.9M) and ranks **217th of 280** in receiving yards. That's **$2.33M per receiving yard**.
-\n## Alim McNeill DT 86
-  [3.5] Cutting McNeill would leave **$56.9M of dead money** and save only $0, so the Lions are stuck with him through 2028.
-\n582 of 1699 rostered players have at least one roast.
-\n## Ravens
+## Odafe Oweh LEDG 81
+  [3.5] Cutting Oweh would leave **$86.8M of dead money** and save only $0, so the Commanders are stuck with him through 2029.
+## Jake Matthews LT 86
+  [3.5] Cutting Matthews would leave **$39.5M of dead money** and save only $0, so the Falcons are stuck with him through 2028.
+## Malik Willis QB 86
+  [4.5] Willis threw **5 interceptions** against the Eagles in Week 6.
+## Bryce Young QB 82
+  [5.5] Young has a **$25.9M cap hit** and hasn't recorded **a single stat** this season.
+  [3.5] Cutting Young would leave **$25.9M of dead money** and save only $0, so the Panthers are stuck with him through 2027.
+## Aaron Banks LG 75
+  [4.5] The Packers are paying Banks **$25.4M** this season. He's a **75 overall**.
+  [3.5] Cutting Banks would leave **$34.4M of dead money** and save only $5.10M, so the Packers are stuck with him through 2028.
+## Alontae Taylor CB 80
+  [3.5] Cutting Taylor would leave **$44.0M of dead money** and save only $0, so the Titans are stuck with him through 2028.
+## Chris Jones DT 92
+  [3.5] Cutting Jones would leave **$83.0M of dead money** and save only $0, so the Chiefs are stuck with him through 2028.
+## Charvarius Ward Sr CB 87
+  [3.5] Cutting Ward Sr would leave **$42.1M of dead money** and save only $17.5M, so the Colts are stuck with him through 2029.
+  [4] Ward Sr is **31** and signed for **3 more seasons**. He'll be 33 when the deal ends, still costing about $19.7M that year.
+## Brock Purdy QB 96
+  [5.5] Purdy has thrown **more interceptions (45) than touchdowns (43)**.
+  [4.5] Purdy threw **6 interceptions** against the Vikings in Week 2.
+## Christian Barmore DT 81
+  [3.5] Cutting Barmore would leave **$47.2M of dead money** and save only $0, so the Patriots are stuck with him through 2028.
+## John Franklin-Myers LEDG 78
+  [5.5] Franklin-Myers has a **$23.0M cap hit** and hasn't recorded **a single stat** this season.
+## DK Metcalf WR 87
+  [4] Metcalf dropped **2 passes** against the Seahawks in Week 15.
+## Azeez Al-Shaair MIKE 84
+  [5.5] Al-Shaair has the **34th-biggest cap hit among defenders** ($22.3M) and ranks **556th of 812** in defensive production (tackles, sacks, picks, PDs).
+  [3.5] Cutting Al-Shaair would leave **$52.5M of dead money** and save only $0, so the Texans are stuck with him through 2029.
+## Kenny Clark DT 80
+  [4] Clark is **31** and signed for **3 more seasons**. He'll be 33 when the deal ends, still costing about $9.25M that year.
+## Dan Moore RG 75
+  [4.5] The Titans are paying Moore **$22.1M** this season. He's a **75 overall**.
+  [3.5] Cutting Moore would leave **$29.0M of dead money** and save only $0, so the Titans are stuck with him through 2028.
+## Joe Thuney LG 94
+  [3.5] Cutting Thuney would leave **$35.0M of dead money** and save only $15.0M, so the Bears are stuck with him through 2029.
+  [4] Thuney is **34** and signed for **3 more seasons**. He'll be 36 when the deal ends, still costing about $19.7M that year.
+## Boye Mafe REDG 81
+  [5.5] Mafe has the **40th-biggest cap hit among defenders** ($21.3M) and ranks **482nd of 812** in defensive production (tackles, sacks, picks, PDs).
+## Carl Granderson REDG 80
+  [5.5] Granderson has the **44th-biggest cap hit among defenders** ($20.9M) and ranks **442nd of 812** in defensive production (tackles, sacks, picks, PDs).
+  [3.5] Cutting Granderson would leave **$20.9M of dead money** and save only $0, so the Saints are stuck with him through 2027.
+  [5] The Saints pay Granderson **$20.9M** to rush the passer. He has **zero sacks** in 8 games.
+## Budda Baker SS 90
+  [4] Baker is **31** and signed for **5 more seasons**. He'll be 35 when the deal ends, still costing about $16.3M that year.
+## Zach Sieler DT 84
+  [3.5] Cutting Sieler would leave **$35.6M of dead money** and save only $0, so the Dolphins are stuck with him through 2029.
+  [4] Sieler is **31** and signed for **3 more seasons**. He'll be 33 when the deal ends, still costing about $22.9M that year.
+## Derwin James Jr SS 92
+  [5.5] James Jr has the **47th-biggest cap hit among defenders** ($20.5M) and ranks **442nd of 812** in defensive production (tackles, sacks, picks, PDs).
+  [3.5] Cutting James Jr would leave **$54.1M of dead money** and save only $0, so the Chargers are stuck with him through 2029.
+  [4] James Jr is **31** and signed for **3 more seasons**. He'll be 33 when the deal ends, still costing about $27.5M that year.
+  [5] James Jr is a **$20.5M** defensive back with **zero interceptions** in 8 games.
+## Paulson Adebo CB 81
+  [5.5] Adebo has the **48th-biggest cap hit among defenders** ($20.3M) and ranks **425th of 812** in defensive production (tackles, sacks, picks, PDs).
+  [5] Adebo is a **$20.3M** defensive back with **zero interceptions** in 6 games.
+## Kolton Miller LT 91
+  [3.5] Cutting Miller would leave **$40.5M of dead money** and save only $0, so the Raiders are stuck with him through 2028.
+## Tershawn Wharton DT 75
+  [5.5] Wharton has the **53rd-biggest cap hit among defenders** ($19.6M) and ranks **495th of 812** in defensive production (tackles, sacks, picks, PDs).
+  [4.5] The Panthers are paying Wharton **$19.6M** this season. He's a **75 overall**.
+  [3.5] Cutting Wharton would leave **$19.6M of dead money** and save only $0, so the Panthers are stuck with him through 2027.
+## Kwity Paye REDG 78
+  [5.5] Paye has the **54th-biggest cap hit among defenders** ($19.4M) and ranks **556th of 812** in defensive production (tackles, sacks, picks, PDs).
+## Anton Harrison RT 80
+  [3.5] Cutting Harrison would leave **$19.1M of dead money** and save only $0, so the Jaguars are stuck with him through 2027.
+322 of 1699 rostered players have at least one roast.
+## Ravens
   [4.5] The Ravens have lost by **20 or more points 3 times** this season.
   [3.5] The Ravens have come up short on 4th down **16 times** this season.
-\n## Steelers
+## Steelers
   [4.5] The Steelers have given the ball away **33 times** and taken it away only **17**. That's a **-16** turnover margin.
   [4.5] The Steelers have lost by **20 or more points 3 times** this season.
   [4] The Steelers have been held under 14 points **4 times**.
   [3.5] The Steelers have come up short on 4th down **14 times** this season.
-\n## Bengals
+## Bengals
   [4.5] The Bengals have lost by **20 or more points 3 times** this season.
   [3.5] The Bengals have come up short on 4th down **20 times** this season.
-\n## Browns
+## Browns
   [4.5] The Browns are carrying **$29.2M in dead money**: cap space spent on players who aren't on the team anymore.
   [4.5] The Browns have given the ball away **40 times** and taken it away only **34**. That's a **-6** turnover margin.
-\n## Jaguars
+## Jaguars
   [4.5] The Jaguars are carrying **$50.3M in dead money**: cap space spent on players who aren't on the team anymore.
   [4.5] The Jaguars have lost by **20 or more points 3 times** this season.
   [3.5] The Jaguars have come up short on 4th down **13 times** this season.
-\n## Titans
-  [5.5] The Titans have the **1st-highest payroll** in the league ($326.1M) and a **5-12** record.
+## Titans
+  [5.5] The Titans have **the highest payroll** in the league ($326.1M) and a **5-12** record.
   [4.5] The Titans have given the ball away **68 times** and taken it away only **37**. That's a **-31** turnover margin.
   [4.5] The Titans have lost by **20 or more points 6 times** this season.
   [3.5] The Titans have come up short on 4th down **23 times** this season.
-  [4] The Titans give up a point every **1.4 minutes** (43.6 a game, 1st-most in the league).
+  [4] The Titans give up a point every **1.4 minutes** (43.6 a game, the most in the league).
   [4.5] The Titans rank **32nd in scoring defense** (43.6 allowed a game).
-\n## Texans
-\n## Colts
+## Texans
+## Colts
   [4] The Colts are paying **$30.6M** this season to players sitting on IR.
   [4.5] The Colts have given the ball away **46 times** and taken it away only **34**. That's a **-12** turnover margin.
   [3.5] The Colts have come up short on 4th down **19 times** this season.
-  [4] The Colts give up a point every **1.4 minutes** (43.3 a game, 2nd-most in the league).
+  [4] The Colts give up a point every **1.4 minutes** (43.3 a game, the 2nd-most in the league).
   [4.5] The Colts rank **32nd in total defense** (462.2 allowed a game).
-\nKinds:
-568 ##*#*##*#*##
-116 ##*#*##*#*##*#*##*#*##
-42 ##*#*##*#*##*#*##*#*##*#*##*#*##
+Kinds:
+4 Cutting Jones would leave **M of dead mo
+3 Jones has the **th-biggest cap hit among
+3 Cutting Johnson would leave **M of dead 
+3 Cutting Jackson would leave **M of dead 
+3 Cutting Williams would leave **M of dead
+2 Cutting Sutton would leave **M of dead m
+2 Cutting Banks would leave **M of dead mo
+2 Cutting Taylor would leave **M of dead m
+2 Cutting Stevenson would leave **M of dea
+2 Brown has a **M cap hit** and hasn't rec
+2 Cutting Wright would leave **M of dead m
+2 Cutting Winters would leave **M of dead 
+1 Jackson threw ** interceptions** against
+1 Cutting Mahomes would leave **M of dead 
+1 Mahomes is **** and signed for ** more s
+1 Goff has a **M cap hit** and hasn't reco
+1 Cutting Goff would leave **M of dead mon
+1 Herbert threw ** interceptions** against
+1 Burrow threw ** interceptions** against 
+1 Cutting Allen would leave **M of dead mo
+1 Allen is **** and signed for ** more sea
+1 Allen has thrown **more interceptions ()
+1 Allen has **the rd-most interceptions th
+1 Allen averages ** yards a carry** on  ca
+1 Allen threw ** interceptions** against t
+1 Love threw ** interceptions** against th
+1 Hurts has the **th-biggest cap hit among
+1 Cutting Hurts would leave **M of dead mo
+1 Cutting Watt would leave **M of dead mon
+1 Darnold has a **M cap hit** and hasn't r
+1 Cutting Darnold would leave **M of dead 
+1 Aiyuk has the **th-biggest cap hit among
+1 Cutting McLaurin would leave **M of dead
+1 Lawrence threw ** interceptions** agains
+1 Godwin Jr has the **th-biggest cap hit a
+1 Cutting Godwin Jr would leave **M of dea
+1 Cutting Nelson would leave **M of dead m
+1 Nelson is **** and signed for ** more se
+1 Sutton is **** and signed for ** more se
+1 Cutting Moton would leave **M of dead mo
+1 Adams has the **th-biggest cap hit among
+1 Cutting Oweh would leave **M of dead mon
+1 Cutting Matthews would leave **M of dead
+1 Willis threw ** interceptions** against 
+1 Young has a **M cap hit** and hasn't rec
+1 Cutting Young would leave **M of dead mo
+1 The Packers are paying Banks **M** this 
+1 Cutting Ward Sr would leave **M of dead 
+1 Ward Sr is **** and signed for ** more s
+1 Purdy has thrown **more interceptions ()
+1 Purdy threw ** interceptions** against t
+1 Cutting Barmore would leave **M of dead 
+1 Franklin-Myers has a **M cap hit** and h
+1 Metcalf dropped ** passes** against the 
+1 Al-Shaair has the **th-biggest cap hit a
+1 Cutting Al-Shaair would leave **M of dea
+1 Clark is **** and signed for ** more sea
+1 The Titans are paying Moore **M** this s
+1 Cutting Moore would leave **M of dead mo
+1 Cutting Thuney would leave **M of dead m
+1 Thuney is **** and signed for ** more se
+1 Mafe has the **th-biggest cap hit among 
+1 Granderson has the **th-biggest cap hit 
+1 Cutting Granderson would leave **M of de
+1 The Saints pay Granderson **M** to rush 
+1 Baker is **** and signed for ** more sea
+1 Cutting Sieler would leave **M of dead m
+1 Sieler is **** and signed for ** more se
+1 James Jr has the **th-biggest cap hit am
+1 Cutting James Jr would leave **M of dead
+1 James Jr is **** and signed for ** more 
+1 James Jr is a **M** defensive back with 
+1 Adebo has the **th-biggest cap hit among
+1 Adebo is a **M** defensive back with **z
+1 Cutting Miller would leave **M of dead m
+1 Wharton has the **rd-biggest cap hit amo
+1 The Panthers are paying Wharton **M** th
+1 Cutting Wharton would leave **M of dead 
+1 Paye has the **th-biggest cap hit among 
+1 Cutting Harrison would leave **M of dead
+1 The Steelers are paying Jones **M** this
+1 Cutting Sherwood would leave **M of dead
+1 Cutting Landry III would leave **M of de
+1 Bynum has the **nd-biggest cap hit among
+1 Addison has the **st-biggest cap hit amo
+1 Cutting Addison would leave **M of dead 
+1 Likely has the **nd-biggest cap hit amon
+1 The Steelers pay Herbig **M** to rush th
+1 Cutting Bolles would leave **M of dead m
+1 Cutting Tunsil would leave **M of dead m
+1 Bryant has the **th-biggest cap hit amon
+1 Odighizuwa has the **st-biggest cap hit 
+1 Shaheed has the **rd-biggest cap hit amo
+1 The Seahawks are paying Owens **M** this
+1 The Bengals are paying Brown Jr **M** th
+1 Cutting Brown Jr would leave **M of dead
+1 Cutting Hunt would leave **M of dead mon
+1 Smith-Njigba dropped ** passes** against
+1 Kmet has the **th-biggest cap hit among 
+1 Hargrave has a **M cap hit** and hasn't 
+1 Love has the **rd-biggest cap hit among 
+1 Johnson has the **th-biggest cap hit amo
+1 Cutting Garrett would leave **M of dead 
+1 Garrett is **** and signed for ** more s
+1 Schultz has a **M cap hit** and hasn't r
+1 Cutting Schultz would leave **M of dead 
+1 Cutting Kancey would leave **M of dead m
+1 Anudike-Uzomah has a **M cap hit** and h
+1 Cutting Anudike-Uzomah would leave **M o
+1 McDonald IV has the **th-biggest cap hit
+1 Cutting McDonald IV would leave **M of d
+1 Meyers has the **nd-biggest cap hit amon
+1 Cutting Meyers would leave **M of dead m
+1 Mayfield threw ** interceptions** agains
+1 Stephens has the **th-biggest cap hit am
+1 Cutting Stephens would leave **M of dead
+1 Achane has **the most fumbles** in the l
+1 Achane fumbled ** times** against the Gi
+1 Cutting Van Ness would leave **M of dead
+1 Cutting Edwards would leave **M of dead 
+1 Ward has thrown **more interceptions () 
+1 Ward has **the most interceptions thrown
+1 Ward has **the nd-most sacks taken** in 
+1 Ward threw ** interceptions** against th
+1 Gordon has a **M cap hit** and hasn't re
+1 Cutting Gordon would leave **M of dead m
+1 Cutting Hooker would leave **M of dead m
+1 Mendoza threw ** interceptions** against
+1 Cutting Spillane would leave **M of dead
+1 Etienne Jr carried it ** times for  yard
+1 Slayton has the **rd-biggest cap hit amo
+1 Cutting Slayton would leave **M of dead 
+1 Cutting Hendrickson would leave **M of d
+1 Hendrickson is **** and signed for ** mo
+1 Lewis has the **th-biggest cap hit among
+1 Cutting Lewis would leave **M of dead mo
+1 Lewis is a **M** defensive back with **z
+1 Bush has the **th-biggest cap hit among 
+1 Cutting Rhyan would leave **M of dead mo
+1 Williams threw ** interceptions** agains
+1 Rice dropped ** passes** against the Col
+1 Ossai has a **M cap hit** and hasn't rec
+1 Reyes threw ** interceptions** against t
+1 Cutting O'Neill would leave **M of dead 
+1 Cutting Freiermuth would leave **M of de
+1 Daniels threw ** interceptions** against
+1 Cutting Ingram would leave **M of dead m
+1 Tart has a **M cap hit** and hasn't reco
+1 Cutting Steele would leave **M of dead m
+1 Cousins has a **M cap hit** and hasn't r
+1 Cutting Cousins would leave **M of dead 
+1 London dropped ** passes** against the B
+1 Cutting Andrews would leave **M of dead 
+1 Chubb has the **nd-biggest cap hit among
+1 Cutting Chubb would leave **M of dead mo
+1 Cutting Ford would leave **M of dead mon
+1 Cutting Bateman would leave **M of dead 
+1 Bates has a **M cap hit** and hasn't rec
+1 Cutting Bates would leave **M of dead mo
+1 Cutting Wyatt would leave **M of dead mo
+1 Benford has a **M cap hit** and hasn't r
+1 Cutting Benford would leave **M of dead 
+1 Cutting Van Ginkel would leave **M of de
+1 Cutting Otton would leave **M of dead mo
+1 Cutting Blankenship would leave **M of d
+1 Blankenship is a **M** defensive back wi
+1 Cutting Moses would leave **M of dead mo
+1 Cutting Okonkwo would leave **M of dead 
+1 Cutting Langford would leave **M of dead
+1 Langford has **the most dropped passes**
+1 Langford dropped ** passes** against the
+1 Cutting Howard would leave **M of dead m
+1 Cutting Robertson would leave **M of dea
+1 Williams carried it ** times for  yards*
+1 Cutting Hainsey would leave **M of dead 
+1 Cutting Goedert would leave **M of dead 
+1 Goedert dropped ** passes** against the 
+1 Palmer has a **M cap hit** and hasn't re
+1 Cutting Palmer would leave **M of dead m
+1 Cutting Teller would leave **M of dead m
+1 Montgomery has a **M cap hit** and hasn'
+1 Cutting Montgomery would leave **M of de
+1 Cutting Jurgens would leave **M of dead 
+1 Cutting Hall would leave **M of dead mon
+1 Cutting Jobe would leave **M of dead mon
+1 Cutting Wilson would leave **M of dead m
+1 Cutting Walker would leave **M of dead m
+1 Cutting Mascarenas-Arnold would leave **
+1 Cutting McKivitz would leave **M of dead
+1 Cutting Redmond would leave **M of dead 
+1 Cutting Barton would leave **M of dead m
+1 Cutting Hughes would leave **M of dead m
+1 Cutting Simpson would leave **M of dead 
+1 Dowdle has the **th-biggest cap hit amon
+1 Cutting Latham would leave **M of dead m
+1 Cutting Bredeson would leave **M of dead
+1 Cutting Myers would leave **M of dead mo
+1 Myers is **** and signed for ** more sea
+1 Myers has missed ** field goal** and ** 
+1 Reed has a **M cap hit** and hasn't reco
+1 Cutting Reed would leave **M of dead mon
+1 Cutting Froholdt would leave **M of dead
+1 Cutting Portillo would leave **M of dead
+1 Cutting Washington would leave **M of de
+1 Cutting Brown would leave **M of dead mo
+1 Taylor carried it ** times for  yards** 
+1 Cutting Nwaiwu would leave **M of dead m
+1 Cutting Sneed would leave **M of dead mo
+1 Kamara has the **th-biggest cap hit amon
+1 Cutting Kamara would leave **M of dead m
+1 Cutting Little would leave **M of dead m
+1 Jackson has a **M cap hit** and hasn't r
+1 Cutting Knox would leave **M of dead mon
+1 Penix Jr has a **M cap hit** and hasn't 
+1 Fields threw ** interceptions** against 
+1 Height has a **M cap hit** and hasn't re
+1 Cutting Okereke would leave **M of dead 
+1 Cutting Uche would leave **M of dead mon
+1 Trautman dropped ** passes** against the
+1 Trautman has had ** games with zero catc
+1 Cutting Njoku would leave **M of dead mo
+1 Njoku is **** and signed for ** more sea
+1 Cutting Fairbairn would leave **M of dea
+1 Fairbairn has missed ** field goals** an
+1 Mason has the **th-biggest cap hit among
+1 Cutting Mason would leave **M of dead mo
+1 Butker has the **rd-biggest cap hit amon
+1 Cutting Butker would leave **M of dead m
+1 Butker has missed ** field goals** and *
+1 Cutting Risner would leave **M of dead m
+1 Risner is **** and signed for ** more se
+1 Cutting Mauch would leave **M of dead mo
+1 Stone has a **M cap hit** and hasn't rec
+1 Cutting Jenkins would leave **M of dead 
+1 Phillips has a **M cap hit** and hasn't 
+1 Jennings has a **M cap hit** and hasn't 
+1 Cutting Jennings would leave **M of dead
+1 Ferguson dropped ** passes** against the
+1 Echols has a **M cap hit** and hasn't re
+1 Wright has a **M cap hit** and hasn't re
+1 Gallimore has a **M cap hit** and hasn't
+1 Dicker has missed ** field goals** and *
+1 Durant has a **M cap hit** and hasn't re
+1 Nix threw ** interceptions** against the
+1 Cutting Mevis would leave **M of dead mo
+1 Mevis has missed ** field goals** and **
+1 Cutting Wattenberg would leave **M of de
+1 Cutting Scott would leave **M of dead mo
+1 Scott is **** and signed for ** more sea
+1 Tremble has had ** games with zero catch
+1 Browning has a **M cap hit** and hasn't 
+1 Cutting Landry would leave **M of dead m
+1 Cutting Wilson Sr would leave **M of dea
+1 Cutting Cisco would leave **M of dead mo
+1 Cutting Coker would leave **M of dead mo
+1 Cutting Elliott would leave **M of dead 
+1 Elliott has missed ** field goal** and *
+1 Cutting Mims Jr would leave **M of dead 
+1 Cutting Strange would leave **M of dead 
+1 Cutting Torrence would leave **M of dead
+1 Hampton carried it ** times for  yards**
+1 Richardson Sr threw ** interceptions** a
+1 Cutting Fautanu would leave **M of dead 
+1 Cutting Sheard would leave **M of dead m
+1 Cutting Iheanachor would leave **M of de
+1 Cutting Mayer would leave **M of dead mo
+1 Cutting Ringo would leave **M of dead mo
+1 Sutton has **the nd-most dropped passes*
+1 Cutting Stout would leave **M of dead mo
+1 Cutting Flournoy would leave **M of dead
+1 Short threw ** interceptions** against t
+1 Cutting Speights would leave **M of dead
+1 Kris-Fulton carried it ** times for  yar
+1 Thomas has a **M cap hit** and hasn't re
+1 Cutting Barnes would leave **M of dead m
+1 Cutting Easley would leave **M of dead m
+1 Ingold has a **M cap hit** and hasn't re
+1 Ojabo has a **M cap hit** and hasn't rec
+1 Cutting McMillon would leave **M of dead
+1 Gilman has a **M cap hit** and hasn't re
+1 Harrington has thrown **more interceptio
+1 Harrington threw ** interceptions** agai
+1 Foskey has a **M cap hit** and hasn't re
+1 Cutting Aubrey would leave **M of dead m
+1 Aubrey is **** and signed for ** more se
+1 Aubrey has missed ** field goals** and *
+1 Cutting Pace Jr would leave **M of dead 
+1 Cutting Overshown would leave **M of dea
+1 Cutting Tindall would leave **M of dead 
+1 Cutting Guerendo would leave **M of dead
+1 Guerendo carried it ** times for  yards*
+1 Cutting Higgins would leave **M of dead 
+1 Oliver has had ** games with zero catche
+1 Cutting Hampton would leave **M of dead 
+1 Cutting Conner would leave **M of dead m
+1 Romero dropped ** passes** against the S
+1 Sterns has a **M cap hit** and hasn't re
+1 Williams has a **M cap hit** and hasn't 
+1 Singleton has a **M cap hit** and hasn't
+1 Cutting Singleton would leave **M of dea
+1 Moreau has a **M cap hit** and hasn't re
+1 Boswell has missed ** field goals** and 
+1 Wilson has a **M cap hit** and hasn't re
+1 Cutting Valentine would leave **M of dea
+1 Dickson is **** and signed for ** more s
+1 Gay Jr has a **M cap hit** and hasn't re
+1 Sanchez is **** and signed for ** more s
+1 Cutting McFadden would leave **M of dead
+1 Barnes has a **M cap hit** and hasn't re
+1 Tagovailoa has a **M cap hit** and hasn'
+1 Cutting Cine would leave **M of dead mon
+1 Singletary has a **M cap hit** and hasn'
+1 Cooke is **** and signed for ** more sea
+1 Slye has missed ** field goals** and ** 
+1 Bobo has a **M cap hit** and hasn't reco
+1 Judkins carried it ** times for  yards**
+1 Brissett has a **M cap hit** and hasn't 
+1 Elam has a **M cap hit** and hasn't reco
+1 Stribling dropped ** passes** against th
+1 Shough averages ** yards a carry** on  c
+1 Shough threw ** interceptions** against 
+1 Cole is **** and signed for ** more seas
+1 Coleman has thrown **more interceptions 
+1 Coleman threw ** interceptions** against
+1 Sanders has missed ** field goals** and 
+1 Pineiro is **** and signed for ** more s
+1 Pineiro has missed ** field goals** and 
+1 Gibson carried it ** times for  yards** 
+1 Brooks carried it ** times for  yards** 
+1 Young carried it ** times for  yards** a
+1 Miller has **the rd-most fumbles** in th
+1 Miller fumbled ** times** against the Co
+1 Miller carried it ** times for  yards** 
+1 McLaughlin is **** and signed for ** mor
+1 McLaughlin has missed ** field goals** a
+1 Cutting Yates would leave **M of dead mo
+1 Cutting Becton Sr would leave **M of dea
+1 Cutting Legette would leave **M of dead 
+1 Wiley threw ** interceptions** against t
+1 Anger is **** and signed for ** more sea
+1 Bernard has **the nd-most dropped passes
+1 Bernard dropped ** passes** against the 
+1 Dart threw ** interceptions** against th
+1 Dixon is **** and signed for ** more sea
+1 Bates has missed ** field goals** and **
+1 Gay has missed ** field goal** and ** ex
+1 Harvey carried it ** times for  yards** 
+1 Cutting Araiza would leave **M of dead m
+1 Fox is **** and signed for ** more seaso
+1 Harris is **** and signed for ** more se
+1 Beck threw ** interceptions** against th
+1 Szmyt has missed ** field goals** and **
+1 Woods threw ** interceptions** against t
+1 Coles has thrown **more interceptions ()
+1 Coles threw ** interceptions** against t
+1 Allar has **the rd-most sacks taken** in
+1 Allar threw ** interceptions** against t
+1 Black carried it ** times for  yards** a
+1 Sieg is **** and signed for ** more seas
+1 Beck is **** and signed for ** more seas
+1 Jordan dropped ** passes** against the C
+1 Cutting Kandra would leave **M of dead m
+1 Shrader has missed ** field goals** and 
+1 York has missed ** field goals** and ** 
+1 Dike dropped ** passes** against the Col
+1 Tuten carried it ** times for  yards** a
+1 Koerner has missed ** field goals** and 
+1 Klubnik threw ** interceptions** against
+1 Virgil has thrown **more interceptions (
+1 Virgil has **the nd-most interceptions t
+1 Virgil has **the most sacks taken** in t
+1 Virgil has **the most fumbles** in the l
+1 Virgil threw ** interceptions** against 
+1 Virgil fumbled ** times** against the Se
+1 Ryland has missed ** field goals** and *
+1 Jones has thrown **more interceptions ()
+1 Jones threw ** interceptions** against t
+1 Hibner has had ** games with zero catche
+1 Parker fumbled ** times** against the Ra
+1 Cutting Hill would leave **M of dead mon
+1 Reichard has missed ** field goals** and
+1 Lambert-Smith dropped ** passes** agains
+1 Blue carried it ** times for  yards** ag
+1 Sauls has missed ** field goals** and **
+1 Milton has **the rd-most sacks taken** i
+1 Milton threw ** interceptions** against 
+1 Borregales has missed ** field goals** a
+1 Loop has missed ** field goals** and ** 
+1 Joly dropped ** passes** against the Jag
+1 Gilchrist has **the nd-most dropped pass
+1 Gilchrist dropped ** passes** against th
+1 Singleton dropped ** passes** against th
+1 Croskey-Merritt carried it ** times for 
+1 Elfman has missed ** field goals** and *
+1 Pemberton fumbled ** times** against the
+1 Green threw ** interceptions** against t
+1 Trujillo has missed ** field goals** and
+1 Jeanty carried it ** times for  yards** 
+1 Fitzgerald has missed ** field goals** a
+1 Smack has missed ** field goals** and **
+1 Nussmeier threw ** interceptions** again
+1 Brown dropped ** passes** against the St
+1 Evans has had ** games with zero catches
+1 Kanak dropped ** passes** against the Se
+1 King threw ** interceptions** against th
