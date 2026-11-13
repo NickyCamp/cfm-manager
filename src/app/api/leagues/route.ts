@@ -32,12 +32,15 @@ export async function POST(req: Request) {
     .single();
   if (!conn || conn.user_id !== user.id) return NextResponse.json({ error: "That EA connection isn't yours. Connect EA again." }, { status: 403 });
 
-  // Already on CFM Manager? Join it.
+  // Already on CFM Manager? Join it. Matched on the EA league id alone, whatever the
+  // console: cross-play leagues have one id on every platform, and keying on the
+  // console too gave PC players their own copy of a PS5 league (2026-11-13).
   const { data: existing } = await admin
     .from("leagues")
     .select("id, slug, owner_id")
     .eq("ea_league_id", body.eaLeagueId)
-    .eq("console", conn.console)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
   if (existing) {
     await admin.from("league_members").upsert({ league_id: existing.id, user_id: user.id, role: existing.owner_id === user.id ? "commissioner" : "member" }, { onConflict: "league_id,user_id", ignoreDuplicates: true });

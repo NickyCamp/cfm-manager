@@ -70,10 +70,12 @@ export async function POST(req: Request) {
 
       const { data: existing } = await admin
         .from("leagues")
-        .select("slug, ea_league_id")
-        .eq("console", persona.console)
-        .in("ea_league_id", leagues.map((l) => l.leagueId));
-      const slugById = new Map((existing || []).map((l) => [Number(l.ea_league_id), l.slug as string]));
+        .select("slug, ea_league_id, created_at")
+        .in("ea_league_id", leagues.map((l) => l.leagueId))
+        .order("created_at", { ascending: true });
+      // Any console: cross-play leagues share one id (see POST /api/leagues). Oldest copy wins.
+      const slugById = new Map<number, string>();
+      for (const l of existing || []) if (!slugById.has(Number(l.ea_league_id))) slugById.set(Number(l.ea_league_id), l.slug as string);
 
       for (const l of leagues) {
         result.leagues.push({

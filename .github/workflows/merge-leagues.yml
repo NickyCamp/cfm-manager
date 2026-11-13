@@ -1,0 +1,37 @@
+name: Merge duplicate leagues
+
+# Folds extra copies of the same EA league (e.g. a PC player's copy of a PS5
+# cross-play league) into the oldest one. See scripts/merge-leagues/merge.ts.
+# Run by hand, or by pushing a change to scripts/merge-leagues/run.txt
+# (its first line is the mode: dry or apply).
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry = report only, apply = merge"
+        default: "dry"
+  push:
+    branches: [main]
+    paths: ["scripts/merge-leagues/run.txt"]
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Merge
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          MODE="${{ inputs.mode }}"
+          if [ -z "$MODE" ]; then MODE="$(head -n1 scripts/merge-leagues/run.txt | tr -d '[:space:]')"; fi
+          echo "Mode: $MODE"
+          MODE="$MODE" npx tsx scripts/merge-leagues/merge.ts
