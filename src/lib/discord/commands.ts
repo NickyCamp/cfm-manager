@@ -77,7 +77,7 @@ export const COMMANDS = [
   { name: "packs", description: "Pack leaderboard: most points from pulls, plus your own stats and the odds", ...ANYWHERE },
   {
     name: "funfact",
-    description: "A random fun fact from this season's numbers about a player or team (leave both empty for a surprise)",
+    description: "A random fun fact about a player or team from this season's numbers (or leave empty)",
     ...ANYWHERE,
     options: [{ ...player, required: false }, team(false)],
   },
