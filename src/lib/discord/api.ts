@@ -96,3 +96,17 @@ export async function postToChannel(botToken: string, channelId: string, msg: Me
   if (res.status === 413) return "The video is too big for Discord (10 MB limit for bots).";
   return `Discord said ${res.status}: ${text.slice(0, 200)}`;
 }
+
+let owners: { at: number; ids: string[] } | null = null;
+/** Discord user ids that own the bot (the developer-portal owner, or every member of its team). Cached 10 minutes. */
+export async function appOwnerIds(botToken: string): Promise<string[]> {
+  if (owners && Date.now() - owners.at < 600_000) return owners.ids;
+  const res = await fetch(`${API}/applications/@me`, { headers: { authorization: `Bot ${botToken}` } });
+  if (!res.ok) return owners?.ids || [];
+  const app = (await res.json()) as { owner?: { id: string }; team?: { owner_user_id?: string; members?: { user: { id: string } }[] } | null };
+  const ids = app.team
+    ? [app.team.owner_user_id, ...(app.team.members || []).map((m) => m.user.id)].filter((x): x is string => Boolean(x))
+    : app.owner ? [app.owner.id] : [];
+  owners = { at: Date.now(), ids };
+  return ids;
+}

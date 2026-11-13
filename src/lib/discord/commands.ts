@@ -35,7 +35,7 @@ export const COMMANDS = [
   },
   {
     name: "alertvideo",
-    description: "Attach a video to an update post (e.g. when a team goes over the cap); no video = remove",
+    description: "Bot owner only: a video that plays with an update (e.g. a team over the cap); no video = remove",
     default_member_permissions: MANAGE_SERVER,
     ...SERVER_ONLY,
     options: [

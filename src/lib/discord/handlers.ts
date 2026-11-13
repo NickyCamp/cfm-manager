@@ -16,7 +16,7 @@ import { cardImageUrl, packImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
-import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
+import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
@@ -270,7 +270,10 @@ async function notify(i: Interaction, lg: LinkedLeague): Promise<Message> {
 }
 
 async function alertVideo(i: Interaction, lg: LinkedLeague): Promise<Message> {
-  if (!canManage(i)) return reply("Only people with **Manage Server** can change alert videos.");
+  // Only the bot's owner (whoever owns the app in the Discord developer portal) can add or remove clips.
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return reply("Alert videos aren't set up on the server yet.");
+  if (!(await appOwnerIds(token)).includes(userId(i))) return reply("Only the bot's owner can add or remove alert videos.");
   const event = String(opt(i, "event")) as AlertEvent;
   if (!(event in ALERT_EVENTS)) return reply("Pick one of the listed events.");
   const label = ALERT_EVENTS[event].toLowerCase();
@@ -306,8 +309,7 @@ async function alertVideo(i: Interaction, lg: LinkedLeague): Promise<Message> {
   await setDiscord(lg.id, { ...cur, videos });
 
   // Show it once in the update channel so everyone sees what it'll look like.
-  const token = process.env.DISCORD_BOT_TOKEN;
-  if (cur.channelId && token) {
+  if (cur.channelId) {
     const err = await postToChannel(token, cur.channelId, { embeds: [{ color: BRAND, title: `🎬 New alert video: ${label}`, description: "This plays with that update from now on." }] }, { data, filename: att.filename, contentType: type });
     if (err) return reply(`Saved, but the test post failed: ${err}`);
     return reply(`Saved. It'll post in <#${cur.channelId}> every time ${label}. I posted it there once so you can see it.`);
