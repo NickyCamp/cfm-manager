@@ -132,13 +132,17 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
             // eslint-disable-next-line @next/next/no-img-element
             if (gem) return <img key={a.title} src={gem} alt="" width={14 * A} height={14 * A} style={{ width: 14 * A, height: 14 * A }} />;
             if (tileSrc[t]) {
-              const k = 14 * A, fs = ({ 1: 8.6, 2: 6.4, 3: 4.6 } as Record<number, number>)[ini.length] ?? 3.6;
+              // Nick's tier tiles: gold = engraved Cinzel serif, silver = stout Barlow Condensed with a navy outline.
+              const k = 14 * A, silver = t === "silver";
+              const fs = silver ? (({ 1: 9.4, 2: 7.6, 3: 5.8 } as Record<number, number>)[ini.length] ?? 4.6) : (({ 1: 8.6, 2: 6.4, 3: 4.6 } as Record<number, number>)[ini.length] ?? 3.6);
+              const line = silver ? "#0f1a2b" : "#4a2c06", o = 1.5;
+              const outline = `-${o}px -${o}px 0 ${line}, ${o}px -${o}px 0 ${line}, -${o}px ${o}px 0 ${line}, ${o}px ${o}px 0 ${line}, 0 ${o}px 0 ${line}, 0 -${o}px 0 ${line}, 0 3px 3px rgba(0,0,0,.5)`;
               return (
                 <div key={a.title} style={{ position: "relative", width: k, height: k, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={tileSrc[t]} alt="" width={k} height={k} style={{ position: "absolute", top: 0, left: 0, width: k, height: k }} />
-                  <span style={{ fontFamily: "Cinzel", fontWeight: 900, fontSize: fs * A, lineHeight: 1, marginTop: 0.3 * A, color: "#f6ead0",
-                    textShadow: "-1.5px -1.5px 0 #4a2c06, 1.5px -1.5px 0 #4a2c06, -1.5px 1.5px 0 #4a2c06, 1.5px 1.5px 0 #4a2c06, 0 1.5px 0 #4a2c06, 0 -1.5px 0 #4a2c06, 0 3px 3px rgba(60,35,5,.6)" }}>{ini}</span>
+                  <span style={{ fontFamily: silver ? "Barlow Condensed" : "Cinzel", fontWeight: silver ? 800 : 900, fontSize: fs * A, lineHeight: 1, marginTop: silver ? 0 : 0.3 * A,
+                    color: silver ? "#eef1f6" : "#f6ead0", textShadow: outline }}>{ini}</span>
                 </div>
               );
             }
