@@ -34,6 +34,8 @@ import type { LeagueData } from "../../src/lib/league/types";
   show("cap team", P.teamCapEmbed(d, d.teams[0], url, footer));
   show("team", P.teamEmbed(d, d.teams[0], url, footer));
   show("tws NYJ", P.twsEmbed(d, d.teams.find((t) => t.abbr === "NYJ") || d.teams[0], url, footer));
+  show("tws SEA 15", P.twsEmbed(d, d.teams.find((t) => t.abbr === "SEA") || d.teams[0], url, footer, 15));
+  show("tws SEA 19", P.twsEmbed(d, d.teams.find((t) => t.abbr === "SEA") || d.teams[0], url, footer, 19));
   show("tws first", P.twsEmbed(d, d.teams[0], url, footer));
   show("standings", P.standingsEmbed(d, url, footer));
   show("playoffs", P.playoffsEmbed(d, url, footer));

@@ -13,7 +13,7 @@ import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
 import { cardImageUrl } from "./cardLink";
-import { currentGame, edges, sideTable, teamStats } from "./matchup";
+import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { BRAND, EPHEMERAL, hexColor, postToChannel, type Embed, type Message } from "./api";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
@@ -166,7 +166,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "tws": {
       const t = findTeam(d, opt(i, "team"));
-      return t ? { embeds: [twsEmbed(d, t, url, footer)] } : reply("No team by that name.");
+      if (!t) return reply("No team by that name.");
+      const w = Number(opt(i, "week")) || 0;
+      return { embeds: [twsEmbed(d, t, url, footer, w || undefined)] };
     }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
@@ -379,8 +381,15 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   };
 }
 
-function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
-  const { game, bye } = currentGame(d, t);
+function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: number): Embed {
+  let game, bye = false;
+  if (weekNum) {
+    const wi = weekIndex(weekNum);
+    game = gameInWeek(d, t, wi);
+    if (!game) return { title: `${teamLabel(t)}: ${weekTitle(d, 1, wi)}`, color: hexColor(t.primary), footer, description: `No ${t.abbr} game that week (a bye, or not scheduled yet).` };
+  } else {
+    ({ game, bye } = currentGame(d, t));
+  }
   if (!game) return { title: `${teamLabel(t)}: no game scheduled`, color: hexColor(t.primary), footer, description: `Nothing left on the ${teamLabel(t)} schedule this season.` };
   const home = teamOf(d, game.home)!, away = teamOf(d, game.away)!;
   const opp = game.home === t.id ? away : home;
@@ -396,8 +405,20 @@ function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   ].filter(Boolean);
   // Earlier meetings this season.
   const met = d.games.filter((g) => g.final && g.id !== game.id && g.stage === 1 && ((g.home === t.id && g.away === opp.id) || (g.home === opp.id && g.away === t.id)));
-  if (met.length) lines.push(`Earlier: ${met.map((g) => `${teamOf(d, g.away)?.abbr} ${g.as} @ ${teamOf(d, g.home)?.abbr} ${g.hs} (${weekTitle(d, g.stage, g.week)})`).join("; ")}`);
+  if (met.length) lines.push(`Other meetings: ${met.map((g) => `${teamOf(d, g.away)?.abbr} ${g.as} @ ${teamOf(d, g.home)?.abbr} ${g.hs} (${weekTitle(d, g.stage, g.week)})`).join("; ")}`);
   const embed: Embed = { title: `${wk}: ${t.abbr} vs ${opp.abbr}`, url: url(`/teams/${t.abbr.toLowerCase()}?tab=schedule`), color: hexColor(t.primary), footer, description: lines.join("\n") };
+  // A finished game: the box score instead of the season matchup.
+  if (game.final) {
+    const table = gameTable(d, game, away, home);
+    embed.url = url(`/games/${game.id}`);
+    embed.fields = [
+      ...(table ? [{ name: "Team stats", value: table }] : []),
+      { name: `${away.abbr} leaders`, value: gameLeaders(d, game, away), inline: true },
+      { name: `${home.abbr} leaders`, value: gameLeaders(d, game, home), inline: true },
+    ];
+    if (!table) embed.fields.unshift({ name: "Team stats", value: "No team stats for this game (simmed games before syncing started can be missing)." });
+    return embed;
+  }
   if (!ts || !os) return { ...embed, fields: [{ name: "Matchup stats", value: "Not enough games played yet this season." }] };
   const e = edges(t, ts, opp, os);
   embed.fields = [
