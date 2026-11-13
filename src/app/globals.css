@@ -828,8 +828,8 @@ details.panel[open] summary { margin-bottom: 8px; }
    The padding tucks the card's edge just under each frame so corner text isn't covered; the shadow follows the frame shape. */
 .t-normal { --frame: url("/frames/bronze.webp"); } .t-star { --frame: url("/frames/silver.webp"); }
 .t-super { --frame: url("/frames/gold.webp"); } .t-xf { --frame: url("/frames/xf.webp"); }
-.pcard .pcard-face, .pcard.static .pcard-face { background: none; box-shadow: none; padding: 4.6cqw 4.6cqw 4.8cqw; }
-.pcard.t-xf .pcard-face { padding: 3.6cqw 4cqw 4.4cqw; }
+.pcard .pcard-face, .pcard.static .pcard-face { background: none; box-shadow: none; padding: 3.4cqw 3.4cqw 3.6cqw; }
+.pcard.t-xf .pcard-face { padding: 2.7cqw 3cqw 3.3cqw; }
 .pcard-face::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
   background: var(--frame) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5cqw 3cqw rgba(0,0,0,.4)); }
 .t-xf .pcard-foil { background: linear-gradient(115deg, transparent 28%, rgba(255,120,160,.32) 44%, rgba(255,220,230,.38) 50%, rgba(255,120,160,.32) 56%, transparent 72%) var(--mx) var(--my) / 230% 230%;

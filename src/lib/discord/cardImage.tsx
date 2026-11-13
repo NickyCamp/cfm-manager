@@ -70,8 +70,8 @@ export async function withLogo<T extends { teamLogo?: string }>(p: T): Promise<T
 const frameStyle = (tier: number, U: number) =>
   frames[tier]
     ? tier === 3
-      ? { position: "relative" as const, paddingTop: 3.6 * U, paddingLeft: 4 * U, paddingRight: 4 * U, paddingBottom: 4.4 * U }
-      : { position: "relative" as const, paddingTop: 4.6 * U, paddingLeft: 4.6 * U, paddingRight: 4.6 * U, paddingBottom: 4.8 * U }
+      ? { position: "relative" as const, paddingTop: 2.7 * U, paddingLeft: 3 * U, paddingRight: 3 * U, paddingBottom: 3.3 * U }
+      : { position: "relative" as const, paddingTop: 3.4 * U, paddingLeft: 3.4 * U, paddingRight: 3.4 * U, paddingBottom: 3.6 * U }
     : { padding: 2.8 * U, backgroundImage: FACE[tier] };
 const frameOverlay = (tier: number, W: number, H: number) =>
   // eslint-disable-next-line @next/next/no-img-element
