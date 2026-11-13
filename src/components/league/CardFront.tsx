@@ -55,9 +55,9 @@ export const TILE_ART = new Set(["gold", "silver", "bronze"]);
 /** Ability badges shrink to fit when a player has more than 5 (QBs often do), so none get dropped. 1 = full size. */
 export const abScale = (n: number) => (n <= 5 ? 1 : Math.max(0.5, (78 / n - 1.6) / 14));
 /** Nick's overall/position art (public/ovr): r/<00-99>.png (white, gold at 99) and pos/<W|G>_<POS>.png.
- *  Madden 26 codes his pack doesn't have map to the nearest one; anything else falls back to text. */
-const POS_ART = new Set(["C","CB","DT","EDGE","FB","FS","HB","ILB","K","LB","LDE","LE","LG","LOLB","LS","LT","MLB","NT","OLB","P","QB","RB","RDE","RE","RG","ROLB","RT","S","SS","TE","WR"]);
-const POS_ALIAS: Record<string, string> = { LEDG: "EDGE", REDG: "EDGE", MIKE: "MLB", SAM: "OLB", WILL: "OLB" };
+ *  Anything not in his pack falls back to text. */
+const POS_ART = new Set(["C","CB","DT","EDGE","FB","FS","HB","ILB","K","LB","LDE","LE","LG","LOLB","LS","LT","MLB","NT","OLB","P","QB","RB","RDE","RE","RG","ROLB","RT","S","SS","TE","WR","LEDGE","REDGE","MIKE","SAM","WILL"]);
+const POS_ALIAS: Record<string, string> = { LEDG: "LEDGE", REDG: "REDGE" }; // EA spells these LEDG/REDG
 export const ovrArt = (ovr: number) => (Number.isInteger(ovr) && ovr >= 0 && ovr <= 99 ? `/ovr/r/${String(ovr).padStart(2, "0")}.png` : null);
 export const posArt = (pos: string, gold: boolean) => {
   const k = POS_ALIAS[pos.toUpperCase()] ?? pos.toUpperCase();
