@@ -255,6 +255,8 @@ export function pickFact(facts: Fact[]): Fact | null {
 
 const ROAST = 4.5;
 const ord = (k: number) => { const s = ["th", "st", "nd", "rd"], v = k % 100; return k + (s[(v - 20) % 10] || s[v] || s[0]); };
+/** "the most" / "the 3rd-most", "the highest" / "the 4th-highest". */
+const nth = (k: number, word: string) => (k === 1 ? `the ${word}` : `the ${ord(k)}-${word}`);
 const GROUP_NAME: Record<string, string> = { QB: "quarterbacks", RB: "running backs", WR: "receivers", DEF: "defenders", K: "kickers", P: "punters" };
 /** What a position group is paid to produce, for "overpaid" facts. */
 function production(g: string, t: Totals | undefined): { v: number; label: string; unit: string } | null {
@@ -280,23 +282,29 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
 
   // Overpaid: a top-15% cap hit in his position group with below-median production.
   const prod = production(g, t);
+  let overpaid = false;
   if (p.team && cap > 0 && prod && seasonUnderway) {
     const peers = d.players.filter((x) => !x.gone && x.team && !x.ps && (GROUP[x.pos] || "") === g && x.contract.capHit > 0);
     const capRank = 1 + peers.filter((x) => x.contract.capHit > cap).length;
     const prodVals = peers.map((x) => production(g, c.totals.get(x.id))!.v);
     const prodRank = 1 + prodVals.filter((v) => v > prod.v).length;
-    if (peers.length >= 10 && capRank <= Math.ceil(peers.length * 0.15) && prodRank > peers.length / 2) {
+    const silent = cap >= 3e6 && (!t || !t.gp) && g !== "P";
+    if (silent) {
+      const why = p.ir ? " (he's on IR)" : p.injury > 0 ? ` (he's hurt, out ${p.injury} more week${p.injury === 1 ? "" : "s"})` : "";
+      add(ROAST + 1, `${who} has a **${money(cap)} cap hit** and hasn't recorded **a single stat** this season${why}.`);
+      overpaid = true;
+    } else if (peers.length >= 10 && capRank <= Math.ceil(peers.length * 0.15) && prodRank > peers.length / 2) {
+      overpaid = true;
       add(ROAST + 1, `${who} has the **${ord(capRank)}-biggest cap hit among ${GROUP_NAME[g]}** (${money(cap)}) and ranks **${ord(prodRank)} of ${peers.length}** in ${prod.label}.`
         + (prod.unit && prod.v > 0 ? ` That's **${money(cap / prod.v)} per ${prod.unit}**.` : ""));
     }
-    // Paid real money, nothing to show for it.
-    if (cap >= 3e6 && (!t || !t.gp) && g !== "P") add(ROAST + 1, `${who} has a **${money(cap)} cap hit** and hasn't recorded **a single stat** this season.`);
   }
   // Paid like a star, rated like a backup.
   if (p.team && cap >= 15e6 && p.ovr < 78) add(ROAST, `${Team} are paying ${who} **${money(cap)}** this season. He's a **${p.ovr} overall**.`);
-  // Stuck with him: big dead money if cut.
+  // Stuck with him: big dead money if cut. Only when that's actually a problem (he isn't
+  // producing, isn't very good, or is getting old); for a healthy star it's just how deals work.
   const c2 = p.contract;
-  if (p.team && c2.releasePenalty >= 8e6 && c2.releasePenalty > c2.releaseSavings * 2) {
+  if (p.team && c2.releasePenalty >= 8e6 && c2.releasePenalty > c2.releaseSavings * 2 && (overpaid || p.ovr < 82 || p.age >= 31)) {
     const ends = d.season.year + Math.max(0, c2.yearsLeft - 1);
     add(ROAST - 1, `Cutting ${who} would leave **${money(c2.releasePenalty)} of dead money** and save only ${money(c2.releaseSavings)}, so ${team} are stuck with him through ${ends}.`);
   }
@@ -315,7 +323,7 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
       const mine = v(t);
       if (mine <= 0 || !min(t)) return;
       const rank = 1 + [...c.totals.values()].filter((x) => min(x) && v(x) > mine).length;
-      if (rank <= 3) add(w, `${who} has ${rank === 1 ? "the **most" : `the **${ord(rank)}-most`} ${what}** in the league (${mine}).`);
+      if (rank <= 3) add(w, `${who} has **${nth(rank, "most")} ${what}** in the league (${mine}).`);
     };
     worst((x) => x.pint, "interceptions thrown", (x) => x.pa > 0);
     worst((x) => x.psk, "sacks taken", (x) => x.pa > 0, ROAST - 1);
@@ -372,7 +380,7 @@ function teamRoasts(c: Ctx, team: Team): Fact[] {
   if (a && a.gp) {
     const w = team.rec.w, l = team.rec.l;
     const payRank = 1 + d.teams.filter((x) => x.cap.spent > team.cap.spent).length;
-    if (payRank <= 10 && w < l) add(ROAST + 1, `${name} have the **${ord(payRank)}-highest payroll** in the league (${money(team.cap.spent)}) and a **${w}-${l}** record.`);
+    if (payRank <= 10 && w < l) add(ROAST + 1, `${name} have **${nth(payRank, "highest")} payroll** in the league (${money(team.cap.spent)}) and a **${w}-${l}** record.`);
     const diff = a.take - a.to;
     if (diff <= -5) add(ROAST, `${name} have given the ball away **${a.to} times** and taken it away only **${a.take}**. That's a **${diff}** turnover margin.`);
     const res = d.games.filter((g) => g.final && regGame(g) && (g.home === team.id || g.away === team.id)).map((g) => {
@@ -385,7 +393,7 @@ function teamRoasts(c: Ctx, team: Team): Fact[] {
     const failed = a.fourth[1] - a.fourth[0];
     if (failed >= 10) add(ROAST - 1, `${name} have come up short on 4th down **${failed} times** this season.`);
     const allowRank = 1 + [...c.teamAgg.values()].filter((x) => x.gp && x.pa / x.gp > a.pa / a.gp).length;
-    if (allowRank <= 5) add(ROAST - 0.5, `${name} give up a point every **${(60 / (a.pa / a.gp)).toFixed(1)} minutes** (${(a.pa / a.gp).toFixed(1)} a game, ${ord(allowRank)}-most in the league).`);
+    if (allowRank <= 5) add(ROAST - 0.5, `${name} give up a point every **${(60 / (a.pa / a.gp)).toFixed(1)} minutes** (${(a.pa / a.gp).toFixed(1)} a game, ${nth(allowRank, "most")} in the league).`);
   }
 
   // Their worst unit, by league rank.
