@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { abilityInitials, backScale, initialsSize, sortAbilities, tierClass, xfLetter } from "@/components/league/CardFront";
+import { abilityInitials, backScale, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
 
@@ -34,10 +34,15 @@ const ABIL: Record<string, { bg: string; color: string }> = {
 // Nick's ruby X-Factor badges as data: URLs (Satori needs inline images), loaded once.
 let gems: Promise<Record<string, string>> | null = null;
 let gemSrc: Record<string, string> | null = null; // filled once xfGems() resolves; cardNode reads it
+let tileSrc: Record<string, string> = {};
+const dataUrl = async (rel: string) => `data:image/png;base64,${(await readFile(path.join(process.cwd(), rel))).toString("base64")}`;
+/** Loads the ruby X-Factor letters and the blank tier tiles (gold, ...) once. */
 export function xfGems() {
-  gems ??= Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) =>
+  gems ??= Promise.all([...TILE_ART].map(async (t) => [t, await dataUrl(`public/abilities/${t}.png`)] as const))
+    .then((e) => { tileSrc = Object.fromEntries(e); })
+    .then(() => Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) =>
     [c, `data:image/png;base64,${(await readFile(path.join(process.cwd(), "public/abilities/xf", `${c}.png`))).toString("base64")}`] as const,
-  )).then((e) => (gemSrc = Object.fromEntries(e)));
+  ))).then((e) => (gemSrc = Object.fromEntries(e)));
   return gems;
 }
 
@@ -49,14 +54,15 @@ const darken = (hex: string, k: number) => `rgb(${rgb(hex).map((v) => Math.round
 const mix = (hex: string, other: string, k: number) => { const a = rgb(hex), b = rgb(other); return `rgb(${a.map((v, i) => Math.round(v * k + b[i] * (1 - k))).join(",")})`; };
 const alpha = (hex: string, a: number) => `rgba(${rgb(hex).join(",")},${a})`;
 
-let fonts: Promise<{ name: string; data: Buffer; weight: 700 | 800; style: "normal" }[]> | null = null;
+let fonts: Promise<{ name: string; data: Buffer; weight: 700 | 800 | 900; style: "normal" }[]> | null = null;
+const fontFile = (name: string, file: string, weight: 700 | 800 | 900) =>
+  readFile(path.join(process.cwd(), "assets/fonts", file)).then((data) => ({ name, data, weight, style: "normal" as const }));
 export function cardFonts() {
-  fonts ??= Promise.all(([700, 800] as const).map(async (weight) => ({
-    name: "Barlow Condensed",
-    data: await readFile(path.join(process.cwd(), "assets/fonts", `barlow-condensed-latin-${weight}-normal.woff`)),
-    weight,
-    style: "normal" as const,
-  })));
+  fonts ??= Promise.all([
+    fontFile("Barlow Condensed", "barlow-condensed-latin-700-normal.woff", 700),
+    fontFile("Barlow Condensed", "barlow-condensed-latin-800-normal.woff", 800),
+    fontFile("Cinzel", "cinzel-latin-900-normal.woff", 900), // gold badge initials
+  ]);
   return fonts;
 }
 
@@ -104,6 +110,17 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
             const gem = t === "single" && gemSrc ? gemSrc[xfLetter(a.title) ?? ""] : undefined;
             // eslint-disable-next-line @next/next/no-img-element
             if (gem) return <img key={a.title} src={gem} alt="" width={14 * U} height={14 * U} style={{ width: 14 * U, height: 14 * U }} />;
+            if (tileSrc[t]) {
+              const k = 14 * U, fs = ({ 1: 8.6, 2: 6.4, 3: 4.6 } as Record<number, number>)[ini.length] ?? 3.6;
+              return (
+                <div key={a.title} style={{ position: "relative", width: k, height: k, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={tileSrc[t]} alt="" width={k} height={k} style={{ position: "absolute", top: 0, left: 0, width: k, height: k }} />
+                  <span style={{ fontFamily: "Cinzel", fontWeight: 900, fontSize: fs * U, lineHeight: 1, marginTop: 0.3 * U, color: "#f6ead0",
+                    textShadow: "-1.5px -1.5px 0 #4a2c06, 1.5px -1.5px 0 #4a2c06, -1.5px 1.5px 0 #4a2c06, 1.5px 1.5px 0 #4a2c06, 0 1.5px 0 #4a2c06, 0 -1.5px 0 #4a2c06, 0 3px 3px rgba(60,35,5,.6)" }}>{ini}</span>
+                </div>
+              );
+            }
             if (t === "single") {
               // Cut ruby square: bevelled facets from per-side border colors, a lighter table in the middle.
               const g = 12.5 * U;
