@@ -16,6 +16,8 @@ import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./ca
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
+import { pickFact, playerFacts, teamFacts } from "./funfacts";
+import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -196,6 +198,28 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "pack": return openPackReply(i, lg, d, base, url, footer);
     case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
+    case "funfact": {
+      const pv = opt(i, "player"), tv = opt(i, "team");
+      let p = pv != null && pv !== "" ? findPlayer(d, pv) : undefined;
+      let t = !p && tv != null && tv !== "" ? findTeam(d, tv) : undefined;
+      if (pv && !p) return reply("No player by that name. Pick one from the list as you type.");
+      if (tv && !pv && !t) return reply("No team by that name.");
+      if (!p && !t) {
+        // Surprise me: a random team, or a random rostered player who has played this season.
+        const pool = d.players.filter((x) => !x.gone && x.team && !x.ps && x.ovr >= 75);
+        if (pool.length && randomInt(3) > 0) p = pool[randomInt(pool.length)];
+        else t = d.teams[randomInt(d.teams.length)];
+      }
+      const facts = p ? playerFacts(d, p) : teamFacts(d, t!);
+      const f = pickFact(facts);
+      const who = p ? fullName(p) : `${t!.city} ${t!.name}`;
+      const color = hexColor((p ? teamOf(d, p.team) : t)?.primary);
+      if (!f) return { embeds: [{ title: `Fun fact: ${who}`, color, footer, description: "Not enough this season to say anything fun yet. Check back after a few games." }] };
+      return { embeds: [{
+        title: `🤓 Fun fact: ${who}`, url: url(p ? `/players/${p.id}` : `/teams/${t!.abbr.toLowerCase()}`), color, footer: { text: `${footer.text} · /funfact again for another (${facts.length} on file)` },
+        description: f.text,
+      }] };
+    }
     case "stats": {
       const cat = STAT_CATS.find((c) => c.key === opt(i, "category"));
       if (!cat) return reply("Pick a category from the list.");
