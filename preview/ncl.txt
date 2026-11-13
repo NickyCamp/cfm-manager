@@ -1,0 +1,334 @@
+autocomplete 'mah': [
+  'Patrick Mahomes',
+  'Christian Mahogany',
+  'Felix Anudike-Uzomah',
+  'Jamree Kromah',
+  'Dylan McMahon'
+]
+
+===== player (top) (935 bytes) =====
+{
+ "title": "Caleb Williams",
+ "url": "https://example.test/l/ncl/players/555223913",
+ "color": 726570,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "**QB · Chicago Bears** · #18\n99 OVR · X-Factor · Age 25 · 3 yrs pro",
+ "fields": [
+  {
+   "name": "Contract",
+   "value": "4 yrs, $39.5M ($35.5M bonus)\n1 year left",
+   "inline": true
+  },
+  {
+   "name": "2027 cap hit",
+   "value": "**$12.6M**\nCut: saves $0, $12.6M dead",
+   "inline": true
+  },
+  {
+   "name": "Cap hit by year",
+   "value": "2027: **$12.6M**\n-# Future years are projected from his deal."
+  },
+  {
+   "name": "2027 regular season",
+   "value": "16 games · 197/283, 4,325 pass yds, 51 TD, 23 INT · 20 rush, 81 yds, 1 TD"
+  },
+  {
+   "name": "Abilities",
+   "value": "Gambit (X-Factor), Protected (Silver), Fearless (Gold), Sideline Deadeye (Silver), Inside Deadeye (Silver), Gunslinger (Gold)"
+  }
+ ],
+ "thumbnail": {
+  "url": "https://static.www.nfl.com/image/upload/c_fill,g_face,ar_5:7,w_750,f_auto,q_auto/league/h4qs11kutwiw7whekmyt"
+ }
+}
+
+===== player (FA) (457 bytes) =====
+{
+ "title": "Nick Hampton",
+ "url": "https://example.test/l/ncl/players/555222043",
+ "color": 998702,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "**LEDG · Free agent** · #39\n69 OVR · Normal · Age 28 · 5 yrs pro",
+ "fields": [
+  {
+   "name": "Asking",
+   "value": "1 yr, $3.1M salary + $0 bonus",
+   "inline": true
+  }
+ ],
+ "thumbnail": {
+  "url": "https://static.www.nfl.com/image/upload/c_fill,g_face,ar_5:7,w_750,f_auto,q_auto/league/aj7xvaomrralumwm35ve"
+ }
+}
+
+===== contract (566 bytes) =====
+{
+ "title": "James Cook III: next contract",
+ "url": "https://example.test/l/ncl/contracts?player=555221534",
+ "color": 798338,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "HB · 99 OVR · Age 27 · Buffalo Bills",
+ "fields": [
+  {
+   "name": "Likely ask",
+   "value": "**5 yrs, $74.0M**\n$14.8M/yr · $39.1M bonus",
+   "inline": true
+  },
+  {
+   "name": "Market (within 3 OVR (at or below) and 3 years of age)",
+   "value": "Breece Hall (96, age 26) $14.5M/yr\nKenneth Walker (97, age 26) $14.3M/yr\nDe'Von Achane (99, age 25) $14.0M/yr\nJahmyr Gibbs (99, age 25) $13.3M/yr"
+  }
+ ]
+}
+
+===== cap league (766 bytes) =====
+{
+ "title": "Cap space",
+ "url": "https://example.test/l/ncl/cap",
+ "color": 998702,
+ "footer": {
+  "text": "ncl"
+ },
+ "fields": [
+  {
+   "name": "Most room",
+   "value": "`AZ ` $126M now · $153M in 2028\n`ATL` $109M now · $80.1M in 2028\n`MIA` $76.6M now · $27.5M in 2028\n`CLE` $76.2M now · $59.6M in 2028\n`NE ` $49.9M now · $13.8M in 2028\n`NO ` $45.7M now · $205M in 2028\n`SEA` $43.1M now · $97.4M in 2028\n`HOU` $36.8M now · $95.7M in 2028"
+  },
+  {
+   "name": "Least room",
+   "value": "`BUF` $5.4M now · −$52.5M in 2028\n`LAR` $3.6M now · $164M in 2028\n`KC ` $2.9M now · −$37.4M in 2028\n`DEN` $2.2M now · $21.7M in 2028\n`NYG` $2.2M now · $82.4M in 2028\n`DET` $830K now · −$20.4M in 2028\n`JAX` $440K now · $24.0M in 2028\n`TEN` $150K now · $89.3M in 2028"
+  }
+ ]
+}
+
+===== cap team (891 bytes) =====
+{
+ "title": "Baltimore Ravens: cap",
+ "url": "https://example.test/l/ncl/teams/bal?tab=cap",
+ "color": 2364255,
+ "footer": {
+  "text": "ncl"
+ },
+ "fields": [
+  {
+   "name": "Cap space by year",
+   "value": "2027: **$8.1M** space ($318M of $326M, 53 signed)\n2028 proj.: **$110M** space ($231M of $341M, 40 signed)\n2029 proj.: **$231M** space ($125M of $356M, 19 signed)\n2030 proj.: **$324M** space ($47.3M of $371M, 7 signed)\n2031 proj.: **$386M** space ($0 of $386M, 0 signed)"
+  },
+  {
+   "name": "Biggest cap hits",
+   "value": "Lamar Jackson (QB) $84.3M\nRoquan Smith (MIKE) $32.7M\nNnamdi Madubuike (DT) $30.4M\nZay Flowers (WR) $27.3M\nKyle Hamilton (SS) $15.6M",
+   "inline": true
+  },
+  {
+   "name": "Expiring (13)",
+   "value": "Lamar Jackson $84.3M\nRoquan Smith $32.7M\nNnamdi Madubuike $30.4M\nZay Flowers $27.3M\nJaylinn Hawkins $6.8M",
+   "inline": true
+  },
+  {
+   "name": "Dead money",
+   "value": "$0",
+   "inline": true
+  }
+ ]
+}
+
+===== team (631 bytes) =====
+{
+ "title": "Baltimore Ravens",
+ "url": "https://example.test/l/ncl/teams/bal",
+ "color": 2364255,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "Run by **Linkert69** · AFC North · 88 OVR",
+ "fields": [
+  {
+   "name": "Record",
+   "value": "9-8 (L1)\nDiv 4-2 · PF 562 PA 538",
+   "inline": true
+  },
+  {
+   "name": "Cap space",
+   "value": "$8.1M\n53 on the active roster",
+   "inline": true
+  },
+  {
+   "name": "Best players",
+   "value": "QB Lamar Jackson **99** · X-Factor\nHB Kyree Kris-Fulton **99** · X-Factor\nSS Kyle Hamilton **96** · X-Factor\nMIKE Roquan Smith **94** · X-Factor\nDT Nnamdi Madubuike **92** · Superstar\nWR Zay Flowers **90** · Star"
+  }
+ ]
+}
+
+===== tws NYJ (1519 bytes) =====
+{
+ "title": "Divisional Playoff: NYJ vs NE",
+ "url": "https://example.test/l/ncl/teams/nyj?tab=schedule",
+ "color": 1136448,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "**New York Jets** (13-4, W7) @ **New England Patriots** (13-4, W4)\nNYJ: TommyRings · NE: Falconskid2\nEarlier: NYJ 38 @ NE 35 (Week 3); NE 35 @ NYJ 31 (Week 9)",
+ "fields": [
+  {
+   "name": "NYJ offense vs NE defense",
+   "value": "```\nPer game       NYJ OFF     NE DEF\nPoints        41.0 #6    36.6 #22\nTotal yds      407 #10    432 #27\nPass yds       296 #5     293 #29\nRush yds       111 #24    139 #26\n3rd down %     49% #5     42% #19\nRed zone TD%   35% #16    41% #22\nTurnovers      1.4 #7     1.3 #28\nSacks          2.7 #21    2.5 #11\n```"
+  },
+  {
+   "name": "NE offense vs NYJ defense",
+   "value": "```\nPer game        NE OFF    NYJ DEF\nPoints        44.2 #3    27.7 #8 \nTotal yds      450 #3     362 #12\nPass yds       256 #15    250 #13\nRush yds       194 #2     112 #11\n3rd down %     41% #15    41% #15\nRed zone TD%   34% #20    36% #15\nTurnovers      0.8 #1     3.3 #1 \nSacks          2.0 #12    2.4 #13\n```"
+  },
+  {
+   "name": "Biggest mismatches",
+   "value": "**NYJ** pass yds (#5 offense) vs NE (#29 defense)\n**NYJ** turnovers (#7 offense) vs NE (#28 defense)\n**NYJ** total yds (#10 offense) vs NE (#27 defense)"
+  },
+  {
+   "name": "​",
+   "value": "-# Per game, 2027 regular season + playoffs (NYJ 18 games, NE 18). #1 = best in the league. Turnovers: given up on offense, forced on defense. Sacks: allowed on offense, made on defense."
+  }
+ ]
+}
+
+===== tws first (207 bytes) =====
+{
+ "title": "Baltimore Ravens: no game scheduled",
+ "color": 2364255,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "Nothing left on the Baltimore Ravens schedule this season."
+}
+
+===== standings (893 bytes) =====
+{
+ "title": "Standings",
+ "url": "https://example.test/l/ncl/standings",
+ "color": 998702,
+ "footer": {
+  "text": "ncl"
+ },
+ "fields": [
+  {
+   "name": "AFC East",
+   "value": "`NE ` 13-4\n`NYJ` 13-4\n`MIA` 7-10\n`BUF` 2-15",
+   "inline": true
+  },
+  {
+   "name": "AFC North",
+   "value": "`CIN` 11-6\n`BAL` 9-8\n`CLE` 9-8\n`PIT` 4-13",
+   "inline": true
+  },
+  {
+   "name": "AFC South",
+   "value": "`HOU` 13-4\n`JAX` 11-6\n`TEN` 5-12\n`IND` 3-14",
+   "inline": true
+  },
+  {
+   "name": "AFC West",
+   "value": "`LAC` 15-2\n`LV ` 12-4-1\n`KC ` 11-5-1\n`DEN` 5-12",
+   "inline": true
+  },
+  {
+   "name": "NFC East",
+   "value": "`PHI` 13-4\n`WAS` 10-7\n`NYG` 8-9\n`DAL` 7-10",
+   "inline": true
+  },
+  {
+   "name": "NFC North",
+   "value": "`CHI` 14-3\n`MIN` 6-11\n`DET` 4-13\n`GB ` 3-14",
+   "inline": true
+  },
+  {
+   "name": "NFC South",
+   "value": "`NO ` 14-3\n`ATL` 10-7\n`TB ` 9-8\n`CAR` 0-17",
+   "inline": true
+  },
+  {
+   "name": "NFC West",
+   "value": "`SEA` 12-5\n`AZ ` 10-7\n`SF ` 7-10\n`LAR` 1-16",
+   "inline": true
+  }
+ ]
+}
+
+===== playoffs (651 bytes) =====
+{
+ "title": "Playoff seeds",
+ "url": "https://example.test/l/ncl/playoffs",
+ "color": 998702,
+ "footer": {
+  "text": "ncl"
+ },
+ "fields": [
+  {
+   "name": "AFC",
+   "value": "1. LAC 15-2 *\n2. HOU 13-4 z\n3. NE 13-4 x\n4. CIN 11-6 z\n5. NYJ 13-4 x\n6. LV 12-4-1 x\n7. KC 11-5-1 x\n-# In the hunt: JAX 11-6, BAL 9-8, CLE 9-8",
+   "inline": true
+  },
+  {
+   "name": "NFC",
+   "value": "1. CHI 14-3 z\n2. NO 14-3 z\n3. PHI 13-4 z\n4. SEA 12-5 z\n5. ATL 10-7 x\n6. WAS 10-7 x\n7. AZ 10-7 x\n-# In the hunt: TB 9-8, NYG 8-9, DAL 7-10",
+   "inline": true
+  }
+ ],
+ "description": "-# * #1 seed · z division · x playoff spot · e eliminated. NFL tiebreakers; tie notes on the site."
+}
+
+===== scores (297 bytes) =====
+{
+ "title": "Scores: Wildcard Playoff",
+ "url": "https://example.test/l/ncl/scores",
+ "color": 998702,
+ "footer": {
+  "text": "ncl"
+ },
+ "description": "**KC 24** @ HOU 21\nLV 34 @ **NE 37**\nAZ 0 @ **NO 38**\n**NYJ 31** @ CIN 24\nWAS 29 @ **PHI 44**\n**ATL 35** @ SEA 21"
+}
+
+----- update -----
+{
+ "color": 998702,
+ "title": "NCL advanced to 2027 Divisional Playoff",
+ "url": "https://example.test/l/ncl",
+ "footer": {
+  "text": "NCL · 2027 Divisional Playoff"
+ }
+}
+
+----- update -----
+{
+ "color": 998702,
+ "title": "Final scores: Wildcard Playoff",
+ "url": "https://example.test/l/ncl/scores",
+ "description": "**NYJ 31** @ CIN 24 · [box](https://example.test/l/ncl/games/545783815)\nWAS 29 @ **PHI 44** · [box](https://example.test/l/ncl/games/545783816)\n**ATL 35** @ SEA 21 · [box](https://example.test/l/ncl/games/545783817)",
+ "footer": {
+  "text": "NCL · 2027 Divisional Playoff"
+ }
+}
+
+----- update -----
+{
+ "color": 998702,
+ "title": "Roster moves",
+ "url": "https://example.test/l/ncl/cap",
+ "description": "🔧 CHI restructured **Caleb Williams** (QB, 99 X-Factor): cap hit $12.6M → $12.6M\n✍️ CHI signed **Malik Muhammad** (CB, 89 Superstar): 4 yrs, $5.5M\n🔁 **Dillon Thieneman** (SS, 89 X-Factor) traded BAL → CHI\n📝 CHI extended **Beau Gardner** (LS, 67): 3 yrs, $3.1M, $1.1M this year",
+ "footer": {
+  "text": "NCL · 2027 Divisional Playoff"
+ }
+}
+
+----- update -----
+{
+ "color": 2364255,
+ "title": "⚠️ Baltimore Ravens are over the cap",
+ "url": "https://example.test/l/ncl/teams/bal?tab=cap",
+ "description": "−$1.0M in space · Linkert69",
+ "footer": {
+  "text": "NCL · 2027 Divisional Playoff"
+ }
+}
