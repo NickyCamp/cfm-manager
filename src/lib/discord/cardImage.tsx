@@ -18,12 +18,6 @@ const FACE: Record<number, string> = {
   2: "linear-gradient(135deg, #9c6b00, #ffe27a 25%, #b8860b 45%, #fff3b0 62%, #a07000 80%, #ffd54a)",
   3: "linear-gradient(135deg, #5c0016, #e0115f 22%, #7a0020 42%, #ff4f7b 60%, #6b001b 80%, #c4103f)",
 };
-const FOIL: Record<number, string | null> = {
-  0: null,
-  1: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,.22) 48%, transparent 62%)",
-  2: "linear-gradient(115deg, transparent 20%, rgba(255,220,0,.16) 40%, rgba(255,250,200,.2) 50%, rgba(255,170,40,.14) 60%, transparent 80%)",
-  3: "linear-gradient(115deg, transparent 28%, rgba(255,120,160,.26) 44%, rgba(255,220,230,.3) 50%, rgba(255,120,160,.26) 56%, transparent 72%)",
-};
 const ABIL: Record<string, { bg: string; color: string }> = {
   gold: { bg: "linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10)", color: "#3a2a00" },
   silver: { bg: "linear-gradient(135deg, #8e97a8, #f4f6fa 45%, #a7b0c0)", color: "#1e2a44" },
@@ -114,7 +108,7 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         {/* shade for legibility */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%)" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%)" }} />
-        {FOIL[tier] && <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: FOIL[tier]! }} />}
+        {/* No holo foil sheen here (Nick, 2026-11-13): the site animates it, but on a static image it just looks hazy. */}
 
         <div style={{ position: "absolute", top: 3.4 * U, left: 4 * U, display: "flex", fontSize: 6 * U, fontWeight: 800, color: "rgba(255,255,255,.85)", textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>#{p.jersey}</div>
 
