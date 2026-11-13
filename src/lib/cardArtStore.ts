@@ -39,10 +39,10 @@ export async function leagueMemberId(slug: string): Promise<string | null> {
 }
 
 /** Signed URL for a player's uploaded art, or undefined if there is none. Call only for members. */
-export async function signedCardArt(slug: string, playerId: number): Promise<string | undefined> {
+export async function signedCardArt(slug: string, playerId: number, ttlSeconds = URL_TTL_SECONDS): Promise<string | undefined> {
   try {
     await ensureCardArtBucket();
-    const { data } = await supabaseAdmin().storage.from(CARD_ART_BUCKET).createSignedUrl(cardArtPath(slug, playerId), URL_TTL_SECONDS);
+    const { data } = await supabaseAdmin().storage.from(CARD_ART_BUCKET).createSignedUrl(cardArtPath(slug, playerId), ttlSeconds);
     return data?.signedUrl;
   } catch (e) {
     console.error("card art url", slug, playerId, e);

@@ -21,7 +21,7 @@ export function verifyDiscordRequest(body: string, signature: string | null, tim
 export type Embed = {
   title?: string; url?: string; description?: string; color?: number;
   fields?: { name: string; value: string; inline?: boolean }[];
-  thumbnail?: { url: string }; footer?: { text: string }; author?: { name: string; url?: string };
+  thumbnail?: { url: string }; image?: { url: string }; footer?: { text: string }; author?: { name: string; url?: string };
 };
 export type Message = { content?: string; embeds?: Embed[]; flags?: number; allowed_mentions?: { parse: string[] } };
 
