@@ -12,7 +12,7 @@ import { heightText, money } from "@/lib/league/format";
 export type TeamLite = { id: number; abbr: string; city: string; name: string; primary: string };
 export type PlayerRow = {
   id: number; n: string; t: number; pos: string; age: number; ht: number; wt: number; col: string;
-  ovr: number; dev: number; yp: number; yl: number; cap: number; ps: boolean; inj: boolean; dr: number; r: number[];
+  ovr: number; dev: number; yp: number; yl: number; cap: number; ps: boolean; inj: boolean; ir: boolean; dr: number; r: number[];
 };
 
 const POS_GROUPS: [string, string[]][] = [
@@ -119,7 +119,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
       if (f.rook && r.yp !== 0) return false;
       if (f.ps === "hide" && r.ps) return false;
       if (f.ps === "only" && !r.ps) return false;
-      if (f.inj && !r.inj) return false;
+      if (f.inj && !r.inj && !r.ir) return false;
       if (f.und && r.dr !== 0) return false;
       if (q) {
         const t = teamById.get(r.t);
@@ -257,7 +257,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
               </select>
             </label>
             <div className="pl-checks">
-              <label className="pl-check"><input type="checkbox" checked={f.inj} onChange={(e) => set("inj", e.target.checked)} /> Injured</label>
+              <label className="pl-check"><input type="checkbox" checked={f.inj} onChange={(e) => set("inj", e.target.checked)} /> Injured or IR</label>
               <label className="pl-check"><input type="checkbox" checked={f.und} onChange={(e) => set("und", e.target.checked)} /> Undrafted</label>
             </div>
           </div>
@@ -331,7 +331,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
                   <td className="num">{r.dr || <span className="muted">UDFA</span>}</td>
                   <td className="num">{!r.t ? <span className="muted">—</span> : r.ps ? <span className="muted small">PS</span> : <span className={r.yl <= 1 ? "pl-exp" : undefined}>{r.yl}</span>}</td>
                   <td className="num">{r.t && !r.ps ? money(r.cap) : <span className="muted">—</span>}</td>
-                  <td className="pl-flags">{r.ps && <span className="tag" title="Practice squad">PS</span>}{r.inj && <span className="tag inj" title="Injured">INJ</span>}</td>
+                  <td className="pl-flags">{r.ps && <span className="tag" title="Practice squad">PS</span>}{r.inj && <span className="tag inj" title="Injured">INJ</span>}{r.ir && <span className="tag inj" title="Injured reserve">IR</span>}</td>
                   {groups.flatMap(([, keys]) => keys).map((k) => {
                     const v = r.r[RATING_KEYS.indexOf(k)];
                     return <td key={k} className={`num rt ${v != null ? ratingTone(v) : ""}`}>{v ?? "—"}</td>;

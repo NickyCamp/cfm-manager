@@ -11,6 +11,11 @@
 import { RATING_KEYS } from "./ratings";
 import { DATA_VERSION, type Game, type LeagueData, type Player, type StatLine, type Team, type TeamGame, type Week } from "./types";
 
+// EA's injuryType 98 = healthy. EA doesn't clear injuryLength when a player heals,
+// so a healthy player can still carry his old injury's length (NCL 2026-11-13:
+// 62 healthy players had one, vs 11 real injuries). Only count it with a real type.
+const HEALTHY_INJURY_TYPE = 98;
+
 type Raw = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -108,7 +113,7 @@ export function buildLeagueData(files: Raw): LeagueData {
         ovr: num(p.playerBestOvr), dev: (Math.max(0, Math.min(3, num(p.devTrait))) as 0 | 1 | 2 | 3), jersey: num(p.jerseyNum),
         yearsPro: num(p.yearsPro), college: p.college || "", height: num(p.height), weight: num(p.weight),
         draft: { round: num(p.draftRound), pick: num(p.draftPick), year: num(p.rookieYear) },
-        ps: Boolean(p.isOnPracticeSquad), ir: Boolean(p.isOnIR), injury: num(p.injuryLength),
+        ps: Boolean(p.isOnPracticeSquad), ir: Boolean(p.isOnIR), injury: num(p.injuryType) === HEALTHY_INJURY_TYPE ? 0 : num(p.injuryLength),
         contract: {
           length: num(p.contractLength), yearsLeft: num(p.contractYearsLeft), salary: num(p.contractSalary), bonus: num(p.contractBonus),
           capHit: Math.round(num(p.capHit) * 10000), releasePenalty: Math.round(num(p.capReleasePenalty) * 10000),

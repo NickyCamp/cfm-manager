@@ -46,7 +46,8 @@ export default async function PlayersPage({ params, searchParams }: Props) {
         yl: p.team ? p.contract.yearsLeft : 0,
         cap: p.team ? p.contract.capHit : 0,
         ps: p.ps,
-        inj: p.injury > 0 || p.ir,
+        inj: p.injury > 0,
+        ir: p.ir,
         dr: p.draft?.round ?? 0,
         r: p.ratings ?? [],
       }));
