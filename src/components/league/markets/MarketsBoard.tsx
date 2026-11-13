@@ -5,6 +5,7 @@ import { CATS, prices, type MarketCat, type OutcomeState, type PriceIndex } from
 import { Chance, Delta, MiniBadge, Spark, type TeamLite } from "./bits";
 import { PortfolioPanel } from "./PortfolioPanel";
 import { usePortfolio } from "./usePortfolio";
+import type { SharedState } from "@/lib/marketStore";
 
 export type BoardOutcome = { id: string; label: string; sub?: string; team?: number; p: number; prev: number | null; state: OutcomeState };
 export type BoardMarket = {
@@ -14,10 +15,10 @@ export type BoardMarket = {
 
 const ALL_PER_CAT: Partial<Record<MarketCat, number>> = { games: 4, props: 4, awards: 4, division: 4, wins: 2, leaders: 2, playoffs: 2 };
 
-export function MarketsBoard({ slug, markets, teams, index, sinceLabel, initialCat }: {
-  slug: string; markets: BoardMarket[]; teams: TeamLite[]; index: PriceIndex; sinceLabel: string | null; initialCat: string;
+export function MarketsBoard({ slug, markets, teams, index, sinceLabel, initialCat, shared }: {
+  slug: string; markets: BoardMarket[]; teams: TeamLite[]; index: PriceIndex; sinceLabel: string | null; initialCat: string; shared?: SharedState | null;
 }) {
-  const port = usePortfolio(slug, index);
+  const port = usePortfolio(slug, index, shared);
   const [cat, setCat] = useState<string>(CATS.some((c) => c.key === initialCat) ? initialCat : "all");
   const [q, setQ] = useState("");
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);

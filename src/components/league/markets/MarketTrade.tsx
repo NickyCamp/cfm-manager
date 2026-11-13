@@ -1,19 +1,21 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { prices, type PriceIndex } from "@/lib/league/marketTypes";
+import { prices, quoteBuy, type PriceIndex } from "@/lib/league/marketTypes";
+import type { SharedState } from "@/lib/marketStore";
 import { Chance, Delta, MiniBadge, type TeamLite } from "./bits";
 import type { BoardOutcome } from "./MarketsBoard";
 import { PortfolioPanel } from "./PortfolioPanel";
-import { money, usePortfolio, type Side } from "./usePortfolio";
+import { money, sellValue, usePortfolio, type Side } from "./usePortfolio";
 
-export type TradeOutcome = BoardOutcome & { player?: number; color?: string };
+export type TradeOutcome = BoardOutcome & { player?: number; color?: string; model?: number; net?: number };
 
-export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, teams, index, initialO, initialSide }: {
+export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, teams, index, initialO, initialSide, shared }: {
   slug: string; mkey: string; title: string; settled: boolean; outcomes: TradeOutcome[]; hidden: number;
-  teams: TeamLite[]; index: PriceIndex; initialO?: string; initialSide?: string;
+  teams: TeamLite[]; index: PriceIndex; initialO?: string; initialSide?: string; shared?: SharedState | null;
 }) {
-  const port = usePortfolio(slug, index);
+  const port = usePortfolio(slug, index, shared);
+  const [busy, setBusy] = useState(false);
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const firstOpen = outcomes.find((o) => o.state === "open");
   const [sel, setSel] = useState<string | undefined>(outcomes.some((o) => o.id === initialO && o.state === "open") ? initialO : firstOpen?.id);
@@ -27,25 +29,24 @@ export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, team
   const price = pr ? (side === "yes" ? pr.yes : pr.no) : 0;
   const dollars = Math.max(0, Number(amount) || 0);
   const cash = port.wallet?.cash ?? 0;
-  const qty = price > 0 ? Math.floor((Math.min(dollars, cash) * 100) / price + 1e-9) : 0;
-  const cost = (qty * price) / 100;
+  // shared mode: the price slides as you buy, so quote the whole order
+  const q = o && port.shared ? quoteBuy(o.model ?? o.p, o.net ?? 0, side, Math.min(dollars, cash)) : null;
+  const qty = q ? q.qty : price > 0 ? Math.floor((Math.min(dollars, cash) * 100) / price + 1e-9) : 0;
+  const cost = q ? q.amount : (qty * price) / 100;
   const held = port.wallet?.positions.find((p) => p.m === mkey && p.o === sel && p.side === side);
+  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, port.shared) : 0;
 
   const choose = (id: string, s: Side) => {
     setSel(id); setSide(s); setMsg(null);
     // phones: the ticket sits below the list, so bring it into view
     if (window.innerWidth < 960) requestAnimationFrame(() => document.querySelector(".mk-ticket")?.scrollIntoView({ behavior: "smooth", block: "center" }));
   };
-  const doBuy = () => {
-    if (!o) return;
-    const n = port.buy(mkey, o.id, side, dollars);
-    setMsg(n ? { ok: true, text: `Bought ${n} ${side === "yes" ? "Yes" : "No"} on ${o.label} for ${money((n * price) / 100)}. Pays ${money(n)} if right.` } : { ok: false, text: dollars > cash ? "Not enough cash." : "Amount too small for one contract." });
+  const run = async (f: () => Promise<{ ok: boolean; text: string }>) => {
+    setBusy(true); setMsg(null);
+    try { setMsg(await f()); } finally { setBusy(false); }
   };
-  const doSell = () => {
-    if (!o || !held) return;
-    const got = port.sell(mkey, o.id, side, held.qty);
-    setMsg({ ok: true, text: `Sold ${held.qty} ${side === "yes" ? "Yes" : "No"} for ${money(got)}.` });
-  };
+  const doBuy = () => o && run(() => port.buy(mkey, o.id, side, dollars));
+  const doSell = () => o && held && run(() => port.sell(mkey, o.id, side, held.qty));
 
   const list = showAll ? outcomes : outcomes.slice(0, 12);
 
@@ -106,16 +107,23 @@ export function MarketTrade({ slug, mkey, title, settled, outcomes, hidden, team
             </div>
             <dl className="mk-ticket-sum">
               <div><dt>Contracts</dt><dd>{qty}</dd></div>
+              {q && qty > 0 && <div><dt>Average price</dt><dd>{Math.round(q.avg * 1000) / 10}¢</dd></div>}
+              {q && qty > 0 && <div><dt>Yes price after</dt><dd>{Math.round(q.after * 100)}¢</dd></div>}
               <div><dt>Cost</dt><dd>{money(cost)}</dd></div>
               <div><dt>Payout if {side === "yes" ? "Yes" : "No"}</dt><dd className="pos">{money(qty)}</dd></div>
               <div><dt>Profit if right</dt><dd className="pos">+{money(qty - cost)}</dd></div>
             </dl>
-            <button type="button" className={`btn mk-buy ${side}`} disabled={!port.wallet || qty < 1} onClick={doBuy}>
-              Buy {side === "yes" ? "Yes" : "No"}{qty ? ` · ${money(cost)}` : ""}
-            </button>
-            {held && <button type="button" className="mk-link-btn mk-sell" onClick={doSell}>Sell your {held.qty} {side === "yes" ? "Yes" : "No"} for {money((held.qty * price) / 100)}</button>}
+            {port.canTrade ? (
+              <button type="button" className={`btn mk-buy ${side}`} disabled={!port.wallet || qty < 1 || busy} onClick={doBuy}>
+                {busy ? "Placing…" : <>Buy {side === "yes" ? "Yes" : "No"}{qty ? ` · ${money(cost)}` : ""}</>}
+              </button>
+            ) : (
+              <p className="mk-msg err">{port.why}</p>
+            )}
+            {held && port.canTrade && <button type="button" className="mk-link-btn mk-sell" disabled={busy} onClick={doSell}>Sell your {held.qty} {side === "yes" ? "Yes" : "No"} for {money(heldValue)}</button>}
             {msg && <p className={`mk-msg ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</p>}
-            <p className="hint small">Cash: {money(cash)}. Each contract pays $1 if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.</p>
+            <p className="hint small">Cash: {money(cash)}. Each contract pays $1 if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? " Buying moves the price for everyone, so big orders cost more per contract." : ""}</p>
+            {port.shared && o.model != null && Math.abs(o.model - o.p) >= 0.005 && <p className="hint small">Simulation says {Math.round(o.model * 100)}%; league bets have moved it to {Math.round(o.p * 100)}%.</p>}
           </div>
         )}
         <PortfolioPanel slug={slug} index={index} port={port} onlyMarket={mkey} />

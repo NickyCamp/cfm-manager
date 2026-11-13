@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueData } from "@/lib/league/load";
 import { CATS, marketBook, priceIndex } from "@/lib/league/markets";
+import { auditTrades, marketsForPage, type AuditRow } from "@/lib/marketStore";
+import { AuditTable } from "@/components/league/markets/AuditTable";
 import { NoData } from "@/components/league/bits";
 import { CHART_COLORS, PriceChart } from "@/components/league/markets/bits";
 import { MarketTrade, type TradeOutcome } from "@/components/league/markets/MarketTrade";
@@ -21,9 +23,11 @@ export default async function MarketPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const book = marketBook(d);
+  const { book, shared, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex);
   const m = book.markets.find((x) => x.key === key);
   if (!m) notFound();
+  let trades: AuditRow[] = [];
+  if (leagueId) trades = await auditTrades(leagueId, d.season.year, { market: m.key, limit: 50 }).catch(() => []);
 
   // Hide long shots that never reached 1% (still listed in independent markets, where every line matters).
   const peak = (h: (number | null)[]) => Math.max(0, ...h.map((x) => x ?? 0));
@@ -36,7 +40,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
     .slice(0, m.kind === "exclusive" ? 5 : 4);
   const hasChart = charted.some((o) => o.history.filter((x) => x != null).length >= 2);
   const colorOf = new Map(hasChart ? charted.map((o, i) => [o.id, CHART_COLORS[i]]) : []);
-  const outcomes: TradeOutcome[] = shown.map((o) => ({ id: o.id, label: o.label, sub: o.sub, team: o.team, player: o.player, p: o.p, prev: o.prev, state: o.state, color: colorOf.get(o.id) }));
+  const outcomes: TradeOutcome[] = shown.map((o) => ({ id: o.id, label: o.label, sub: o.sub, team: o.team, player: o.player, p: o.p, prev: o.prev, state: o.state, color: colorOf.get(o.id), model: o.model, net: o.net }));
   const teams = d.teams.map((t) => ({ id: t.id, abbr: t.abbr, city: t.city, name: t.name, primary: t.primary }));
   const cat = CATS.find((c) => c.key === m.cat);
 
@@ -65,7 +69,14 @@ export default async function MarketPage({ params, searchParams }: Props) {
           <p className="hint small">Chance after each finished week{book.checkpoints.at(-1)?.label === "Now" ? ", plus now (this week's games played so far)" : ""}.</p>
         </div>}
 
-        <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} />
+        <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} shared={shared} />
+
+        {shared && (
+          <section className="panel mk-audit-panel">
+            <div className="mk-section-head"><h3>Trades in this market</h3><Link href={`/l/${slug}/markets/activity?market=${encodeURIComponent(m.key)}`}>Full log →</Link></div>
+            {trades.length ? <AuditTable slug={slug} rows={trades} index={priceIndex(book)} showMarket={false} /> : <p className="muted">No trades yet. Every trade shows here, publicly.</p>}
+          </section>
+        )}
 
         <section className="panel mk-rules">
           <h3>Rules</h3>

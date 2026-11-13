@@ -24,6 +24,9 @@ export type Outcome = {
   prev: number | null;     // chance at the previous checkpoint
   history: (number | null)[]; // one per checkpoint (null = market didn't exist yet)
   state: OutcomeState;
+  model?: number;          // the simulation's chance, when members' trades have moved p
+  net?: number;            // Yes minus No contracts bought by members
+  volume?: number;         // dollars traded
 };
 export type Market = {
   key: string;
@@ -40,10 +43,11 @@ export type Checkpoint = { c: number; label: string };
 export type MarketBook = { markets: Market[]; checkpoints: Checkpoint[]; sinceLabel: string | null; season: number; asOfTitle: string };
 
 /** Every outcome's chance and state, for valuing play-money positions on any page. */
-export type PriceIndex = Record<string, { t: string; o: Record<string, [number, OutcomeState, string]> }>;
+/** [chance shown (crowd), state, label, simulation chance, net contracts] */
+export type PriceIndex = Record<string, { t: string; o: Record<string, [number, OutcomeState, string, number, number]> }>;
 export function priceIndex(book: MarketBook): PriceIndex {
   const out: PriceIndex = {};
-  for (const m of book.markets) out[m.key] = { t: m.title, o: Object.fromEntries(m.outcomes.map((o) => [o.id, [Math.round(o.p * 10000) / 10000, o.state, o.label]])) };
+  for (const m of book.markets) out[m.key] = { t: m.title, o: Object.fromEntries(m.outcomes.map((o) => [o.id, [Math.round(o.p * 10000) / 10000, o.state, o.label, o.model ?? o.p, o.net ?? 0]])) };
   return out;
 }
 
@@ -61,4 +65,51 @@ export function chanceText(p: number, state: OutcomeState = "open") {
   if (p >= 0.995) return ">99%";
   if (p > 0 && p < 0.005) return "<1%";
   return `${Math.round(p * 100)}%`;
+}
+
+// ---------------------------------------------------------------- crowd pricing
+// Each outcome is its own Yes/No market run by an automated market maker
+// (a logarithmic market scoring rule) that starts at the simulation's chance:
+//   price of Yes = logistic(logit(model chance) + net / LIQUIDITY)
+// where net = Yes contracts bought minus No contracts bought by everyone.
+// Buying pushes the price up as you buy, so the first buyer gets the best
+// price; later buyers pay more. When a sync moves the model, the crowd's tilt
+// stays on top of it. LIQUIDITY sets how hard money moves prices: with 250,
+// $50 of Yes at 50¢ moves it to about 59¢.
+
+export const LIQUIDITY = 250;
+const clampP = (p: number) => Math.min(0.99, Math.max(0.01, p));
+const logit = (p: number) => Math.log(p / (1 - p));
+const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+const softplus = (x: number) => (x > 30 ? x : Math.log1p(Math.exp(x)));
+
+/** Yes chance after the crowd's buying and selling. */
+export function crowdP(model: number, net: number) {
+  return sigmoid(logit(clampP(model)) + net / LIQUIDITY);
+}
+/** Dollars to buy n contracts of one side, starting from `net`. */
+function buyCost(model: number, net: number, side: "yes" | "no", n: number) {
+  const x0 = logit(clampP(model)), b = LIQUIDITY;
+  if (side === "yes") return b * (softplus(x0 + (net + n) / b) - softplus(x0 + net / b));
+  return b * (softplus(-(x0 + (net - n) / b)) - softplus(-(x0 + net / b)));
+}
+export type Quote = { qty: number; amount: number; newNet: number; before: number; after: number; avg: number };
+/** Most whole contracts `dollars` buys. */
+export function quoteBuy(model: number, net: number, side: "yes" | "no", dollars: number): Quote {
+  const before = crowdP(model, net);
+  let lo = 0, hi = 1;
+  while (buyCost(model, net, side, hi) <= dollars && hi < 1e6) hi *= 2;
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (buyCost(model, net, side, mid) <= dollars) lo = mid; else hi = mid; }
+  const qty = Math.floor(lo + 1e-9);
+  const amount = Math.ceil(buyCost(model, net, side, qty) * 100 - 1e-6) / 100;
+  const newNet = side === "yes" ? net + qty : net - qty;
+  return { qty, amount, newNet, before, after: crowdP(model, newNet), avg: qty ? amount / qty : 0 };
+}
+/** Dollars back for selling `qty` contracts of one side. */
+export function quoteSell(model: number, net: number, side: "yes" | "no", qty: number): Quote {
+  const before = crowdP(model, net);
+  const newNet = side === "yes" ? net - qty : net + qty;
+  // selling n Yes = the reverse of buying n Yes from newNet
+  const amount = Math.floor(buyCost(model, newNet, side, qty) * 100 + 1e-6) / 100;
+  return { qty, amount, newNet, before, after: crowdP(model, newNet), avg: qty ? amount / qty : 0 };
 }
