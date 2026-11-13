@@ -3,7 +3,9 @@
 // enough data, builds its sentence, and gets a weight; /funfact picks one at random by weight,
 // so running it again usually gives a different fact. Regular season unless a fact says otherwise.
 import { randomInt } from "node:crypto";
-import { REG_SEASON_LAST_WEEK, seasonTotals, weekTitle, type Totals } from "../league/derive";
+import { REG_SEASON_LAST_WEEK, inferredDeadCap, seasonTotals, weekTitle, type Totals } from "../league/derive";
+import { projectPlayer } from "../league/projection";
+import { teamStats, PAIRS } from "./matchup";
 import type { Game, LeagueData, Player, StatLine, Team } from "../league/types";
 import { RATING_KEYS, RATING_LABEL } from "../league/ratings";
 
@@ -24,7 +26,7 @@ type Ctx = {
   totals: Map<number, Totals & { team: number }>;
   teamName: (id: number) => string;
   /** Per team, this regular season: points for/against, games, and summed team stats. */
-  teamAgg: Map<number, { gp: number; pf: number; pa: number; sacksBy: number; intsBy: number; pen: number; penYds: number; to: number; rz: [number, number]; fourth: [number, number] }>;
+  teamAgg: Map<number, { gp: number; pf: number; pa: number; sacksBy: number; intsBy: number; pen: number; penYds: number; to: number; take: number; rz: [number, number]; fourth: [number, number] }>;
 };
 
 function context(d: LeagueData): Ctx {
@@ -33,7 +35,7 @@ function context(d: LeagueData): Ctx {
   const teamAgg: Ctx["teamAgg"] = new Map();
   const agg = (t: number) => {
     let a = teamAgg.get(t);
-    if (!a) { a = { gp: 0, pf: 0, pa: 0, sacksBy: 0, intsBy: 0, pen: 0, penYds: 0, to: 0, rz: [0, 0], fourth: [0, 0] }; teamAgg.set(t, a); }
+    if (!a) { a = { gp: 0, pf: 0, pa: 0, sacksBy: 0, intsBy: 0, pen: 0, penYds: 0, to: 0, take: 0, rz: [0, 0], fourth: [0, 0] }; teamAgg.set(t, a); }
     return a;
   };
   for (const g of d.games) {
@@ -44,7 +46,7 @@ function context(d: LeagueData): Ctx {
   for (const r of d.teamGames) {
     if (!regGame(games.get(r.g))) continue;
     const a = agg(r.t);
-    a.sacksBy += r.sacks; a.pen += r.penalties; a.penYds += r.penaltyYds; a.to += r.turnovers;
+    a.sacksBy += r.sacks; a.pen += r.penalties; a.penYds += r.penaltyYds; a.to += r.turnovers; a.take += r.takeaways;
     a.rz[0] += r.redZone[0]; a.rz[1] += r.redZone[1]; a.fourth[0] += r.fourth[0]; a.fourth[1] += r.fourth[1];
   }
   for (const l of d.lines) if (regGame(games.get(l.g)) && l.int) agg(l.t).intsBy += l.int;
@@ -155,6 +157,7 @@ export function playerFacts(d: LeagueData, p: Player): Fact[] {
   const older = d.players.filter((x) => !x.gone && x.team && x.age < p.age).length / Math.max(1, d.players.filter((x) => !x.gone && x.team).length);
   if (p.age >= 32) add(1.5, `At ${p.age}, ${who} is older than **${pct(older * 100)} of the league**.`);
   if (p.team && p.contract.capHit > 0) add(1, `${who} makes about **${money(p.contract.capHit / 17)} per game** against the cap this season.`);
+  out.push(...playerRoasts(c, p, t));
   return out;
 }
 
@@ -234,6 +237,7 @@ export function teamFacts(d: LeagueData, team: Team): Fact[] {
     // EA stores the streak as + wins / − losses (derive's streakText).
     add(1, team.rec.streak > 0 ? `${name} have won **${team.rec.streak} straight**.` : `${name} have lost **${-team.rec.streak} straight**.`);
   }
+  out.push(...teamRoasts(c, team));
   return out;
 }
 
@@ -244,4 +248,167 @@ export function pickFact(facts: Fact[]): Fact | null {
   let r = (randomInt(1_000_000) / 1_000_000) * total;
   for (const f of facts) { r -= f.weight; if (r <= 0) return f; }
   return facts[facts.length - 1];
+}
+
+// ---------- roasts: the embarrassing side (Nick, 2026-11-13: "more embarrassing than impressive,
+// players making big money who do nothing"). Weighted higher so they come up most of the time. ----------
+
+const ROAST = 4.5;
+const ord = (k: number) => { const s = ["th", "st", "nd", "rd"], v = k % 100; return k + (s[(v - 20) % 10] || s[v] || s[0]); };
+/** "the most" / "the 3rd-most", "the highest" / "the 4th-highest". */
+const nth = (k: number, word: string) => (k === 1 ? `the ${word}` : `the ${ord(k)}-${word}`);
+const GROUP_NAME: Record<string, string> = { QB: "quarterbacks", RB: "running backs", WR: "receivers", DEF: "defenders", K: "kickers", P: "punters" };
+/** What a position group is paid to produce, for "overpaid" facts. */
+function production(g: string, t: Totals | undefined): { v: number; label: string; unit: string } | null {
+  const x = t || ({} as Totals);
+  if (g === "QB") return { v: x.py || 0, label: "passing yards", unit: "passing yard" };
+  if (g === "RB") return { v: (x.ry || 0) + (x.rcy || 0), label: "yards from scrimmage", unit: "yard" };
+  if (g === "WR") return { v: x.rcy || 0, label: "receiving yards", unit: "receiving yard" };
+  if (g === "DEF") return { v: (x.tk || 0) + 4 * (x.sk || 0) + 6 * (x.int || 0) + 2 * (x.pd || 0) + 4 * (x.ff || 0), label: "defensive stats (tackles, sacks, picks)", unit: "" };
+  if (g === "K") return { v: x.fgm || 0, label: "field goals made", unit: "field goal" };
+  return null;
+}
+
+function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefined): Fact[] {
+  const { d } = c;
+  const out: Fact[] = [];
+  const add = (weight: number, text: string) => out.push({ text, weight });
+  const who = p.last;
+  const g = GROUP[p.pos] || "";
+  const cap = p.contract.capHit;
+  const team = c.teamName(p.team);
+  const Team = team.charAt(0).toUpperCase() + team.slice(1);
+  const seasonUnderway = d.games.some((x) => x.final && regGame(x));
+
+  // Overpaid: a top-15% cap hit in his position group with below-median production.
+  const prod = production(g, t);
+  let overpaid = false;
+  if (p.team && cap > 0 && prod && seasonUnderway) {
+    const peers = d.players.filter((x) => !x.gone && x.team && !x.ps && (GROUP[x.pos] || "") === g && x.contract.capHit > 0);
+    const capRank = 1 + peers.filter((x) => x.contract.capHit > cap).length;
+    const prodVals = peers.map((x) => production(g, c.totals.get(x.id))!.v);
+    const prodRank = 1 + prodVals.filter((v) => v > prod.v).length;
+    const silent = cap >= 3e6 && (!t || !t.gp) && g !== "P";
+    if (silent) {
+      const why = p.ir ? " (he's on IR)" : p.injury > 0 ? ` (he's hurt, out ${p.injury} more week${p.injury === 1 ? "" : "s"})` : "";
+      add(ROAST + 1, `${who} has a **${money(cap)} cap hit** and hasn't recorded **a single stat** this season${why}.`);
+      overpaid = true;
+    } else if (peers.length >= 10 && capRank <= Math.ceil(peers.length * 0.15) && prodRank > peers.length / 2) {
+      overpaid = true;
+      add(ROAST + 1, `${who} has the **${ord(capRank)}-biggest cap hit among ${GROUP_NAME[g]}** (${money(cap)}) and ranks **${ord(prodRank)} of ${peers.length}** in ${prod.label}.`
+        + (prod.unit && prod.v > 0 ? ` That's **${money(cap / prod.v)} per ${prod.unit}**.` : ""));
+    }
+  }
+  // Paid like a star, rated like a backup.
+  if (p.team && cap >= 15e6 && p.ovr < 78) add(ROAST, `${Team} are paying ${who} **${money(cap)}** this season. He's a **${p.ovr} overall**.`);
+  // Stuck with him: big dead money if cut. Only when that's actually a problem (he isn't
+  // producing, isn't very good, or is getting old); for a healthy star it's just how deals work.
+  const c2 = p.contract;
+  if (p.team && c2.releasePenalty >= 8e6 && c2.releasePenalty > c2.releaseSavings * 2 && (overpaid || p.ovr < 82 || p.age >= 31)) {
+    const ends = d.season.year + Math.max(0, c2.yearsLeft - 1);
+    add(ROAST - 1, `Cutting ${who} would leave **${money(c2.releasePenalty)} of dead money** and save only ${money(c2.releaseSavings)}, so ${team} are stuck with him through ${ends}.`);
+  }
+  // Old and signed for years.
+  if (p.team && p.age >= 31 && c2.yearsLeft >= 3) {
+    const pr = projectPlayer(p, d.season.year);
+    const lastYear = Math.max(...Object.keys(pr.hits).map(Number));
+    const lastHit = pr.hits[lastYear];
+    add(ROAST - 0.5, `${who} is **${p.age}** and signed for **${c2.yearsLeft} more seasons**. He'll be ${p.age + c2.yearsLeft - 1} when the deal ends${lastHit ? `, still costing about ${money(lastHit)} that year` : ""}.`);
+  }
+
+  if (t && t.gp) {
+    // QB: more picks than TDs; leading the league in bad stuff.
+    if (t.pa >= 50 && t.pint > t.ptd) add(ROAST + 1, `${who} has thrown **more interceptions (${t.pint}) than touchdowns (${t.ptd})**.`);
+    const worst = (v: (x: Totals) => number, what: string, min: (x: Totals) => boolean, w = ROAST) => {
+      const mine = v(t);
+      if (mine <= 0 || !min(t)) return;
+      const rank = 1 + [...c.totals.values()].filter((x) => min(x) && v(x) > mine).length;
+      if (rank <= 3) add(w, `${who} has **${nth(rank, "most")} ${what}** in the league (${mine}).`);
+    };
+    worst((x) => x.pint, "interceptions thrown", (x) => x.pa > 0);
+    worst((x) => x.psk, "sacks taken", (x) => x.pa > 0, ROAST - 1);
+    worst((x) => x.rfum, "fumbles", () => true);
+    worst((x) => x.rcdrop, "dropped passes", () => true);
+    // Low yards per carry.
+    if (t.ra >= 40 && t.ry / t.ra < 3.8) add(ROAST - 0.5, `${who} averages **${(t.ry / t.ra).toFixed(1)} yards a carry** on ${t.ra} carries. A QB sneak gets about that.`);
+    // Kicker misses.
+    const missed = (t.fga - t.fgm) * 3 + (t.xpa - t.xpm);
+    if (t.fga - t.fgm >= 3 || t.xpa - t.xpm >= 3) add(ROAST, `${who} has missed **${plural(t.fga - t.fgm, "field goal")}** and **${plural(t.xpa - t.xpm, "extra point")}**, leaving **${missed} points** on the field.`);
+    // Expensive defenders with nothing to show.
+    if (g === "DEF" && cap >= 10e6) {
+      const edge = ["LEDG", "REDG", "LE", "RE", "DT"].includes(p.pos), db = ["CB", "FS", "SS"].includes(p.pos);
+      if (edge && t.sk <= 2 && t.gp >= 6) add(ROAST + 0.5, `${Team} pay ${who} **${money(cap)}** to rush the passer. He has **${t.sk === 0 ? "zero sacks" : plural(t.sk, "sack")}** in ${t.gp} games.`);
+      if (db && t.int === 0 && t.gp >= 6) add(ROAST + 0.5, `${who} is a **${money(cap)}** defensive back with **zero interceptions** in ${t.gp} games.`);
+    }
+
+    // Ugliest game.
+    const log = d.lines.filter((l) => l.p === p.id && regGame(c.games.get(l.g))).map((l) => ({ l, g: c.games.get(l.g)! }));
+    const vs = (x: { l: StatLine; g: Game }) => c.teamName(x.g.home === x.l.t ? x.g.away : x.g.home);
+    const wk = (x: { g: Game }) => weekTitle(d, x.g.stage, x.g.week);
+    const byMost = (f: (l: StatLine) => number) => log.reduce<(typeof log)[number] | null>((a, x) => (f(x.l) > (a ? f(a.l) : 0) ? x : a), null);
+    const picks = byMost((l) => l.pint || 0);
+    if (picks && (picks.l.pint || 0) >= 3) add(ROAST, `${who} threw **${picks.l.pint} interceptions** against ${vs(picks)} in ${wk(picks)}.`);
+    const fum = byMost((l) => l.rfum || 0);
+    if (fum && (fum.l.rfum || 0) >= 2) add(ROAST - 0.5, `${who} fumbled **${fum.l.rfum} times** against ${vs(fum)} in ${wk(fum)}.`);
+    const drops = byMost((l) => l.rcdrop || 0);
+    if (drops && (drops.l.rcdrop || 0) >= 2) add(ROAST - 0.5, `${who} dropped **${drops.l.rcdrop} passes** against ${vs(drops)} in ${wk(drops)}.`);
+    if (g === "RB") {
+      const dud = log.filter((x) => (x.l.ra || 0) >= 12).reduce<(typeof log)[number] | null>((a, x) => (!a || (x.l.ry || 0) / (x.l.ra || 1) < (a.l.ry || 0) / (a.l.ra || 1) ? x : a), null);
+      if (dud && (dud.l.ry || 0) / (dud.l.ra || 1) < 2.5) add(ROAST - 0.5, `${who} carried it **${dud.l.ra} times for ${dud.l.ry} yards** against ${vs(dud)} in ${wk(dud)}.`);
+    }
+    if (g === "WR" && t.gp >= 6) {
+      const blanks = log.filter((x) => !(x.l.rc || 0)).length;
+      if (blanks >= 3) add(ROAST - 1, `${who} has had **${blanks} games with zero catches** this season.`);
+    }
+  }
+  return out;
+}
+
+function teamRoasts(c: Ctx, team: Team): Fact[] {
+  const { d } = c;
+  const out: Fact[] = [];
+  const add = (weight: number, text: string) => out.push({ text, weight });
+  const name = `The ${team.name}`;
+  const a = c.teamAgg.get(team.id);
+  const roster = d.players.filter((p) => !p.gone && p.team === team.id);
+
+  const dead = inferredDeadCap(team, roster);
+  if (dead >= 5e6) add(ROAST, `${name} are carrying **${money(dead)} in dead money**: cap space spent on players who aren't on the team anymore.`);
+  const ir = roster.filter((p) => p.ir).reduce((s, p) => s + p.contract.capHit, 0);
+  if (ir >= 5e6) add(ROAST - 0.5, `${name} are paying **${money(ir)}** this season to players sitting on IR.`);
+
+  if (a && a.gp) {
+    const w = team.rec.w, l = team.rec.l;
+    const payRank = 1 + d.teams.filter((x) => x.cap.spent > team.cap.spent).length;
+    if (payRank <= 10 && w < l) add(ROAST + 1, `${name} have **${nth(payRank, "highest")} payroll** in the league (${money(team.cap.spent)}) and a **${w}-${l}** record.`);
+    const diff = a.take - a.to;
+    if (diff <= -5) add(ROAST, `${name} have given the ball away **${a.to} times** and taken it away only **${a.take}**. That's a **${diff}** turnover margin.`);
+    const res = d.games.filter((g) => g.final && regGame(g) && (g.home === team.id || g.away === team.id)).map((g) => {
+      const home = g.home === team.id; return { us: home ? g.hs : g.as, them: home ? g.as : g.hs };
+    });
+    const blowouts = res.filter((r) => r.them - r.us >= 20).length;
+    if (blowouts >= 2) add(ROAST, `${name} have lost by **20 or more points ${blowouts} times** this season.`);
+    const lowScoring = res.filter((r) => r.us < 14).length;
+    if (lowScoring >= 3) add(ROAST - 0.5, `${name} have been held under 14 points **${lowScoring} times**.`);
+    const failed = a.fourth[1] - a.fourth[0];
+    if (failed >= 10) add(ROAST - 1, `${name} have come up short on 4th down **${failed} times** this season.`);
+    const allowRank = 1 + [...c.teamAgg.values()].filter((x) => x.gp && x.pa / x.gp > a.pa / a.gp).length;
+    if (allowRank <= 5) add(ROAST - 0.5, `${name} give up a point every **${(60 / (a.pa / a.gp)).toFixed(1)} minutes** (${(a.pa / a.gp).toFixed(1)} a game, ${nth(allowRank, "most")} in the league).`);
+  }
+
+  // Their worst unit, by league rank.
+  const ts = teamStats(d).get(team.id);
+  if (ts) {
+    let worst: { rank: number; text: string } | null = null;
+    const label: Record<string, string> = { pts: "scoring offense", yds: "total offense", pass: "passing offense", rush: "rushing offense", pa: "scoring defense", ydsA: "total defense", passA: "pass defense", rushA: "run defense" };
+    for (const [o, dk] of PAIRS) {
+      for (const k of [o, dk]) {
+        if (!label[k]) continue;
+        const r = ts.rank[k];
+        if (!worst || r > worst.rank) worst = { rank: r, text: `${name} rank **${ord(r)} in ${label[k]}** (${ts.v[k].toFixed(1)} ${k.endsWith("A") || k === "pa" ? "allowed" : ""} a game).`.replace("  ", " ") };
+      }
+    }
+    if (worst && worst.rank >= d.teams.length - 3) add(ROAST, worst.text);
+  }
+  return out;
 }
