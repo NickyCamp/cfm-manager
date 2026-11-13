@@ -24,6 +24,7 @@
 
 import { playoffPicture } from "./playoffs";
 import { seasonTotals, type Totals } from "./derive";
+import { propMarkets } from "./props";
 import type { Game, LeagueData, Player, Team } from "./types";
 
 export const REG_LAST = 17;               // last regular-season week (0-based)
@@ -495,6 +496,14 @@ function buildBook(d: LeagueData): MarketBook {
     markets.push(m);
   }
 
+  // ---- per-game player props for the same games
+  if (cur.stage === 1) {
+    const props = propMarkets(d, weekGames, cur.title);
+    const nCp = snaps.length;
+    for (const m of props) for (const o of m.outcomes) o.history = [...Array(nCp - 1).fill(null), o.p];
+    markets.push(...props);
+  }
+
   // ---- Super Bowl
   {
     const sbG = poGame(22);
@@ -630,7 +639,7 @@ function buildBook(d: LeagueData): MarketBook {
 
   for (const m of markets) {
     for (const o of m.outcomes) if (o.state !== "open") o.history[o.history.length - 1] = o.p;
-    sortOutcomes(m);
+    if (m.cat !== "props") sortOutcomes(m); // props stay grouped by player
   }
   return {
     markets,

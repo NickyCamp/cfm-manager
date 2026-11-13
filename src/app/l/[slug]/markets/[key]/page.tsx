@@ -34,7 +34,8 @@ export default async function MarketPage({ params, searchParams }: Props) {
   const charted = [...shown]
     .sort((a, b) => (b.state === "won" ? 1 : 0) - (a.state === "won" ? 1 : 0) || b.p - a.p || peak(b.history) - peak(a.history))
     .slice(0, m.kind === "exclusive" ? 5 : 4);
-  const colorOf = new Map(charted.map((o, i) => [o.id, CHART_COLORS[i]]));
+  const hasChart = charted.some((o) => o.history.filter((x) => x != null).length >= 2);
+  const colorOf = new Map(hasChart ? charted.map((o, i) => [o.id, CHART_COLORS[i]]) : []);
   const outcomes: TradeOutcome[] = shown.map((o) => ({ id: o.id, label: o.label, sub: o.sub, team: o.team, player: o.player, p: o.p, prev: o.prev, state: o.state, color: colorOf.get(o.id) }));
   const teams = d.teams.map((t) => ({ id: t.id, abbr: t.abbr, city: t.city, name: t.name, primary: t.primary }));
   const cat = CATS.find((c) => c.key === m.cat);
@@ -54,7 +55,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
           <span className={m.settled ? "mk-status settled" : "mk-status"}>{m.status}</span>
         </div>
 
-        <div className="panel mk-chart-panel">
+        {hasChart && <div className="panel mk-chart-panel">
           <div className="mk-legend">
             {charted.map((o) => (
               <span key={o.id}><i style={{ background: colorOf.get(o.id) }} />{o.label} <strong>{o.state === "won" ? "Won" : `${Math.round(o.p * 100)}%`}</strong></span>
@@ -62,18 +63,18 @@ export default async function MarketPage({ params, searchParams }: Props) {
           </div>
           <PriceChart checkpoints={book.checkpoints} series={charted.map((o) => ({ label: o.label, values: o.history, color: colorOf.get(o.id)! }))} />
           <p className="hint small">Chance after each finished week{book.checkpoints.at(-1)?.label === "Now" ? ", plus now (this week's games played so far)" : ""}.</p>
-        </div>
+        </div>}
 
         <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} />
 
         <section className="panel mk-rules">
           <h3>Rules</h3>
           <p>{m.rules}</p>
-          <details>
+          {m.cat !== "props" && <details>
             <summary>How prices are set</summary>
             <p>Each team gets a strength rating from its points scored and allowed (adjusted for opponents, blowouts capped at 24) blended with its overall rating, worth about five games early in the season. The rest of the season is played out {Number(4000).toLocaleString()} times game by game, then the playoffs. Player markets project each player&apos;s season from his pace, minus weeks he&apos;s injured. A price of 63¢ means it happened in about 63% of simulated seasons.</p>
             <p>This is a game: no real money, nothing to withdraw. Your balance lives in this browser.</p>
-          </details>
+          </details>}
         </section>
       </div>
     </main>

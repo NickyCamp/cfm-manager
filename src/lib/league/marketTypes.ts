@@ -1,8 +1,9 @@
 // Shared by the market engine (server) and the market pages' client components.
 
-export type MarketCat = "games" | "champion" | "conference" | "division" | "playoffs" | "awards" | "leaders" | "wins";
+export type MarketCat = "games" | "props" | "champion" | "conference" | "division" | "playoffs" | "awards" | "leaders" | "wins";
 export const CATS: { key: MarketCat; label: string }[] = [
   { key: "games", label: "Games" },
+  { key: "props", label: "Player props" },
   { key: "champion", label: "Super Bowl" },
   { key: "conference", label: "Conferences" },
   { key: "division", label: "Divisions" },
