@@ -1262,3 +1262,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   .pl-field.grow { flex-basis: 100%; }
   .pl-scroll { max-height: 70vh; }
 }
+.pl-view-tabs { margin-bottom: 12px; }
+.pl-pos-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 14px; }
+.pl-tbl .pl-pinned { background: rgba(122,92,255,.12); }
+.pl-tbl td.pl-sorted-cell { font-weight: 700; color: var(--ink); background: rgba(122,92,255,.08); }
+.pl-tbl tr.pl-unq td { opacity: .6; }
+.pl-tbl tr.pl-divider td { font-size: 0.8rem; color: var(--ink-soft); padding-top: 12px; border-bottom: 1px dashed var(--line); background: var(--paper); }
+.pl-pos-tabs a[aria-current="page"] span { color: rgba(255,255,255,.75); }

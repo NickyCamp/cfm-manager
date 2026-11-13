@@ -64,6 +64,9 @@ function readInitial(init: Record<string, string>) {
   return { f, sort: init.sort || "ovr", dir: (init.dir === "asc" ? 1 : init.dir === "desc" ? -1 : 0) as 1 | -1 | 0, hidden, size: Number(init.size) || 100 };
 }
 
+// Every rating, A to Z, for the "Sort by attribute" picker.
+const ATTR_OPTIONS: [number, string][] = RATING_KEYS.map((k, i) => [i, `${RATING_LABEL[k] || k} (${SHORT[k]})`] as [number, string]).sort((a, b) => a[1].localeCompare(b[1]));
+
 const TEXT_SORTS = new Set(["n", "team", "pos", "col"]);
 const ratingTone = (v: number) => (v >= 90 ? "rt-elite" : v >= 80 ? "rt-good" : v >= 70 ? "rt-ok" : v < 50 ? "rt-low" : "");
 
@@ -164,6 +167,9 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
     </th>
   );
 
+  // Sorting by a rating pins it next to OVR so it's visible without scrolling.
+  const pinIdx = sort.startsWith("r:") ? Number(sort.slice(2)) : -1;
+  const pinned: RatingKey | null = pinIdx >= 0 ? RATING_KEYS[pinIdx] : null;
   const groups = RATING_GROUPS.filter(([g]) => !hidden.has(g));
   const toggleGroup = (g: string) => setHidden((h) => { const n = new Set(h); if (n.has(g)) n.delete(g); else n.add(g); return n; });
   const posChoices = f.grp ? POS_GROUPS.find(([g]) => g === f.grp)?.[1].filter((p) => rows.some((r) => r.pos === p)) ?? [] : [];
@@ -199,6 +205,15 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
               <option value="fa">Free agents</option>
             </select>
           </label>
+          {hasRatings && (
+            <label className="pl-field">
+              <span>Sort by attribute</span>
+              <select value={sort.startsWith("r:") ? sort : ""} onChange={(e) => { const v = e.target.value; if (v) { setSort(v); setDir(-1); } else { setSort("ovr"); setDir(-1); } setPage(0); }}>
+                <option value="">Overall (default)</option>
+                {ATTR_OPTIONS.map(([i, label]) => <option key={i} value={`r:${i}`}>{label}</option>)}
+              </select>
+            </label>
+          )}
           <div className="pl-checks">
             <label className="pl-check"><input type="checkbox" checked={f.exp} onChange={(e) => set("exp", e.target.checked)} /> Expiring contracts</label>
             <label className="pl-check"><input type="checkbox" checked={f.rook} onChange={(e) => set("rook", e.target.checked)} /> Rookies</label>
@@ -271,7 +286,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
           <thead>
             {hasRatings && groups.length > 0 && (
               <tr className="pl-group-row">
-                <th colSpan={14} className="pl-sticky-cell" />
+                <th colSpan={14 + (pinned ? 1 : 0)} className="pl-sticky-cell" />
                 {groups.map(([g, keys]) => <th key={g} colSpan={keys.length} className="pl-group">{GROUP_SHORT[g] || g}</th>)}
               </tr>
             )}
@@ -280,6 +295,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
               {th("team", "Team", undefined, "")}
               {th("pos", "Pos", "Position", "")}
               {th("ovr", "OVR", "Overall")}
+              {pinned && th(sort, SHORT[pinned], RATING_LABEL[pinned], "num pl-pinned")}
               {th("dev", "Dev", "Dev trait", "")}
               {th("age", "Age")}
               {th("ht", "Ht", "Height")}
@@ -305,6 +321,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
                   <td className="nw">{t ? <Link href={`/l/${slug}/teams/${t.abbr.toLowerCase()}`} className="pl-team"><span className="pl-dot" style={{ background: t.primary }} />{t.abbr}</Link> : <span className="muted">FA</span>}</td>
                   <td>{r.pos}</td>
                   <td className="num strong">{r.ovr}</td>
+                  {pinned && <td className={`num rt pl-pinned ${ratingTone(r.r[pinIdx] ?? 0)}`}>{r.r[pinIdx] ?? "—"}</td>}
                   <td className="nw">{r.dev ? <span className={`dev dev-${r.dev}`}>{DEV_LABEL[r.dev]}</span> : <span className="muted small">Normal</span>}</td>
                   <td className="num">{r.age}</td>
                   <td className="num">{heightText(r.ht)}</td>
@@ -323,7 +340,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
               );
             })}
             {shown.length === 0 && (
-              <tr><td colSpan={14 + groups.reduce((s, [, k]) => s + k.length, 0)} className="muted" style={{ padding: 24 }}>No players match these filters.</td></tr>
+              <tr><td colSpan={14 + (pinned ? 1 : 0) + groups.reduce((s, [, k]) => s + k.length, 0)} className="muted" style={{ padding: 24 }}>No players match these filters.</td></tr>
             )}
           </tbody>
         </table>
@@ -346,7 +363,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
       </div>
       <p className="hint">
         Expiring = 1 year or less left on a rostered player&apos;s deal (practice squad excluded). Rookies = first-year players.
-        Ratings are color-coded: 90+ elite, 80s good, 70s solid, under 50 low. Hover a rating header for its full name.
+        Ratings are color-coded: 90+ elite, 80s good, 70s solid, under 50 low. Hover a rating header for its full name. Sorting by any rating also pins it next to OVR.
       </p>
     </div>
   );
