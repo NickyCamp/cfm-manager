@@ -9,8 +9,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "dry = report only, apply = merge"
+        description: "dry = report only, check = fail if any duplicates, apply = merge"
         default: "dry"
+  # Weekly safety net: fails (so GitHub emails the repo owner) if any EA league
+  # has more than one site again.
+  schedule:
+    - cron: "37 14 * * 1"
   push:
     branches: [main]
     paths: ["scripts/merge-leagues/run.txt"]
@@ -32,7 +36,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           MODE="${{ inputs.mode }}"
-          if [ -z "$MODE" ]; then MODE="$(head -n1 scripts/merge-leagues/run.txt | tr -d '[:space:]')"; fi
-          ONLY="$(sed -n 2p scripts/merge-leagues/run.txt | tr -dc '0-9')"
+          ONLY=""
+          if [ "${{ github.event_name }}" = "schedule" ]; then MODE="check"
+          elif [ -z "$MODE" ]; then MODE="$(head -n1 scripts/merge-leagues/run.txt | tr -d '[:space:]')"; ONLY="$(sed -n 2p scripts/merge-leagues/run.txt | tr -dc '0-9')"; fi
           echo "Mode: $MODE  EA league: ${ONLY:-all}"
           MODE="$MODE" EA_LEAGUE_ID="$ONLY" npx tsx scripts/merge-leagues/merge.ts

@@ -19,11 +19,14 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
 const apply = process.env.MODE === "apply";
+// MODE=check: report like a dry run, but exit with an error if any league is duplicated
+// (the weekly run uses this so GitHub emails Nick).
+const check = process.env.MODE === "check";
 // Optional: only this EA league id (e.g. 831660 for NCL).
 const only = Number(process.env.EA_LEAGUE_ID) || 0;
 const db = createClient(url, key, { auth: { persistSession: false } });
 
-type League = { id: string; slug: string; name: string; ea_league_id: number; console: string; owner_id: string; created_at: string };
+type League = { id: string; slug: string; name: string; ea_league_id: number; console: string; owner_id: string; created_at: string; settings: Record<string, unknown> | null };
 type FileRow = { name: string; updated_at?: string | null; created_at?: string | null; id?: string | null };
 
 /** Every file under a folder (paginated; folders come back with id null). */
@@ -50,7 +53,7 @@ async function allPaths(bucket: string, prefix: string): Promise<string[]> {
 const time = (f?: FileRow) => Date.parse(f?.updated_at || f?.created_at || "") || 0;
 
 async function main() {
-  const { data: leagues, error } = await db.from("leagues").select("id, slug, name, ea_league_id, console, owner_id, created_at").order("created_at");
+  const { data: leagues, error } = await db.from("leagues").select("id, slug, name, ea_league_id, console, owner_id, created_at, settings").order("created_at");
   if (error) throw error;
   const groups = new Map<number, League[]>();
   for (const l of leagues as League[]) groups.set(l.ea_league_id, [...(groups.get(l.ea_league_id) || []), l]);
@@ -73,7 +76,17 @@ async function main() {
       const toCopy = dupArt.filter((f) => !keepArt.has(f.name) || time(f) > time(keepArt.get(f.name)));
       console.log(`    card art: ${dupArt.length} on the copy, ${toCopy.length} to copy over (${toCopy.map((f) => f.name).join(", ") || "none"})`);
       const dataFiles = await allPaths("league-data", dup.slug);
-      console.log(`    league-data files to delete: ${dataFiles.length}`);
+      // Sync output is rebuilt for the kept league; anything else (Discord alert
+      // videos, card pack history) is carried over when the kept league has none.
+      const CORE = new Set(["raw.json.gz", "data.json.gz", "status.json"]);
+      const keepData = new Set(await allPaths("league-data", keep.slug));
+      const extras = dataFiles.filter((p) => !CORE.has(p.slice(dup.slug.length + 1)))
+        .filter((p) => !keepData.has(`${keep.slug}/${p.slice(dup.slug.length + 1)}`));
+      const dupDiscord = (dup.settings as { discord?: Record<string, unknown> } | null)?.discord;
+      const keepDiscord = (keep.settings as { discord?: unknown } | null)?.discord;
+      const moveDiscord = Boolean(dupDiscord && !keepDiscord);
+      console.log(`    league-data files: ${dataFiles.length} to delete, ${extras.length} to carry over (${extras.join(", ") || "none"})`);
+      console.log(`    Discord link: ${dupDiscord ? (moveDiscord ? "moves to the kept league" : "kept league already has one; dropped") : "none"}`);
 
       if (!apply) continue;
       for (const user_id of userIds) {
@@ -81,6 +94,19 @@ async function main() {
           { league_id: keep.id, user_id, role: user_id === keep.owner_id ? "commissioner" : "member" },
           { onConflict: "league_id,user_id", ignoreDuplicates: true });
         if (e) throw new Error(`add member: ${e.message}`);
+      }
+      for (const p of extras) {
+        const rel = p.slice(dup.slug.length + 1);
+        const { data: blob, error: e1 } = await db.storage.from("league-data").download(p);
+        if (e1 || !blob) throw new Error(`download ${p}: ${e1?.message}`);
+        const { error: e2 } = await db.storage.from("league-data").upload(`${keep.slug}/${rel}`, await blob.arrayBuffer(), { contentType: blob.type || undefined, upsert: false });
+        if (e2) throw new Error(`upload ${rel}: ${e2.message}`);
+      }
+      if (moveDiscord) {
+        // Stored file paths inside the Discord settings point at the copy's folder.
+        const moved = JSON.parse(JSON.stringify(dupDiscord).split(`"${dup.slug}/`).join(`"${keep.slug}/`));
+        const { error: e } = await db.from("leagues").update({ settings: { ...(keep.settings || {}), discord: moved } }).eq("id", keep.id);
+        if (e) throw new Error(`move Discord link: ${e.message}`);
       }
       for (const f of toCopy) {
         const { data: blob, error: e1 } = await db.storage.from("card-art").download(`${dup.slug}/${f.name}`);
@@ -96,6 +122,7 @@ async function main() {
     }
   }
   console.log(found ? `\n${found} duplicated league(s). ${apply ? "Applied." : "Dry run: nothing changed."}` : "No duplicate leagues.");
+  if (check && found) { console.error("Duplicate leagues found. Merge them with the Merge duplicate leagues workflow (mode apply)."); process.exit(1); }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
