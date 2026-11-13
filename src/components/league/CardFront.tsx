@@ -1,3 +1,4 @@
+import type React from "react";
 // Card front, shared by the flippable PlayerCard (player pages) and the static
 // cards in the team binder and top-players stack. No hooks: works on the server.
 import type { CardStat, SeasonItem } from "@/lib/league/cardStats";
@@ -46,6 +47,8 @@ export const abilityInitials = (title: string) =>
 export const xfLetter = (title: string) => { const c = title.trim().charAt(0).toUpperCase(); return c >= "A" && c <= "Z" ? c : null; };
 /** Tiers drawn on Nick's badge art (public/abilities/<tier>.png, a blank tile) with engraved serif initials on top. */
 export const TILE_ART = new Set(["gold"]);
+/** Ability badges shrink to fit when a player has more than 5 (QBs often do), so none get dropped. 1 = full size. */
+export const abScale = (n: number) => (n <= 5 ? 1 : Math.max(0.5, (78 / n - 1.6) / 14));
 /** Font size for the initials, as a fraction of the medallion width. */
 export const initialsSize = (n: number) => (n <= 1 ? 0.5 : n === 2 ? 0.42 : n === 3 ? 0.33 : 0.27);
 
@@ -59,11 +62,11 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
       </div>
       <div className="pcard-shade" />
       <div className="pcard-jersey">#{p.jersey}</div>
-      <div className="pcard-side">
+      <div className="pcard-side" style={{ "--abk": abScale(p.abilities.length) } as React.CSSProperties}>
         <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>
         <span className="pos">{p.pos}</span>
         <span className="team">{p.teamAbbr}</span>
-        {sortAbilities(p.abilities).slice(0, 5).map((a) => (
+        {sortAbilities(p.abilities).map((a) => (
           tierClass(a.tier) === "single" && xfLetter(a.title)
             // eslint-disable-next-line @next/next/no-img-element
             ? <img key={a.title} className="abil-gem" src={`/abilities/xf/${xfLetter(a.title)}.png`} alt={xfLetter(a.title)!} title={`${a.title} (X-Factor)`} />

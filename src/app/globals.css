@@ -752,34 +752,34 @@ details.panel[open] summary { margin-bottom: 8px; }
   background: var(--tc1); border: 0.9cqw solid var(--tc2); color: #fff; font: 800 4.4cqw/1 var(--display); text-shadow: none; }
 .pcard-side .team { width: 13.5cqw; height: 13.5cqw; }
 .pcard-side .rc { padding: 0.6cqw 1.8cqw; border-radius: 1.2cqw; background: #fff; color: #c8102e; font: 800 5cqw/1.1 var(--display); text-shadow: none; }
-.pcard-side .abil { width: 13.5cqw; height: 13.5cqw; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden;
-  text-shadow: none; box-shadow: 0 1px 4px rgba(0,0,0,.5), inset 0 0 0 0.5cqw rgba(255,255,255,.55); }
-.abil-ini { position: relative; font: 800 6.6cqw/1 var(--display); letter-spacing: -0.02em; }
-.abil-ini[data-n="2"] { font-size: 5.6cqw; }
-.abil-ini[data-n="3"] { font-size: 4.5cqw; }
-.abil-ini[data-n="4"] { font-size: 3.6cqw; }
+.pcard-side .abil { width: calc(13.5cqw * var(--abk, 1)); height: calc(13.5cqw * var(--abk, 1)); border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  text-shadow: none; box-shadow: 0 1px 4px rgba(0,0,0,.5), inset 0 0 0 calc(0.5cqw * var(--abk, 1)) rgba(255,255,255,.55); }
+.abil-ini { position: relative; font: 800 calc(6.6cqw * var(--abk, 1))/1 var(--display); letter-spacing: -0.02em; }
+.abil-ini[data-n="2"] { font-size: calc(5.6cqw * var(--abk, 1)); }
+.abil-ini[data-n="3"] { font-size: calc(4.5cqw * var(--abk, 1)); }
+.abil-ini[data-n="4"] { font-size: calc(3.6cqw * var(--abk, 1)); }
 /* Card-front medallions: gold/silver/bronze coins with a rim; X-Factor is a cut ruby square (bevelled facets via border colors). */
-.pcard-side .abil:not(.ab-single) { box-shadow: 0 1px 4px rgba(0,0,0,.5), inset 0 0 0 0.5cqw rgba(255,255,255,.55), inset 0 0 0 1.2cqw rgba(0,0,0,.14); }
-.pcard-side .abil.ab-single { width: 12.5cqw; height: 12.5cqw; border-radius: 1.2cqw; box-sizing: border-box; overflow: visible;
-  border: 2.6cqw solid; border-color: #ff6f93 #8a0026 #4a0012 #c4103f;
+.pcard-side .abil:not(.ab-single) { box-shadow: 0 1px 4px rgba(0,0,0,.5), inset 0 0 0 calc(0.5cqw * var(--abk, 1)) rgba(255,255,255,.55), inset 0 0 0 calc(1.2cqw * var(--abk, 1)) rgba(0,0,0,.14); }
+.pcard-side .abil.ab-single { width: calc(12.5cqw * var(--abk, 1)); height: calc(12.5cqw * var(--abk, 1)); border-radius: calc(1.2cqw * var(--abk, 1)); box-sizing: border-box; overflow: visible;
+  border: calc(2.6cqw * var(--abk, 1)) solid; border-color: #ff6f93 #8a0026 #4a0012 #c4103f;
   background: linear-gradient(135deg, #ff8fab 0%, #e0115f 38%, #a3002c 70%, #6b001b 100%);
-  box-shadow: 0 1px 5px rgba(0,0,0,.6), 0 0 0 0.35cqw rgba(255,180,200,.5); color: #fff; }
+  box-shadow: 0 1px 5px rgba(0,0,0,.6), 0 0 0 calc(0.35cqw * var(--abk, 1)) rgba(255,180,200,.5); color: #fff; }
 .pcard-side .abil.ab-single .abil-ini { text-shadow: 0 1px 2px rgba(60,0,15,.8); }
 .pcard-side .abil.ab-single::after { content: ""; position: absolute; left: 6%; top: 6%; width: 30%; height: 22%; border-radius: 50%;
   background: radial-gradient(closest-side, rgba(255,255,255,.75), transparent); pointer-events: none; }
 .pcard-side .abil.ab-single { position: relative; }
 /* Gold: Nick's blank gold tile + engraved Roman-serif initials (Cinzel), matching his badge samples. */
 @font-face { font-family: "Cinzel"; src: url("/fonts/cinzel-latin-900-normal.woff2") format("woff2"); font-weight: 900; font-display: swap; }
-.pcard-side .abil.tile { width: 14cqw; height: 14cqw; border-radius: 0; overflow: visible; box-shadow: none; background: center / contain no-repeat;
+.pcard-side .abil.tile { width: calc(14cqw * var(--abk, 1)); height: calc(14cqw * var(--abk, 1)); border-radius: 0; overflow: visible; box-shadow: none; background: center / contain no-repeat;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
 .pcard-side .abil.ab-gold.tile { background-image: url("/abilities/gold.png"); }
-.pcard-side .abil.tile .abil-ini { font-family: "Cinzel", Georgia, "Times New Roman", serif; font-weight: 900; font-size: 8.6cqw; letter-spacing: 0;
-  color: #f6ead0; margin-top: 0.3cqw;
-  text-shadow: -0.2cqw -0.2cqw 0 #4a2c06, 0.2cqw -0.2cqw 0 #4a2c06, -0.2cqw 0.2cqw 0 #4a2c06, 0.2cqw 0.2cqw 0 #4a2c06, 0 0.2cqw 0 #4a2c06, 0 -0.2cqw 0 #4a2c06, 0 0.4cqw 0.4cqw rgba(60,35,5,.6); }
-.pcard-side .abil.tile .abil-ini[data-n="2"] { font-size: 6.4cqw; }
-.pcard-side .abil.tile .abil-ini[data-n="3"] { font-size: 4.6cqw; }
-.pcard-side .abil.tile .abil-ini[data-n="4"] { font-size: 3.6cqw; }
-.pcard-side .abil-gem { width: 14cqw; height: 14cqw; display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
+.pcard-side .abil.tile .abil-ini { font-family: "Cinzel", Georgia, "Times New Roman", serif; font-weight: 900; font-size: calc(8.6cqw * var(--abk, 1)); letter-spacing: 0;
+  color: #f6ead0; margin-top: calc(0.3cqw * var(--abk, 1));
+  text-shadow: calc(-0.2cqw * var(--abk, 1)) calc(-0.2cqw * var(--abk, 1)) 0 #4a2c06, calc(0.2cqw * var(--abk, 1)) calc(-0.2cqw * var(--abk, 1)) 0 #4a2c06, calc(-0.2cqw * var(--abk, 1)) calc(0.2cqw * var(--abk, 1)) 0 #4a2c06, calc(0.2cqw * var(--abk, 1)) calc(0.2cqw * var(--abk, 1)) 0 #4a2c06, 0 calc(0.2cqw * var(--abk, 1)) 0 #4a2c06, 0 calc(-0.2cqw * var(--abk, 1)) 0 #4a2c06, 0 calc(0.4cqw * var(--abk, 1)) calc(0.4cqw * var(--abk, 1)) rgba(60,35,5,.6); }
+.pcard-side .abil.tile .abil-ini[data-n="2"] { font-size: calc(6.4cqw * var(--abk, 1)); }
+.pcard-side .abil.tile .abil-ini[data-n="3"] { font-size: calc(4.6cqw * var(--abk, 1)); }
+.pcard-side .abil.tile .abil-ini[data-n="4"] { font-size: calc(3.6cqw * var(--abk, 1)); }
+.pcard-side .abil-gem { width: calc(14cqw * var(--abk, 1)); height: calc(14cqw * var(--abk, 1)); display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
 .ab-gold { background: linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10); color: #3a2a00; }
 .ab-silver { background: linear-gradient(135deg, #8e97a8, #f4f6fa 45%, #a7b0c0); color: #1e2a44; }
 .ab-bronze { background: linear-gradient(135deg, #7a4a1f, #e2a86a 45%, #8a5a2b); color: #2e1a05; }

@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { abilityInitials, backScale, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
+import { abilityInitials, abScale, backScale, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
 
@@ -74,6 +74,7 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
   const tier = p.dev ?? 0;
   const ovr99 = p.ovr >= 99;
   const badge = 13.5 * U;
+  const A = U * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
   return (
     <div style={{ width: W, height: H, display: "flex", padding: pad, borderRadius: 1.9 * U, backgroundImage: FACE[tier] }}>
       <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
@@ -105,37 +106,37 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
           <span style={{ fontSize: 17 * U, fontWeight: 800, lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
           <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>
           <div style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: p.primary, border: `${0.9 * U}px solid ${p.secondary}`, fontSize: 4.4 * U, fontWeight: 800, textShadow: "none" }}>{p.teamAbbr}</div>
-          {sortAbilities(p.abilities).slice(0, 5).map((a) => {
+          {sortAbilities(p.abilities).map((a) => {
             const t = tierClass(a.tier), s = ABIL[t] || ABIL.bronze, ini = abilityInitials(a.title);
             const gem = t === "single" && gemSrc ? gemSrc[xfLetter(a.title) ?? ""] : undefined;
             // eslint-disable-next-line @next/next/no-img-element
-            if (gem) return <img key={a.title} src={gem} alt="" width={14 * U} height={14 * U} style={{ width: 14 * U, height: 14 * U }} />;
+            if (gem) return <img key={a.title} src={gem} alt="" width={14 * A} height={14 * A} style={{ width: 14 * A, height: 14 * A }} />;
             if (tileSrc[t]) {
-              const k = 14 * U, fs = ({ 1: 8.6, 2: 6.4, 3: 4.6 } as Record<number, number>)[ini.length] ?? 3.6;
+              const k = 14 * A, fs = ({ 1: 8.6, 2: 6.4, 3: 4.6 } as Record<number, number>)[ini.length] ?? 3.6;
               return (
                 <div key={a.title} style={{ position: "relative", width: k, height: k, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={tileSrc[t]} alt="" width={k} height={k} style={{ position: "absolute", top: 0, left: 0, width: k, height: k }} />
-                  <span style={{ fontFamily: "Cinzel", fontWeight: 900, fontSize: fs * U, lineHeight: 1, marginTop: 0.3 * U, color: "#f6ead0",
+                  <span style={{ fontFamily: "Cinzel", fontWeight: 900, fontSize: fs * A, lineHeight: 1, marginTop: 0.3 * A, color: "#f6ead0",
                     textShadow: "-1.5px -1.5px 0 #4a2c06, 1.5px -1.5px 0 #4a2c06, -1.5px 1.5px 0 #4a2c06, 1.5px 1.5px 0 #4a2c06, 0 1.5px 0 #4a2c06, 0 -1.5px 0 #4a2c06, 0 3px 3px rgba(60,35,5,.6)" }}>{ini}</span>
                 </div>
               );
             }
             if (t === "single") {
               // Cut ruby square: bevelled facets from per-side border colors, a lighter table in the middle.
-              const g = 12.5 * U;
+              const g = 12.5 * A;
               return (
-                <div key={a.title} style={{ position: "relative", width: g, height: g, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 1.2 * U,
-                  borderStyle: "solid", borderWidth: 2.6 * U, borderTopColor: "#ff6f93", borderRightColor: "#8a0026", borderBottomColor: "#4a0012", borderLeftColor: "#c4103f",
+                <div key={a.title} style={{ position: "relative", width: g, height: g, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 1.2 * A,
+                  borderStyle: "solid", borderWidth: 2.6 * A, borderTopColor: "#ff6f93", borderRightColor: "#8a0026", borderBottomColor: "#4a0012", borderLeftColor: "#c4103f",
                   backgroundImage: "linear-gradient(135deg, #ff8fab 0%, #e0115f 38%, #a3002c 70%, #6b001b 100%)", boxShadow: "0 1px 5px rgba(0,0,0,.6)",
-                  color: "#fff", fontSize: initialsSize(ini.length) * badge, fontWeight: 800, lineHeight: 1, textShadow: "0 1px 2px rgba(60,0,15,.8)" }}>
+                  color: "#fff", fontSize: initialsSize(ini.length) * ab, fontWeight: 800, lineHeight: 1, textShadow: "0 1px 2px rgba(60,0,15,.8)" }}>
                   {ini}
                 </div>
               );
             }
             return (
-              <div key={a.title} style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", backgroundImage: s.bg, color: s.color, textShadow: "none",
-                boxShadow: "0 1px 4px rgba(0,0,0,.5)", border: `${0.5 * U}px solid rgba(255,255,255,.55)`, fontSize: initialsSize(ini.length) * badge, fontWeight: 800, lineHeight: 1 }}>
+              <div key={a.title} style={{ width: ab, height: ab, borderRadius: ab, display: "flex", alignItems: "center", justifyContent: "center", backgroundImage: s.bg, color: s.color, textShadow: "none",
+                boxShadow: "0 1px 4px rgba(0,0,0,.5)", border: `${0.5 * A}px solid rgba(255,255,255,.55)`, fontSize: initialsSize(ini.length) * ab, fontWeight: 800, lineHeight: 1 }}>
                 {ini}
               </div>
             );
