@@ -7,7 +7,7 @@ import { cardArtFor } from "@/lib/discord/cardArtLoad";
 import { getLeagueData } from "@/lib/league/load";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
 import { cardFramePath, signedCardArt } from "@/lib/cardArtStore";
-import { imageDataUrl } from "@/lib/discord/cardImage";
+import { cardFrameData, imageDataUrl } from "@/lib/discord/cardImage";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
 
 export const runtime = "nodejs";
@@ -22,8 +22,10 @@ export async function GET(req: Request) {
   const [{ art, cutout }, layouts] = await Promise.all([cardArtFor(slug, p), leagueCardLayouts(slug)]);
   const both = q.get("side") === "both";
   const layout = layouts.get(p.id);
-  const frameUrl = layout?.customFrame ? await signedCardArt(slug, p.id, 300, cardFramePath) : undefined;
-  const frameArt = frameUrl ? (await imageDataUrl(frameUrl)) ?? undefined : undefined;
+  const frameArt = await cardFrameData(layout, async () => {
+    const u = await signedCardArt(slug, p.id, 300, cardFramePath);
+    return u ? (await imageDataUrl(u)) ?? undefined : undefined;
+  });
   const props = { ...cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), ...(both ? cardBackProps(d, p) : {}), layout, frameArt };
   return renderCard(props, art, cutout, both ? "both" : "front");
 }

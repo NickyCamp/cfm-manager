@@ -1197,3 +1197,11 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   .mu-label { font-size: .72rem; }
   .mu-val { font-size: .9rem; }
 }
+/* Card builder border picker: default, Nick's 16 stock borders, upload */
+.cb-frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px; margin: 6px 0; }
+.cb-frame { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px; border-radius: 8px; border: 1px solid var(--line); background: #0a0f18; color: inherit; cursor: pointer; font: 600 0.7rem/1.1 var(--display); letter-spacing: .02em; }
+.cb-frame img { width: 100%; aspect-ratio: 5 / 7; object-fit: fill; display: block; }
+.cb-frame span { text-align: center; color: var(--ink-soft); }
+.cb-frame.on { border-color: transparent; box-shadow: 0 0 0 2px #7a5cff; }
+.cb-frame.on span { color: #fff; }
+.cb-frame.upload b { width: 100%; aspect-ratio: 5 / 7; display: grid; place-items: center; font-size: 1.6rem; border: 1px dashed var(--line); border-radius: 6px; color: var(--ink-soft); }

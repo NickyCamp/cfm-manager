@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
-import { cardFont, type CardLayerKey } from "@/lib/league/cardLayout";
+import { cardFont, stockFrame, stockFramePath, type CardLayerKey, type CardLayout } from "@/lib/league/cardLayout";
 import { abilityInitials, abScale, backScale, ovrArt, posArt, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
@@ -93,6 +93,20 @@ export async function preloadOvrArt(cards: { ovr: number; pos: string }[]) {
 }
 const artOf = (u: string | null) => (u ? artCache.get(u) ?? null : null);
 
+/** The border image (data: URL) for a card's layout: a stock border (read from public/frames/stock, cached),
+ *  else its uploaded border (via the given loader), else undefined (dev-trait frame). Never throws. */
+export async function cardFrameData(layout: CardLayout | undefined, loadUpload: () => Promise<string | undefined>) {
+  if (!layout) return undefined;
+  if (layout.stockFrame && stockFrame(layout.stockFrame)) {
+    const u = stockFramePath(layout.stockFrame, "png");
+    if (!artCache.has(u)) artCache.set(u, await dataUrl(`public${u}`).catch((e) => { console.error("card asset missing", u, e); return null; }));
+    return artCache.get(u) ?? undefined;
+  }
+  return layout.customFrame ? loadUpload().catch(() => undefined) : undefined;
+}
+const hasFrameArt = (p: { layout?: CardLayout; frameArt?: string }) =>
+  !!(p.layout && (p.layout.stockFrame || p.layout.customFrame) && p.frameArt?.startsWith("data:"));
+
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16) || 0;
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -130,7 +144,7 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
   const UH = U * 0.78; // right-column HUD at 78% (Nick, 2026-11-13), matches the site's scale(0.78)
   const badge = 13.5 * UH;
   const show = (k: CardLayerKey) => !p.layout || p.layout[k]; // card builder layers
-  const custom = p.layout?.customFrame && p.frameArt?.startsWith("data:") ? p.frameArt : undefined; // uploaded border
+  const custom = hasFrameArt(p) ? p.frameArt : undefined; // stock or uploaded border
   const nameF = cardFont(p.layout?.nameFont ?? "barlow"), numF = p.layout && p.layout.numFont !== "art" ? cardFont(p.layout.numFont) : null;
   const A = UH * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
   return (
@@ -271,7 +285,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   );
   const cells = [cell("HT", p.height || "—"), cell("WT", p.weight || "—"), cell("AGE", p.age), ...p.stats.map((st) => cell(st.abbr, st.value, st.value >= 90, st.abbr + st.label))];
   return (
-    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0, !p.layout || p.layout.frame, p.layout?.customFrame && p.frameArt?.startsWith("data:") ? { inset: p.layout.frameInset } : undefined) }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0, !p.layout || p.layout.frame, hasFrameArt(p) ? { inset: p.layout!.frameInset } : undefined) }}>
       <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", borderRadius: 0.8 * U0, overflow: "hidden", color: "#fff", fontFamily: "Barlow Condensed",
         backgroundImage: `linear-gradient(180deg, ${mix(p.primary, "#0a0f18", 0.55)} 0%, #0a0f18 32%, #0a0f18 100%)` }}>
         {/* header: name, team line, overall */}
@@ -310,7 +324,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
           <span style={{ marginTop: "auto", fontSize: 3.6 * U, fontWeight: 700, color: muted }}>{`${p.college || "No college"} · ${p.draft}`}</span>
         </div>
       </div>
-      {frameOverlay(tier, W, H, !p.layout || p.layout.frame, p.layout?.customFrame && p.frameArt?.startsWith("data:") ? p.frameArt : undefined)}
+      {frameOverlay(tier, W, H, !p.layout || p.layout.frame, hasFrameArt(p) ? p.frameArt : undefined)}
     </div>
   );
 }

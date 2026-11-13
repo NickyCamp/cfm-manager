@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlayerCard, type PlayerCardProps } from "./PlayerCard";
 import { toast } from "./Toaster";
-import { CARD_FONTS, CARD_LAYERS, DEFAULT_LAYOUT, isDefaultLayout, type CardLayout } from "@/lib/league/cardLayout";
+import { CARD_FONTS, CARD_LAYERS, DEFAULT_LAYOUT, STOCK_FRAMES, isDefaultLayout, stockFramePath, type CardLayout } from "@/lib/league/cardLayout";
 
 const FW = 750, FH = 1050; // card shape (5:7)
 
@@ -37,7 +37,7 @@ export function CardBuilder({ card, slug, playerId, canEdit }: { card: PlayerCar
       c.toBlob((b) => {
         if (!b) { toast("Couldn't read that image.", "error"); return; }
         setFrame({ url: URL.createObjectURL(b), blob: b }); setDropFrame(false);
-        set({ customFrame: true, frame: true });
+        set({ customFrame: true, stockFrame: "", frame: true });
       }, "image/png");
     };
     img.onerror = () => toast("Couldn't open that image.", "error");
@@ -92,20 +92,31 @@ export function CardBuilder({ card, slug, playerId, canEdit }: { card: PlayerCar
 
           <h4 className="cb-h">Border</h4>
           <input ref={fileRef} type="file" accept="image/png" hidden onChange={(e) => { pickFrame(e.target.files?.[0]); e.target.value = ""; }} />
-          {layout.customFrame && frameArt ? (
-            <>
-              <p className="muted small">Your border. Slide until the card sits just inside it.</p>
-              <label className="cb-slider">Card inset<input type="range" min={0} max={10} step={0.1} value={layout.frameInset} onChange={(e) => set({ frameInset: +e.target.value })} /><span>{layout.frameInset.toFixed(1)}</span></label>
-              <div className="cb-presets">
-                <button type="button" className="chip" onClick={() => fileRef.current?.click()}>Upload a different border</button>
-                <button type="button" className="chip" onClick={() => { setFrame(null); setDropFrame(true); set({ customFrame: false }); }}>Use the default border</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="muted small">Default: the {["bronze", "silver", "gold", "ruby"][card.dev] ?? "bronze"} border for this dev trait. Or upload your own: a PNG with a see-through middle, ideally 750×1050.</p>
-              <div className="cb-presets"><button type="button" className="chip" onClick={() => fileRef.current?.click()}>Upload a border</button></div>
-            </>
+          <div className="cb-frames">
+            {/* Default: the dev-trait frame (Normal bronze … X-Factor ruby) */}
+            <button type="button" className={`cb-frame ${!layout.stockFrame && !(layout.customFrame && frameArt) ? "on" : ""}`} title="Default border for this dev trait"
+              onClick={() => { if (card.frameArt || frame) { setFrame(null); setDropFrame(true); } set({ stockFrame: "", customFrame: false }); }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/frames/${["bronze", "silver", "gold", "xf"][card.dev] ?? "bronze"}.webp`} alt="" /><span>Default</span>
+            </button>
+            {STOCK_FRAMES.map((f) => (
+              <button type="button" key={f.key} className={`cb-frame ${layout.stockFrame === f.key ? "on" : ""}`} title={f.label}
+                onClick={() => set({ stockFrame: f.key, frameInset: f.inset, frame: true })}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={stockFramePath(f.key)} alt="" loading="lazy" /><span>{f.label}</span>
+              </button>
+            ))}
+            {layout.customFrame && frameArt ? (
+              <button type="button" className={`cb-frame ${!layout.stockFrame ? "on" : ""}`} title="Your uploaded border" onClick={() => set({ stockFrame: "" })}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={frameArt} alt="" /><span>Yours</span>
+              </button>
+            ) : null}
+            <button type="button" className="cb-frame upload" onClick={() => fileRef.current?.click()}><b>+</b><span>{layout.customFrame && frameArt ? "Replace" : "Upload"}</span></button>
+          </div>
+          <p className="muted small">Upload your own: a PNG with a see-through middle, ideally 750×1050.</p>
+          {(layout.stockFrame || (layout.customFrame && frameArt)) && (
+            <label className="cb-slider">Card inset<input type="range" min={0} max={10} step={0.1} value={layout.frameInset} onChange={(e) => set({ frameInset: +e.target.value })} /><span>{layout.frameInset.toFixed(1)}</span></label>
           )}
 
           <h4 className="cb-h">Name font</h4>
