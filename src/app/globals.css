@@ -820,6 +820,10 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard-name .first { font: 700 5.2cqw/1.1 var(--display); text-transform: uppercase; letter-spacing: .6px; color: #d7deea; }
 .pcard-name .last { font: 800 12cqw/0.95 var(--display); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pcard-name.small { right: 4.5cqw; bottom: 3cqw; }
+/* 99 overall: the name goes gold like the number (Nick, 2026-11-13); front nameplate and back header. */
+.pcard-name.gold, .kb-name.gold { text-shadow: none; filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0,0,0,.75)); }
+.pcard-name.gold .first, .pcard-name.gold .last, .kb-name.gold .first, .kb-name.gold .last {
+  background: linear-gradient(180deg, #fff1a8 0%, #ffd54a 45%, #e0a10e 75%, #b8780a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .pcard-name.small .first { font-size: 4.2cqw; }
 .pcard-name.small .last { font-size: 8.6cqw; }
 

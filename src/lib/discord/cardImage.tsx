@@ -217,8 +217,8 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
 
         {/* name */}
         {show("name") && <div style={{ position: "absolute", left: 4.5 * U, right: 24 * U, bottom: 4 * U, display: "flex", flexDirection: "column", lineHeight: 1, textShadow: "0 2px 6px rgba(0,0,0,.7)" }}>
-          <span style={{ fontSize: 5.2 * U, fontFamily: nameF.family, fontWeight: nameF.key === "barlow" ? 700 : nameF.weight, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: 0.8, color: "#d7deea" }}>{p.first}</span>
-          <span style={{ fontSize: (p.last.length > 11 ? 12 * 11 / p.last.length : 12) * U, fontFamily: nameF.family, fontWeight: nameF.weight, lineHeight: 0.95, textTransform: "uppercase" }}>{p.last}</span>
+          <span style={{ fontSize: 5.2 * U, fontFamily: nameF.family, fontWeight: nameF.key === "barlow" ? 700 : nameF.weight, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: 0.8, color: ovr99 ? "#f7d978" : "#d7deea" }}>{p.first}</span>
+          <span style={{ fontSize: (p.last.length > 11 ? 12 * 11 / p.last.length : 12) * U, fontFamily: nameF.family, fontWeight: nameF.weight, lineHeight: 0.95, textTransform: "uppercase", color: ovr99 ? "#ffcf3a" : "#fff" }}>{p.last}</span>
           {p.rookie && (
             <span style={{ alignSelf: "flex-start", marginTop: 1.6 * U, padding: `${0.9 * U}px ${5 * U}px ${0.9 * U}px ${3 * U}px`, fontSize: 4.2 * U, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#3a2a00", textShadow: "none",
               backgroundImage: "linear-gradient(135deg, #a77a00, #ffe27a 40%, #d4a017 60%, #fff3b0 80%, #b8860b)" }}>Rookie edition</span>
@@ -276,8 +276,8 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
         {/* header: name, team line, overall */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: `${3.2 * U0}px ${4 * U0}px ${2.6 * U0}px`, borderBottom: `${0.6 * U0}px solid ${p.secondary}` }}>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-            <span style={{ fontSize: 4.4 * U0, fontFamily: nameF.family, fontWeight: nameF.key === "barlow" ? 700 : nameF.weight, color: "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
-            <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U0, fontFamily: nameF.family, fontWeight: nameF.weight, textTransform: "uppercase", lineHeight: 0.95 }}>{p.last}</span>
+            <span style={{ fontSize: 4.4 * U0, fontFamily: nameF.family, fontWeight: nameF.key === "barlow" ? 700 : nameF.weight, color: p.ovr >= 99 ? "#f7d978" : "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
+            <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U0, fontFamily: nameF.family, fontWeight: nameF.weight, textTransform: "uppercase", lineHeight: 0.95, color: p.ovr >= 99 ? "#ffcf3a" : "#fff" }}>{p.last}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 1.6 * U0, marginTop: 1.8 * U0, fontSize: 4 * U0, fontWeight: 700, color: "#c3cde0" }}>
               {p.teamLogo?.startsWith("data:")
                 // eslint-disable-next-line @next/next/no-img-element

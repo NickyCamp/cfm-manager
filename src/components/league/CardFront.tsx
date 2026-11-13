@@ -94,7 +94,7 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
             : <span key={a.title} className={`abil ab-${tierClass(a.tier)}${TILE_ART.has(tierClass(a.tier)) ? " tile" : ""}`} title={`${a.title} (${tierClass(a.tier) === "single" ? "X-Factor" : a.tier})`}><span className="abil-ini" data-n={abilityInitials(a.title).length}>{abilityInitials(a.title)}</span></span>
         ))}
       </div>
-      {show("name") && <Nameplate first={p.first} last={p.last} rookie={p.rookie} />}
+      {show("name") && <Nameplate first={p.first} last={p.last} rookie={p.rookie} gold={p.ovr >= 99} />}
       <div className="pcard-foil" /><div className="pcard-glare" />
     </div>
   );
@@ -117,7 +117,7 @@ export function CardBackInner(p: PlayerCardProps) {
   return (
     <div className="pcard-inner pcard-inner-back">
       <div className="kb-head">
-        <div className="kb-name">
+        <div className={`kb-name ${p.ovr >= 99 ? "gold" : ""}`}>
           <span className="first">{p.first}</span>
           <span className="last">{p.last}</span>
           <span className="kb-sub"><span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>{p.pos} · #{p.jersey} · {p.exp}</span>
@@ -175,9 +175,9 @@ export function StaticCard(p: PlayerCardProps & { className?: string }) {
   );
 }
 
-export function Nameplate({ first, last, small = false, rookie = false }: { first: string; last: string; small?: boolean; rookie?: boolean }) {
+export function Nameplate({ first, last, small = false, rookie = false, gold = false }: { first: string; last: string; small?: boolean; rookie?: boolean; gold?: boolean }) {
   return (
-    <div className={`pcard-name ${small ? "small" : ""}`}>
+    <div className={`pcard-name ${small ? "small" : ""} ${gold ? "gold" : ""}`}>
       <span className="first">{first}</span>
       <span className="last">{last}</span>
       {rookie && <span className="pcard-ribbon">Rookie edition</span>}
