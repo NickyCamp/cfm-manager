@@ -1,9 +1,11 @@
 // POST   /api/leagues/<slug>/card-art/<playerId>  (multipart "file", a JPEG the editor already cropped)
 // DELETE /api/leagues/<slug>/card-art/<playerId>
-// League members only. Images go to the private card-art bucket.
+// The player's team owner (matched by EA name) or the league commissioner only.
+// Images go to the private card-art bucket.
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { CARD_ART_BUCKET, cardArtPath, ensureCardArtBucket, leagueMemberId } from "@/lib/cardArtStore";
+import { CARD_ART_BUCKET, cardArtAccess, cardArtPath, ensureCardArtBucket } from "@/lib/cardArtStore";
+import { getLeagueData } from "@/lib/league/load";
 
 export const runtime = "nodejs";
 const MAX_BYTES = 3 * 1024 * 1024;
@@ -14,8 +16,10 @@ async function guard(ctx: Ctx) {
   const { slug, playerId } = await ctx.params;
   const id = Number(playerId);
   if (!Number.isFinite(id) || id <= 0) return { error: NextResponse.json({ error: "Bad player id." }, { status: 400 }) };
-  const uid = await leagueMemberId(slug);
-  if (!uid) return { error: NextResponse.json({ error: "Only league members can change card art." }, { status: 403 }) };
+  const p = (await getLeagueData(slug).catch(() => null))?.players.find((x) => x.id === id);
+  if (!p) return { error: NextResponse.json({ error: "Player not found." }, { status: 404 }) };
+  const access = await cardArtAccess(slug, p.gone ? undefined : p.team || undefined);
+  if (!access.canEdit) return { error: NextResponse.json({ error: access.why || "Sign in to change card art." }, { status: 403 }) };
   await ensureCardArtBucket();
   return { slug, id };
 }

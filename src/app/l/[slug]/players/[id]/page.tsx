@@ -13,7 +13,7 @@ import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
 import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
 import { PlayerCard } from "@/components/league/PlayerCard";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
-import { canSeeCardArt, leagueMemberId, signedCardArt } from "@/lib/cardArtStore";
+import { canSeeCardArt, cardArtAccess, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
 import { headshotUrl } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
@@ -41,8 +41,11 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   const bg = team?.primary || "#1b2340";
   // Card art shows to anyone signed in (photos of real players aren't ours to publish, so
   // never to signed-out visitors): an uploaded photo if there is one, else the player's
-  // NFL.com headshot as a stand-in. Only league members can change it.
-  const [viewer, member] = await Promise.all([canSeeCardArt(), leagueMemberId(slug).then(Boolean).catch(() => false)]);
+  // NFL.com headshot as a stand-in. Only the player's team owner or the commissioner can change it.
+  const [viewer, canEditArt] = await Promise.all([
+    canSeeCardArt(),
+    cardArtAccess(slug, p.gone ? undefined : p.team || undefined).then((a) => a.canEdit).catch(() => false),
+  ]);
   const uploaded = viewer ? await signedCardArt(slug, p.id) : undefined;
   const art = uploaded ?? (viewer ? headshotUrl(p) : undefined);
 
@@ -72,7 +75,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
         <div className="player-hero">
           <div className="pcard-col">
           <PlayerCard {...cardProps(d, slug, p, team, art)} {...cardBackProps(d, p)} />
-          {member && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
+          {canEditArt && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
           </div>
           <div className="player-tabs">
             <nav className="tabs" aria-label="Player">
