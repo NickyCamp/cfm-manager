@@ -26,6 +26,8 @@ export function ensureCardArtBucket() {
 }
 
 export const cardArtPath = (slug: string, playerId: number) => `${slug}/${playerId}.jpg`;
+/** A card's uploaded custom border (card builder): transparent PNG, same 5:7 shape as the card. */
+export const cardFramePath = (slug: string, playerId: number) => `${slug}/${playerId}.frame.png`;
 
 /**
  * Whether the visitor may SEE card art: anyone signed in (Nick's call, 2026-11-13:
@@ -82,10 +84,10 @@ export async function cardArtAccess(slug: string, playerTeamId: number | undefin
 }
 
 /** Signed URL for a player's uploaded art, or undefined if there is none. Call only for members. */
-export async function signedCardArt(slug: string, playerId: number, ttlSeconds = URL_TTL_SECONDS): Promise<string | undefined> {
+export async function signedCardArt(slug: string, playerId: number, ttlSeconds = URL_TTL_SECONDS, path = cardArtPath): Promise<string | undefined> {
   try {
     await ensureCardArtBucket();
-    const { data } = await supabaseAdmin().storage.from(CARD_ART_BUCKET).createSignedUrl(cardArtPath(slug, playerId), ttlSeconds);
+    const { data } = await supabaseAdmin().storage.from(CARD_ART_BUCKET).createSignedUrl(path(slug, playerId), ttlSeconds);
     return data?.signedUrl;
   } catch (e) {
     console.error("card art url", slug, playerId, e);
@@ -100,7 +102,7 @@ export async function signedCardArt(slug: string, playerId: number, ttlSeconds =
  * headshots even where art had been uploaded. Paths with no file come back
  * without a URL and are skipped.
  */
-export async function signedCardArtFor(slug: string, playerIds: number[]): Promise<Map<number, string>> {
+export async function signedCardArtFor(slug: string, playerIds: number[], path = cardArtPath): Promise<Map<number, string>> {
   const out = new Map<number, string>();
   const ids = [...new Set(playerIds)].filter((id) => id > 0);
   if (!ids.length) return out;
@@ -109,7 +111,7 @@ export async function signedCardArtFor(slug: string, playerIds: number[]): Promi
     const store = supabaseAdmin().storage.from(CARD_ART_BUCKET);
     for (let i = 0; i < ids.length; i += 100) {
       const chunk = ids.slice(i, i + 100);
-      const { data, error } = await store.createSignedUrls(chunk.map((id) => cardArtPath(slug, id)), URL_TTL_SECONDS);
+      const { data, error } = await store.createSignedUrls(chunk.map((id) => path(slug, id)), URL_TTL_SECONDS);
       if (error) { console.error("card art urls", slug, error.message); continue; }
       (data || []).forEach((r, k) => { if (r.signedUrl && !r.error) out.set(chunk[k], r.signedUrl); });
     }

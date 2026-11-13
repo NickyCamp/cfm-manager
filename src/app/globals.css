@@ -779,6 +779,11 @@ details.panel[open] summary { margin-bottom: 8px; }
   background: radial-gradient(closest-side, rgba(255,255,255,.75), transparent); pointer-events: none; }
 .pcard-side .abil.ab-single { position: relative; }
 /* Gold: Nick's blank gold tile + engraved Roman-serif initials (Cinzel), matching his badge samples. */
+@font-face { font-family: "Anton"; src: url("/fonts/anton-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Bebas Neue"; src: url("/fonts/bebas-neue-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Oswald"; src: url("/fonts/oswald-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Teko"; src: url("/fonts/teko-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Graduate"; src: url("/fonts/graduate-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Cinzel"; src: url("/fonts/cinzel-latin-900-normal.woff2") format("woff2"); font-weight: 900; font-display: swap; }
 .pcard-side .abil.tile { width: calc(14cqw * var(--abk, 1)); height: calc(14cqw * var(--abk, 1)); border-radius: 0; overflow: visible; box-shadow: none; background: center / contain no-repeat;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
@@ -834,6 +839,18 @@ details.panel[open] summary { margin-bottom: 8px; }
 .t-super { --frame: url("/frames/gold.webp"); } .t-xf { --frame: url("/frames/xf.webp"); }
 .pcard .pcard-face, .pcard.static .pcard-face { background: none; box-shadow: none; padding: 3.4cqw 3.4cqw 3.6cqw; }
 .pcard.t-xf .pcard-face { padding: 2.7cqw 3cqw 3.3cqw; }
+/* Card builder: an uploaded border (--frame set inline to its URL) with the card inset chosen in the builder. */
+.pcard.fs-custom .pcard-face { padding: var(--frame-inset, 3.4cqw); }
+/* Card builder fonts: names everywhere on the card, and the overall/position when the rating art is swapped for text.
+   Colors stay the same: white numbers, gold at 99 (.ovr-99 / .pos-99). */
+.pcard .pcard-name .first, .pcard .pcard-name .last, .pcard .kb-name .first, .pcard .kb-name .last { font-family: var(--name-font, var(--display)); }
+.pcard .pcard-name .last, .pcard .kb-name .last { font-weight: var(--name-weight, 800); }
+.pcard .pcard-name .first, .pcard .kb-name .first { font-weight: var(--name-weight, 700); }
+.pcard.num-text .pcard-side .ovr, .pcard.num-text .pcard-side .pos { font-family: var(--num-font, var(--display)); font-weight: var(--num-weight, 800); }
+.pcard.num-text .pcard-side .ovr:not(.ovr-99) { color: #fff; text-shadow: 0 0 0.6cqw rgba(0,0,0,.7), 0 0.4cqw 0.8cqw rgba(0,0,0,.5); }
+.pcard.num-text .pcard-side .pos { text-shadow: 0 0 0.5cqw rgba(0,0,0,.7); }
+.pcard.num-text .pcard-side .pos.pos-99 { color: #ffd54a; }
+.pcard.num-text .kb-ovr b { font-family: var(--num-font, var(--display)); font-weight: var(--num-weight, 800); }
 /* Card builder: layers the card's owner switched off (src/lib/league/cardLayout.ts). */
 .pcard.no-frame .pcard-face { padding: 0; }
 .pcard.no-frame .pcard-face::after { display: none; }
@@ -1143,3 +1160,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .cb-row input:checked + .cb-switch { background: linear-gradient(90deg, #7a5cff, #3e8bff); }
 .cb-row input:checked + .cb-switch::after { transform: translateX(14px); }
 .cb-row input:focus-visible + .cb-switch { box-shadow: 0 0 0 2px var(--goalpost); }
+.cb-h { margin: 14px 0 4px; font: 800 0.85rem var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.cb-fonts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.cb-font { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit; font-size: 1.05rem; cursor: pointer; }
+.cb-font.on, .cb-presets .chip.on { border-color: transparent; background: linear-gradient(90deg, #7a5cff, #3e8bff); color: #fff; }
+.cb-slider { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.cb-slider input { flex: 1; }
+.cb-slider span { width: 2.5em; text-align: right; font-variant-numeric: tabular-nums; }

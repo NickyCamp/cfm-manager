@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { CARD_TIER, CardBackInner, CardFrontInner, type PlayerCardProps } from "./CardFront";
-import { layoutClasses } from "@/lib/league/cardLayout";
+import { layoutClasses, layoutStyle } from "@/lib/league/cardLayout";
 export type { PlayerCardProps };
 
 /** Football-card style player card: foil by dev trait, tilts with the pointer, tap to flip. */
@@ -30,7 +30,7 @@ export function PlayerCard(p: PlayerCardProps) {
     set("--rx", "0deg"); set("--ry", "0deg"); set("--glare", "0");
   };
   const tier = CARD_TIER[p.dev] ?? "normal";
-  const style = { "--tc1": p.primary, "--tc2": p.secondary } as React.CSSProperties;
+  const style = { "--tc1": p.primary, "--tc2": p.secondary, ...layoutStyle(p.layout, p.frameArt) } as React.CSSProperties;
 
   return (
     <div className="pcard-wrap">
@@ -47,7 +47,7 @@ export function PlayerCard(p: PlayerCardProps) {
           if (e.pointerType !== "mouse") setTimeout(reset, 500);
         }}
       >
-        <div ref={ref} className={`pcard t-${tier} ${layoutClasses(p.layout)} ${flipped ? "flipped" : ""}`} style={style} role="button" tabIndex={0}
+        <div ref={ref} className={`pcard t-${tier} ${layoutClasses(p.layout, p.frameArt)} ${flipped ? "flipped" : ""}`} style={style} role="button" tabIndex={0}
           aria-label={`${p.first} ${p.last} card, ${flipped ? "back" : "front"}. Activate to flip.`}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFlipped((f) => !f); } }}>
           <div className="pcard-face pcard-front">

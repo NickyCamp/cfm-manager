@@ -14,7 +14,7 @@ import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/Abi
 import { CardBuilder } from "@/components/league/CardBuilder";
 import { cardLayout } from "@/lib/cardLayoutStore";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
-import { canSeeCardArt, cardArtAccess, signedCardArt } from "@/lib/cardArtStore";
+import { canSeeCardArt, cardArtAccess, cardFramePath, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
 import { headshotUrl } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
@@ -48,6 +48,8 @@ export default async function PlayerPage({ params, searchParams }: Props) {
     cardArtAccess(slug, p.gone ? undefined : p.team || undefined).then((a) => a.canEdit).catch(() => false),
   ]);
   const [uploaded, layout] = await Promise.all([viewer ? signedCardArt(slug, p.id) : Promise.resolve(undefined), cardLayout(slug, p.id)]);
+  // An uploaded custom border follows the same visibility as uploaded art (signed in).
+  const frameArt = viewer && layout?.customFrame ? await signedCardArt(slug, p.id, undefined, cardFramePath) : undefined;
   const art = uploaded ?? (viewer ? headshotUrl(p) : undefined);
 
   return (
@@ -75,7 +77,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
 
         <div className="player-hero">
           <div className="pcard-col">
-          <CardBuilder card={{ ...cardProps(d, slug, p, team, art), ...cardBackProps(d, p), layout }} slug={slug} playerId={p.id} canEdit={canEditArt} />
+          <CardBuilder card={{ ...cardProps(d, slug, p, team, art), ...cardBackProps(d, p), layout, frameArt }} slug={slug} playerId={p.id} canEdit={canEditArt} />
           {canEditArt && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
           </div>
           <div className="player-tabs">

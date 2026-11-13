@@ -1,9 +1,9 @@
 // Card builder layouts (see src/lib/league/cardLayout.ts), one small JSON file per league in a
-// private Supabase Storage bucket: card-layouts/<slug>.json = { "<playerId>": { frame: false, ... } }.
+// private Supabase Storage bucket: card-layouts/<slug>.json = { "<playerId>": { frame: false, nameFont: "anton", ... } }.
 // One file per league so a team page loads every card's layout in one request. Only cards
-// that differ from the default (everything on) are stored.
+// that differ from the default are stored, and only their changed settings.
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { normalizeLayout, isDefaultLayout, type CardLayout } from "@/lib/league/cardLayout";
+import { normalizeLayout, isDefaultLayout, layoutDiff, type CardLayout } from "@/lib/league/cardLayout";
 
 const BUCKET = "card-layouts";
 let ready: Promise<void> | null = null;
@@ -41,9 +41,10 @@ export async function cardLayout(slug: string, playerId: number): Promise<CardLa
 export async function saveCardLayout(slug: string, playerId: number, layout: CardLayout | null) {
   await ensureBucket();
   const all = await leagueCardLayouts(slug);
-  if (!layout || isDefaultLayout(layout)) all.delete(playerId);
-  else all.set(playerId, layout);
-  const body = JSON.stringify(Object.fromEntries([...all].map(([id, l]) => [String(id), Object.fromEntries(Object.entries(l).filter(([, v]) => !v))])));
+  const l = layout ? normalizeLayout(layout) : null;
+  if (!l || isDefaultLayout(l)) all.delete(playerId);
+  else all.set(playerId, l);
+  const body = JSON.stringify(Object.fromEntries([...all].map(([id, l]) => [String(id), layoutDiff(l)])));
   const { error } = await supabaseAdmin().storage.from(BUCKET)
     .upload(`${slug}.json`, new Blob([body], { type: "application/json" }), { contentType: "application/json", upsert: true, cacheControl: "0" });
   if (error) throw new Error(error.message);

@@ -7,6 +7,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PlayerCardProps } from "@/components/league/CardFront";
+import { cardFont, type CardLayerKey } from "@/lib/league/cardLayout";
 import { abilityInitials, abScale, backScale, ovrArt, posArt, initialsSize, sortAbilities, tierClass, TILE_ART, xfLetter } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
@@ -67,16 +68,19 @@ export async function withLogo<T extends { teamLogo?: string }>(p: T): Promise<T
 }
 
 /** Outer card frame: Nick's frame image over the card (deeper padding so it doesn't cover corner text); the metallic gradient if the image is missing. */
-const frameStyle = (tier: number, U: number, on = true) =>
+const frameStyle = (tier: number, U: number, on = true, custom?: { inset: number }) =>
   !on ? { padding: 0 }
+  : custom ? { position: "relative" as const, padding: custom.inset * U }
   : frames[tier]
     ? tier === 3
       ? { position: "relative" as const, paddingTop: 2.7 * U, paddingLeft: 3 * U, paddingRight: 3 * U, paddingBottom: 3.3 * U }
       : { position: "relative" as const, paddingTop: 3.4 * U, paddingLeft: 3.4 * U, paddingRight: 3.4 * U, paddingBottom: 3.6 * U }
     : { padding: 2.8 * U, backgroundImage: FACE[tier] };
-const frameOverlay = (tier: number, W: number, H: number, on = true) =>
+const frameOverlay = (tier: number, W: number, H: number, on = true, custom?: string) =>
   // eslint-disable-next-line @next/next/no-img-element
-  on && frames[tier] ? <img src={frames[tier]!} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
+  on && custom ? <img src={custom} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} />
+  // eslint-disable-next-line @next/next/no-img-element
+  : on && frames[tier] ? <img src={frames[tier]!} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
 
 // Nick's overall/position art, loaded per card (only the files that card needs) and cached as data: URLs.
 const artCache = new Map<string, string | null>();
@@ -97,14 +101,21 @@ const darken = (hex: string, k: number) => `rgb(${rgb(hex).map((v) => Math.round
 const mix = (hex: string, other: string, k: number) => { const a = rgb(hex), b = rgb(other); return `rgb(${a.map((v, i) => Math.round(v * k + b[i] * (1 - k))).join(",")})`; };
 const alpha = (hex: string, a: number) => `rgba(${rgb(hex).join(",")},${a})`;
 
-let fonts: Promise<{ name: string; data: Buffer; weight: 700 | 800 | 900; style: "normal" }[]> | null = null;
-const fontFile = (name: string, file: string, weight: 700 | 800 | 900) =>
+type FontWeight = 400 | 600 | 700 | 800 | 900;
+let fonts: Promise<{ name: string; data: Buffer; weight: FontWeight; style: "normal" }[]> | null = null;
+const fontFile = (name: string, file: string, weight: FontWeight) =>
   readFile(path.join(process.cwd(), "assets/fonts", file)).then((data) => ({ name, data, weight, style: "normal" as const }));
 export function cardFonts() {
   fonts ??= Promise.all([
     fontFile("Barlow Condensed", "barlow-condensed-latin-700-normal.woff", 700),
     fontFile("Barlow Condensed", "barlow-condensed-latin-800-normal.woff", 800),
-    fontFile("Cinzel", "cinzel-latin-900-normal.woff", 900), // gold badge initials
+    fontFile("Cinzel", "cinzel-latin-900-normal.woff", 900), // gold badge initials; card builder font
+    // card builder fonts (src/lib/league/cardLayout.ts CARD_FONTS)
+    fontFile("Bebas Neue", "bebas-neue-latin-400-normal.woff", 400),
+    fontFile("Anton", "anton-latin-400-normal.woff", 400),
+    fontFile("Oswald", "oswald-latin-700-normal.woff", 700),
+    fontFile("Teko", "teko-latin-600-normal.woff", 600),
+    fontFile("Graduate", "graduate-latin-400-normal.woff", 400),
   ]);
   return fonts;
 }
@@ -117,10 +128,12 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
   const tier = p.dev ?? 0;
   const ovr99 = p.ovr >= 99;
   const badge = 13.5 * U;
-  const show = (k: keyof NonNullable<PlayerCardProps["layout"]>) => !p.layout || p.layout[k]; // card builder layers
+  const show = (k: CardLayerKey) => !p.layout || p.layout[k]; // card builder layers
+  const custom = p.layout?.customFrame && p.frameArt?.startsWith("data:") ? p.frameArt : undefined; // uploaded border
+  const nameF = cardFont(p.layout?.nameFont ?? "barlow"), numF = p.layout && p.layout.numFont !== "art" ? cardFont(p.layout.numFont) : null;
   const A = U * abScale(p.abilities.length), ab = 13.5 * A; // ability badges shrink when there are more than 5
   return (
-    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U, ...frameStyle(tier, U, show("frame")) }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U, ...frameStyle(tier, U, show("frame"), custom ? { inset: p.layout!.frameInset } : undefined) }}>
       <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
         {/* art background */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: `linear-gradient(160deg, ${darken(p.primary, 0.85)} 0%, #0a0f18 75%)` }} />
@@ -147,15 +160,15 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         {/* right column: overall, position, team, abilities */}
         <div style={{ position: "absolute", top: 2.6 * U, right: 3 * U, width: 19 * U, display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>
           {show("ovr") && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.6 * U }}>
-          {artOf(ovrArt(p.ovr))
+          {artOf(ovrArt(p.ovr)) && !numF
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={artOf(ovrArt(p.ovr))!} alt="" width={25 * U} height={25 * U * 140 / 192} style={{ width: 25 * U, height: 25 * U * 140 / 192, marginTop: -1.6 * U, marginBottom: -1.8 * U }} />
-            : <span style={{ fontSize: 17 * U, fontWeight: 800, lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>}
+            : <span style={{ fontSize: 17 * U, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 0.9, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>}
           <div style={{ width: 9.5 * U, height: 0.6 * U, borderRadius: 0.3 * U, display: "flex", backgroundImage: ovr99 ? "linear-gradient(180deg, #ffd54a, #c98a00)" : "linear-gradient(180deg, #e8ecf2, #e8ecf2)" }} />
-          {artOf(posArt(p.pos, ovr99))
+          {artOf(posArt(p.pos, ovr99)) && !numF
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={artOf(posArt(p.pos, ovr99))!} alt="" width={25 * U} height={25 * U * 58 / 192} style={{ width: 25 * U, height: 25 * U * 58 / 192, marginTop: -0.6 * U, marginBottom: -0.6 * U }} />
-            : <span style={{ fontSize: 7.2 * U, fontWeight: 800, lineHeight: 1, marginTop: -0.6 * U }}>{p.pos}</span>}
+            : <span style={{ fontSize: 7.2 * U, fontWeight: numF?.weight ?? 800, fontFamily: numF?.family ?? "Barlow Condensed", lineHeight: 1, marginTop: -0.6 * U, color: ovr99 ? "#ffd54a" : "#fff" }}>{p.pos}</span>}
           </div>}
           {show("team") && (p.teamLogo?.startsWith("data:")
             // eslint-disable-next-line @next/next/no-img-element
@@ -204,8 +217,8 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
 
         {/* name */}
         {show("name") && <div style={{ position: "absolute", left: 4.5 * U, right: 24 * U, bottom: 4 * U, display: "flex", flexDirection: "column", lineHeight: 1, textShadow: "0 2px 6px rgba(0,0,0,.7)" }}>
-          <span style={{ fontSize: 5.2 * U, fontWeight: 700, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: 0.8, color: "#d7deea" }}>{p.first}</span>
-          <span style={{ fontSize: (p.last.length > 11 ? 12 * 11 / p.last.length : 12) * U, fontWeight: 800, lineHeight: 0.95, textTransform: "uppercase" }}>{p.last}</span>
+          <span style={{ fontSize: 5.2 * U, fontFamily: nameF.family, fontWeight: nameF.key === "barlow" ? 700 : nameF.weight, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: 0.8, color: "#d7deea" }}>{p.first}</span>
+          <span style={{ fontSize: (p.last.length > 11 ? 12 * 11 / p.last.length : 12) * U, fontFamily: nameF.family, fontWeight: nameF.weight, lineHeight: 0.95, textTransform: "uppercase" }}>{p.last}</span>
           {p.rookie && (
             <span style={{ alignSelf: "flex-start", marginTop: 1.6 * U, padding: `${0.9 * U}px ${5 * U}px ${0.9 * U}px ${3 * U}px`, fontSize: 4.2 * U, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase", color: "#3a2a00", textShadow: "none",
               backgroundImage: "linear-gradient(135deg, #a77a00, #ffe27a 40%, #d4a017 60%, #fff3b0 80%, #b8860b)" }}>Rookie edition</span>
@@ -213,7 +226,7 @@ export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = C
         </div>}
         {show("name") && <div style={{ position: "absolute", right: 3 * U, bottom: 2.2 * U, display: "flex", fontSize: 3 * U, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.55)", textTransform: "uppercase" }}>{p.setLabel}</div>}
       </div>
-      {frameOverlay(tier, W, H, show("frame"))}
+      {frameOverlay(tier, W, H, show("frame"), custom)}
     </div>
   );
 }
@@ -231,6 +244,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   const H = Math.round(W * 1.4), U0 = W / 100;
   const U = U0 * backScale(p); // body sizes shrink when there's more to fit; the frame and header keep U0
   const tier = p.dev ?? 0;
+  const nameF = cardFont(p.layout?.nameFont ?? "barlow"), numF = p.layout && p.layout.numFont !== "art" ? cardFont(p.layout.numFont) : null; // card builder fonts
   const muted = "#9aa6bd";
   const cell = (label: string, value: string | number, hi = false, key?: string) => (
     <div key={key ?? label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", width: "30%", paddingBottom: 0.6 * U, borderBottom: "1px solid rgba(255,255,255,.08)" }}>
@@ -256,14 +270,14 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
   );
   const cells = [cell("HT", p.height || "—"), cell("WT", p.weight || "—"), cell("AGE", p.age), ...p.stats.map((st) => cell(st.abbr, st.value, st.value >= 90, st.abbr + st.label))];
   return (
-    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0, !p.layout || p.layout.frame) }}>
+    <div style={{ width: W, height: H, display: "flex", borderRadius: 1.9 * U0, ...frameStyle(tier, U0, !p.layout || p.layout.frame, p.layout?.customFrame && p.frameArt?.startsWith("data:") ? { inset: p.layout.frameInset } : undefined) }}>
       <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%", height: "100%", borderRadius: 0.8 * U0, overflow: "hidden", color: "#fff", fontFamily: "Barlow Condensed",
         backgroundImage: `linear-gradient(180deg, ${mix(p.primary, "#0a0f18", 0.55)} 0%, #0a0f18 32%, #0a0f18 100%)` }}>
         {/* header: name, team line, overall */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: `${3.2 * U0}px ${4 * U0}px ${2.6 * U0}px`, borderBottom: `${0.6 * U0}px solid ${p.secondary}` }}>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-            <span style={{ fontSize: 4.4 * U0, fontWeight: 700, color: "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
-            <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U0, fontWeight: 800, textTransform: "uppercase", lineHeight: 0.95 }}>{p.last}</span>
+            <span style={{ fontSize: 4.4 * U0, fontFamily: nameF.family, fontWeight: nameF.key === "barlow" ? 700 : nameF.weight, color: "#d7deea", textTransform: "uppercase", letterSpacing: 0.8 }}>{p.first}</span>
+            <span style={{ fontSize: (p.last.length > 13 ? 9.4 * 13 / p.last.length : 9.4) * U0, fontFamily: nameF.family, fontWeight: nameF.weight, textTransform: "uppercase", lineHeight: 0.95 }}>{p.last}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 1.6 * U0, marginTop: 1.8 * U0, fontSize: 4 * U0, fontWeight: 700, color: "#c3cde0" }}>
               {p.teamLogo?.startsWith("data:")
                 // eslint-disable-next-line @next/next/no-img-element
@@ -273,7 +287,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ fontSize: 14 * U0, fontWeight: 800, lineHeight: 0.9, color: p.ovr >= 99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
+            <span style={{ fontSize: 14 * U0, fontFamily: numF?.family ?? "Barlow Condensed", fontWeight: numF?.weight ?? 800, lineHeight: 0.9, color: p.ovr >= 99 ? "#ffd54a" : "#fff" }}>{p.ovr}</span>
             <span style={{ fontSize: 3.6 * U0, fontWeight: 800, letterSpacing: 1.2, color: "#c3cde0" }}>OVR</span>
           </div>
         </div>
@@ -295,7 +309,7 @@ export function cardBackNode(p: PlayerCardProps, W = CARD_W) {
           <span style={{ marginTop: "auto", fontSize: 3.6 * U, fontWeight: 700, color: muted }}>{`${p.college || "No college"} · ${p.draft}`}</span>
         </div>
       </div>
-      {frameOverlay(tier, W, H, !p.layout || p.layout.frame)}
+      {frameOverlay(tier, W, H, !p.layout || p.layout.frame, p.layout?.customFrame && p.frameArt?.startsWith("data:") ? p.frameArt : undefined)}
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { cardFonts, cardNode, preloadOvrArt, withLogo, xfGems } from "@/lib/disc
 import { cardArtFor } from "@/lib/discord/cardArtLoad";
 import { getLeagueData } from "@/lib/league/load";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
+import { cardFramePath, signedCardArt } from "@/lib/cardArtStore";
+import { imageDataUrl } from "@/lib/discord/cardImage";
 import { cardProps } from "@/lib/league/cardProps";
 
 export const runtime = "nodejs";
@@ -25,7 +27,12 @@ export async function GET(req: Request) {
   const [arts, layouts] = await Promise.all([Promise.all(players.map((p) => cardArtFor(slug, p))), leagueCardLayouts(slug)]);
   const n = players.length;
   await Promise.all([xfGems(), preloadOvrArt(players.map((p) => ({ ovr: p.ovr, pos: p.pos })))]);
-  const props = await Promise.all(players.map((p) => withLogo({ ...cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), layout: layouts.get(p.id) })));
+  const frameOf = async (id: number) => {
+    if (!layouts.get(id)?.customFrame) return undefined;
+    const u = await signedCardArt(slug, id, 300, cardFramePath);
+    return u ? (await imageDataUrl(u)) ?? undefined : undefined;
+  };
+  const props = await Promise.all(players.map(async (p) => withLogo({ ...cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), layout: layouts.get(p.id), frameArt: await frameOf(p.id) })));
   return new ImageResponse(
     (
       <div style={{ display: "flex", gap: GAP, padding: PAD, backgroundColor: "#070a14", width: n * W + (n - 1) * GAP + 2 * PAD, height: Math.round(W * 1.4) + 2 * PAD }}>

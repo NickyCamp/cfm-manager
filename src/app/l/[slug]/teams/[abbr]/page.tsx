@@ -13,7 +13,7 @@ import { CountUp } from "@/components/league/CountUp";
 import { StaticCard } from "@/components/league/CardFront";
 import { CardStack } from "@/components/league/CardStack";
 import { cardProps } from "@/lib/league/cardProps";
-import { canSeeCardArt, signedCardArtFor } from "@/lib/cardArtStore";
+import { canSeeCardArt, cardFramePath, signedCardArtFor } from "@/lib/cardArtStore";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
 import { headshotUrl } from "@/lib/league/headshots";
 import { CapGauge } from "@/components/league/CapGauge";
@@ -105,7 +105,9 @@ async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: Leagu
     viewer ? signedCardArtFor(slug, roster.map((p) => p.id)) : Promise.resolve(new Map<number, string>()),
     leagueCardLayouts(slug),
   ]);
-  const card = (p: Player) => ({ ...cardProps(d, slug, p, team, art.get(p.id) ?? (viewer ? headshotUrl(p) : undefined)), layout: layouts.get(p.id) });
+  const framed = roster.filter((p) => layouts.get(p.id)?.customFrame).map((p) => p.id);
+  const frames = viewer && framed.length ? await signedCardArtFor(slug, framed, cardFramePath) : new Map<number, string>();
+  const card = (p: Player) => ({ ...cardProps(d, slug, p, team, art.get(p.id) ?? (viewer ? headshotUrl(p) : undefined)), layout: layouts.get(p.id), frameArt: frames.get(p.id) });
   const top = [...active].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
   return (
     <>

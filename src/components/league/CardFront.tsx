@@ -3,7 +3,7 @@ import type React from "react";
 // cards in the team binder and top-players stack. No hooks: works on the server.
 import type { CardStat, SeasonItem } from "@/lib/league/cardStats";
 import { logoVar } from "@/lib/league/logos";
-import { layoutClasses, type CardLayout } from "@/lib/league/cardLayout";
+import { layoutClasses, layoutStyle, type CardLayerKey, type CardLayout } from "@/lib/league/cardLayout";
 
 export type PlayerCardProps = {
   first: string;
@@ -27,7 +27,8 @@ export type PlayerCardProps = {
   art?: string;
   cutout?: boolean;      // art is a transparent headshot: show it over the number backdrop
   abilities: { title: string; tier: string }[];
-  layout?: CardLayout;   // card builder: which built-in layers show (default: all)
+  layout?: CardLayout;   // card builder: which built-in layers show (default: all), fonts, custom border
+  frameArt?: string;     // URL of this card's uploaded border (layout.customFrame), when the viewer may see it
   stats: CardStat[];
   // Card back extras (player page and the Discord bot; not needed for front-only cards):
   season?: { year: number; items: SeasonItem[] };
@@ -67,7 +68,8 @@ export const initialsSize = (n: number) => (n <= 1 ? 0.5 : n === 2 ? 0.42 : n ==
 
 export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos" | "jersey" | "ovr" | "rookie" | "teamAbbr" | "teamLogo" | "art" | "cutout" | "abilities" | "layout">) {
   const L = p.layout;
-  const show = (k: keyof CardLayout) => !L || L[k];
+  const show = (k: CardLayerKey) => !L || L[k];
+  const numText = !!L && L.numFont !== "art"; // chosen font instead of the rating art (same colors: white, gold at 99)
   return (
     <div className="pcard-inner">
       <div className={`pcard-art ${p.art ? "has-img" : ""} ${p.art && p.cutout ? "cutout" : ""}`}>
@@ -79,10 +81,10 @@ export function CardFrontInner(p: Pick<PlayerCardProps, "first" | "last" | "pos"
       <div className="pcard-side" style={{ "--abk": abScale(p.abilities.length) } as React.CSSProperties}>
         {show("ovr") && <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {ovrArt(p.ovr) ? <img className="ovr-img" src={ovrArt(p.ovr)!} alt={String(p.ovr)} /> : <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>}
+          {ovrArt(p.ovr) && !numText ? <img className="ovr-img" src={ovrArt(p.ovr)!} alt={String(p.ovr)} /> : <b className={`ovr ${p.ovr >= 99 ? "ovr-99" : ""}`}>{p.ovr}</b>}
           <span className={`ovr-rule ${p.ovr >= 99 ? "gold" : ""}`} aria-hidden />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {posArt(p.pos, p.ovr >= 99) ? <img className="pos-img" src={posArt(p.pos, p.ovr >= 99)!} alt={p.pos} /> : <span className="pos">{p.pos}</span>}
+          {posArt(p.pos, p.ovr >= 99) && !numText ? <img className="pos-img" src={posArt(p.pos, p.ovr >= 99)!} alt={p.pos} /> : <span className={`pos ${p.ovr >= 99 ? "pos-99" : ""}`}>{p.pos}</span>}
         </>}
         {show("team") && <span className={`team${p.teamLogo ? " has-logo" : ""}`} style={logoVar(p.teamLogo)}>{p.teamAbbr}</span>}
         {show("abilities") && sortAbilities(p.abilities).map((a) => (
@@ -165,9 +167,9 @@ export function CardBackInner(p: PlayerCardProps) {
 
 /** A non-interactive card (front only), e.g. a binder sleeve. */
 export function StaticCard(p: PlayerCardProps & { className?: string }) {
-  const style = { "--tc1": p.primary, "--tc2": p.secondary } as React.CSSProperties;
+  const style = { "--tc1": p.primary, "--tc2": p.secondary, ...layoutStyle(p.layout, p.frameArt) } as React.CSSProperties;
   return (
-    <div className={`pcard static t-${CARD_TIER[p.dev] ?? "normal"} ${layoutClasses(p.layout)} ${p.className ?? ""}`} style={style}>
+    <div className={`pcard static t-${CARD_TIER[p.dev] ?? "normal"} ${layoutClasses(p.layout, p.frameArt)} ${p.className ?? ""}`} style={style}>
       <div className="pcard-face pcard-front"><CardFrontInner {...p} /></div>
     </div>
   );
