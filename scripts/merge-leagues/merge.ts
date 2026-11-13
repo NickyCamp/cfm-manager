@@ -19,6 +19,8 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
 const apply = process.env.MODE === "apply";
+// Optional: only this EA league id (e.g. 831660 for NCL).
+const only = Number(process.env.EA_LEAGUE_ID) || 0;
 const db = createClient(url, key, { auth: { persistSession: false } });
 
 type League = { id: string; slug: string; name: string; ea_league_id: number; console: string; owner_id: string; created_at: string };
@@ -55,7 +57,7 @@ async function main() {
 
   let found = 0;
   for (const [eaId, list] of groups) {
-    if (list.length < 2) continue;
+    if (list.length < 2 || (only && eaId !== only)) continue;
     found++;
     const [keep, ...dups] = list; // oldest first
     console.log(`\nEA league ${eaId}: keeping /l/${keep.slug} (${keep.console}, ${keep.name}, added ${keep.created_at})`);
