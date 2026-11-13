@@ -3,7 +3,9 @@
 // this file changes on main (scripts/discord/register.ts), so editing this list
 // is all it takes to add or change a command.
 
-const STRING = 3, CHANNEL = 7, INTEGER = 4;
+import { ALERT_EVENTS } from "./api";
+
+const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
 
 // Where a command can be used. Server setup commands need the bot added to the
@@ -30,6 +32,16 @@ export const COMMANDS = [
     default_member_permissions: MANAGE_SERVER,
     ...SERVER_ONLY,
     options: [{ type: CHANNEL, name: "channel", description: "Where to post updates", required: false, channel_types: [0, 5] }],
+  },
+  {
+    name: "alertvideo",
+    description: "Attach a video to an update post (e.g. when a team goes over the cap); no video = remove",
+    default_member_permissions: MANAGE_SERVER,
+    ...SERVER_ONLY,
+    options: [
+      { type: STRING, name: "event", description: "When to post it", required: true, choices: Object.entries(ALERT_EVENTS).map(([value, name]) => ({ name, value })) },
+      { type: ATTACHMENT, name: "video", description: "The video (MP4/MOV/WebM, up to 10 MB); leave empty to remove", required: false },
+    ],
   },
   {
     name: "myleague",

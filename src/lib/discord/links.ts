@@ -2,8 +2,9 @@
 //   { guildId, channelId?, linkedBy, linkedAt }
 // One league per server and one server per league; linking a server moves it.
 import { supabaseAdmin } from "@/lib/supabase/server";
+import type { AlertEvent, AlertVideo } from "./api";
 
-export type DiscordSettings = { guildId: string; channelId?: string | null; linkedBy?: string; linkedAt?: string };
+export type DiscordSettings = { guildId: string; channelId?: string | null; linkedBy?: string; linkedAt?: string; videos?: Partial<Record<AlertEvent, AlertVideo>> };
 export type LinkedLeague = { id: string; slug: string; name: string; is_public: boolean; settings: Record<string, unknown> };
 
 export async function leagueForGuild(guildId: string): Promise<LinkedLeague | null> {

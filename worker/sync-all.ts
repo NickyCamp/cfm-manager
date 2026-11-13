@@ -27,7 +27,7 @@ import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
-import { postToChannel } from "../src/lib/discord/api";
+import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -41,7 +41,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { channelId?: string | null } } | null;
+  settings: { discord?: { channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> } } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -53,8 +53,19 @@ async function postDiscordUpdates(lg: League, prev: LeagueData | null, data: Lea
   if (!channel || !token) return;
   try {
     const msgs = leagueChanges(prev, data, lg.name, APP_URL, lg.slug);
+    const videos = lg.settings?.discord?.videos || {};
+    const files = new Map<string, Buffer | null>();
     for (const m of msgs) {
-      const err = await postToChannel(token, channel, m);
+      // A server's /alertvideo clip goes along with that kind of post.
+      const v = m.event ? videos[m.event] : undefined;
+      let file;
+      if (v) {
+        if (!files.has(v.path)) files.set(v.path, await download(v.path));
+        const data = files.get(v.path);
+        if (data) file = { data, filename: v.filename, contentType: v.contentType };
+        else log(`- Discord: the ${m.event} video is missing from storage; posted without it.`);
+      }
+      const err = await postToChannel(token, channel, m, file);
       if (err) { log(`- Discord: ${err}`); return; }
     }
     if (msgs.length) log(`- Posted ${msgs.length} update${msgs.length === 1 ? "" : "s"} to Discord.`);

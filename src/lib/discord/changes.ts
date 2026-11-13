@@ -19,7 +19,7 @@ export function leagueChanges(prev: LeagueData | null, next: LeagueData, leagueN
   // 1. The league advanced.
   const moved = prev.season.year !== next.season.year || prev.season.stage !== next.season.stage || prev.season.week !== next.season.week;
   if (moved) {
-    out.push({ embeds: [{ color: BRAND, title: `${leagueName} advanced to ${next.season.year} ${next.season.title}`, url: url(), footer }] });
+    out.push({ event: "advance", embeds: [{ color: BRAND, title: `${leagueName} advanced to ${next.season.year} ${next.season.title}`, url: url(), footer }] });
   }
   const sameYear = prev.season.year === next.season.year;
 
@@ -45,7 +45,7 @@ export function leagueChanges(prev: LeagueData | null, next: LeagueData, leagueN
   // 3. Roster moves (only within a season; at the new league year every deal ticks down).
   if (sameYear) {
     const before = new Map(prev.players.map((p) => [p.id, p]));
-    const moves: { p: Player; line: string }[] = [];
+    const moves: { p: Player; line: string; trade?: boolean }[] = [];
     let drafted = 0;
     const who = (p: Player) => `**${p.first} ${p.last}** (${p.pos}, ${p.ovr}${p.dev ? ` ${DEV_LABEL[p.dev]}` : ""})`;
     const deal = (p: Player) => `${p.contract.length} yrs, ${money(p.contract.salary + p.contract.bonus)}`;
@@ -60,7 +60,7 @@ export function leagueChanges(prev: LeagueData | null, next: LeagueData, leagueN
       if (o.team !== p.team) {
         if (!p.team) { if (!o.ps) moves.push({ p, line: `✂️ ${abbr(o.team)} released ${who(p)}` }); }
         else if (!o.team) { if (!p.ps) moves.push({ p, line: `✍️ ${abbr(p.team)} signed ${who(p)}: ${deal(p)}` }); }
-        else moves.push({ p, line: `🔁 ${who(p)} traded ${abbr(o.team)} → ${abbr(p.team)}` });
+        else moves.push({ p, trade: true, line: `🔁 ${who(p)} traded ${abbr(o.team)} → ${abbr(p.team)}` });
         continue;
       }
       if (!p.team || p.ps) continue;
@@ -73,14 +73,14 @@ export function leagueChanges(prev: LeagueData | null, next: LeagueData, leagueN
       const shown = moves.slice(0, MAX_MOVES).map((m) => m.line);
       if (moves.length > MAX_MOVES) shown.push(`…and ${moves.length - MAX_MOVES} more`);
       if (drafted) shown.push(`🎓 ${drafted} rookie${drafted === 1 ? "" : "s"} drafted · [draft](${url("/draft")})`);
-      out.push({ embeds: [{ color: BRAND, title: "Roster moves", url: url("/cap"), description: shown.join("\n"), footer }] });
+      out.push({ event: moves.some((m) => m.trade) ? "trade" : undefined, embeds: [{ color: BRAND, title: "Roster moves", url: url("/cap"), description: shown.join("\n"), footer }] });
     }
   }
 
   // 4. Teams that just went over the cap.
   const wasOver = new Set(prev.teams.filter((t) => t.cap.available < 0).map((t) => t.id));
   const over = next.teams.filter((t) => t.cap.available < 0 && !wasOver.has(t.id));
-  for (const t of over) out.push({ embeds: [overCap(t, url, footer)] });
+  for (const t of over) out.push({ event: "overcap", embeds: [overCap(t, url, footer)] });
 
   return out;
 }

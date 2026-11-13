@@ -14,7 +14,8 @@ import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
 import { cardImageUrl } from "./cardLink";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
-import { BRAND, EPHEMERAL, hexColor, postToChannel, type Embed, type Message } from "./api";
+import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
@@ -27,7 +28,7 @@ export type Interaction = {
   member?: { user: { id: string; username: string }; permissions?: string };
   user?: { id: string; username: string };   // set instead of member in DMs
   context?: number;                           // 0 server, 1 bot DM, 2 group DM / other DM
-  data?: { name: string; options?: Option[] };
+  data?: { name: string; options?: Option[]; resolved?: { attachments?: Record<string, { url: string; filename: string; size: number; content_type?: string }> } };
 };
 
 const userId = (i: Interaction) => i.member?.user.id || i.user?.id || "";
@@ -115,7 +116,7 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
   const name = i.data?.name || "";
   if (name === "myleague") return myLeague(i, base);
-  if (name === "link" || name === "unlink" || name === "notify") {
+  if (name === "link" || name === "unlink" || name === "notify" || name === "alertvideo") {
     if (!i.guild_id || i.context !== undefined && i.context !== 0) return reply("That command sets up a server. In DMs, use `/myleague` instead.");
     if (name === "link") return link(i, base);
     if (name === "unlink") return unlink(i);
@@ -128,9 +129,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       : `No league set. Run \`/myleague league:<web address>\` to pick yours (the part after /l/ in ${base}/l/…).`);
   }
   const { lg, via } = found;
-  if (name === "notify") {
+  if (name === "notify" || name === "alertvideo") {
     if (via !== "server") return reply("Link this server first with `/link league:<web address>`.");
-    return notify(i, lg);
+    return name === "notify" ? notify(i, lg) : alertVideo(i, lg);
   }
 
   const d = await getLeagueData(lg.slug);
@@ -255,6 +256,52 @@ async function notify(i: Interaction, lg: LinkedLeague): Promise<Message> {
   }
   await setDiscord(lg.id, { ...cur, channelId: String(channel) });
   return reply(`Updates for **${lg.name}** will post in <#${channel}>.`);
+}
+
+async function alertVideo(i: Interaction, lg: LinkedLeague): Promise<Message> {
+  if (!canManage(i)) return reply("Only people with **Manage Server** can change alert videos.");
+  const event = String(opt(i, "event")) as AlertEvent;
+  if (!(event in ALERT_EVENTS)) return reply("Pick one of the listed events.");
+  const label = ALERT_EVENTS[event].toLowerCase();
+  const cur = discordOf(lg)!;
+  const videos = { ...(cur.videos || {}) };
+  const db = supabaseAdmin().storage.from("league-data");
+  const attId = opt(i, "video");
+
+  if (!attId) {
+    const old = videos[event];
+    if (!old) return reply(`No video is set for when ${label}.`);
+    delete videos[event];
+    await setDiscord(lg.id, { ...cur, videos });
+    await db.remove([old.path]).catch(() => {});
+    return reply(`Removed the video for when ${label}.`);
+  }
+
+  const att = i.data?.resolved?.attachments?.[String(attId)];
+  if (!att) return reply("Couldn't read that attachment. Try uploading it again.");
+  const type = (att.content_type || "").split(";")[0];
+  if (!type.startsWith("video/")) return reply("That isn't a video file. Use an MP4, MOV or WebM.");
+  if (att.size > MAX_VIDEO_BYTES) return reply(`That video is ${(att.size / 1048576).toFixed(1)} MB. Discord lets bots post up to 10 MB, so trim or compress it first.`);
+  const res = await fetch(att.url);
+  if (!res.ok) return reply("Couldn't download the video from Discord. Try again.");
+  const data = Buffer.from(await res.arrayBuffer());
+  const ext = (att.filename.match(/\.([a-z0-9]{2,4})$/i)?.[1] || "mp4").toLowerCase();
+  const path = `${lg.slug}/discord/${event}.${ext}`;
+  const up = await db.upload(path, data, { contentType: type, upsert: true });
+  if (up.error) return reply(`Couldn't save the video: ${up.error.message}`);
+  const old = videos[event];
+  if (old && old.path !== path) await db.remove([old.path]).catch(() => {});
+  videos[event] = { path, filename: att.filename, contentType: type, size: data.length, setAt: new Date().toISOString() };
+  await setDiscord(lg.id, { ...cur, videos });
+
+  // Show it once in the update channel so everyone sees what it'll look like.
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (cur.channelId && token) {
+    const err = await postToChannel(token, cur.channelId, { embeds: [{ color: BRAND, title: `🎬 New alert video: ${label}`, description: "This plays with that update from now on." }] }, { data, filename: att.filename, contentType: type });
+    if (err) return reply(`Saved, but the test post failed: ${err}`);
+    return reply(`Saved. It'll post in <#${cur.channelId}> every time ${label}. I posted it there once so you can see it.`);
+  }
+  return reply(`Saved. It'll post every time ${label}, once updates are on: run \`/notify channel:#channel\`.`);
 }
 
 // ---------- embeds ----------
