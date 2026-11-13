@@ -12,11 +12,11 @@ import { gameLeaders, matchupSides, rankBar, type MatchSide } from "./matchup";
 const W = 1000;
 const BG = "#070a14", PANEL = "#0d1324", LINE = "#222a44", INK = "#eceff8", SOFT = "#8a93b2", GOLD = "#ffd54a";
 
-async function logoOf(t: Team) {
+export async function logoOf(t: Team) {
   return (await withLogo({ teamLogo: teamLogo(t) })).teamLogo;
 }
 
-function Badge({ t, logo, size }: { t: Team; logo?: string; size: number }) {
+export function Badge({ t, logo, size }: { t: Team; logo?: string; size: number }) {
   if (logo) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={logo} width={size} height={size} alt="" style={{ width: size, height: size, objectFit: "contain" }} />;

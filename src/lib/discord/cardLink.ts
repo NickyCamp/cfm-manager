@@ -28,6 +28,12 @@ export function matchupImageUrl(base: string, slug: string, gameId: number) {
   return `${base}/api/discord/matchup?l=${encodeURIComponent(slug)}&g=${gameId}&e=${exp}&s=${sig(slug, key, exp)}`;
 }
 
+/** The /stats chart: a category, league-wide or one team. */
+export function statsImageUrl(base: string, slug: string, cat: string, teamId?: number) {
+  const exp = expiry(), key = `s${cat}-${teamId ?? ""}`;
+  return `${base}/api/discord/stats?l=${encodeURIComponent(slug)}&c=${cat}${teamId != null ? `&t=${teamId}` : ""}&e=${exp}&s=${sig(slug, key, exp)}`;
+}
+
 /** key: the player id, or the pack's ids joined with "-". */
 export function checkCardLink(slug: string, key: string | number, exp: number, s: string) {
   if (!slug || !key || !exp || exp * 1000 < Date.now()) return false;

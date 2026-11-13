@@ -55,7 +55,7 @@ export const STAT_CATS: StatCat[] = [
   { key: "punt_avg", label: "Punting average", value: (t) => (t.pnt ? t.pnty / t.pnt : 0), fmt: one, detail: (t) => `${t.pnt} punts, ${t.pnt20} inside 20`, qualifies: (t) => t.pnt >= 15, minNote: "15+ punts" },
 ];
 
-export type StatRow = { rank: number; player: Player | undefined; team: number; value: string; detail?: string };
+export type StatRow = { rank: number; player: Player | undefined; team: number; value: string; raw: number; detail?: string };
 
 /** The top `limit` for one category, optionally one team's players only. Ties share a rank. */
 export function statLeaders(d: LeagueData, cat: StatCat, teamId?: number, limit = 10): { rows: StatRow[]; total: number } {
@@ -69,7 +69,7 @@ export function statLeaders(d: LeagueData, cat: StatCat, teamId?: number, limit 
   const rows: StatRow[] = [];
   list.slice(0, limit).forEach((x, i) => {
     const rank = i > 0 && Math.abs(list[i - 1].v - x.v) < 1e-9 ? rows[i - 1].rank : i + 1;
-    rows.push({ rank, player: ps.get(x.id), team: x.t.team, value: (cat.fmt || n)(x.v), detail: cat.detail?.(x.t) });
+    rows.push({ rank, player: ps.get(x.id), team: x.t.team, value: (cat.fmt || n)(x.v), raw: x.v, detail: cat.detail?.(x.t) });
   });
   return { rows, total: list.length };
 }

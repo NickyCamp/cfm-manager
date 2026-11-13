@@ -12,7 +12,7 @@ import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
-import { cardImageUrl, matchupImageUrl, packImageUrl } from "./cardLink";
+import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
@@ -202,7 +202,12 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const v = opt(i, "team");
       const t = v != null && v !== "" ? findTeam(d, v) : undefined;
       if (v != null && v !== "" && !t) return reply("No team by that name.");
-      return { embeds: [statsEmbed(d, cat, t, url, footer)] };
+      // The chart picture carries the list; the text version stays as the caption-less fallback for preview.ts.
+      const scope = t ? `${t.city} ${t.name}` : "League";
+      return { embeds: [{
+        title: `${scope} leaders: ${cat.label}`, url: url("/leaders"), color: t ? hexColor(t.primary) : BRAND, footer,
+        image: { url: statsImageUrl(base, lg.slug, cat.key, t?.id) },
+      }] };
     }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
@@ -705,4 +710,4 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
 }
 
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
-export const _preview = { twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
+export const _preview = { statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };

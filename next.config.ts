@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/discord/card": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
     "/api/discord/pack": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
+    "/api/discord/stats": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
     "/api/discord/matchup": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
   },
 };
