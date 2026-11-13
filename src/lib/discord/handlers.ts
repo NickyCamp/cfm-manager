@@ -12,7 +12,9 @@ import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
-import { cardImageUrl } from "./cardLink";
+import { cardImageUrl, packImageUrl } from "./cardLink";
+import { ODDS, PACK_COOLDOWN_MS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack } from "./packs";
+import { loadPackStats, savePackStats } from "./packStore";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -25,8 +27,8 @@ export type Interaction = {
   application_id: string;
   token: string;
   guild_id?: string;
-  member?: { user: { id: string; username: string }; permissions?: string };
-  user?: { id: string; username: string };   // set instead of member in DMs
+  member?: { user: { id: string; username: string; global_name?: string | null }; permissions?: string };
+  user?: { id: string; username: string; global_name?: string | null };   // set instead of member in DMs
   context?: number;                           // 0 server, 1 bot DM, 2 group DM / other DM
   data?: { name: string; options?: Option[]; resolved?: { attachments?: Record<string, { url: string; filename: string; size: number; content_type?: string }> } };
 };
@@ -171,6 +173,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const w = Number(opt(i, "week")) || 0;
       return { embeds: [twsEmbed(d, t, url, footer, w || undefined)] };
     }
+    case "pack": return openPackReply(i, lg, d, base, url, footer);
+    case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
     case "scores": {
@@ -302,6 +306,76 @@ async function alertVideo(i: Interaction, lg: LinkedLeague): Promise<Message> {
     return reply(`Saved. It'll post in <#${cur.channelId}> every time ${label}. I posted it there once so you can see it.`);
   }
   return reply(`Saved. It'll post every time ${label}, once updates are on: run \`/notify channel:#channel\`.`);
+}
+
+// ---------- packs ----------
+
+const RARITY_COLOR = [0x9a6a3a, 0xc9d1e0, 0xf2c200, 0xe0115f];
+const displayName = (i: Interaction) => {
+  const u = i.member?.user || i.user;
+  return u?.global_name || u?.username || "Someone";
+};
+
+async function openPackReply(i: Interaction, lg: LinkedLeague, d: LeagueData, base: string, url: Url, footer: Footer): Promise<Message> {
+  const uid = userId(i);
+  if (!uid) return reply("Couldn't tell who you are.");
+  const stats = await loadPackStats(lg.slug);
+  const me = stats.users[uid];
+  const wait = me ? Date.parse(me.last) + PACK_COOLDOWN_MS - Date.now() : 0;
+  if (wait > 0) {
+    const mins = Math.ceil(wait / 60000);
+    return reply(`Your next pack is ready in ${mins >= 60 ? "1 hr" : `${mins} min`}. Check \`/packs\` for the leaderboard.`);
+  }
+  const cards = openPack(d);
+  if (!cards.length) return reply("This league has no players to pull yet.");
+  const pts = cards.map(cardPoints);
+  const total = pts.reduce((a, b) => a + b, 0);
+  const top = cards[cards.length - 1];
+  const name = displayName(i);
+  const u = stats.users[uid] || { name, points: 0, packs: 0, best: 0, legendaries: 0, last: "" };
+  u.name = name;
+  u.points += total;
+  u.packs += 1;
+  u.legendaries += cards.filter((c) => c.dev === 3).length;
+  if (total > u.best) { u.best = total; u.bestPull = `${fullName(top)} (${RARITY[top.dev].name}, ${top.ovr})`; }
+  u.last = new Date().toISOString();
+  stats.users[uid] = u;
+  await savePackStats(lg.slug, stats);
+  const rank = Object.values(stats.users).filter((x) => x.points > u.points).length + 1;
+
+  const lines = cards.map((p, k) => {
+    const r = RARITY[p.dev];
+    return `${r.emoji} **${r.name}** · ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · ${p.ovr} · ${teamOf(d, p.team)?.abbr || "FA"} · **+${pts[k]}**`;
+  });
+  return {
+    embeds: [{
+      title: `${name} opened a pack: ${luckLabel(total)}`,
+      color: RARITY_COLOR[top.dev] ?? BRAND,
+      description: `${lines.join("\n")}\n\nPack total: **${total} pts**`,
+      image: { url: packImageUrl(base, lg.slug, cards.map((c) => c.id)) },
+      footer: { text: `${name}: ${u.points} pts from ${u.packs} pack${u.packs === 1 ? "" : "s"} · #${rank} in ${footer.text.split(" · ")[0]} · next pack in 1 hr` },
+    }],
+  };
+}
+
+async function packsLeaderboard(i: Interaction, lg: LinkedLeague, d: LeagueData, footer: Footer): Promise<Embed> {
+  const stats = await loadPackStats(lg.slug);
+  const rows = Object.entries(stats.users).sort(([, a], [, b]) => b.points - a.points);
+  const medal = ["🥇", "🥈", "🥉"];
+  const board = rows.slice(0, 10).map(([, u], k) => `${medal[k] || `**${k + 1}.**`} ${u.name}: **${u.points} pts** · ${u.packs} pack${u.packs === 1 ? "" : "s"} · best ${u.best}${u.legendaries ? ` · ${u.legendaries}× 🟥` : ""}`);
+  const uid = userId(i);
+  const meIdx = rows.findIndex(([id]) => id === uid);
+  const me = meIdx >= 0 ? rows[meIdx][1] : null;
+  const counts = [0, 1, 2, 3].map((dev) => d.players.filter((p) => !p.gone && p.team && !p.ps && p.dev === dev).length);
+  const odds = RARITY.map((r, k) => `${r.emoji} ${r.name} (${DEV_LABEL[k]}): ${(ODDS[k] / 10).toFixed(0)}% per card · ${r.points} pts · ${counts[k]} in the set`).join("\n");
+  return {
+    title: "Pack leaderboard", color: BRAND, footer,
+    description: board.join("\n") || "Nobody has opened a pack yet. Run `/pack`!",
+    fields: [
+      ...(me ? [{ name: "You", value: `#${meIdx + 1} · ${me.points} pts · ${me.packs} packs · best pack ${me.best}${me.bestPull ? ` (${me.bestPull})` : ""}` }] : []),
+      { name: `Odds (${PACK_SIZE} cards a pack, one pack per hour)`, value: `${odds}\n-# Each card also gets +1 per 5 overall over 70 (up to +5), and 99s count double.` },
+    ],
+  };
 }
 
 // ---------- embeds ----------

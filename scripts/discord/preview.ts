@@ -6,6 +6,7 @@ import { gunzipSync } from "node:zlib";
 import { _preview as P } from "../../src/lib/discord/handlers";
 import { leagueChanges } from "../../src/lib/discord/changes";
 import { tidy } from "../../src/lib/discord/api";
+import { openPack, cardPoints, luckLabel } from "../../src/lib/discord/packs";
 import { defaultScoresWeek } from "../../src/lib/league/derive";
 import type { LeagueData } from "../../src/lib/league/types";
 
@@ -41,6 +42,19 @@ import type { LeagueData } from "../../src/lib/league/types";
   show("playoffs", P.playoffsEmbed(d, url, footer));
   const w = defaultScoresWeek(d);
   show("scores", P.scoresEmbed(d, w.stage, w.week, url, footer));
+
+  // Pack odds on this league: 10,000 simulated packs.
+  const totals: number[] = []; const labels: Record<string, number> = {}; let leg = 0;
+  for (let k = 0; k < 10000; k++) {
+    const cards = openPack(d); const t = cards.reduce((a, c) => a + cardPoints(c), 0);
+    totals.push(t); labels[luckLabel(t)] = (labels[luckLabel(t)] || 0) + 1; leg += cards.filter((c) => c.dev === 3).length ? 1 : 0;
+  }
+  totals.sort((a, b) => a - b);
+  const pool = d.players.filter((p) => !p.gone && p.team && !p.ps);
+  console.log(`\n===== pack sim =====\nset by dev: ${[0, 1, 2, 3].map((v) => pool.filter((p) => p.dev === v).length).join(" / ")}`);
+  console.log(`avg ${(totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(1)} · median ${totals[5000]} · p90 ${totals[9000]} · p99 ${totals[9900]} · max ${totals[9999]} · packs with an X-Factor ${(leg / 100).toFixed(1)}%`);
+  console.log(JSON.stringify(labels));
+  console.log("sample:", openPack(d).map((c) => `${c.first} ${c.last} ${c.ovr} dev${c.dev} +${cardPoints(c)}`).join(" | "));
 
   // Fake a previous build to exercise the update messages.
   const prev: LeagueData = JSON.parse(JSON.stringify(d));

@@ -10,7 +10,6 @@ import type { PlayerCardProps } from "@/components/league/CardFront";
 import { sortAbilities, tierClass } from "@/components/league/CardFront";
 
 export const CARD_W = 750, CARD_H = 1050;
-const U = CARD_W / 100; // 1cqw
 
 // Border (dev trait) and ability medallion gradients, from globals.css.
 const FACE: Record<number, string> = {
@@ -40,7 +39,7 @@ const darken = (hex: string, k: number) => `rgb(${rgb(hex).map((v) => Math.round
 const alpha = (hex: string, a: number) => `rgba(${rgb(hex).join(",")},${a})`;
 
 let fonts: Promise<{ name: string; data: Buffer; weight: 700 | 800; style: "normal" }[]> | null = null;
-function loadFonts() {
+export function cardFonts() {
   fonts ??= Promise.all(([700, 800] as const).map(async (weight) => ({
     name: "Barlow Condensed",
     data: await readFile(path.join(process.cwd(), "assets/fonts", `barlow-condensed-latin-${weight}-normal.woff`)),
@@ -50,7 +49,7 @@ function loadFonts() {
   return fonts;
 }
 
-function AbilityName({ title }: { title: string }) {
+function AbilityName({ title, U }: { title: string; U: number }) {
   const words = title.replace(/[^A-Za-z0-9'& -]/g, " ").split(/[\s-]+/).filter(Boolean);
   const longest = Math.max(4, ...words.map((w) => w.length));
   const size = (Math.min(2.6, 18.5 / longest) - (words.length > 2 ? 0.2 : 0)) * U;
@@ -62,14 +61,16 @@ function AbilityName({ title }: { title: string }) {
 }
 
 /** art: a data: URL (or nothing for the jersey-number card). cutout: art is a transparent headshot. */
-export async function renderCard(p: PlayerCardProps, art?: string, cutout = false) {
+/** The card front as a Satori element, W pixels wide (5:7). art: a data: URL; cutout: art is a transparent headshot. */
+export function cardNode(p: PlayerCardProps, art?: string, cutout = false, W = CARD_W) {
+  const H = Math.round(W * 1.4), U = W / 100;
   const pad = 2.8 * U;
   const tier = p.dev ?? 0;
   const ovr99 = p.ovr >= 99;
   const badge = 13.5 * U;
-  const node = (
-    <div style={{ width: CARD_W, height: CARD_H, display: "flex", padding: pad, borderRadius: 14, backgroundImage: FACE[tier] }}>
-      <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 6, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
+  return (
+    <div style={{ width: W, height: H, display: "flex", padding: pad, borderRadius: 1.9 * U, backgroundImage: FACE[tier] }}>
+      <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", borderRadius: 0.8 * U, overflow: "hidden", backgroundColor: "#0a0f18", color: "#fff", fontFamily: "Barlow Condensed" }}>
         {/* art background */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: `linear-gradient(160deg, ${darken(p.primary, 0.85)} 0%, #0a0f18 75%)` }} />
         {(!art || cutout) && (
@@ -83,9 +84,9 @@ export async function renderCard(p: PlayerCardProps, art?: string, cutout = fals
         )}
         {art && (cutout
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={art} alt="" width={CARD_W} height={CARD_H} style={{ position: "absolute", left: -0.06 * (CARD_W - 2 * pad) - 0.02 * CARD_W, bottom: 0, width: (CARD_W - 2 * pad) * 1.04, height: (CARD_H - 2 * pad) * 1.04, objectFit: "cover", objectPosition: "50% 100%" }} />
+          ? <img src={art} alt="" width={W} height={H} style={{ position: "absolute", left: -0.06 * (W - 2 * pad) - 0.02 * W, bottom: 0, width: (W - 2 * pad) * 1.04, height: (H - 2 * pad) * 1.04, objectFit: "cover", objectPosition: "50% 100%" }} />
           // eslint-disable-next-line @next/next/no-img-element
-          : <img src={art} alt="" width={CARD_W} height={CARD_H} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />)}
+          : <img src={art} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />)}
         {/* shade for legibility */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(180deg, transparent 52%, rgba(5,8,14,.92) 86%)" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", backgroundImage: "linear-gradient(270deg, rgba(5,8,14,.55) 0%, transparent 26%)" }} />
@@ -102,7 +103,7 @@ export async function renderCard(p: PlayerCardProps, art?: string, cutout = fals
             const s = ABIL[tierClass(a.tier)] || ABIL.bronze;
             return (
               <div key={a.title} style={{ width: badge, height: badge, borderRadius: badge, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundImage: s.bg, color: s.color, textShadow: "none", boxShadow: "0 1px 4px rgba(0,0,0,.5)", border: `${0.5 * U}px solid rgba(255,255,255,.55)` }}>
-                <AbilityName title={a.title} />
+                <AbilityName title={a.title} U={U} />
               </div>
             );
           })}
@@ -121,8 +122,12 @@ export async function renderCard(p: PlayerCardProps, art?: string, cutout = fals
       </div>
     </div>
   );
-  return new ImageResponse(node, {
-    width: CARD_W, height: CARD_H, fonts: await loadFonts(),
+}
+
+/** The card front as a 750×1050 PNG. */
+export async function renderCard(p: PlayerCardProps, art?: string, cutout = false) {
+  return new ImageResponse(cardNode(p, art, cutout), {
+    width: CARD_W, height: CARD_H, fonts: await cardFonts(),
     headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },
   });
 }
