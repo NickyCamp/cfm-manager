@@ -12,11 +12,7 @@ import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
-import { signedCardArt } from "@/lib/cardArtStore";
-
-// Uploaded card art lives in a private bucket. Discord fetches the image when the message is
-// shown and keeps its own copy, so the link only has to last a while: a week.
-const ART_LINK_SECONDS = 7 * 24 * 3600;
+import { cardImageUrl } from "./cardLink";
 import { BRAND, EPHEMERAL, hexColor, postToChannel, type Embed, type Message } from "./api";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
@@ -146,9 +142,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const p = findPlayer(d, opt(i, "player"));
       if (!p) return reply("No player by that name. Pick one from the list as you type.");
       const embed = playerEmbed(d, p, url, footer);
-      // The league's own card art, when someone has uploaded it, shown big in place of the NFL.com headshot.
-      const art = await signedCardArt(lg.slug, p.id, ART_LINK_SECONDS);
-      if (art) { embed.image = { url: art }; delete embed.thumbnail; }
+      // The full trading card (uploaded art, else the headshot, else the jersey number), shown big.
+      embed.image = { url: cardImageUrl(base, lg.slug, p.id) };
+      delete embed.thumbnail;
       return { embeds: [embed] };
     }
     case "contract": {

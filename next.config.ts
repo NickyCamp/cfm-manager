@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Fonts read at runtime by the Discord card image route (next/og).
+  outputFileTracingIncludes: { "/api/discord/card": ["./assets/fonts/**"] },
 };
 
 export default nextConfig;
