@@ -1,0 +1,23 @@
+name: Fun fact preview (temporary)
+on:
+  push:
+    branches: [funfact-preview2]
+permissions:
+  contents: write
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          mkdir -p preview
+          npx tsx scripts/discord/_ff.ts > preview/ff.txt 2>&1 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview && git commit -m "preview output" && git push
