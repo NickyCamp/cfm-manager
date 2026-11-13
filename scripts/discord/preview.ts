@@ -32,7 +32,9 @@ import type { LeagueData } from "../../src/lib/league/types";
   show("player (FA)", P.playerEmbed(d, d.players.find((p) => !p.team && !p.gone) || top[1], url, footer));
   show("contract", P.contractEmbed(d, top[3], url, footer));
   show("cap league", P.leagueCapEmbed(d, url, footer));
-  show("cap team", P.teamCapEmbed(d, d.teams[0], url, footer));
+  show("cap team", P.teamCapEmbed(d, d.teams[0], url, footer).embed);
+  { const buf = d.teams.find((t) => t.abbr === "BUF") || d.teams[0]; const r = P.teamCapEmbed(d, buf, url, footer, d.season.year + 1); console.log("BUF next year over:", r.over); show("cap BUF next year", r.embed); }
+  show("cap league next year", P.leagueCapEmbed(d, url, footer, d.season.year + 1));
   show("team", P.teamEmbed(d, d.teams[0], url, footer));
   show("tws NYJ", P.twsEmbed(d, d.teams.find((t) => t.abbr === "NYJ") || d.teams[0], url, footer));
   show("tws SEA 15", P.twsEmbed(d, d.teams.find((t) => t.abbr === "SEA") || d.teams[0], url, footer, 15));

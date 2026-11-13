@@ -65,3 +65,9 @@ export async function setUserLeague(userId: string, leagueId: string | null) {
     if (error) throw new Error(error.message);
   }
 }
+
+/** Downloads a saved alert video (/alertvideo) so it can go along with a reply. */
+export async function loadAlertVideo(v: AlertVideo) {
+  const { data } = await supabaseAdmin().storage.from("league-data").download(v.path);
+  return data ? { data: Buffer.from(await data.arrayBuffer()), filename: v.filename, contentType: v.contentType } : undefined;
+}

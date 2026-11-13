@@ -6,6 +6,7 @@
 import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
 import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
+import { loadAlertVideo } from "@/lib/discord/links";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // /alertvideo copies a video of up to 10 MB
@@ -35,7 +36,10 @@ export async function POST(req: Request) {
     const quiet = ["link", "unlink", "notify", "myleague", "alertvideo"].includes(i.data?.name || "");
     after(async () => {
       try {
-        await editOriginal(i.application_id, i.token, await runCommand(i, base));
+        const msg = await runCommand(i, base);
+        // e.g. /cap showing a team under water plays the league's over-the-cap video.
+        const file = msg.video ? await loadAlertVideo(msg.video).catch(() => undefined) : undefined;
+        await editOriginal(i.application_id, i.token, msg, file);
       } catch (e) {
         console.error("discord command failed", i.data?.name, e);
         await editOriginal(i.application_id, i.token, { content: "Something went wrong answering that. Try again in a minute." });

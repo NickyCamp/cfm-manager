@@ -156,12 +156,19 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return p ? { embeds: [contractEmbed(d, p, url, footer)] } : reply("No player by that name. Pick one from the list as you type.");
     }
     case "cap": {
+      const years = capYears(d);
+      const y = Number(opt(i, "year")) || years[0];
+      if (!years.includes(y)) return reply(`Pick a season from ${years[0]} to ${years[years.length - 1]}.`);
       const v = opt(i, "team");
       if (v != null && v !== "") {
         const t = findTeam(d, v);
-        return t ? { embeds: [teamCapEmbed(d, t, url, footer)] } : reply("No team by that name.");
+        if (!t) return reply("No team by that name.");
+        const { embed, over } = teamCapEmbed(d, t, url, footer, y);
+        // Under water in the season shown: the league's over-the-cap video plays with it.
+        const video = over ? discordOf(lg)?.videos?.overcap : undefined;
+        return { embeds: [embed], video };
       }
-      return { embeds: [leagueCapEmbed(d, url, footer)] };
+      return { embeds: [leagueCapEmbed(d, url, footer, y)] };
     }
     case "team": {
       const t = findTeam(d, opt(i, "team"));
@@ -453,24 +460,57 @@ function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embe
   };
 }
 
-function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
+/** A team's cap, focused on one season (this season by default). over: negative space that season. */
+function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, year = d.season.year): { embed: Embed; over: boolean } {
   const pr = teamCapProjection(d, t);
   const roster = teamPlayers(d, t.id);
-  const years = pr.totals.map((y, i) => `${y.year}${i ? " proj." : ""}: **${money(y.space)}** space (${money(y.committed)} of ${money(y.cap)}, ${y.players} signed)`);
-  const top = pr.rows.slice(0, 5).map((r) => `${fullName(r.p)} (${r.p.pos}) ${money(r.p.contract.capHit)}`);
-  const expiring = roster.filter((p) => !p.ps && p.contract.yearsLeft <= 1).sort((a, b) => b.contract.capHit - a.contract.capHit);
-  return {
-    title: `${teamLabel(t)}: cap`, url: url(`/teams/${t.abbr.toLowerCase()}?tab=cap`), color: hexColor(t.primary), footer,
+  const focus = pr.totals.find((y) => y.year === year) || pr.totals[0];
+  const now = focus.year === d.season.year;
+  const over = focus.space < 0;
+  const years = pr.totals.map((y, i) => {
+    const row = `${y.year}${i ? " proj." : ""}: **${money(y.space)}** space (${money(y.committed)} of ${money(y.cap)}, ${y.players} signed)`;
+    return y.year === focus.year ? `▶ ${row}` : row;
+  });
+  // The biggest cap hits in the season shown.
+  const hits = pr.rows
+    .map((r) => ({ p: r.p, hit: now ? r.p.contract.capHit : (r.hits[focus.year] || 0) + (r.dead[focus.year] || 0) }))
+    .filter((r) => r.hit > 0).sort((a, b) => b.hit - a.hit).slice(0, 5)
+    .map((r) => `${fullName(r.p)} (${r.p.pos}) ${money(r.hit)}`);
+  const expiring = now
+    ? roster.filter((p) => !p.ps && p.contract.yearsLeft <= 1).sort((a, b) => b.contract.capHit - a.contract.capHit)
+    : pr.rows.filter((r) => r.hits[focus.year] != null && r.hits[focus.year + 1] == null).map((r) => r.p);
+  const label = `${focus.year}${now ? "" : " (projected)"}`;
+  const embed: Embed = {
+    title: `${teamLabel(t)}: ${label} cap`, url: url(`/teams/${t.abbr.toLowerCase()}?tab=cap`), color: over ? 0xff4d63 : hexColor(t.primary), footer,
+    description: over
+      ? `🚨 **${money(focus.space)}** in ${label}. That's ${money(-focus.space)} over a ${money(focus.cap)} cap with ${focus.players} players signed.`
+      : `**${money(focus.space)}** in space for ${label} (${money(focus.committed)} of ${money(focus.cap)}, ${focus.players} players signed).`,
     fields: [
-      { name: "Cap space by year", value: years.join("\n") },
-      { name: "Biggest cap hits", value: top.join("\n") || "—", inline: true },
-      { name: `Expiring (${expiring.length})`, value: expiring.slice(0, 5).map((p) => `${fullName(p)} ${money(p.contract.capHit)}`).join("\n") || "None", inline: true },
-      { name: "Dead money", value: money(inferredDeadCap(t, roster)), inline: true },
+      { name: "Cap space by year", value: years.join("\n") + (now ? "" : "\n-# Future years are projected from current contracts against a cap $15M higher each season.") },
+      { name: `Biggest cap hits, ${focus.year}`, value: hits.join("\n") || "—", inline: true },
+      { name: `Expiring after ${focus.year} (${expiring.length})`, value: expiring.slice(0, 5).map((p) => `${fullName(p)}${now ? ` ${money(p.contract.capHit)}` : ""}`).join("\n") || "None", inline: true },
+      ...(now ? [{ name: "Dead money", value: money(inferredDeadCap(t, roster)), inline: true }] : []),
     ],
   };
+  return { embed, over };
 }
 
-function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer): Embed {
+function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer, year = d.season.year): Embed {
+  if (year !== d.season.year) {
+    // One future season: every team's projected space, most room first.
+    const rows = d.teams.map((t) => ({ t, y: teamCapProjection(d, t).totals.find((x) => x.year === year)! })).sort((a, b) => b.y.space - a.y.space);
+    const line = (r: (typeof rows)[number]) => `\`${r.t.abbr.padEnd(3)}\` ${money(r.y.space)} · ${r.y.players} signed`;
+    const over = rows.filter((r) => r.y.space < 0);
+    return {
+      title: `${year} cap space (projected)`, url: url(`/cap?year=${year}`), color: BRAND, footer,
+      fields: [
+        { name: "Most room", value: rows.slice(0, 8).map(line).join("\n") },
+        { name: "Least room", value: rows.slice(-8).map(line).join("\n") },
+        ...(over.length ? [{ name: `Over the cap in ${year}`, value: over.map((r) => `${teamLabel(r.t)} (${money(r.y.space)})`).join("\n") }] : []),
+        { name: "\u200b", value: "-# Projected from current contracts against a cap $15M higher each season." },
+      ],
+    };
+  }
   const rows = d.teams.map((t) => ({ t, next: teamCapProjection(d, t).totals[1] })).sort((a, b) => b.t.cap.available - a.t.cap.available);
   const line = (r: (typeof rows)[number]) => `\`${r.t.abbr.padEnd(3)}\` ${money(r.t.cap.available)} now · ${money(r.next.space)} in ${r.next.year}`;
   const over = rows.filter((r) => r.t.cap.available < 0);
