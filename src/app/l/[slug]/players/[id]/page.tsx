@@ -14,8 +14,10 @@ import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/Abi
 import { CardBuilder } from "@/components/league/CardBuilder";
 import { cardLayout } from "@/lib/cardLayoutStore";
 import { cardBackProps, cardProps } from "@/lib/league/cardProps";
-import { canSeeCardArt, cardArtAccess, cardFramePath, signedCardArt } from "@/lib/cardArtStore";
+import { canSeeCardArt, cardArtAccess, nicknameAccess, cardFramePath, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
+import { NicknameEditor } from "@/components/league/NicknameEditor";
+import { NICKNAME_MAX, leagueNicknames, withNicknames } from "@/lib/nicknameStore";
 import { headshotUrl } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
 
@@ -33,8 +35,9 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   const tabParam = (await searchParams)?.tab;
   const tab = TABS.some(([k]) => k === tabParam) ? tabParam! : "ratings";
   const base = `/l/${slug}/players/${id}`;
-  const d = await getLeagueData(slug);
-  if (!d) return <NoData />;
+  const raw = await getLeagueData(slug);
+  if (!raw) return <NoData />;
+  const d = withNicknames(raw, await leagueNicknames(slug));
   const { players, teams } = indexes(d);
   const p = players.get(Number(id));
   if (!p) notFound();
@@ -43,9 +46,10 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   // Card art shows to anyone signed in (photos of real players aren't ours to publish, so
   // never to signed-out visitors): an uploaded photo if there is one, else the player's
   // NFL.com headshot as a stand-in. Only the player's team owner or the commissioner can change it.
-  const [viewer, canEditArt] = await Promise.all([
+  const [viewer, canEditArt, canNick] = await Promise.all([
     canSeeCardArt(),
     cardArtAccess(slug, p.gone ? undefined : p.team || undefined).then((a) => a.canEdit).catch(() => false),
+    p.gone ? Promise.resolve(false) : nicknameAccess(slug, p.team || undefined).then((a) => a.canEdit).catch(() => false),
   ]);
   const [uploaded, layout] = await Promise.all([viewer ? signedCardArt(slug, p.id) : Promise.resolve(undefined), cardLayout(slug, p.id)]);
   // An uploaded custom border follows the same visibility as uploaded art (signed in).
@@ -60,6 +64,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
             <div className="jersey-big">{p.jersey}</div>
             <div>
               <h2>{p.first} {p.last}</h2>
+              {p.nick && <div className="tb-nick">&ldquo;{p.nick}&rdquo;</div>}
               <div className="tb-meta">
                 <span>{p.pos}</span><span>{p.ovr} OVR</span><span>{DEV_LABEL[p.dev]}</span><span>Age {p.age}</span>
                 <span>{heightText(p.height)}, {p.weight} lb</span>
@@ -79,6 +84,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
           <div className="pcard-col">
           <CardBuilder card={{ ...cardProps(d, slug, p, team, art), ...cardBackProps(d, p), layout, frameArt }} slug={slug} playerId={p.id} canEdit={canEditArt} />
           {canEditArt && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
+          {canNick && <NicknameEditor slug={slug} playerId={p.id} current={p.nick} max={NICKNAME_MAX} />}
           </div>
           <div className="player-tabs">
             <nav className="tabs" aria-label="Player">

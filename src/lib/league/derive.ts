@@ -186,7 +186,7 @@ export function inferredDeadCap(team: Team, roster: Player[]) {
   return Math.max(0, team.cap.spent - sum);
 }
 
-export const fullName = (p: Player | undefined) => (p ? `${p.first} ${p.last}` : "Unknown player");
+export const fullName = (p: Player | undefined) => (p ? (p.nick ? `${p.first} "${p.nick}" ${p.last}` : `${p.first} ${p.last}`) : "Unknown player");
 
 // ---------- future cap ----------
 

@@ -5,7 +5,7 @@ import { ImageResponse } from "next/og";
 import { checkCardLink } from "@/lib/discord/cardLink";
 import { cardFonts, cardNode, preloadOvrArt, withLogo, xfGems } from "@/lib/discord/cardImage";
 import { cardArtFor } from "@/lib/discord/cardArtLoad";
-import { getLeagueData } from "@/lib/league/load";
+import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
 import { cardFramePath, signedCardArt } from "@/lib/cardArtStore";
 import { cardFrameData, imageDataUrl } from "@/lib/discord/cardImage";

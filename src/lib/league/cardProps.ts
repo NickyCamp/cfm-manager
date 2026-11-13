@@ -15,7 +15,7 @@ function ordinal(n: number) {
 
 export function cardProps(d: LeagueData, slug: string, p: Player, team: Team | undefined, art?: string): PlayerCardProps {
   return {
-    first: p.first, last: p.last, pos: p.pos, jersey: p.jersey, ovr: p.ovr, dev: p.dev,
+    first: p.nick ? `${p.first} "${p.nick}"` : p.first, last: p.last, pos: p.pos, jersey: p.jersey, ovr: p.ovr, dev: p.dev,
     rookie: p.yearsPro === 0,
     teamAbbr: team?.abbr ?? "FA", teamLogo: teamLogo(team), primary: team?.primary || "#33415c", secondary: team?.secondary || "#c9d1e0",
     setLabel: `${d.season.year} ${slug.length <= 5 ? slug.toUpperCase() : "Series"}`,

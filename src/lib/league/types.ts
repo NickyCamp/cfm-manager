@@ -68,6 +68,7 @@ export type Player = {
   desired?: { salary: number; bonus: number; length: number }; // Madden's in-game ask (added 2026-10-28)
   gone?: boolean;        // no longer in the league (kept so old stat lines keep a name)
   born?: string;         // "YYYY-MM-DD" from EA (added 2026-11-12; used to match real-player headshots)
+  nick?: string;         // nickname set by the team's manager; not in data.json, applied at read time (nicknameStore.ts)
 };
 
 export type Game = {

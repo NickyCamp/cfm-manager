@@ -120,3 +120,33 @@ export async function signedCardArtFor(slug: string, playerIds: number[], path =
   }
   return out;
 }
+
+/**
+ * Whether the signed-in user may set a player's nickname (Nick, 2026-11-13: "limited to the
+ * user who manages the team"). Stricter than card art: on a team run by a person, only that
+ * person (matched by EA name, like card art). The commissioner only handles players with no
+ * person behind them: CPU teams and free agents.
+ */
+export async function nicknameAccess(slug: string, playerTeamId: number | undefined): Promise<{ canEdit: boolean; why?: string }> {
+  const user = await currentUser().catch(() => null);
+  if (!user) return { canEdit: false };
+  const admin = supabaseAdmin();
+  const { data: lg } = await admin.from("leagues").select("id, owner_id").eq("slug", slug).maybeSingle();
+  if (!lg) return { canEdit: false };
+  const { data: m } = await admin.from("league_members").select("role").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle();
+  const commish = lg.owner_id === user.id || m?.role === "commissioner";
+  if (!m && !commish) return { canEdit: false, why: "Only league members can set nicknames." };
+  const [{ data: conns }, data] = await Promise.all([
+    admin.from("ea_connections").select("persona_name").eq("user_id", user.id),
+    getLeagueData(slug).catch(() => null),
+  ]);
+  const team = playerTeamId ? data?.teams.find((t) => t.id === playerTeamId) : undefined;
+  if (team?.user) {
+    const mine = new Set((conns || []).map((c) => normName(c.persona_name || "")).filter(Boolean));
+    if (mine.has(normName(team.user))) return { canEdit: true };
+    return { canEdit: false, why: "Only the person running this player's team can set his nickname." };
+  }
+  // CPU team or free agent: nobody manages him, so the commissioner can.
+  if (commish) return { canEdit: true };
+  return { canEdit: false, why: "Only the commissioner can nickname free agents and CPU-team players." };
+}

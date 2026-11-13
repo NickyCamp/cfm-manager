@@ -1269,3 +1269,13 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .pl-tbl tr.pl-unq td { opacity: .6; }
 .pl-tbl tr.pl-divider td { font-size: 0.8rem; color: var(--ink-soft); padding-top: 12px; border-bottom: 1px dashed var(--line); background: var(--paper); }
 .pl-pos-tabs a[aria-current="page"] span { color: rgba(255,255,255,.75); }
+/* Player nicknames */
+.tb-nick { font: 600 1.05rem var(--text); opacity: .85; margin: -2px 0 4px; }
+.nick-open { display: block; margin: 10px auto 0; font-size: 0.92rem; }
+.nick-form { margin-top: 12px; display: grid; gap: 6px; }
+.nick-form label { font-weight: 600; font-size: 0.9rem; }
+.nick-row { display: flex; gap: 8px; }
+.nick-row input { flex: 1; min-width: 0; min-height: 42px; }
+.nick-row .btn { min-height: 42px; padding: 0 16px; }
+.nick-actions { display: flex; gap: 16px; font-size: 0.9rem; }
+.nick-form .error { color: var(--danger); margin: 0; }

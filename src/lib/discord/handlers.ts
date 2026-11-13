@@ -1,6 +1,6 @@
 // What each slash command answers. Everything reads the same league data file
 // and helpers the website uses, so the bot and the site always agree.
-import { getLeagueData } from "@/lib/league/load";
+import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
 import {
@@ -66,8 +66,8 @@ function searchPlayers(d: LeagueData, q: string, limit = 25): Player[] {
   const live = d.players.filter((p) => !p.gone);
   if (!n) return [...live].sort((a, b) => b.ovr - a.ovr).slice(0, limit);
   const scored = live.flatMap((p) => {
-    const full = norm(`${p.first} ${p.last}`), last = norm(p.last);
-    const s = full === n ? 0 : last === n ? 1 : full.startsWith(n) ? 2 : last.startsWith(n) ? 3 : full.includes(n) ? 4 : -1;
+    const full = norm(`${p.first} ${p.last}`), last = norm(p.last), nick = p.nick ? norm(p.nick) : "";
+    const s = full === n || (nick && nick === n) ? 0 : last === n ? 1 : full.startsWith(n) || (nick && nick.startsWith(n)) ? 2 : last.startsWith(n) ? 3 : full.includes(n) || (nick && nick.includes(n)) ? 4 : -1;
     return s < 0 ? [] : [{ p, s }];
   });
   return scored.sort((a, b) => a.s - b.s || b.p.ovr - a.p.ovr).slice(0, limit).map((x) => x.p);
@@ -111,7 +111,7 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
       .map((t) => ({ name: `${t.city} ${t.name} (${t.abbr})`, value: t.abbr }));
   }
   return searchPlayers(d, q).map((p) => ({
-    name: `${p.first} ${p.last} · ${p.pos} · ${p.ovr} OVR · ${teamOf(d, p.team)?.abbr || "FA"}`.slice(0, 100),
+    name: `${fullName(p)} · ${p.pos} · ${p.ovr} OVR · ${teamOf(d, p.team)?.abbr || "FA"}`.slice(0, 100),
     value: String(p.id),
   }));
 }
