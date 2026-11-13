@@ -787,14 +787,20 @@ details.panel[open] summary { margin-bottom: 8px; }
 .pcard-side .abil.tile .abil-ini[data-n="4"] { font-size: calc(3.6cqw * var(--abk, 1)); }
 /* Silver: Nick's brushed-steel tile + stout bold sans initials (Barlow Condensed 800), light steel with a navy outline. */
 .pcard-side .abil.ab-silver.tile { background-image: url("/abilities/silver.png"); }
-.pcard-side .abil.ab-silver.tile .abil-ini { font-family: var(--display); font-weight: 800; color: #eef1f6; letter-spacing: 0.01em;
+.pcard-side .abil.ab-bronze.tile { background-image: url("/abilities/bronze.png"); }
+.pcard-side .abil.ab-silver.tile .abil-ini, .pcard-side .abil.ab-bronze.tile .abil-ini { font-family: var(--display); font-weight: 800; color: #eef1f6; letter-spacing: 0.01em;
   font-size: calc(9.4cqw * var(--abk, 1)); margin-top: 0;
   text-shadow: calc(-0.25cqw * var(--abk, 1)) calc(-0.25cqw * var(--abk, 1)) 0 #0f1a2b, calc(0.25cqw * var(--abk, 1)) calc(-0.25cqw * var(--abk, 1)) 0 #0f1a2b,
     calc(-0.25cqw * var(--abk, 1)) calc(0.25cqw * var(--abk, 1)) 0 #0f1a2b, calc(0.25cqw * var(--abk, 1)) calc(0.25cqw * var(--abk, 1)) 0 #0f1a2b,
     0 calc(0.25cqw * var(--abk, 1)) 0 #0f1a2b, 0 calc(-0.25cqw * var(--abk, 1)) 0 #0f1a2b, 0 calc(0.5cqw * var(--abk, 1)) calc(0.5cqw * var(--abk, 1)) rgba(0,0,0,.5); }
-.pcard-side .abil.ab-silver.tile .abil-ini[data-n="2"] { font-size: calc(7.6cqw * var(--abk, 1)); }
-.pcard-side .abil.ab-silver.tile .abil-ini[data-n="3"] { font-size: calc(5.8cqw * var(--abk, 1)); }
-.pcard-side .abil.ab-silver.tile .abil-ini[data-n="4"] { font-size: calc(4.6cqw * var(--abk, 1)); }
+.pcard-side .abil.ab-silver.tile .abil-ini[data-n="2"], .pcard-side .abil.ab-bronze.tile .abil-ini[data-n="2"] { font-size: calc(7.6cqw * var(--abk, 1)); }
+.pcard-side .abil.ab-silver.tile .abil-ini[data-n="3"], .pcard-side .abil.ab-bronze.tile .abil-ini[data-n="3"] { font-size: calc(5.8cqw * var(--abk, 1)); }
+.pcard-side .abil.ab-silver.tile .abil-ini[data-n="4"], .pcard-side .abil.ab-bronze.tile .abil-ini[data-n="4"] { font-size: calc(4.6cqw * var(--abk, 1)); }
+/* Bronze: same stout lettering as silver, copper fill with a dark-brown outline (Nick's worn cast-bronze tile). */
+.pcard-side .abil.ab-bronze.tile .abil-ini { color: #d9914f;
+  text-shadow: calc(-0.25cqw * var(--abk, 1)) calc(-0.25cqw * var(--abk, 1)) 0 #2e1405, calc(0.25cqw * var(--abk, 1)) calc(-0.25cqw * var(--abk, 1)) 0 #2e1405,
+    calc(-0.25cqw * var(--abk, 1)) calc(0.25cqw * var(--abk, 1)) 0 #2e1405, calc(0.25cqw * var(--abk, 1)) calc(0.25cqw * var(--abk, 1)) 0 #2e1405,
+    0 calc(0.25cqw * var(--abk, 1)) 0 #2e1405, 0 calc(-0.25cqw * var(--abk, 1)) 0 #2e1405, 0 calc(0.5cqw * var(--abk, 1)) calc(0.5cqw * var(--abk, 1)) rgba(0,0,0,.5); }
 .pcard-side .abil-gem { width: calc(14cqw * var(--abk, 1)); height: calc(14cqw * var(--abk, 1)); display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
 .ab-gold { background: linear-gradient(135deg, #a77a00, #ffe27a 45%, #c99a10); color: #3a2a00; }
 .ab-silver { background: linear-gradient(135deg, #8e97a8, #f4f6fa 45%, #a7b0c0); color: #1e2a44; }

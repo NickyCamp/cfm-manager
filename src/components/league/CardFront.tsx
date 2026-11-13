@@ -48,7 +48,7 @@ export const abilityInitials = (title: string) =>
 /** X-Factor badges are Nick's ruby art, one per letter (public/abilities/xf/<A-Z>.png), using the name's first letter. */
 export const xfLetter = (title: string) => { const c = title.trim().charAt(0).toUpperCase(); return c >= "A" && c <= "Z" ? c : null; };
 /** Tiers drawn on Nick's badge art (public/abilities/<tier>.png, a blank tile) with engraved serif initials on top. */
-export const TILE_ART = new Set(["gold", "silver"]);
+export const TILE_ART = new Set(["gold", "silver", "bronze"]);
 /** Ability badges shrink to fit when a player has more than 5 (QBs often do), so none get dropped. 1 = full size. */
 export const abScale = (n: number) => (n <= 5 ? 1 : Math.max(0.5, (78 / n - 1.6) / 14));
 /** Font size for the initials, as a fraction of the medallion width. */
