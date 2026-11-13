@@ -1,0 +1,111 @@
+
+### Cam Ward (QB)
+[3] **1 in every 8.5 passes** Ward throws ends up in the other team's hands (59 INTs on 503 attempts). The league's QBs average 1 in 15, so defenses are eating well.
+[2] Every **6.1 completions**, one of Ward's passes goes for a touchdown (45 TDs this season).
+[2] Ward has thrown for **5,394 yards**. That's **3.06 miles** of football, or **54 football fields** laid end to end.
+[1.5] Ward gets sacked once every **9.5 dropbacks** (59 sacks this season).
+[3] The Titans are paying Ward about **$2K per passing yard** this season ($13.3M cap hit).
+[1.5] Ward's best game this season: **509 passing yards and 2 TDs** against the Falcons in Week 16.
+[2] Ward found the end zone in **16 straight games** at one point this season.
+[1] Ward's best rating is **Play Action (97)**. His worst is **Long Snap (10)**.
+[1] Ward makes about **$783K per game** against the cap this season.
+
+### Josh Allen (QB)
+[3] **1 in every 9.9 passes** Allen throws ends up in the other team's hands (49 INTs on 484 attempts). The league's QBs average 1 in 15, so defenses are eating well.
+[2] Every **7.8 completions**, one of Allen's passes goes for a touchdown (33 TDs this season).
+[2] Allen has thrown for **4,359 yards**. That's **2.48 miles** of football, or **44 football fields** laid end to end.
+[1.5] Allen gets sacked once every **25 dropbacks** (20 sacks this season).
+[1.5] Allen averages **3.1 yards a carry**. At that pace it would take him **33 straight carries** to go the length of the field.
+[2] Allen puts the ball on the ground once every **33 touches** (2 fumbles).
+[2] Allen breaks a tackle every **11 touches** (6 broken tackles).
+[3] The Bills are paying Allen about **$11K per passing yard** this season ($47.7M cap hit).
+[1.5] Allen's best game this season: **450 passing yards and 3 TDs** against the Texans in Week 18.
+[2] Allen found the end zone in **17 straight games** at one point this season.
+[1] Allen's best rating is **Throw Power (98)**. His worst is **Confidence (4)**.
+[1] Allen makes about **$2.81M per game** against the cap this season.
+
+### Jaxon Smith-Njigba (WR)
+[2] **44% of Smith-Njigba's receiving yards** came after the catch (607 of 1,392).
+[2] Smith-Njigba drops one pass for every **22 he catches** (3 drops).
+[1] Smith-Njigba's longest catch went **99 yards**, 99% of the field in one play.
+[2.5] Smith-Njigba has personally scored **11% of the Seahawks's points** (60 of 542).
+[3] The Seahawks are paying Smith-Njigba about **$11K per receiving yard** this season ($15.6M cap hit).
+[1.5] Smith-Njigba's best game this season: **5 catches for 181 yards** against the Rams in Week 14.
+[2] Smith-Njigba found the end zone in **5 straight games** at one point this season.
+[1] Smith-Njigba's best rating is **Awareness (99)**. His worst is **Play Action (6)**.
+[1] Smith-Njigba makes about **$919K per game** against the cap this season.
+
+### Bijan Robinson (HB)
+[1.5] Robinson averages **9.4 yards a carry**. At that pace it would take him **11 straight carries** to go the length of the field.
+[2] Robinson breaks a tackle every **3.5 touches** (71 broken tackles).
+[2] **81% of Robinson's receiving yards** came after the catch (249 of 308).
+[1] Robinson's longest catch went **41 yards**, 41% of the field in one play.
+[2.5] Robinson has personally scored **27% of the Falcons's points** (186 of 701).
+[3] The Falcons are paying Robinson about **$5K per rushing yard** this season ($11.3M cap hit).
+[1.5] Robinson's best game this season: **365 yards from scrimmage** against the Panthers in Week 5.
+[2] Robinson found the end zone in **6 straight games** at one point this season.
+[1] Robinson's best rating is **Ball Carrier Vision (98)**. His worst is **Finesse Moves (10)**.
+[1] Robinson makes about **$666K per game** against the cap this season.
+
+### Myles Garrett (REDG)
+[1.5] Garrett has a sack every **1.4 games** (10.5 in 15).
+[1] Garrett averages **2.1 tackles a game**, a tackle roughly every **29 minutes** of game clock.
+[3] The Rams are paying Garrett about **$484K per tackle** this season ($15.0M cap hit).
+[1.5] Garrett's best game this season: **5 tackles, 2 sacks** against the Lions in Week 3.
+[1] Garrett's best rating is **Power Moves (99)**. His worst is **Deep Route Running (4)**.
+[1] Garrett makes about **$882K per game** against the cap this season.
+
+### Brandon Aubrey (K)
+[1.5] Aubrey has made **68% of his field goals** (15/22), with a long of 59.
+[2.5] Aubrey has personally scored **20% of the Cowboys's points** (107 of 547).
+[3] The Cowboys are paying Aubrey about **$271K per field goal** this season ($4.07M cap hit).
+[1] Aubrey's best rating is **Kick Power (99)**. His worst is **Finesse Moves (10)**.
+[1.5] At 32, Aubrey is older than **97% of the league**.
+[1] Aubrey makes about **$239K per game** against the cap this season.
+
+### New York Jets
+[2] The Jets score a point every **1.4 minutes** of game clock (41.6 a game, 6th in the league).
+[2] The Jets have been flagged **6 times for 50 yards**. That's **0.5 football fields** of penalties.
+[1.5] The Jets give the ball away once every **2.7 quarters** (25 turnovers in 17 games).
+[1.5] The Jets turn **36%** of red zone trips into touchdowns (38 of 105).
+[1.5] The Jets have gone for it on 4th down **25 times** and converted 15 (60%).
+[1] The Jets have **42 sacks**, 14th in the league.
+[2.5] The Jets pay **$414K in cap for every point** they score. Only 5 teams get points cheaper.
+[2] The Jets are **4-3 in one-score games** (8 points or less).
+[1.5] The Jets' biggest win: **61-10** over the Colts in Week 12.
+[1.5] The Jets' worst loss: **54-13** to the Chargers in Week 11.
+[2] The Jets are **4-4 at home** but **9-0 on the road**.
+[2.5] Garrett Wilson's $23.3M cap hit is more than the **18 cheapest Jets combined**.
+[1] The Jets' active roster averages **25.7 years old**. Thomas Hennessy is the oldest at 33.
+[1.5] The Jets have **2 X-Factors**, more than 1 team in the league.
+[1] The Jets have won **7 straight**.
+
+### Buffalo Bills
+[2] The Bills score a point every **2.2 minutes** of game clock (26.9 a game, 26th in the league).
+[2] The Bills have been flagged **34 times for 320 yards**. That's **3.2 football fields** of penalties.
+[1.5] The Bills give the ball away once every **1.3 quarters** (54 turnovers in 17 games).
+[1.5] The Bills turn **40%** of red zone trips into touchdowns (32 of 81).
+[1.5] The Bills have gone for it on 4th down **31 times** and converted 15 (48%).
+[1] The Bills have **41 sacks**, 15th in the league.
+[2.5] The Bills pay **$701K in cap for every point** they score. Only 27 teams get points cheaper.
+[2] The Bills are **1-5 in one-score games** (8 points or less).
+[1.5] The Bills' worst loss: **59-22** to the Raiders in Week 11.
+[2.5] Josh Allen's $47.7M cap hit is more than the **29 cheapest Bills combined**.
+[1] The Bills' active roster averages **25.4 years old**. Reid Ferguson is the oldest at 33.
+[1.5] The Bills have **3 X-Factors**, more than 12 teams in the league.
+
+### Tennessee Titans
+[2] The Titans score a point every **1.7 minutes** of game clock (34.6 a game, 14th in the league).
+[2] The Titans have been flagged **11 times for 70 yards**. That's **0.7 football fields** of penalties.
+[1.5] The Titans give the ball away once every **1 quarters** (68 turnovers in 17 games).
+[1.5] The Titans turn **30%** of red zone trips into touchdowns (31 of 103).
+[1.5] The Titans have gone for it on 4th down **44 times** and converted 21 (48%).
+[1] The Titans have **39 sacks**, 17th in the league.
+[2.5] The Titans pay **$554K in cap for every point** they score. Only 17 teams get points cheaper.
+[2] The Titans are **3-3 in one-score games** (8 points or less).
+[1.5] The Titans' biggest win: **44-0** over the Panthers in Week 10.
+[1.5] The Titans' worst loss: **51-14** to the Saints in Week 18.
+[2.5] Jeffery Simmons's $31.6M cap hit is more than the **25 cheapest Titans combined**.
+[1] The Titans' active roster averages **26.1 years old**. Ted Karras is the oldest at 34.
+[1.5] The Titans have **3 X-Factors**, more than 12 teams in the league.
+[1] The Titans have lost **4 straight**.
