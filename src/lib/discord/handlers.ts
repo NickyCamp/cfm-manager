@@ -13,7 +13,7 @@ import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { headshotUrl } from "@/lib/league/headshots";
 import { cardImageUrl, packImageUrl } from "./cardLink";
-import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack } from "./packs";
+import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
@@ -334,8 +334,12 @@ async function openPackReply(i: Interaction, lg: LinkedLeague, d: LeagueData, ba
   if (total > u.best) { u.best = total; u.bestPull = `${fullName(top)} (${RARITY[top.dev].name}, ${top.ovr})`; }
   u.last = new Date().toISOString();
   stats.users[uid] = u;
+  const place = recordTopPack(stats, { uid, name, points: total, hits: packHits(cards), at: u.last });
   await savePackStats(lg.slug, stats);
-  const rank = Object.values(stats.users).filter((x) => x.points > u.points).length + 1;
+  const league = footer.text.split(" · ")[0];
+  const placeText = place === 1 ? `🏆 The craziest pack ever pulled in ${league}!`
+    : place && place <= 10 ? `Pack #${place} all-time in ${league}.`
+    : `Your best pack: ${u.best} pts.`;
 
   const lines = cards.map((p, k) => {
     const r = RARITY[p.dev];
@@ -345,28 +349,29 @@ async function openPackReply(i: Interaction, lg: LinkedLeague, d: LeagueData, ba
     embeds: [{
       title: `${name} opened a pack: ${luckLabel(total)}`,
       color: RARITY_COLOR[top.dev] ?? BRAND,
-      description: `${lines.join("\n")}\n\nPack total: **${total} pts**`,
+      description: `${lines.join("\n")}\n\nPack total: **${total} pts** · ${placeText}`,
       image: { url: packImageUrl(base, lg.slug, cards.map((c) => c.id)) },
-      footer: { text: `${name}: ${u.points} pts from ${u.packs} pack${u.packs === 1 ? "" : "s"} · #${rank} in ${footer.text.split(" · ")[0]}` },
+      footer: { text: `${name}: ${u.packs} pack${u.packs === 1 ? "" : "s"} opened · /packs for the leaderboard` },
     }],
   };
 }
 
 async function packsLeaderboard(i: Interaction, lg: LinkedLeague, d: LeagueData, footer: Footer): Promise<Embed> {
   const stats = await loadPackStats(lg.slug);
-  const rows = Object.entries(stats.users).sort(([, a], [, b]) => b.points - a.points);
+  if (!stats.top) recordTopPack(stats, { uid: "", name: "", points: -1, hits: "", at: "" }); // seeds older files; the dummy falls off below
+  const top = (stats.top || []).filter((t) => t.points >= 0);
   const medal = ["🥇", "🥈", "🥉"];
-  const board = rows.slice(0, 10).map(([, u], k) => `${medal[k] || `**${k + 1}.**`} ${u.name}: **${u.points} pts** · ${u.packs} pack${u.packs === 1 ? "" : "s"} · best ${u.best}${u.legendaries ? ` · ${u.legendaries}× 🟥` : ""}`);
+  const board = top.slice(0, 10).map((t, k) => `${medal[k] || `**${k + 1}.**`} **${t.points} pts** · ${t.name} · ${luckLabel(t.points)}${t.hits ? `\n-# ${t.hits}` : ""}`);
   const uid = userId(i);
-  const meIdx = rows.findIndex(([id]) => id === uid);
-  const me = meIdx >= 0 ? rows[meIdx][1] : null;
+  const me = stats.users[uid];
+  const myPlace = top.findIndex((t) => t.uid === uid) + 1;
   const counts = [0, 1, 2, 3].map((dev) => d.players.filter((p) => !p.gone && p.team && !p.ps && p.dev === dev).length);
   const odds = RARITY.map((r, k) => `${r.emoji} ${r.name} (${DEV_LABEL[k]}): ${(ODDS[k] / 10).toFixed(0)}% per card · ${r.points} pts · ${counts[k]} in the set`).join("\n");
   return {
-    title: "Pack leaderboard", color: BRAND, footer,
+    title: "Craziest packs pulled", color: BRAND, footer,
     description: board.join("\n") || "Nobody has opened a pack yet. Run `/pack`!",
     fields: [
-      ...(me ? [{ name: "You", value: `#${meIdx + 1} · ${me.points} pts · ${me.packs} packs · best pack ${me.best}${me.bestPull ? ` (${me.bestPull})` : ""}` }] : []),
+      ...(me ? [{ name: "You", value: `Best pack ${me.best} pts${myPlace ? ` (#${myPlace} on the board)` : ""}${me.bestPull ? ` · top card ${me.bestPull}` : ""} · ${me.packs} packs opened${me.legendaries ? ` · ${me.legendaries}× 🟥` : ""}` }] : []),
       { name: `Odds (${PACK_SIZE} cards a pack)`, value: `${odds}\n-# Each card also gets +1 per 5 overall over 70 (up to +5), and 99s count double.` },
     ],
   };

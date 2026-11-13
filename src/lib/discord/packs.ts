@@ -42,7 +42,30 @@ export function openPack(d: LeagueData): Player[] {
 }
 
 export type PackUser = { name: string; points: number; packs: number; best: number; legendaries: number; last: string; bestPull?: string };
-export type PackStats = { users: Record<string, PackUser> };
+/** One pack on the all-time board. hits: its Epic/Legendary cards (or its best card), already written out. */
+export type TopPack = { uid: string; name: string; points: number; hits: string; at: string };
+export type PackStats = { users: Record<string, PackUser>; top?: TopPack[] };
+export const TOP_PACKS_KEPT = 50;
+
+/** Adds a pack to the all-time board (highest points first; earlier pack wins ties). Returns its place, or 0 if it didn't make it. */
+export function recordTopPack(stats: PackStats, pack: TopPack): number {
+  const top = stats.top || [];
+  // Older stats files only have each person's best pack: seed the board from those once.
+  if (!stats.top) {
+    for (const [uid, u] of Object.entries(stats.users)) if (u.best) top.push({ uid, name: u.name, points: u.best, hits: u.bestPull || "", at: u.last });
+  }
+  top.push(pack);
+  top.sort((a, b) => b.points - a.points || a.at.localeCompare(b.at));
+  stats.top = top.slice(0, TOP_PACKS_KEPT);
+  return stats.top.indexOf(pack) + 1;
+}
+
+/** "🟥 J. Allen 99, 🟨 T. Hill 92": the pack's Epic and Legendary cards, or its best card if it has none. */
+export function packHits(cards: Player[]) {
+  const shown = cards.filter((c) => c.dev >= 2);
+  const list = (shown.length ? shown : cards.slice(-1)).slice().sort((a, b) => cardPoints(b) - cardPoints(a));
+  return list.map((c) => `${RARITY[c.dev].emoji} ${c.first[0]}. ${c.last} ${c.ovr}`).join(", ");
+}
 
 /** The luck label for a pack's total. Simulated on NCL and stooey (10,000 packs each):
  *  median ~15 pts, average ~23, top 10% 38+, top 1% ~140; an X-Factor in ~5% of packs. */
