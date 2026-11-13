@@ -29,7 +29,9 @@ const ABIL: Record<string, { bg: string; color: string }> = {
 let gems: Promise<void> | null = null;
 let gemSrc: Record<string, string> | null = null; // filled once xfGems() resolves; cardNode reads it
 let tileSrc: Record<string, string> = {};
-let xfFrame: string | null = null; // Nick's crystal ruby X-Factor frame (public/frames/xf.png)
+// Nick's card frames by dev trait (public/frames/*.png): 0 Normal bronze, 1 Star silver, 2 Superstar gold, 3 X-Factor ruby.
+const FRAME_FILE = ["bronze", "silver", "gold", "xf"];
+let frames: (string | null)[] = [];
 const dataUrl = async (rel: string) => `data:image/png;base64,${(await readFile(path.join(process.cwd(), rel))).toString("base64")}`;
 /** Loads the ruby X-Factor letters and the blank tier tiles (gold, ...) once. */
 export function xfGems() {
@@ -38,7 +40,7 @@ export function xfGems() {
   // traced into the function bundle (2026-11-13).
   const safe = (rel: string) => dataUrl(rel).catch((e) => { console.error("card asset missing", rel, e); return null; });
   gems ??= Promise.all([
-    safe("public/frames/xf.png").then((u) => { xfFrame = u; }),
+    Promise.all(FRAME_FILE.map((f) => safe(`public/frames/${f}.png`))).then((u) => { frames = u; }),
     Promise.all([...TILE_ART].map(async (t) => [t, await safe(`public/abilities/${t}.png`)] as const))
       .then((e) => { tileSrc = Object.fromEntries(e.filter(([, u]) => u)) as Record<string, string>; }),
     Promise.all([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(async (c) => [c, await safe(`public/abilities/xf/${c}.png`)] as const))
@@ -64,14 +66,16 @@ export async function withLogo<T extends { teamLogo?: string }>(p: T): Promise<T
   return { ...p, teamLogo: p.teamLogo && !p.teamLogo.startsWith("data:") ? await logoData(p.teamLogo) : p.teamLogo };
 }
 
-/** Outer card frame: X-Factor uses Nick's ruby frame image over the card, other tiers the metallic gradient. */
+/** Outer card frame: Nick's frame image over the card (deeper padding so it doesn't cover corner text); the metallic gradient if the image is missing. */
 const frameStyle = (tier: number, U: number) =>
-  tier === 3 && xfFrame
-    ? { position: "relative" as const, paddingTop: 3.6 * U, paddingLeft: 4 * U, paddingRight: 4 * U, paddingBottom: 4.4 * U }
+  frames[tier]
+    ? tier === 3
+      ? { position: "relative" as const, paddingTop: 3.6 * U, paddingLeft: 4 * U, paddingRight: 4 * U, paddingBottom: 4.4 * U }
+      : { position: "relative" as const, paddingTop: 4.6 * U, paddingLeft: 4.6 * U, paddingRight: 4.6 * U, paddingBottom: 4.8 * U }
     : { padding: 2.8 * U, backgroundImage: FACE[tier] };
 const frameOverlay = (tier: number, W: number, H: number) =>
   // eslint-disable-next-line @next/next/no-img-element
-  tier === 3 && xfFrame ? <img src={xfFrame} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
+  frames[tier] ? <img src={frames[tier]!} alt="" width={W} height={H} style={{ position: "absolute", top: 0, left: 0, width: W, height: H }} /> : null;
 
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16) || 0;
