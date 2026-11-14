@@ -30,6 +30,7 @@ export type MarketChannels = {
   feedChannelId?: string;
   feedMessageId?: string | null;
   weekKey: string;
+  chartsWeek?: string;   // week the odds charts were last posted in #market-feed
   games: Record<string, GameChannel>;
 };
 
@@ -175,8 +176,15 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     if (!ed?.ok) { const m = await dc("POST", `/channels/${state.feedChannelId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } }); state.feedMessageId = m.ok ? String(m.data.id) : null; }
   }
 
-  // game channels: roll over on a new week
+  // weekly odds charts in #market-feed (once per week, after the advance)
   const key = weekKeyOf(d);
+  let charts = 0;
+  if (state.feedChannelId && state.chartsWeek !== key) {
+    charts = await postOddsCharts(slug, d, markets, state.feedChannelId, key);
+    if (charts) state.chartsWeek = key;
+  }
+
+  // game channels: roll over on a new week
   const games = thisWeek(d);
   let created = 0, removed = 0;
   if (state.weekKey !== key) {
@@ -207,7 +215,33 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     for (let g = queue.shift(); g; g = queue.shift()) edits += await fillGameChannel(slug, d, g, markets, tickets, state!.games[String(g.id)]);
   }));
   await saveState(lg.id, state);
-  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed.`;
+  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}.`;
+}
+
+/** The week's odds charts: Super Bowl + conferences (+ #1 seeds), then the 8 divisions. Returns charts posted. */
+async function postOddsCharts(slug: string, d: LeagueData, markets: Market[], channel: string, week: string): Promise<number> {
+  const embedOf = (m: Market): Embed => {
+    const top = m.outcomes.filter((o) => o.state !== "lost").sort((a, b) => b.p - a.p).slice(0, 4);
+    return {
+      title: m.title,
+      url: `${APP_URL}/l/${slug}/markets/${m.key}`,
+      color: BRAND,
+      description: m.settled ? `Settled: **${m.outcomes.find((o) => o.state === "won")?.label ?? "—"}**` : top.map((o) => `${o.label} **${chanceText(o.p)}**`).join(" · "),
+      image: { url: `${APP_URL}/api/leagues/${encodeURIComponent(slug)}/markets/chart/${encodeURIComponent(m.key)}?w=${encodeURIComponent(week)}&t=${Date.now().toString(36)}` },
+    };
+  };
+  const pick = (keys: string[]) => keys.map((k) => markets.find((m) => m.key === k)).filter((m): m is Market => Boolean(m));
+  const groups = [
+    { head: `📈 **Odds after the advance: ${d.season.title}**\nThe title races, from the market price (moves with every bet).`, list: pick(["sb", "conf-afc", "conf-nfc", "seed1-afc", "seed1-nfc"]) },
+    { head: "📈 **Division races**", list: markets.filter((m) => m.cat === "division") },
+  ];
+  let n = 0;
+  for (const g of groups) {
+    if (!g.list.length) continue;
+    const r = await dc("POST", `/channels/${channel}/messages`, { content: g.head, embeds: g.list.slice(0, 10).map(embedOf), allowed_mentions: { parse: [] } });
+    if (r.ok) n += g.list.length;
+  }
+  return n;
 }
 
 /** Header + one message per bet line; only lines whose text or price changed are touched. Returns messages written. */

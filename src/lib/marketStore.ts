@@ -389,7 +389,9 @@ export async function marketsForDiscord(slug: string, book: MarketBook, season: 
   const live = liveWeekCached(slug);
   const closes = await closeTimes(row.id, season);
   const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && weekMoved(live, dataWeek)));
-  return { book: withCrowd(closed, await loadPools(row.id, key)), leagueId: row.id, tickets: Boolean(tickets) };
+  const crowd = withCrowd(closed, await loadPools(row.id, key));
+  await recordPrices(row.id, key, crowd).catch(() => {});
+  return { book: crowd, leagueId: row.id, tickets: Boolean(tickets) };
 }
 
 // ---------------------------------------------------------------- price history (odds over time)
