@@ -21,7 +21,7 @@ import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { cancelValue, closeTimes, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
+import { cancelValue, closeTimes, isFutures, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
 import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
@@ -893,14 +893,16 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
     const o = m?.outcomes.find((x) => x.id === p.outcome_id);
     const shut = !m || m.closed || m.settled || o?.state !== "open";
     const rawM = withAwardPlayers(raw, d, [[p.market_key, p.outcome_id]]).markets.find((x) => x.key === p.market_key);
-    const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets).catch(() => null) : null;
-    lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}%` : ""}${shut ? " · locked" : back != null ? ` · cancel → ${n(back)}` : ""}`);
-    if (!shut && buttons.length < 20) buttons.push({ type: 2, style: 4, label: `Cancel #${ix + 1}`, custom_id: `mkc|${p.market_key}|${p.outcome_id}|${p.side}`.slice(0, 100) });
+    const ext = (ids: string[]) => withAwardPlayers(raw, d, ids.map((id) => [p.market_key, id] as [string, string])).markets.find((x) => x.key === p.market_key);
+    const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets, ext).catch(() => null) : null;
+    const fut = isFutures(p.market_key);
+    lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}%` : ""}${shut ? " · locked" : back != null ? ` · ${fut ? "cash out" : "cancel"} → ${n(back)}` : ""}`);
+    if (!shut && buttons.length < 20) buttons.push({ type: 2, style: 4, label: `${fut ? "Cash out" : "Cancel"} #${ix + 1}`, custom_id: `mkc|${p.market_key}|${p.outcome_id}|${p.side}`.slice(0, 100) });
   }
   const rows = [];
   for (let k = 0; k < buttons.length; k += 5) rows.push({ type: 1, components: buttons.slice(k, k + 5) });
   return {
-    content: `**Your open bets**${pos.length > 20 ? ` (first 20 of ${pos.length})` : ""}\n${lines.join("\n")}\nA cancel gives back what the bet cost, or what it's worth now if that's less. ${url("/markets")}`,
+    content: `**Your open bets**${pos.length > 20 ? ` (first 20 of ${pos.length})` : ""}\n${lines.join("\n")}\nGame and prop bets cancel for what they cost (or what they're worth now, if less) until kickoff. Futures cash out at what they're worth now. ${url("/markets")}`,
     flags: EPHEMERAL,
     components: rows,
   };

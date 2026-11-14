@@ -14,7 +14,7 @@ export type TradeArgs = {
   side: "yes" | "no"; kind: "buy" | "sell"; amount?: number; qty?: number;
 };
 export type TradeResult =
-  | { ok: true; qty: number; amount: number; before: number; after: number; outcomeLabel: string; marketTitle: string; tickets: boolean }
+  | { ok: true; qty: number; amount: number; before: number; after: number; outcomeLabel: string; marketTitle: string; tickets: boolean; cashout: boolean }
   | { ok: false; status: number; error: string };
 
 export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
@@ -48,7 +48,8 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
 
   const tickets = await ticketsConfig(a.slug).catch(() => null);
   if (!tickets && a.kind === "buy" && amount > 100000) return { ok: false, status: 400, error: "Too much." };
-  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets });
+  const extend = isAwardMarket(a.market) ? (ids: string[]) => withAwardPlayers(marketBook(d), d, ids.map((id) => [a.market, id] as [string, string])).markets.find((x) => x.key === a.market) : undefined;
+  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets, extend });
   if (!r.ok) return { ok: false, status: 409, error: r.error };
 
   // Post it in the league's Discord Markets channels (if set up) and refresh the prices there.
@@ -60,5 +61,5 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
     await postBet(a.slug, { who, marketKey: a.market, outcomeId: a.outcome, outcomeLabel: o.label, side: a.side, kind: a.kind, qty: r.qty, amount: r.amount, before: r.before, after: r.after })
       .catch((e) => console.error("discord bet post", (e as Error).message));
   });
-  return { ok: true, qty: r.qty, amount: r.amount, before: r.before, after: r.after, outcomeLabel: o.label, marketTitle: m.title, tickets: Boolean(tickets) };
+  return { ok: true, qty: r.qty, amount: r.amount, before: r.before, after: r.after, outcomeLabel: o.label, marketTitle: m.title, tickets: Boolean(tickets), cashout: r.cashout };
 }

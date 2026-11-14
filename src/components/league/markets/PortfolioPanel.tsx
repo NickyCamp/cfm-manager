@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { PriceIndex } from "@/lib/league/marketTypes";
-import { money, outcomeInfo, sellValue, sidePrice, START_CASH, type usePortfolio } from "./usePortfolio";
+import { money, outcomeInfo, sellValue, sidePrice, START_CASH, type usePortfolio, isFutures } from "./usePortfolio";
 
 type Port = ReturnType<typeof usePortfolio>;
 
@@ -55,7 +55,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
                 </div>
                 <div className="mk-pos-actions">
                   <span className="muted small">Pays {fmt(p.qty * unit)} if right</span>
-                  {info?.state === "open" && port.canTrade && <button type="button" className="mk-link-btn" disabled={busy} onClick={() => sellAll(p.m, p.o, p.side, p.qty)}>Cancel for {out < p.cost - 0.5 ? "about " : ""}{fmt(out)} back</button>}
+                  {info?.state === "open" && port.canTrade && <button type="button" className="mk-link-btn" disabled={busy} onClick={() => sellAll(p.m, p.o, p.side, p.qty)}>{port.shared && isFutures(p.m) ? `Cash out for about ${fmt(out)}` : `Cancel for ${out < p.cost - 0.5 ? "about " : ""}${fmt(out)} back`}</button>}
                 </div>
               </li>
             );
@@ -72,7 +72,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
           <ul>
             {fills.map((f, i) => {
               const info = outcomeInfo(index, f.m, f.o);
-              const verb = f.kind === "buy" ? "Bought" : f.kind === "sell" ? "Cancelled" : f.amount > 0 ? "Paid out" : "Expired";
+              const verb = f.kind === "buy" ? "Bought" : f.kind === "sell" ? (isFutures(f.m) ? "Cashed out" : "Cancelled") : f.amount > 0 ? "Paid out" : "Expired";
               return (
                 <li key={i}>
                   <span>{verb} {f.qty} {f.side === "yes" ? "Yes" : "No"} · {info?.label ?? f.o}{f.kind !== "settle" ? ` @ ${f.price}%` : ""}</span>
@@ -117,7 +117,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
         <p className="muted small">UnbelievaBoat {fmt(port.breakdown.ub)} − open bets {fmt(port.breakdown.open)} {port.breakdown.pending >= 0 ? "+" : "−"} results not added there yet {fmt(Math.abs(port.breakdown.pending))}. Admins add or remove results after each advance.</p>
       )}
       <p className="hint small">{T
-        ? "Real league Tickets. Bets are held against your UnbelievaBoat balance here; admins add or remove the results in UnbelievaBoat after each advance. Contracts pay 100 Tickets if right, 0 if wrong. Prices move with everyone's bets: buy early for a better price. A cancel gives back what the bet cost, or what it's worth now if that's less."
+        ? "Real league Tickets. Bets are held against your UnbelievaBoat balance here; admins add or remove the results in UnbelievaBoat after each advance. Contracts pay 100 Tickets if right, 0 if wrong. Prices move with everyone's bets: buy early for a better price. Game and prop bets can be cancelled until kickoff for what they cost (or what they're worth then, if less). Season-long bets can be cashed out at what they're worth now: more than you paid if the odds moved your way, less if not."
         : <>{port.shared ? "Fake money, one wallet per league member this season. Prices move with everyone's bets: buy early for a better price." : "Fake money, saved on this device only."} Contracts pay $1 if right, $0 if wrong.</>}</p>
     </aside>
   );

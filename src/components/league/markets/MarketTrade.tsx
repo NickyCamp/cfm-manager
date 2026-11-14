@@ -7,7 +7,7 @@ import type { SharedState } from "@/lib/marketStore";
 import { Chance, Delta, MiniBadge, type TeamLite } from "./bits";
 import type { BoardOutcome } from "./MarketsBoard";
 import { PortfolioPanel } from "./PortfolioPanel";
-import { money, sellValue, usePortfolio, type Side } from "./usePortfolio";
+import { money, sellValue, usePortfolio, type Side, isFutures } from "./usePortfolio";
 
 export type TradeOutcome = BoardOutcome & { player?: number; color?: string; model?: number; net?: number };
 
@@ -126,9 +126,9 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
             ) : (
               <p className="mk-msg err">{port.why}</p>
             )}
-            {held && port.canTrade && <button type="button" className="mk-link-btn mk-sell" disabled={busy} onClick={doSell}>Cancel your {held.qty} {side === "yes" ? "Yes" : "No"} for a {fmt(heldValue)} refund</button>}
+            {held && port.canTrade && <button type="button" className="mk-link-btn mk-sell" disabled={busy} onClick={doSell}>{port.shared && isFutures(mkey) ? `Cash out your ${held.qty} ${side === "yes" ? "Yes" : "No"} for about ${fmt(heldValue)}` : `Cancel your ${held.qty} ${side === "yes" ? "Yes" : "No"} for a ${fmt(heldValue)} refund`}</button>}
             {msg && <p className={`mk-msg ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</p>}
-            <p className="hint small">{T ? (port.needsLink ? "" : `You have ${fmt(cash)} free to bet. `) : `Cash: ${money(cash)}. `}Each contract pays {T ? "100 Tickets" : "$1"} if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? " Buying moves the price for everyone, so big orders cost more per contract. Until the market locks you can cancel for what you paid, or what the bet is worth then if that's less." : ""}</p>
+            <p className="hint small">{T ? (port.needsLink ? "" : `You have ${fmt(cash)} free to bet. `) : `Cash: ${money(cash)}. `}Each contract pays {T ? "100 Tickets" : "$1"} if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? (isFutures(mkey) ? " Buying moves the price for everyone, so big orders cost more per contract. Until it settles you can cash out at what the bet is worth then: more than you paid if the odds moved your way, less if not." : " Buying moves the price for everyone, so big orders cost more per contract. Until kickoff you can cancel for what you paid, or what the bet is worth then if that's less.") : ""}</p>
             {port.shared && o.model != null && Math.abs(o.model - o.p) >= 0.005 && <p className="hint small">Simulation says {Math.round(o.model * 100)}%; league bets have moved it to {Math.round(o.p * 100)}%.</p>}
           </div>
         )}

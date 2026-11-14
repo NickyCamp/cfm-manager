@@ -266,6 +266,9 @@ export async function ticketsAvailable(leagueId: string, userId: string, cfg: Ti
   return { ub, open, pending, available: Math.floor(ub - open + pending) };
 }
 
+/** Futures (season-long markets) cash out at the market price; game and prop bets cancel (Nick, 2026-11-14). */
+export const isFutures = (marketKey: string) => !/^(game|props)-/.test(marketKey);
+
 /** Positions a new bet may not sit beside (each is [outcome, side]): the other side of the same line;
  *  in a two-team game, the other team; in a prop ladder, the opposite direction on the player's other lines.
  *  Holding both sides is how a cancel could be turned into a sure profit. */
@@ -283,12 +286,16 @@ export function conflictsFor(m: Market, outcome: string, side: "yes" | "no"): [s
 
 /** One buy (spend up to `amount`: dollars or Tickets) or cancel (`qty` contracts) at the crowd price.
  *  Tickets: nothing moves in UnbelievaBoat; the stake is held against the member's balance on the site,
- *  and results go to the weekly payouts report. A cancel refunds what the bet cost, or what it's worth
- *  at the market now if that's less. Retried if someone traded in between. */
+ *  and results go to the weekly payouts report. Selling: a game/prop bet cancels for what it cost, or what
+ *  it's worth now if that's less; a futures bet cashes out at what it's worth now (more or less than the
+ *  stake). Retried if someone traded in between. */
 export async function placeTrade(args: {
   leagueId: string; book: number; userId: string; market: string; outcome: string; side: "yes" | "no"; kind: "buy" | "sell";
   priced: Market; amount?: number; qty?: number; tickets?: TicketsConfig | null;
-}): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
+  /** The market again with these outcome ids included (award markets: players others have bet on). */
+  extend?: (outcomeIds: string[]) => Market | undefined;
+}): Promise<{ ok: true; qty: number; amount: number; before: number; after: number; cashout: boolean } | { ok: false; error: string }> {
+  const cashout = args.kind === "sell" && isFutures(args.market);
   const admin = supabaseAdmin();
   const T = Boolean(args.tickets);
   const unit = T ? TICKETS_PER_CONTRACT : 1;
@@ -301,7 +308,8 @@ export async function placeTrade(args: {
   for (let attempt = 0; attempt < 5; attempt++) {
     const nets = await marketNets(args.leagueId, args.book, args.market);
     const net = nets.get(args.outcome) || 0;
-    const pr = pricerFor(args.priced, args.outcome, nets);
+    const priced = (args.extend && args.extend([...nets.keys(), args.outcome])) || args.priced;
+    const pr = pricerFor(priced, args.outcome, nets);
     const q = args.kind === "buy"
       ? quoteBuyP(pr, net, args.side, (args.amount || 0) / unit)
       : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
@@ -315,11 +323,12 @@ export async function placeTrade(args: {
       p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount,
       p_expected: Object.fromEntries(nets), p_new_net: q.newNet,
       p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000,
-      p_tickets: T, p_balance: balance, p_conflicts: args.kind === "buy" ? conflictsFor(args.priced, args.outcome, args.side) : null,
+      p_tickets: T, p_balance: balance, p_conflicts: args.kind === "buy" ? conflictsFor(priced, args.outcome, args.side) : null,
+      ...(cashout ? { p_cashout: true } : {}),
     });
     if (error) return { ok: false, error: error.message };
     const r = data as { r: string; amount?: number };
-    if (r.r === "ok") return { ok: true, qty: q.qty, amount: Number(r.amount ?? amount), before: q.before, after: q.after };
+    if (r.r === "ok") return { ok: true, qty: q.qty, amount: Number(r.amount ?? amount), before: q.before, after: q.after, cashout };
     if (r.r === "cash") return { ok: false, error: T ? `You have ${Math.max(0, Number(r.amount || 0)).toLocaleString("en-US")} Tickets free to bet (your UnbelievaBoat balance minus open bets, plus results not added yet); that bet costs ${amount.toLocaleString("en-US")}.` : "Not enough cash." };
     if (r.r === "qty") return { ok: false, error: "You don't hold that many contracts." };
     if (r.r === "conflict") return { ok: false, error: "You already have a bet on the other side of this. Cancel it first if you've changed your mind." };
@@ -328,12 +337,14 @@ export async function placeTrade(args: {
   return { ok: false, error: "Prices are moving fast. Try again." };
 }
 
-/** What cancelling a whole position gives back right now: what it cost, or its market value if that's less. */
-export async function cancelValue(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", pos: { qty: number; cost: number }, tickets: boolean) {
+/** What selling a whole position gives back right now: futures cash out at market value; game/prop bets
+ *  cancel for what they cost, or their market value if that's less. */
+export async function cancelValue(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", pos: { qty: number; cost: number }, tickets: boolean, extend?: (ids: string[]) => Market | undefined) {
   const nets = await marketNets(leagueId, book, m.key);
-  const q = quoteSellP(pricerFor(m, outcome, nets), nets.get(outcome) || 0, side, Math.floor(pos.qty));
+  const priced = (extend && extend([...nets.keys(), outcome])) || m;
+  const q = quoteSellP(pricerFor(priced, outcome, nets), nets.get(outcome) || 0, side, Math.floor(pos.qty));
   const value = tickets ? Math.floor(q.amount * TICKETS_PER_CONTRACT + 1e-6) : q.amount;
-  return Math.min(pos.cost, value);
+  return isFutures(m.key) ? value : Math.min(pos.cost, value);
 }
 
 /** Display names: the member's EA name, else their profile name. */
@@ -473,7 +484,7 @@ export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, pla
 }
 
 export type LedgerRow = {
-  id: number; at: string; userId: string; user: string; kind: "result" | "cancel" | "void" | "credit"; market: string | null; outcome: string | null;
+  id: number; at: string; userId: string; user: string; kind: "result" | "cancel" | "cashout" | "void" | "credit"; market: string | null; outcome: string | null;
   side: string | null; qty: number | null; cost: number | null; payout: number | null; amount: number; note: string;
   reportKey: string | null; appliedAt: string | null; appliedBy: string | null;
 };

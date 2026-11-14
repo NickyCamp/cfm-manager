@@ -26,6 +26,7 @@ function lineFor(r: LedgerRow): string {
     const icon = r.note.startsWith("Void") ? "↩️" : r.note.startsWith("Won") ? "✅" : "❌";
     return `${icon} ${side}${r.note} · staked ${n0(r.cost || 0)}, paid ${n0(r.payout || 0)} · ${amt}`;
   }
+  if (r.kind === "cashout") return `💵 ${side}cashed out (${r.market}) · staked ${n0(r.cost || 0)}, got ${n0(r.payout || 0)} · ${amt}`;
   if (r.kind === "cancel") return `✂️ ${side}cancelled after the price fell (${r.market}) · staked ${n0(r.cost || 0)}, refunded ${n0(r.payout || 0)} · ${amt}`;
   if (r.kind === "void") return `⛔ ${side}bet voided: ${r.note} (${r.market}) · ${amt}`;
   return `💳 ${r.note} · ${amt}`;

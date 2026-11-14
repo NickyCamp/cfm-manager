@@ -42,7 +42,7 @@ export function TeamBets({ slug, open, done, markets, tickets, members }: { slug
       {members.length > 1 && <p className="muted small">Bets by {members.join(" and ")}.</p>}
 
       <section className="panel">
-        <div className="section-head"><h3>Active bets</h3><span className="muted small">Can be cancelled for what they cost until they lock</span></div>
+        <div className="section-head"><h3>Active bets</h3><span className="muted small">Game bets can be cancelled until kickoff; season-long bets can be cashed out at the market price</span></div>
         {open.length ? (
           <div className="tbl-wrap">
             <table className="tbl">
@@ -86,7 +86,7 @@ export function TeamBets({ slug, open, done, markets, tickets, members }: { slug
                       <BetCell b={b} />
                       <td className="num">{Math.round(b.qty).toLocaleString("en-US")}</td>
                       <td className="num">{amt(b.cost)}</td>
-                      <td><span className={`mk-result ${b.result}`}>{b.result === "won" ? "Won" : b.result === "lost" ? "Lost" : "Cancelled"}</span></td>
+                      <td><span className={`mk-result ${b.result}`}>{b.result === "won" ? "Won" : b.result === "lost" ? "Lost" : /^(game|props)-/.test(b.market) ? "Cancelled" : "Cashed out"}</span></td>
                       <td className="num">{amt(b.payout || 0)}</td>
                       <td className={`num ${b.result === "cancelled" ? "muted" : p > 0.004 ? "pos" : p < -0.004 ? "neg" : ""}`}>{b.result === "cancelled" ? "—" : `${p >= 0 ? "+" : ""}${amt(p)}`}</td>
                       <td className="nw small">{day(b.closedAt!)}</td>

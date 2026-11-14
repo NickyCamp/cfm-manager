@@ -66,7 +66,7 @@ export default async function MarketActivity({ params, searchParams }: Props) {
                   <tr key={x.id}>
                     <td className="muted">{x.id}</td><td className="nw">{fmtET(x.at)}</td><td>{x.user}</td>
                     <td className={`num ${x.amount > 0 ? "pos" : x.amount < 0 ? "neg" : ""}`}>{x.amount > 0 ? "+" : x.amount < 0 ? "−" : ""}{Math.round(Math.abs(x.amount)).toLocaleString("en-US")}</td>
-                    <td>{x.kind === "result" ? `${x.side === "yes" ? "Yes" : "No"} · ${x.note}` : x.kind === "cancel" ? `Cancelled after the price fell (${index[x.market || ""]?.o[x.outcome || ""]?.[2] ?? x.outcome})` : x.kind === "void" ? `Voided: ${x.note}` : x.note}</td>
+                    <td>{x.kind === "result" ? `${x.side === "yes" ? "Yes" : "No"} · ${x.note}` : x.kind === "cashout" ? `Cashed out ${x.side === "yes" ? "Yes" : "No"} · ${index[x.market || ""]?.o[x.outcome || ""]?.[2] ?? x.outcome} (staked ${Math.round(x.cost || 0).toLocaleString("en-US")}, got ${Math.round(x.payout || 0).toLocaleString("en-US")})` : x.kind === "cancel" ? `Cancelled after the price fell (${index[x.market || ""]?.o[x.outcome || ""]?.[2] ?? x.outcome})` : x.kind === "void" ? `Voided: ${x.note}` : x.note}</td>
                     <td className="nw">{x.appliedAt ? <span title={x.appliedBy ?? ""}>Applied {fmtET(x.appliedAt)}</span> : x.reportKey ? "In the payouts report" : "Next report"}</td>
                   </tr>
                 ))}</tbody>

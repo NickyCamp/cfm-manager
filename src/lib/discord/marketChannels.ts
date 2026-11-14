@@ -420,7 +420,7 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   if (!channel) return;
   const money = all.tickets ? `${Math.round(bet.amount).toLocaleString("en-US")} Tickets` : `$${bet.amount.toFixed(2)}`;
   const yesBefore = Math.round(bet.before * 100), yesAfter = Math.round(bet.after * 100);
-  const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : "cancelled"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} ${bet.kind === "buy" ? "for" : "and got back"} **${money}** · Yes ${yesBefore}% → ${yesAfter}%`;
+  const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : /^(game|props)-/.test(bet.marketKey) ? "cancelled" : "cashed out"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} ${bet.kind === "buy" ? "for" : "and got back"} **${money}** · Yes ${yesBefore}% → ${yesAfter}%`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
   if (state.txChannelId) {
     const full = gc ? text.replace(`· ${bet.outcomeLabel}`, `· ${bet.outcomeLabel} (${m?.title ?? bet.marketKey})`) : text;

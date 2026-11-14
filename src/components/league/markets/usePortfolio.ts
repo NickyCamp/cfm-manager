@@ -45,6 +45,9 @@ export function sidePrice(index: PriceIndex, m: string, o: string, side: Side) {
   const pr = prices(i);
   return side === "yes" ? pr.yes : pr.no;
 }
+/** Futures (season-long markets) cash out at the market price; game and prop bets cancel. */
+export const isFutures = (marketKey: string) => !/^(game|props)-/.test(marketKey);
+
 /** What cancelling `qty` of a position gives back: what it cost (pro rata), or what it's worth at the
  *  market now if that's less (an estimate here; the server works it out exactly). Finished outcomes are worth their payout. */
 export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, pos: { qty: number; cost: number }, unit = 1, shared = true) {
@@ -53,7 +56,8 @@ export function sellValue(index: PriceIndex, m: string, o: string, side: Side, q
   if (i.state !== "open") return (i.state === "won") === (side === "yes") ? qty * unit : 0;
   const cost = pos.cost * Math.min(1, qty / pos.qty);
   const market = shared ? quoteSell(i.model, i.net, side, Math.floor(qty)).amount * unit : cost;
-  const v = Math.min(cost, market);
+  // futures cash out at market value; game/prop bets cancel for the cost, or less if the price fell
+  const v = shared && isFutures(m) ? market : Math.min(cost, market);
   return unit === 1 ? round2(v) : Math.floor(v);
 }
 
@@ -141,7 +145,7 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     const sideName = side === "yes" ? "Yes" : "No";
     if (shared) {
       const r = await call({ market: m, outcome: o, side, kind: "sell", qty });
-      return r.ok ? { ok: true, text: `Cancelled ${r.qty} ${sideName}: ${fmtAmount(r.amount!, currency)} refunded.` } : { ok: false, text: r.error! };
+      return r.ok ? { ok: true, text: `${isFutures(m) ? "Cashed out" : "Cancelled"} ${r.qty} ${sideName}: ${fmtAmount(r.amount!, currency)} back.` } : { ok: false, text: r.error! };
     }
     const cur = load(slug);
     const at = cur.positions.findIndex((p) => p.m === m && p.o === o && p.side === side);
