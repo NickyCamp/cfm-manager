@@ -8,6 +8,7 @@ import { STAT_CATS } from "./stats";
 
 const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
+const ADMINISTRATOR = String(1 << 3); // admin-only commands (Nick, 2026-11-14): /league, /marketchannels, /gamechannels
 
 // Where a command can be used. Server setup commands need the bot added to the
 // server; everything else also works when someone installs the bot to their own
@@ -98,12 +99,12 @@ export const COMMANDS = [
     ...ANYWHERE,
     options: [{ type: INTEGER, name: "week", description: "Regular-season week number", required: false, min_value: 1, max_value: 18 }],
   },
-  { name: "league", description: "Which league you're seeing here, with links", ...ANYWHERE },
-  { name: "marketchannels", description: "Set up or refresh the Markets category: a channel per game this week with odds and bets", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
+  { name: "league", description: "Admins: which league you're seeing here, with links", default_member_permissions: ADMINISTRATOR, ...ANYWHERE },
+  { name: "marketchannels", description: "Admins: set up or refresh the Markets category, a channel per game with odds and bets", default_member_permissions: ADMINISTRATOR, ...SERVER_ONLY },
   {
     name: "gamechannels",
-    description: "Make a category (e.g. 2027 - Week 1) with a channel per game that week; empty = this week",
-    default_member_permissions: MANAGE_SERVER,
+    description: "Admins: a category (e.g. 2027 - Week 1) with a channel per game that week; empty = this week",
+    default_member_permissions: ADMINISTRATOR,
     ...SERVER_ONLY,
     options: [
       { type: INTEGER, name: "year", description: "Season, e.g. 2027 (only the current season's schedule is loaded)", required: false, min_value: 2000, max_value: 2100 },

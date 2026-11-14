@@ -63,6 +63,8 @@ const canManage = (i: Interaction) => {
   const p = BigInt(i.member?.permissions || "0");
   return (p & MANAGE_SERVER) !== BigInt(0) || (p & ADMIN) !== BigInt(0);
 };
+/** Administrator permission (a server's Admin role has it; so does the owner). */
+const isAdmin = (i: Interaction) => (BigInt(i.member?.permissions || "0") & ADMIN) !== BigInt(0);
 
 // ---------- lookups ----------
 
@@ -211,12 +213,12 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "marketchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!canManage(i)) return reply("Only people with Manage Server can set up the Markets category.");
+      if (!isAdmin(i)) return reply("Only server admins can set up the Markets category.");
       return reply(await syncMarketChannels(lg.slug));
     }
     case "gamechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!canManage(i)) return reply("Only people with Manage Server can set up game channels.");
+      if (!isAdmin(i)) return reply("Only server admins can set up game channels.");
       if (opt(i, "action") === "remove") return reply(await removeGameChannels(lg.slug));
       return reply(await syncGameChannels(lg.slug, { year: Number(opt(i, "year")) || undefined, week: Number(opt(i, "week")) || undefined }));
     }
@@ -281,6 +283,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { embeds: [scoresEmbed(d, pick.stage, pick.week, url, footer)] };
     }
     case "league": {
+      // admins only in servers (Nick, 2026-11-14); DMs and group DMs have no roles, so it stays open there
+      if (i.guild_id && !isAdmin(i)) return reply("Only server admins can use /league here.");
       const ch = via === "server" ? discordOf(lg)?.channelId : null;
       return {
         embeds: [{

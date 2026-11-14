@@ -58,7 +58,7 @@ export default async function MarketsSetup({ params }: Props) {
           <p>In the server, run <code>/link league:{slug}</code> (Manage Server only). One league per server. The league must be public. Running <code>/link</code> in a different server moves the league there.</p>
 
           <h3>3. Create the Markets channels</h3>
-          <p>Run <code>/marketchannels</code>. The bot makes a <strong>Markets</strong> category with <code>#market-feed</code> (season-long markets, and every bet on them) and one channel per game this week, where every bet line has Yes/No buttons. After that it keeps itself up to date: it refreshes after every sync, rolls the game channels after each advance, and posts weekly odds charts.</p>
+          <p>A server admin runs <code>/marketchannels</code>. The bot makes a <strong>Markets</strong> category with <code>#market-feed</code> (season-long markets, and every bet on them) and one channel per game this week, where every bet line has Yes/No buttons. After that it keeps itself up to date: it refreshes after every sync, rolls the game channels after each advance, and posts weekly odds charts.</p>
 
           <h3>4. Everyone links their Discord once</h3>
           <p>Each member runs <code>/connect</code> and opens the link while signed in here. That ties their Discord account to their CFM Manager account, so their Discord bets and balance are theirs. It carries over if the league moves to another server.</p>
@@ -109,8 +109,10 @@ export default async function MarketsSetup({ params }: Props) {
           <h3>Commands</h3>
           <div className="tbl-wrap"><table className="tbl">
             <tbody>
-              <tr><td><code>/link</code>, <code>/marketchannels</code></td><td>Setup (Manage Server)</td></tr>
-              <tr><td><code>/gamechannels year week</code></td><td>A category like &ldquo;2027 - Week 1&rdquo; with a channel per game that week, pinging both managers; rolls over after each advance (Manage Server)</td></tr>
+              <tr><td><code>/link</code></td><td>Link the server to the league (Manage Server)</td></tr>
+              <tr><td><code>/marketchannels</code></td><td>Admins: set up or refresh the Markets category</td></tr>
+              <tr><td><code>/league</code></td><td>Admins: which league this server shows, with links</td></tr>
+              <tr><td><code>/gamechannels year week</code></td><td>A category like &ldquo;2027 - Week 1&rdquo; with a channel per game that week, pinging both managers; rolls over after each advance (admins)</td></tr>
               <tr><td><code>/connect</code></td><td>Link your Discord to your CFM Manager account</td></tr>
               <tr><td><code>/kickoff team time</code></td><td>When betting closes on your game (either manager; admins any time)</td></tr>
               <tr><td><code>/balance</code></td><td>What you can bet: UnbelievaBoat balance, open bets and results not added yet</td></tr>
