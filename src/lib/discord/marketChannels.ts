@@ -67,7 +67,10 @@ export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryM
     out.push({
       key: `${main.key}|*`,
       content: `**Who wins?** ${main.outcomes.map((o) => `${o.label} ${o.state === "won" ? "✅" : o.state === "lost" ? "❌" : `**${chanceText(o.p)}**`}`).join(" · ")}`,
-      components: [{ type: 1, components: main.outcomes.map((o, i) => o.state !== "open" ? btn(`${o.label}: ${o.state === "won" ? "won" : "lost"}`, GREY, `mkx|${main.key}|${o.id}|${i}`, true)
+      // once betting closes, say so in words: a greyed-out button does nothing when tapped
+      components: [{ type: 1, components: shut && main.outcomes.every((o) => o.state === "open")
+        ? [btn("🔒 Betting closed at kickoff", GREY, `mkx|${main.key}|closed`, true)]
+        : main.outcomes.map((o, i) => o.state !== "open" ? btn(`${o.label}: ${o.state === "won" ? "won" : "lost"}`, GREY, `mkx|${main.key}|${o.id}|${i}`, true)
         : btn(`${o.label} ${prices(o).yes}%`, i === 0 ? GREEN : RED, `mk|${main.key}|${o.id}|yes|${o.label.split(" ").pop()}`.slice(0, 100), shut)) }],
     });
   }
@@ -81,7 +84,8 @@ export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryM
         content: `**${o.label}**${result}${o.state === "open" ? ` · ${chanceText(o.p)}` : ""}${o.sub ? `\n-# ${o.sub}` : ""}`,
         components: [{ type: 1, components: o.state !== "open"
           ? [btn(o.state === "won" ? "Yes won" : "No won", GREY, `mkx|${m.key}|${o.id}`, true)]
-          : [btn(`Yes ${pr.yes}%`, GREEN, `mk|${m.key}|${o.id}|yes`, shut), btn(`No ${pr.no}%`, RED, `mk|${m.key}|${o.id}|no`, shut)] }],
+          : shut ? [btn(`🔒 Closed at kickoff · Yes ${pr.yes}%`, GREY, `mkx|${m.key}|${o.id}|closed`, true)]
+          : [btn(`Yes ${pr.yes}%`, GREEN, `mk|${m.key}|${o.id}|yes`), btn(`No ${pr.no}%`, RED, `mk|${m.key}|${o.id}|no`)] }],
       });
     }
   }
