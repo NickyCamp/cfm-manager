@@ -293,6 +293,18 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     state.payouts = r.state; report = ` ${r.text}`;
   }
 
+  // #previous-week-payouts always exists in Tickets leagues (Nick, 2026-11-14), with a placeholder until the first report
+  if (cfg && state.payouts?.channelId && !(await dc("GET", `/channels/${state.payouts.channelId}`)).ok) state.payouts = { since: state.payouts.since };
+  if (cfg && !state.payouts?.channelId) {
+    const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "previous-week-payouts", type: 0, parent_id: state.categoryId,
+      topic: `Market results to add/remove in UnbelievaBoat, then tap Applied · ${APP_URL}/l/${slug}/markets/activity` });
+    if (ch.ok) {
+      state.payouts = { ...(state.payouts || {}), channelId: String(ch.data.id) };
+      await dc("POST", `/channels/${state.payouts.channelId}/messages`, { allowed_mentions: { parse: [] }, embeds: [{ title: "Previous week payouts", color: BRAND, url: `${APP_URL}/l/${slug}/markets/activity`,
+        description: "After each advance this channel is replaced with one card per member who bet: every settled bet, their net gain or loss, a ready-to-copy UnbelievaBoat command, and an **Applied** button for admins.\n\nNo report yet: the first one is posted after the next advance. Admins can post one now with `/payouts`." }] });
+    }
+  }
+
   // game channels: roll over on a new week
   const games = thisWeek(d);
   let created = 0, removed = 0;
