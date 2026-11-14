@@ -3,9 +3,14 @@ import { after, NextResponse } from "next/server";
 export const maxDuration = 30;
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
-import { closeTimes, fmtET, marketsShared, placeTrade, viewer } from "@/lib/marketStore";
+import { closeTimes, fmtET, marketsShared, marketsStatus, placeTrade, viewer } from "@/lib/marketStore";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
 import { requestSync } from "@/lib/sync";
+
+// GET: is shared trading on, and if not, why (no secrets). For checking setup.
+export async function GET() {
+  return NextResponse.json(await marketsStatus(), { headers: { "cache-control": "no-store" } });
+}
 
 // POST { market, outcome, side: "yes"|"no", kind: "buy"|"sell", dollars?, qty? }
 // League members only. Prices are worked out here from the simulation + members' trades.

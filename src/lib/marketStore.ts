@@ -8,15 +8,21 @@ import { crowdP, quoteBuy, quoteSell, type Market, type MarketBook, type PriceIn
 export const START_CASH = 1000;
 const poolKey = (m: string, o: string) => `${m}|${o}`;
 
-let available: { at: number; ok: boolean } | null = null;
+let available: { at: number; ok: boolean; why: string } | null = null;
 /** True once the markets migration has been run in Supabase. */
 export async function marketsShared(): Promise<boolean> {
-  if (process.env.LOCAL_LEAGUE_DATA || !supabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return false;
-  if (available && (available.ok || Date.now() - available.at < 60_000)) return available.ok;
+  return (await marketsStatus()).ok;
+}
+/** Same, with the reason when it's off (for the diagnostics GET; no secrets). */
+export async function marketsStatus(): Promise<{ ok: boolean; why: string }> {
+  if (process.env.LOCAL_LEAGUE_DATA) return { ok: false, why: "LOCAL_LEAGUE_DATA is set" };
+  if (!supabaseConfigured()) return { ok: false, why: "Supabase URL / anon key not set" };
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { ok: false, why: "SUPABASE_SERVICE_ROLE_KEY not set" };
+  if (available && (available.ok || Date.now() - available.at < 60_000)) return available;
   const { error } = await supabaseAdmin().from("market_pools").select("net").limit(1);
-  available = { at: Date.now(), ok: !error };
-  if (error) console.warn("markets not shared yet:", error.message);
-  return available.ok;
+  available = { at: Date.now(), ok: !error, why: error ? `${error.code ?? ""} ${error.message}`.trim() : "" };
+  if (error) console.warn("markets not shared yet:", available.why);
+  return available;
 }
 
 /** The signed-in viewer and whether they're in this league (owner or member). */
