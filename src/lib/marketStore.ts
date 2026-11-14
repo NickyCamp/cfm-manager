@@ -38,6 +38,15 @@ export async function viewer(slug: string) {
   return { leagueId: row.id, userId: user.id, member };
 }
 
+/** Is this user the league's owner or a member? */
+export async function isMember(leagueId: string, userId: string) {
+  const admin = supabaseAdmin();
+  const { data: lg } = await admin.from("leagues").select("owner_id").eq("id", leagueId).maybeSingle();
+  if (lg?.owner_id === userId) return true;
+  const { data } = await admin.from("league_members").select("user_id").eq("league_id", leagueId).eq("user_id", userId).maybeSingle();
+  return Boolean(data);
+}
+
 export async function loadPools(leagueId: string, season: number) {
   const { data } = await supabaseAdmin().from("market_pools").select("market_key, outcome_id, net, volume").eq("league_id", leagueId).eq("season", season);
   const pools = new Map<string, { net: number; volume: number }>();
@@ -166,7 +175,7 @@ export async function sharedState(leagueId: string, season: number, userId: stri
 export async function placeTicketsTrade(args: {
   leagueId: string; book: number; userId: string; market: string; marketTitle: string; outcome: string; outcomeLabel: string;
   side: "yes" | "no"; kind: "buy" | "sell"; model: number; tickets?: number; qty?: number; cfg: TicketsConfig;
-}): Promise<{ ok: true; qty: number; amount: number; after: number } | { ok: false; error: string }> {
+}): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
   const admin = supabaseAdmin();
   const d = await discordOfUser(args.userId);
   if (!d) return { ok: false, error: "Link your Discord first: run /connect in the league's Discord and open the link." };
@@ -195,7 +204,7 @@ export async function placeTicketsTrade(args: {
     });
     if (data === "ok" && !error) {
       if (args.kind === "sell") after(() => sendPendingTickets(args.leagueId, args.cfg).then(() => {}, () => {}));
-      return { ok: true, qty: q.qty, amount, after: q.after };
+      return { ok: true, qty: q.qty, amount, before: q.before, after: q.after };
     }
     if (args.kind === "buy") {
       // The Tickets were taken but the bet didn't go in: give them straight back.
@@ -215,7 +224,7 @@ export async function placeTicketsTrade(args: {
 export async function placeTrade(args: {
   leagueId: string; season: number; userId: string; market: string; outcome: string; side: "yes" | "no"; kind: "buy" | "sell";
   model: number; dollars?: number; qty?: number;
-}): Promise<{ ok: true; qty: number; amount: number; after: number } | { ok: false; error: string }> {
+}): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
   const admin = supabaseAdmin();
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data: pool } = await admin.from("market_pools").select("net").eq("league_id", args.leagueId).eq("season", args.season)
@@ -229,7 +238,7 @@ export async function placeTrade(args: {
       p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000,
     });
     if (error) return { ok: false, error: error.message };
-    if (data === "ok") return { ok: true, qty: q.qty, amount: q.amount, after: q.after };
+    if (data === "ok") return { ok: true, qty: q.qty, amount: q.amount, before: q.before, after: q.after };
     if (data === "cash") return { ok: false, error: "Not enough cash." };
     if (data === "qty") return { ok: false, error: "You don't hold that many contracts." };
     if (data !== "stale") return { ok: false, error: "Trade refused." };

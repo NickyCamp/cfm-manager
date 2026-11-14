@@ -7,11 +7,12 @@ import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
 import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
+import { betModal, placeFromModal, type ComponentInteraction } from "@/lib/discord/marketButtons";
 
 export const runtime = "nodejs";
-export const maxDuration = 60; // /alertvideo copies a video of up to 10 MB
+export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
 
-const PING = 1, COMMAND = 2, AUTOCOMPLETE = 4;
+const PING = 1, COMMAND = 2, COMPONENT = 3, AUTOCOMPLETE = 4, MODAL_SUBMIT = 5;
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -28,6 +29,18 @@ export async function POST(req: Request) {
       new Promise<{ name: string; value: string }[]>((r) => setTimeout(() => r([]), 2500)),
     ]);
     return NextResponse.json({ type: 8, data: { choices } });
+  }
+
+  // Markets channels: a Yes/No button opens the amount box; submitting it places the bet (private reply).
+  if (i.type === COMPONENT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mk|")) {
+    return NextResponse.json(betModal(i as ComponentInteraction));
+  }
+  if (i.type === MODAL_SUBMIT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mkb|")) {
+    after(async () => {
+      const text = await placeFromModal(i as ComponentInteraction).catch((e) => { console.error("discord bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, { content: text });
+    });
+    return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
   }
 
   if (i.type === COMMAND) {

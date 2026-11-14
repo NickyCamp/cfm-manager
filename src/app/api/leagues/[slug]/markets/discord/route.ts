@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { syncMarketChannels } from "@/lib/discord/marketChannels";
 import { checkWorkerCall } from "@/lib/workerSig";
 
-export const maxDuration = 60;
+export const maxDuration = 300; // a full week can be ~900 messages
 
 // The sync worker calls this after each pull: roll the Discord Markets channels on an
 // advance and refresh every odds message. Signed with EA_TOKEN_KEY (src/lib/workerSig.ts).

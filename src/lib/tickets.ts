@@ -84,6 +84,7 @@ export async function discordOfUser(userId: string): Promise<{ id: string; name:
   return m?.discord_id ? { id: String(m.discord_id), name: String(m.discord_name || "") } : null;
 }
 export async function linkDiscord(userId: string, discordId: string, name: string) {
+  byDiscordForget(discordId);
   const admin = supabaseAdmin();
   const { data } = await admin.auth.admin.getUserById(userId);
   const meta = { ...(data.user?.user_metadata || {}), discord_id: discordId, discord_name: name };
@@ -115,4 +116,26 @@ export async function sendPendingTickets(leagueId: string, cfg: TicketsConfig, l
     }
   }
   return sent;
+}
+
+const byDiscord = new Map<string, { at: number; userId: string | null }>();
+function byDiscordForget(id: string) { byDiscord.delete(id); }
+/** The site user linked to a Discord account (via /connect), cached 5 minutes. */
+export async function userForDiscord(discordId: string): Promise<string | null> {
+  const hit = byDiscord.get(discordId);
+  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.userId;
+  const admin = supabaseAdmin();
+  let found: string | null = null;
+  for (let page = 1; page <= 20 && !found; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data.users.length) break;
+    for (const u of data.users) {
+      const id = (u.user_metadata as Record<string, unknown> | undefined)?.discord_id;
+      if (id) byDiscord.set(String(id), { at: Date.now(), userId: u.id });
+      if (String(id) === discordId) found = u.id;
+    }
+    if (data.users.length < 200) break;
+  }
+  byDiscord.set(discordId, { at: Date.now(), userId: found });
+  return found;
 }

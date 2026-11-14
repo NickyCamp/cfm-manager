@@ -1,12 +1,15 @@
 // Discord "Markets" category (Nick, 2026-11-13): the bot keeps one channel per game
-// this week, each opening with that game's odds (game line + player props), and
-// posts every bet in the game's channel as it happens, updating the odds message.
+// this week. Each channel opens with a header, then one message per bet line (who
+// wins, every player prop) with Yes / No buttons showing the price; tapping one bets
+// right from Discord (src/lib/discord/marketButtons.ts). Every bet is posted in the
+// game's channel as it happens and that line's buttons update to the new price.
 // Bets on season markets (Super Bowl, awards…) go to a #market-feed channel that stays.
 // On each advance the old game channels are deleted and the new week's are created.
 //
 // Runs on the site (needs DISCORD_BOT_TOKEN): after each sync (the worker calls
 // POST /api/leagues/<slug>/markets/discord), after each bet, after /kickoff, and
 // from the /marketchannels command. The bot needs Manage Channels in the server.
+import { createHash } from "node:crypto";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
 import { chanceText, prices, type Market } from "@/lib/league/marketTypes";
@@ -20,7 +23,8 @@ const API = "https://discord.com/api/v10";
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type GameChannel = { channelId: string; messageId: string | null };
+type Entry = { messageId: string; sig: string };
+type GameChannel = { channelId: string; messageId: string | null; entries?: Record<string, Entry> };
 export type MarketChannels = {
   categoryId: string;
   feedChannelId?: string;
@@ -58,32 +62,57 @@ const weekKeyOf = (d: LeagueData) => `${d.season.year}:${d.season.stage}:${d.sea
 const thisWeek = (d: LeagueData) => d.games.filter((g) => g.stage === d.season.stage && g.week === d.season.week && g.home && g.away);
 const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 90);
 
+type Component = Record<string, unknown>;
+type EntryMsg = { key: string; content: string; components: Component[] };
+const btn = (label: string, style: number, custom_id: string, disabled = false): Component => ({ type: 2, style, label: clip(label, 80), custom_id, disabled });
+const GREEN = 3, RED = 4, GREY = 2;
+
+/** One message per bet line for a game: who wins (both teams as buttons), then each player prop with Yes/No. */
+export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryMsg[] {
+  const out: EntryMsg[] = [];
+  const main = markets.find((m) => m.key === `game-${g.id}`);
+  if (main) {
+    const shut = closed || main.closed || main.settled;
+    out.push({
+      key: `${main.key}|*`,
+      content: `**Who wins?** ${main.outcomes.map((o) => `${o.label} ${o.state === "won" ? "✅" : o.state === "lost" ? "❌" : `**${chanceText(o.p)}**`}`).join(" · ")}`,
+      components: [{ type: 1, components: main.outcomes.map((o, i) => o.state !== "open" ? btn(`${o.label}: ${o.state === "won" ? "won" : "lost"}`, GREY, `mkx|${main.key}|${o.id}|${i}`, true)
+        : btn(`${o.label} ${prices(o).yes}¢`, i === 0 ? GREEN : RED, `mk|${main.key}|${o.id}|yes|${o.label.split(" ").pop()}`.slice(0, 100), shut)) }],
+    });
+  }
+  for (const m of markets.filter((x) => x.key.startsWith(`props-${g.id}-`))) {
+    const shut = closed || m.closed || m.settled;
+    for (const o of m.outcomes) {
+      const pr = prices(o);
+      const result = o.state === "won" ? " ✅" : o.state === "lost" ? " ❌" : "";
+      out.push({
+        key: `${m.key}|${o.id}`,
+        content: `**${o.label}**${result}${o.state === "open" ? ` · ${chanceText(o.p)}` : ""}${o.sub ? `\n-# ${o.sub}` : ""}`,
+        components: [{ type: 1, components: o.state !== "open"
+          ? [btn(o.state === "won" ? "Yes won" : "No won", GREY, `mkx|${m.key}|${o.id}`, true)]
+          : [btn(`Yes ${pr.yes}¢`, GREEN, `mk|${m.key}|${o.id}|yes`, shut), btn(`No ${pr.no}¢`, RED, `mk|${m.key}|${o.id}|no`, shut)] }],
+      });
+    }
+  }
+  return out;
+}
+// Short fingerprint of a message's text + buttons, so unchanged lines aren't re-sent (and the saved state stays small).
+const sigOf = (e: EntryMsg) => createHash("sha1").update(JSON.stringify([e.content, e.components])).digest("base64url").slice(0, 12);
+
 export function gameEmbed(slug: string, d: LeagueData, g: Game, markets: Market[], tickets: boolean): Embed {
   const teams = new Map(d.teams.map((t) => [t.id, t]));
   const h = teams.get(g.home) as Team, a = teams.get(g.away) as Team;
   const main = markets.find((m) => m.key === `game-${g.id}`);
   const props = markets.filter((m) => m.key.startsWith(`props-${g.id}-`));
   const unit = tickets ? "100 Tickets" : "$1";
-  // Yes price = chance, so one number per line keeps it short; long lists split across fields (1024 chars each).
-  const line = (label: string, p: number, state: Parameters<typeof prices>[0]["state"]) =>
-    state === "open" ? `${label} · **${prices({ p, state }).yes}¢**` : `${label} · ${state === "won" ? "✅" : "❌"}`;
-  const fields: Embed["fields"] = [];
-  const addField = (name: string, lines: string[]) => {
-    let chunk: string[] = [];
-    let first = true;
-    const flush = () => { if (chunk.length) fields.push({ name: first ? name : `${name} (cont.)`, value: chunk.join("\n") }); first = false; chunk = []; };
-    for (const l of lines) { if ([...chunk, l].join("\n").length > 1000) flush(); chunk.push(clip(l, 200)); }
-    flush();
-  };
-  if (main) addField("Who wins", main.outcomes.map((o) => line(o.label, o.p, o.state)));
-  for (const m of props) addField(m.title.split(": ")[1]?.replace(/^./, (c) => c.toUpperCase()) || m.title, m.outcomes.map((o) => line(o.label, o.p, o.state)));
+  void prices;
+  void props;
   const status = main?.status || "";
   return {
     title: `${a.city} ${a.name} at ${h.city} ${h.name}`,
     url: `${APP_URL}/l/${slug}/markets/game-${g.id}`,
     color: hexColor(h.primary) || BRAND,
-    description: `${d.season.title} · ${status}\nPrices are the Yes price (= chance) and move with every bet. Each contract pays ${unit} if right. Bet on the site; every bet is posted below.`,
-    fields: fields.slice(0, 25),
+    description: `${d.season.title} · ${status}\nEvery line below is a bet: tap **Yes** or **No**, enter how much, done. The price is the chance (56¢ = 56%) and moves with every bet. Each contract pays ${unit} if right. Link your Discord once with /connect.`,
     footer: { text: `${a.abbr} @ ${h.abbr} · updated ${fmtET(new Date())}` },
   };
 }
@@ -156,6 +185,7 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     state.weekKey = key;
   }
   const teams = new Map(d.teams.map((t) => [t.id, t]));
+  // create missing channels one at a time (Discord limits channel creation), then fill them in parallel
   for (const g of games) {
     let gc = state.games[String(g.id)];
     if (gc && !(await dc("GET", `/channels/${gc.channelId}`)).ok) gc = undefined as unknown as GameChannel;
@@ -163,24 +193,46 @@ export async function syncMarketChannels(slug: string): Promise<string> {
       const a = teams.get(g.away), h = teams.get(g.home);
       const ch = await dc("POST", `/guilds/${guildId}/channels`, {
         name: slugName(`${a?.name ?? "away"}-at-${h?.name ?? "home"}`), type: 0, parent_id: state.categoryId,
-        topic: `${d.season.title} odds and bets · ${APP_URL}/l/${slug}/markets/game-${g.id}`,
+        topic: `${d.season.title}: tap Yes/No on any line to bet · ${APP_URL}/l/${slug}/markets/game-${g.id}`,
       });
       if (!ch.ok) return ch.status === 403 ? "The bot needs the Manage Channels permission in this server." : `Discord said ${ch.status} creating a game channel.`;
-      gc = { channelId: String(ch.data.id), messageId: null };
-      state.games[String(g.id)] = gc;
+      state.games[String(g.id)] = { channelId: String(ch.data.id), messageId: null, entries: {} };
       created++;
       await sleep(300);
     }
-    const embed = gameEmbed(slug, d, g, markets, tickets);
-    const ed = gc.messageId ? await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed] }) : null;
-    if (!ed?.ok) { const m = await dc("POST", `/channels/${gc.channelId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } }); gc.messageId = m.ok ? String(m.data.id) : null; }
   }
+  let edits = 0;
+  const queue = [...games];
+  await Promise.all(Array.from({ length: 8 }, async () => {
+    for (let g = queue.shift(); g; g = queue.shift()) edits += await fillGameChannel(slug, d, g, markets, tickets, state!.games[String(g.id)]);
+  }));
   await saveState(lg.id, state);
-  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, plus #market-feed.`;
+  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed.`;
+}
+
+/** Header + one message per bet line; only lines whose text or price changed are touched. Returns messages written. */
+async function fillGameChannel(slug: string, d: LeagueData, g: Game, markets: Market[], tickets: boolean, gc: GameChannel): Promise<number> {
+  let n = 0;
+  const embed = gameEmbed(slug, d, g, markets, tickets);
+  const ed = gc.messageId ? await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed] }) : null;
+  if (!ed?.ok) { const m = await dc("POST", `/channels/${gc.channelId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } }); gc.messageId = m.ok ? String(m.data.id) : null; n++; }
+  gc.entries ||= {};
+  const main = markets.find((m) => m.key === `game-${g.id}`);
+  for (const e of gameEntries(g, markets, Boolean(main?.closed))) {
+    const sig = sigOf(e);
+    const have = gc.entries[e.key];
+    if (have?.sig === sig) continue;
+    const body = { content: e.content, components: e.components, allowed_mentions: { parse: [] } };
+    const r = have ? await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, body) : null;
+    if (r?.ok) { have!.sig = sig; n++; continue; }
+    const p = await dc("POST", `/channels/${gc.channelId}/messages`, body);
+    if (p.ok) { gc.entries[e.key] = { messageId: String(p.data.id), sig }; n++; }
+  }
+  return n;
 }
 
 /** Posts one bet in its game's channel (or #market-feed) and refreshes that odds message. */
-export async function postBet(slug: string, bet: { who: string; marketKey: string; outcomeLabel: string; side: "yes" | "no"; kind: "buy" | "sell"; qty: number; amount: number; before: number; after: number }) {
+export async function postBet(slug: string, bet: { who: string; marketKey: string; outcomeId?: string; outcomeLabel: string; side: "yes" | "no"; kind: "buy" | "sell"; qty: number; amount: number; before: number; after: number }) {
   const lg = await leagueBySlug(slug);
   const state = lg?.settings?.marketChannels as MarketChannels | undefined;
   if (!lg || !state || !process.env.DISCORD_BOT_TOKEN) return;
@@ -195,21 +247,44 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   const yesBefore = Math.round(bet.before * 100), yesAfter = Math.round(bet.after * 100);
   const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : "sold"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} for **${money}** · Yes ${yesBefore}¢ → ${yesAfter}¢`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
-  if (gc?.messageId && gameId) {
+  if (gc && gameId) {
+    // update just the bet line that moved (and the game line, whose price is shown in the header too)
     const g = all.d.games.find((x) => x.id === gameId);
-    if (g) await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [gameEmbed(slug, all.d, g, all.markets, all.tickets)] });
+    if (g) {
+      const main = all.markets.find((x) => x.key === `game-${g.id}`);
+      for (const e of gameEntries(g, all.markets, Boolean(main?.closed))) {
+        if (e.key !== `${bet.marketKey}|${bet.outcomeId}` && e.key !== `${bet.marketKey}|*`) continue;
+        const have = gc.entries?.[e.key];
+        if (have) { const r = await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, { content: e.content, components: e.components, allowed_mentions: { parse: [] } }); if (r.ok) have.sig = sigOf(e); }
+      }
+      if (gc.messageId) await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [gameEmbed(slug, all.d, g, all.markets, all.tickets)] });
+      await saveEntrySigs(lg.id, gameId, gc);
+    }
   } else if (state.feedChannelId && state.feedMessageId) {
     await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
   }
 }
 
-/** Refreshes one game's odds message (after /kickoff). */
+/** Refreshes one game's channel (after /kickoff, or when its betting closes). */
 export async function refreshGame(slug: string, gameId: number) {
   const lg = await leagueBySlug(slug);
   const state = lg?.settings?.marketChannels as MarketChannels | undefined;
   const gc = state?.games[String(gameId)];
-  if (!gc?.messageId || !process.env.DISCORD_BOT_TOKEN) return;
+  if (!lg || !gc || !process.env.DISCORD_BOT_TOKEN) return;
   const all = await loadAll(slug);
   const g = all?.d.games.find((x) => x.id === gameId);
-  if (all && g) await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [gameEmbed(slug, all.d, g, all.markets, all.tickets)] });
+  if (!all || !g) return;
+  await fillGameChannel(slug, all.d, g, all.markets, all.tickets, gc);
+  await saveEntrySigs(lg.id, gameId, gc);
+}
+
+/** Saves one game's message ids/signatures without clobbering the rest of the state. */
+async function saveEntrySigs(leagueId: string, gameId: number, gc: GameChannel) {
+  const db = supabaseAdmin();
+  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
+  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+  const st = settings.marketChannels as MarketChannels | undefined;
+  if (!st?.games[String(gameId)]) return;
+  st.games[String(gameId)] = gc;
+  await db.from("leagues").update({ settings }).eq("id", leagueId);
 }
