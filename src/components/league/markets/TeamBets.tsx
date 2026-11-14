@@ -25,7 +25,7 @@ export function TeamBets({ slug, open, done, markets, tickets, members }: { slug
   };
   const staked = open.reduce((a, b) => a + b.cost, 0);
   const toWin = open.reduce((a, b) => a + b.qty * unit, 0);
-  // only bets that played out; cancelled ones stay in the public trade log
+  // record and profit count only bets that played out; the table lists every finished bet (won, lost or cancelled)
   const settled = done.filter((b) => b.result !== "cancelled");
   const profit = settled.reduce((a, b) => a + (b.payout || 0) - b.cost, 0);
   const wins = settled.filter((b) => b.result === "won").length;
@@ -74,12 +74,12 @@ export function TeamBets({ slug, open, done, markets, tickets, members }: { slug
 
       <section className="panel">
         <div className="section-head"><h3>Settled bets</h3><Link href={`/l/${slug}/markets/activity`}>Full trade log →</Link></div>
-        {settled.length ? (
+        {done.length ? (
           <div className="tbl-wrap">
             <table className="tbl">
               <thead><tr><th>Bet</th><th className="num">Contracts</th><th className="num">Cost{cur}</th><th>Result</th><th className="num">Paid back</th><th className="num">Profit</th><th>Closed</th></tr></thead>
               <tbody>
-                {settled.map((b, i) => {
+                {done.map((b, i) => {
                   const p = (b.payout || 0) - b.cost;
                   return (
                     <tr key={i}>
@@ -96,7 +96,7 @@ export function TeamBets({ slug, open, done, markets, tickets, members }: { slug
               </tbody>
             </table>
           </div>
-        ) : <p className="muted">Nothing settled yet. Bets show here once their game is played or their market settles.</p>}
+        ) : <p className="muted">No finished bets yet. Bets show here once they win, lose or are cancelled.</p>}
       </section>
     </div>
   );
