@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { prices, quoteSell, type OutcomeState, type PriceIndex } from "@/lib/league/marketTypes";
+import { prices, type OutcomeState, type PriceIndex } from "@/lib/league/marketTypes";
 import type { SharedState } from "@/lib/marketStore";
 
 export const START_CASH = 1000;
@@ -45,14 +45,14 @@ export function sidePrice(index: PriceIndex, m: string, o: string, side: Side) {
   const pr = prices(i);
   return side === "yes" ? pr.yes : pr.no;
 }
-/** Dollars you'd get selling `qty` now (shared mode: the price slides as you sell). */
-export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, shared: boolean, unit = 1) {
+/** What cancelling `qty` of a position gives back: exactly what it cost (pro rata), until the market locks.
+ *  Finished outcomes are worth their payout. */
+export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, pos: { qty: number; cost: number }, unit = 1) {
   const i = outcomeInfo(index, m, o);
   if (!i) return 0;
   if (i.state !== "open") return (i.state === "won") === (side === "yes") ? qty * unit : 0;
-  if (!shared) return round2((qty * sidePrice(index, m, o, side)) / 100);
-  const v = quoteSell(i.model, i.net, side, qty).amount * unit;
-  return unit === 1 ? v : Math.floor(v + 1e-6);
+  const v = pos.cost * Math.min(1, qty / pos.qty);
+  return unit === 1 ? round2(v) : Math.round(v);
 }
 
 /** Pays out local positions whose outcome has settled. Returns the same object when nothing changed. */
@@ -134,12 +134,12 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     return { ok: true, text: `Bought ${qty} ${sideName} on ${label} for ${money(cost)}. Pays ${money(qty)} if right.` };
   }, [slug, index, commit, shared, call, currency, unit]);
 
-  /** Sell `qty` contracts back at the current price. */
+  /** Cancel `qty` contracts for exactly what they cost. */
   const sell = useCallback(async (m: string, o: string, side: Side, qty: number): Promise<TradeResult> => {
     const sideName = side === "yes" ? "Yes" : "No";
     if (shared) {
       const r = await call({ market: m, outcome: o, side, kind: "sell", qty });
-      return r.ok ? { ok: true, text: `Sold ${r.qty} ${sideName} for ${fmtAmount(r.amount!, currency)}.` } : { ok: false, text: r.error! };
+      return r.ok ? { ok: true, text: `Cancelled ${r.qty} ${sideName}: ${fmtAmount(r.amount!, currency)} refunded.` } : { ok: false, text: r.error! };
     }
     const cur = load(slug);
     const at = cur.positions.findIndex((p) => p.m === m && p.o === o && p.side === side);
@@ -147,17 +147,17 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     const pos = cur.positions[at];
     const n = Math.min(Math.max(1, Math.floor(qty)), pos.qty);
     const price = sidePrice(index, m, o, side);
-    const amount = round2(n * price / 100);
+    const amount = round2(pos.cost * n / pos.qty);
     const positions = [...cur.positions];
     if (n === pos.qty) positions.splice(at, 1);
     else positions[at] = { ...pos, qty: pos.qty - n, cost: round2(pos.cost * (pos.qty - n) / pos.qty) };
     commit({ ...cur, cash: round2(cur.cash + amount), positions, fills: [{ at: Date.now(), m, o, side, qty: n, price, kind: "sell" as const, amount }, ...cur.fills].slice(0, 200) });
-    return { ok: true, text: `Sold ${n} ${sideName} for ${money(amount)}.` };
+    return { ok: true, text: `Cancelled ${n} ${sideName}: ${money(amount)} refunded.` };
   }, [slug, index, commit, shared, call, currency]);
 
   const reset = useCallback(() => { if (!shared) commit(fresh()); }, [commit, shared]);
 
-  const value = wallet ? wallet.positions.reduce((a, p) => a + (p.qty * sidePrice(index, p.m, p.o, p.side) / 100) * unit, 0) : 0;
+  const value = wallet ? wallet.positions.reduce((a, p) => a + sellValue(index, p.m, p.o, p.side, p.qty, p, unit), 0) : 0;
   return {
     wallet, buy, sell, reset, value: round2(value), total: wallet ? round2(wallet.cash + value) : START_CASH, shared: Boolean(shared), canTrade, why,
     leaderboard: shared?.leaderboard ?? [], currency, unit, fmt, needsLink, balanceError: shared?.balanceError,

@@ -23,7 +23,7 @@ export function AuditTable({ slug, rows, index, showMarket = true, currency = "u
           {rows.map((r) => {
             const mk = index[r.market];
             const label = mk?.o[r.outcome]?.[2] ?? r.outcome;
-            const action = r.kind === "settle" ? (r.amount > 0 ? "Paid out" : "Expired") : `${r.kind === "buy" ? "Bought" : "Sold"} ${r.side === "yes" ? "Yes" : "No"}`;
+            const action = r.kind === "settle" ? (r.amount > 0 ? "Paid out" : "Expired") : `${r.kind === "buy" ? "Bought" : "Cancelled"} ${r.side === "yes" ? "Yes" : "No"}`;
             return (
               <tr key={r.id}>
                 <td className="muted">{r.id}</td>

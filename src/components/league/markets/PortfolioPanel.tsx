@@ -30,7 +30,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
       </div>
       <div className="mk-port-stats">
         <div><span>{T ? "Your Tickets" : "Cash"}</span><strong>{T && port.needsLink ? "—" : fmt(wallet.cash)}</strong></div>
-        <div><span>{T ? "In bets (worth now)" : "Positions"}</span><strong>{fmt(value)}</strong></div>
+        <div><span>{T ? "In open bets" : "Positions"}</span><strong>{fmt(value)}</strong></div>
         {!T && <div><span>Total</span><strong>{fmt(total)}</strong></div>}
         <div><span>{T ? "Market profit" : "Profit / loss"}</span><strong className={pl > 0.004 ? "pos" : pl < -0.004 ? "neg" : ""}>{pl >= 0 ? "+" : ""}{fmt(pl)}</strong></div>
       </div>
@@ -40,9 +40,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
           {positions.map((p) => {
             const info = outcomeInfo(index, p.m, p.o);
             const price = sidePrice(index, p.m, p.o, p.side);
-            const val = ((p.qty * price) / 100) * unit;
-            const gain = val - p.cost;
-            const out = sellValue(index, p.m, p.o, p.side, p.qty, port.shared, unit);
+            const out = sellValue(index, p.m, p.o, p.side, p.qty, p, unit);
             return (
               <li key={`${p.m}:${p.o}:${p.side}`}>
                 <div className="mk-pos-top">
@@ -53,11 +51,11 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
                 <div className="mk-pos-nums">
                   <span>{p.qty} @ {Math.round((p.cost / p.qty / unit) * 100)}¢</span>
                   <span>now {price}¢</span>
-                  <span className={gain > 0.004 ? "pos" : gain < -0.004 ? "neg" : ""}>{fmt(val)} ({gain >= 0 ? "+" : ""}{fmt(gain)})</span>
+                  <span>cost {fmt(p.cost)}</span>
                 </div>
                 <div className="mk-pos-actions">
                   <span className="muted small">Pays {fmt(p.qty * unit)} if right</span>
-                  {price > 0 && price < 100 && port.canTrade && <button type="button" className="mk-link-btn" disabled={busy} onClick={() => sellAll(p.m, p.o, p.side, p.qty)}>Sell all for {fmt(out)}</button>}
+                  {info?.state === "open" && port.canTrade && <button type="button" className="mk-link-btn" disabled={busy} onClick={() => sellAll(p.m, p.o, p.side, p.qty)}>Cancel for a {fmt(out)} refund</button>}
                 </div>
               </li>
             );
@@ -74,7 +72,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
           <ul>
             {fills.map((f, i) => {
               const info = outcomeInfo(index, f.m, f.o);
-              const verb = f.kind === "buy" ? "Bought" : f.kind === "sell" ? "Sold" : f.amount > 0 ? "Paid out" : "Expired";
+              const verb = f.kind === "buy" ? "Bought" : f.kind === "sell" ? "Cancelled" : f.amount > 0 ? "Paid out" : "Expired";
               return (
                 <li key={i}>
                   <span>{verb} {f.qty} {f.side === "yes" ? "Yes" : "No"} · {info?.label ?? f.o}{f.kind !== "settle" ? ` @ ${f.price}¢` : ""}</span>
