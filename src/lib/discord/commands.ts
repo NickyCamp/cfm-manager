@@ -101,7 +101,7 @@ export const COMMANDS = [
   // "Admins" = the server's own role named "admin" (Nick, 2026-11-14). Discord can't limit a command to a
   // role by name, so these show for everyone and src/lib/discord/admin.ts checks the role when they run.
   { name: "league", description: "Admins: which league you're seeing here, with links", ...ANYWHERE },
-  { name: "marketchannels", description: "Admins: set up the Markets category, a channel per game with odds and bets", ...SERVER_ONLY },
+  { name: "marketchannels", description: "Admins: delete and rebuild the Markets category from scratch (payouts channel kept)", ...SERVER_ONLY },
   { name: "marketupdate", description: "Admins: refresh every Markets channel with the latest odds, bets and lines", ...SERVER_ONLY },
   {
     name: "gamechannels",

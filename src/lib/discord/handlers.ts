@@ -25,7 +25,7 @@ import { cancelValue, closeTimes, isFutures, fmtET, kickoffPermission, marketsFo
 import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
-import { postPayoutsNow, refreshGame, syncMarketChannels } from "./marketChannels";
+import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "./marketChannels";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
@@ -213,7 +213,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "marketchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
-      return reply(await syncMarketChannels(lg.slug));
+      return reply(await rebuildMarketChannels(lg.slug));
     }
     case "marketupdate": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");

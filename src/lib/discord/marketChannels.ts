@@ -228,15 +228,18 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   const { d, markets, tickets } = all;
   let state = (lg.settings?.marketChannels as MarketChannels | undefined) || null;
 
-  // category
+  // category (if it's gone, start a new one but keep the payouts channel and its Applied buttons)
+  let keepPayouts: PayoutState | undefined;
   if (state?.categoryId) {
     const c = await dc("GET", `/channels/${state.categoryId}`);
-    if (!c.ok) state = null;
-  }
+    if (!c.ok) { keepPayouts = state.payouts; state = null; }
+  } else if (state) { keepPayouts = state.payouts; state = null; }
   if (!state) {
     const cat = await dc("POST", `/guilds/${guildId}/channels`, { name: "Markets", type: 4 });
     if (!cat.ok) return cat.status === 403 ? "The bot needs the Manage Channels permission in this server to run the Markets category." : `Discord said ${cat.status}: ${String(cat.data.message || "")}`;
     state = { categoryId: String(cat.data.id), weekKey: "", games: {} };
+    if (keepPayouts?.channelId && (await dc("PATCH", `/channels/${keepPayouts.channelId}`, { parent_id: state.categoryId })).ok) state.payouts = keepPayouts;
+    else if (keepPayouts) state.payouts = { since: keepPayouts.since };
   }
 
   // the feed channel for season-long markets
@@ -329,6 +332,34 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   await orderMarketChannels(guildId, state).catch(() => {});
   await saveState(lg.id, state);
   return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}, #futures${futuresEdits ? ` (${futuresEdits} updated)` : ""} and #transactions.${report}`;
+}
+
+/** /marketchannels (Nick, 2026-11-14): deletes the Markets category and every channel in it, then builds
+ *  it again from scratch. #previous-week-payouts is kept (moved into the new category) so admins don't
+ *  lose Applied buttons they haven't tapped; anything not applied still carries into the next report. */
+export async function rebuildMarketChannels(slug: string): Promise<string> {
+  const lg = await leagueBySlug(slug);
+  const guildId = lg ? discordOf(lg)?.guildId : null;
+  if (!lg || !guildId) return "This league isn't linked to a Discord server (/link).";
+  const old = lg.settings?.marketChannels as MarketChannels | undefined;
+  let removed = 0;
+  if (old?.categoryId) {
+    const keep = old.payouts?.channelId;
+    const r = await dc("GET", `/guilds/${guildId}/channels`);
+    const kids = r.ok && Array.isArray(r.data) ? (r.data as { id: string; parent_id?: string }[]).filter((c) => c.parent_id === old.categoryId).map((c) => c.id) : [];
+    const known = [old.feedChannelId, old.futuresChannelId, old.txChannelId, ...Object.values(old.games || {}).map((g) => g.channelId)].filter((x): x is string => Boolean(x));
+    for (const id of new Set([...kids, ...known])) {
+      if (id === keep) continue;
+      if ((await dc("DELETE", `/channels/${id}`)).ok) removed++;
+      await sleep(250);
+    }
+    if (keep) await dc("PATCH", `/channels/${keep}`, { parent_id: null });
+    await dc("DELETE", `/channels/${old.categoryId}`);
+  }
+  // keep only what must survive: the payouts report (and the week, so no report is posted early)
+  await saveState(lg.id, old ? { categoryId: "", weekKey: "", games: {}, payouts: old.payouts } : null);
+  const text = await syncMarketChannels(slug);
+  return `${old?.categoryId ? `Deleted the old Markets category (${removed} channel${removed === 1 ? "" : "s"}${old.payouts?.channelId ? "; #previous-week-payouts kept" : ""}) and rebuilt it. ` : ""}${text}`;
 }
 
 /** "Week 13" for a saved week key ("2027:1:12"). */

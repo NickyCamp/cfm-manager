@@ -69,7 +69,7 @@ export default async function MarketsSetup({ params }: Props) {
             <li>One channel per game this week, where every bet line has Yes/No buttons.</li>
             <li><code>#transactions</code> at the bottom: every bet and cancel this week, cleared after each advance.</li>
           </ul>
-          <p>After that it keeps itself up to date: it refreshes after every sync and every bet, and rolls the weekly channels after each advance. <code>/marketupdate</code> (admins) refreshes everything on demand.</p>
+          <p>After that it keeps itself up to date: it refreshes after every sync and every bet, and rolls the weekly channels after each advance. <code>/marketupdate</code> (admins) refreshes everything in place; running <code>/marketchannels</code> again deletes the category and rebuilds it from scratch, keeping <code>#previous-week-payouts</code>.</p>
 
           <h3>4. Everyone links their Discord once</h3>
           <p>Each member runs <code>/connect</code> and opens the link while signed in here. That ties their Discord account to their CFM Manager account, so their Discord bets and balance are theirs. It carries over if the league moves to another server.</p>
@@ -122,7 +122,7 @@ export default async function MarketsSetup({ params }: Props) {
           <div className="tbl-wrap"><table className="tbl">
             <tbody>
               <tr><td><code>/link</code></td><td>Link the server to the league (Manage Server)</td></tr>
-              <tr><td><code>/marketchannels</code></td><td>Admins: set up the Markets category</td></tr>
+              <tr><td><code>/marketchannels</code></td><td>Admins: delete and rebuild the whole Markets category (the payouts channel is kept)</td></tr>
               <tr><td><code>/marketupdate</code></td><td>Admins: refresh every Markets channel with the latest odds, bets and lines</td></tr>
               <tr><td><code>/league</code></td><td>Admins: which league this server shows, with links</td></tr>
               <tr><td><code>/gamechannels year week</code></td><td>A category like &ldquo;2027 - Week 1&rdquo; with a channel per game that week, pinging both managers; rolls over after each advance (admins)</td></tr>
