@@ -24,12 +24,13 @@ export function AuditTable({ slug, rows, index, showMarket = true, currency = "u
             const mk = index[r.market];
             const label = mk?.o[r.outcome]?.[2] ?? r.outcome;
             const action = r.kind === "settle" ? (r.amount > 0 ? "Paid out" : "Expired") : `${r.kind === "buy" ? "Bought" : "Cancelled"} ${r.side === "yes" ? "Yes" : "No"}`;
+            const voided = r.voided ? <span className="tag" title={r.voided}>VOID</span> : null;
             return (
               <tr key={r.id}>
                 <td className="muted">{r.id}</td>
                 <td className="nw">{fmtTime(r.at)}</td>
                 <td className="nw"><Link href={`/l/${slug}/markets/activity?user=${r.userId}`}>{r.user}</Link></td>
-                <td className="nw"><span className={`mk-side ${r.side}`}>{action}</span></td>
+                <td className="nw"><span className={`mk-side ${r.side}`}>{action}</span> {voided}</td>
                 {showMarket && <td><Link href={`/l/${slug}/markets/${r.market}`}>{mk?.t ?? r.market}</Link></td>}
                 <td>{label}{r.kind === "settle" ? <span className="muted"> ({r.side === "yes" ? "Yes" : "No"})</span> : null}</td>
                 <td className="num">{r.qty}</td>

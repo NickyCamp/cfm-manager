@@ -14,14 +14,16 @@ import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
 import { chanceText, prices, type Market } from "@/lib/league/marketTypes";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { fmtET, marketsForDiscord } from "@/lib/marketStore";
+import { fmtET, marketsForDiscord, settleFinished } from "@/lib/marketStore";
+import { bookKey, ticketsConfig } from "@/lib/tickets";
+import { postPayoutReport, type PayoutState } from "./payouts";
 import { discordOf, leagueBySlug } from "./links";
 import { BRAND, clip, hexColor, type Embed } from "./api";
+import { dc, sleep } from "./rest";
 import type { Game, LeagueData, Team } from "@/lib/league/types";
+import { weekTitle } from "@/lib/league/derive";
 
-const API = "https://discord.com/api/v10";
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Entry = { messageId: string; sig: string };
 type GameChannel = { channelId: string; messageId: string | null; entries?: Record<string, Entry> };
@@ -31,25 +33,9 @@ export type MarketChannels = {
   feedMessageId?: string | null;
   weekKey: string;
   chartsWeek?: string;   // week the odds charts were last posted in #market-feed
+  payouts?: PayoutState; // #previous-week-payouts (Tickets leagues)
   games: Record<string, GameChannel>;
 };
-
-async function dc(method: string, path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
-  const token = process.env.DISCORD_BOT_TOKEN;
-  if (!token) throw new Error("DISCORD_BOT_TOKEN isn't set on the site.");
-  for (let i = 0; i < 4; i++) {
-    const res = await fetch(`${API}${path}`, {
-      method, headers: { authorization: `Bot ${token}`, "content-type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const text = await res.text();
-    let data: Record<string, unknown> = {};
-    try { data = text ? JSON.parse(text) : {}; } catch { /* empty */ }
-    if (res.status === 429) { await sleep(Math.ceil(Number(data.retry_after || 1) * 1000) + 100); continue; }
-    return { ok: res.ok, status: res.status, data };
-  }
-  return { ok: false, status: 429, data: { message: "rate limited" } };
-}
 
 async function saveState(leagueId: string, state: MarketChannels | null) {
   const db = supabaseAdmin();
@@ -184,6 +170,18 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     if (charts) state.chartsWeek = key;
   }
 
+  // settle everything that has finished (last week's games included, even after the advance)
+  const cfg = tickets ? await ticketsConfig(slug).catch(() => null) : null;
+  await settleFinished(lg.id, bookKey(d.season.year, Boolean(cfg)), d, marketBook(d), Boolean(cfg)).catch((e) => console.error("settle", (e as Error).message));
+
+  // after an advance: the payouts report for the week that just ended (Tickets leagues)
+  let report = "";
+  if (cfg && state.weekKey && state.weekKey !== key) {
+    const r = await postPayoutReport({ slug, leagueId: lg.id, guildId, categoryId: state.categoryId, d, book: marketBook(d), tickets: cfg, prev: state.payouts, title: titleOfWeek(d, state.weekKey) })
+      .catch((e) => ({ state: state!.payouts || {}, text: `Payouts report failed: ${(e as Error).message}` }));
+    state.payouts = r.state; report = ` ${r.text}`;
+  }
+
   // game channels: roll over on a new week
   const games = thisWeek(d);
   let created = 0, removed = 0;
@@ -215,7 +213,35 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     for (let g = queue.shift(); g; g = queue.shift()) edits += await fillGameChannel(slug, d, g, markets, tickets, state!.games[String(g.id)]);
   }));
   await saveState(lg.id, state);
-  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}.`;
+  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}.${report}`;
+}
+
+/** "Week 13" for a saved week key ("2027:1:12"). */
+function titleOfWeek(d: LeagueData, weekKey: string) {
+  const [, stage, week] = weekKey.split(":").map(Number);
+  return weekTitle(d, stage, week);
+}
+
+/** /payouts: settle what's finished and post the payouts report now (replacing the last one). */
+export async function postPayoutsNow(slug: string): Promise<string> {
+  const lg = await leagueBySlug(slug);
+  const guildId = lg ? discordOf(lg)?.guildId : null;
+  if (!lg || !guildId) return "This league isn't linked to a Discord server (/link).";
+  const cfg = await ticketsConfig(slug).catch(() => null);
+  if (!cfg) return "This league doesn't bet Tickets, so there's nothing to pay out.";
+  const state = lg.settings?.marketChannels as MarketChannels | undefined;
+  if (!state?.categoryId) return "Set up the Markets category first with /marketchannels.";
+  const d = await getLeagueData(slug);
+  if (!d) return "No league data yet.";
+  const book = marketBook(d);
+  await settleFinished(lg.id, bookKey(d.season.year, true), d, book, true);
+  const r = await postPayoutReport({ slug, leagueId: lg.id, guildId, categoryId: state.categoryId, d, book, tickets: cfg, prev: state.payouts, title: `${d.season.title} (so far)` });
+  const db = supabaseAdmin();
+  const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
+  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+  const st = settings.marketChannels as MarketChannels | undefined;
+  if (st) { st.payouts = r.state; await db.from("leagues").update({ settings }).eq("id", lg.id); }
+  return r.text;
 }
 
 /** The week's odds charts: Super Bowl + conferences (+ #1 seeds), then the 8 divisions. Returns charts posted. */

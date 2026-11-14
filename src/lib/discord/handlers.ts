@@ -21,10 +21,12 @@ import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { closeTimes, fmtET, marketsShared, setCloseTime } from "@/lib/marketStore";
-import { kickoffProblem, parseKickoff, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
-import { makeLinkToken } from "@/lib/tickets";
-import { refreshGame, syncMarketChannels } from "./marketChannels";
+import { cancelValue, closeTimes, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
+import { marketBook } from "@/lib/league/markets";
+import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
+import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
+import { postPayoutsNow, refreshGame, syncMarketChannels } from "./marketChannels";
+import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
@@ -215,6 +217,18 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (via !== "server") return reply("Kickoff times can only be set in the league's own Discord server (linked with `/link`).");
       return kickoff(i, lg, d, url);
     }
+    case "verifykickoff": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!canManage(i)) return reply("Only admins (Manage Server) can verify kickoffs.");
+      return verifyKickoffCmd(i, lg, d, url);
+    }
+    case "payouts": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!canManage(i)) return reply("Only admins (Manage Server) can post the payouts report.");
+      return reply(await postPayoutsNow(lg.slug));
+    }
+    case "balance": return balanceCmd(i, lg);
+    case "bets": return betsCmd(i, lg, d, url);
     case "pack": return openPackReply(i, lg, d, base, url, footer);
     case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
     case "funfact": {
@@ -756,8 +770,8 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
 export const _preview = { statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
 
 // ---------- /kickoff: when betting closes on a game (Nick, 2026-11-13) ----------
-// Anyone in the league's linked server can set it; every change is kept and shown
-// publicly on the site's trade log with the Discord name of whoever set it.
+// The two teams' managers (linked with /connect) or an admin can set it; once it has
+// passed only an admin can change it. Every change is kept and shown publicly.
 async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?: string) => string): Promise<Message> {
   if (!(await marketsShared())) return reply("League betting isn't switched on yet (the commissioner needs to run the markets setup in Supabase).");
   const tv = opt(i, "team");
@@ -782,6 +796,12 @@ async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   const problem = kickoffProblem(d, g);
   if (problem) return reply(problem);
   if (!timeRaw) return reply(line(g!), false);
+  const caller = await userForDiscord(userId(i)).catch(() => null);
+  const denied = kickoffPermission({
+    admin: canManage(i), userTeam: caller ? await teamOfUser(lg.id, caller).catch(() => null) : null,
+    homeAbbr: teams.get(g!.home)?.abbr || "", awayAbbr: teams.get(g!.away)?.abbr || "", current: closes.get(g!.id),
+  });
+  if (denied) return reply(caller ? denied : `${denied} If you run one of these teams, link your Discord first with /connect.`);
   const tz = TIMEZONES[String(opt(i, "timezone") ?? "ET")] || TIMEZONES.ET;
   const when = parseKickoff(timeRaw, tz);
   if (!when) return reply("I couldn't read that time. Try `9pm`, `tomorrow 8:30pm`, `sat 7pm`, `in 45m` or `now` (within the next two weeks).");
@@ -790,4 +810,79 @@ async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   await refreshGame(lg.slug, g!.id).catch(() => {});
   const now = when.getTime() <= Date.now() + 60_000;
   return reply(`${now ? "🔒 Betting is now **closed**" : "⏰ Betting closes"} on **${name(teams.get(g!.away))} at ${name(teams.get(g!.home))}**${now ? "" : ` at **${fmtET(when)}**`} (game and player-prop markets). Set by ${who?.global_name || who?.username}; logged publicly. ${url(`/markets/game-${g!.id}`)}`, false);
+}
+
+// ---------- /verifykickoff: an admin checks a finished game's real kickoff (Nick, 2026-11-14) ----------
+// Records the verified kickoff and voids every bet (and cancel) on that game placed at or after it.
+async function verifyKickoffCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?: string) => string): Promise<Message> {
+  if (!(await marketsShared())) return reply("League betting isn't switched on yet.");
+  const t = findTeam(d, opt(i, "team"));
+  if (!t) return reply("No team by that name.");
+  const wk = Number(opt(i, "week")) || 0;
+  const g = wk ? gameInWeek(d, t, weekIndex(wk))
+    : [...d.games].filter((x) => x.stage === 1 && x.final && (x.home === t.id || x.away === t.id)).sort((a, b) => b.week - a.week)[0] || null;
+  if (!g) return reply(wk ? "That team has no game that week." : "That team has no finished game yet.");
+  const tz = TIMEZONES[String(opt(i, "timezone") ?? "ET")] || TIMEZONES.ET;
+  const when = parseKickoffPast(String(opt(i, "time") ?? ""), tz);
+  if (!when) return reply("I couldn't read that time. Try `9pm`, `sat 7pm`, `yesterday 8:30pm` or `2h ago` (the real kickoff, in the last 3 weeks).");
+  const tickets = Boolean(await ticketsConfig(lg.slug).catch(() => null));
+  const who = i.member?.user || i.user;
+  const r = await verifyKickoff({ leagueId: lg.id, season: d.season.year, d, book: marketBook(d), gameId: g.id, kickoff: when, tickets, by: { kind: "discord", id: who?.id || "", name: who?.global_name || who?.username || "Admin" } });
+  if (!r.ok) return reply(r.error);
+  const teams = new Map(d.teams.map((x) => [x.id, x]));
+  const game = `${teams.get(g.away)?.abbr} @ ${teams.get(g.home)?.abbr}`;
+  if (!r.voided.length) return reply(`✅ Kickoff for **${game}** verified as **${fmtET(when)}**. No bets were placed after it.`, false);
+  const names = await memberNames([...new Set(r.voided.map((v) => v.user_id))]);
+  const lines = r.voided.slice(0, 15).map((v) => `• ${names.get(v.user_id) || "Member"}: ${v.kind === "buy" ? "bet" : "cancel"} ${Math.round(Number(v.qty))} ${v.side === "yes" ? "Yes" : "No"} (${v.market_key}) at ${fmtET(v.created_at)}`);
+  return reply(`⛔ Kickoff for **${game}** verified as **${fmtET(when)}**. Voided ${r.voided.length} bet${r.voided.length === 1 ? "" : "s"} placed after it:\n${lines.join("\n")}${r.voided.length > 15 ? `\n…and ${r.voided.length - 15} more` : ""}\nThe corrections show up in the next payouts report (and in the trade log: ${url("/markets/activity")}).`, false);
+}
+
+// ---------- /balance and /bets (Tickets) ----------
+async function linkedUser(i: Interaction) {
+  const uid = await userForDiscord(userId(i)).catch(() => null);
+  return uid;
+}
+async function balanceCmd(i: Interaction, lg: LinkedLeague): Promise<Message> {
+  const cfg = await ticketsConfig(lg.slug).catch(() => null);
+  if (!cfg) return reply("This league bets play money on the site, not Tickets.");
+  const uid = await linkedUser(i);
+  if (!uid) return reply("Link your Discord to your CFM Manager account first: run /connect.");
+  const disc = await discordOfUser(uid).catch(() => null);
+  try {
+    const b = await ticketsAvailable(lg.id, uid, cfg, disc?.id || userId(i));
+    const n = (x: number) => Math.round(x).toLocaleString("en-US");
+    return reply(`🎟️ **${n(b.available)} Tickets** free to bet\n• UnbelievaBoat balance: ${n(b.ub)}\n• In open bets: −${n(b.open)}\n• Results not added in UnbelievaBoat yet: ${b.pending >= 0 ? "+" : "−"}${n(Math.abs(b.pending))}\nAdmins add/remove results each week from #previous-week-payouts.`);
+  } catch {
+    return reply("Couldn't read your Tickets from UnbelievaBoat right now. Try again in a minute.");
+  }
+}
+async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?: string) => string): Promise<Message> {
+  const uid = await linkedUser(i);
+  if (!uid) return reply("Link your Discord to your CFM Manager account first: run /connect.");
+  const tickets = Boolean(await ticketsConfig(lg.slug).catch(() => null));
+  const key = bookKey(d.season.year, tickets);
+  const { data } = await admin2().from("market_positions").select("market_key, outcome_id, side, qty, cost").eq("league_id", lg.id).eq("season", key).eq("user_id", uid);
+  const pos = data || [];
+  if (!pos.length) return reply(`You have no open bets. ${url("/markets")}`);
+  const view = await marketsForDiscord(lg.slug, marketBook(d), d.season.year, d.season);
+  const raw = marketBook(d);
+  const n = (x: number) => (tickets ? `${Math.round(x).toLocaleString("en-US")} Tickets` : `$${x.toFixed(2)}`);
+  const lines: string[] = [];
+  const buttons: Record<string, unknown>[] = [];
+  for (const [ix, p] of pos.slice(0, 20).entries()) {
+    const m = view?.book.markets.find((x) => x.key === p.market_key);
+    const o = m?.outcomes.find((x) => x.id === p.outcome_id);
+    const shut = !m || m.closed || m.settled || o?.state !== "open";
+    const rawM = raw.markets.find((x) => x.key === p.market_key);
+    const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets).catch(() => null) : null;
+    lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}¢` : ""}${shut ? " · locked" : back != null ? ` · cancel → ${n(back)}` : ""}`);
+    if (!shut && buttons.length < 20) buttons.push({ type: 2, style: 4, label: `Cancel #${ix + 1}`, custom_id: `mkc|${p.market_key}|${p.outcome_id}|${p.side}`.slice(0, 100) });
+  }
+  const rows = [];
+  for (let k = 0; k < buttons.length; k += 5) rows.push({ type: 1, components: buttons.slice(k, k + 5) });
+  return {
+    content: `**Your open bets**${pos.length > 20 ? ` (first 20 of ${pos.length})` : ""}\n${lines.join("\n")}\nA cancel gives back what the bet cost, or what it's worth now if that's less. ${url("/markets")}`,
+    flags: EPHEMERAL,
+    components: rows,
+  };
 }

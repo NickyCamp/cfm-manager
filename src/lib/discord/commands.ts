@@ -101,9 +101,24 @@ export const COMMANDS = [
   { name: "league", description: "Which league you're seeing here, with links", ...ANYWHERE },
   { name: "marketchannels", description: "Set up or refresh the Markets category: a channel per game this week with odds and bets", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
+  { name: "balance", description: "Your Tickets free to bet: UnbelievaBoat balance, open bets and results not added yet", ...SERVER_ONLY },
+  { name: "bets", description: "Your open bets, with buttons to cancel", ...SERVER_ONLY },
+  { name: "payouts", description: "Admins: post the payouts report now (normally posted after each advance)", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
+  {
+    name: "verifykickoff",
+    description: "Admins: set a finished game's real kickoff; bets placed after it are voided",
+    default_member_permissions: MANAGE_SERVER,
+    ...SERVER_ONLY,
+    options: [
+      team(true),
+      { type: STRING, name: "time", description: "When it really kicked off, e.g. 9pm, sat 7pm, yesterday 8:30pm, 2h ago", required: true },
+      { type: INTEGER, name: "week", description: "Week 1-18 (19 Wild Card … 22 Super Bowl); default: the team's latest finished game", required: false, min_value: 1, max_value: 22 },
+      { type: STRING, name: "timezone", description: "Time zone you typed the time in (default Eastern)", required: false, choices: [{ name: "Eastern", value: "ET" }, { name: "Central", value: "CT" }, { name: "Mountain", value: "MT" }, { name: "Pacific", value: "PT" }] },
+    ],
+  },
   {
     name: "kickoff",
-    description: "Set when betting closes on a game this week (its kickoff); leave time empty to see this week's",
+    description: "Set when betting closes on your game this week (its kickoff); leave time empty to see this week's",
     ...SERVER_ONLY,
     options: [
       team(false),

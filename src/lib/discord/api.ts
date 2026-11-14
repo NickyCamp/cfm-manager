@@ -6,6 +6,8 @@ const API = "https://discord.com/api/v10";
 /** Discord signs every interaction with Ed25519; reject anything that doesn't verify. */
 export function verifyDiscordRequest(body: string, signature: string | null, timestamp: string | null, publicKeyHex: string): boolean {
   if (!signature || !timestamp || !publicKeyHex) return false;
+  // reject old (replayed) requests: Discord's timestamp is in seconds
+  if (!(Math.abs(Date.now() / 1000 - Number(timestamp)) <= 300)) return false;
   try {
     const key = crypto.createPublicKey({
       key: Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), Buffer.from(publicKeyHex, "hex")]),
@@ -25,6 +27,7 @@ export type Embed = {
 };
 export type Message = {
   content?: string; embeds?: Embed[]; flags?: number; allowed_mentions?: { parse: string[] };
+  components?: unknown[];
   event?: AlertEvent;  // our tag: which kind of update post this is (alert videos)
   video?: AlertVideo;  // our tag: an alert video to attach to a command reply
 };

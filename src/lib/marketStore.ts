@@ -3,9 +3,11 @@
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getLeagueRow } from "@/lib/league/load";
 import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
-import { pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
+import { ladderGroup, pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
-import { bookKey, discordOfUser, moveTickets, sendPendingTickets, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
+import { bookKey, discordOfUser, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
+import { propResult } from "@/lib/league/props";
+import type { LeagueData } from "@/lib/league/types";
 
 export const START_CASH = 1000;
 const poolKey = (m: string, o: string) => `${m}|${o}`;
@@ -79,15 +81,6 @@ export function withCrowd(book: MarketBook, pools: Map<string, { net: number; vo
   return { ...book, markets };
 }
 
-/** Cancelling a bet refunds exactly what it cost (pro rata for part of a position), whatever the odds did since.
- *  Allowed until the market locks (kickoff for games/props, settlement for season markets). */
-async function refundFor(leagueId: string, book: number, userId: string, market: string, outcome: string, side: "yes" | "no", qty: number) {
-  const { data } = await supabaseAdmin().from("market_positions").select("qty, cost").eq("league_id", leagueId).eq("season", book)
-    .eq("user_id", userId).eq("market_key", market).eq("outcome_id", outcome).eq("side", side).maybeSingle();
-  if (!data || Number(data.qty) < qty - 0.0001) return null;
-  return Number(data.cost) * Math.min(1, qty / Number(data.qty));
-}
-
 /** Everyone's nets in one market (for linked pricing). */
 async function marketNets(leagueId: string, book: number, market: string) {
   const { data } = await supabaseAdmin().from("market_pools").select("outcome_id, net").eq("league_id", leagueId).eq("season", book).eq("market_key", market);
@@ -96,20 +89,56 @@ async function marketNets(leagueId: string, book: number, market: string) {
   return nets;
 }
 
-/** Pay out positions on outcomes that have finished. Cheap when there's nothing to do. */
-export async function settleFinished(leagueId: string, season: number, book: MarketBook, tickets = false) {
-  const admin = supabaseAdmin();
-  const { data } = await admin.from("market_positions").select("market_key, outcome_id").eq("league_id", leagueId).eq("season", season);
-  const open = new Set((data || []).map((r) => poolKey(r.market_key, r.outcome_id)));
-  if (!open.size) return;
-  for (const m of book.markets) for (const o of m.outcomes) {
-    if (o.state === "open" || !open.has(poolKey(m.key, o.id))) continue;
-    const winner = o.state === "won" ? "yes" : "no";
-    const { error } = tickets
-      ? await admin.rpc("market_settle_tickets", { p_league: leagueId, p_book: season, p_market: m.key, p_outcome: o.id, p_winner: winner, p_per_contract: TICKETS_PER_CONTRACT, p_reason: `CFM Markets: won on ${o.label} (${m.title})` })
-      : await admin.rpc("market_settle", { p_league: leagueId, p_season: season, p_market: m.key, p_outcome: o.id, p_winner: winner });
-    if (error) console.error("market settle", m.key, o.id, error.message);
+/** Every row of a query, 1,000 at a time (the API returns at most 1,000 per request). */
+export async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>, max = 100_000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    const { data, error } = await page(from, from + 999);
+    if (error) throw new Error(error.message);
+    out.push(...(data || []));
+    if (!data || data.length < 1000) break;
   }
+  return out;
+}
+
+export type Result = "won" | "lost" | "void";
+/** How one outcome finished, or null while it's still open. Game and prop markets are read
+ *  straight from the schedule and box scores, so they settle even after the league has
+ *  advanced past their week (when they're no longer in the book). A tied game is void. */
+export function outcomeResult(d: LeagueData, book: MarketBook, marketKey: string, outcomeId: string): Result | null {
+  const gm = /^game-(\d+)$/.exec(marketKey);
+  if (gm) {
+    const g = d.games.find((x) => x.id === Number(gm[1]));
+    if (!g?.final) return null;
+    if (g.hs === g.as) return "void";
+    return String(g.hs > g.as ? g.home : g.away) === outcomeId ? "won" : "lost";
+  }
+  const pm = /^props-(\d+)-/.exec(marketKey);
+  if (pm) return propResult(d, Number(pm[1]), outcomeId);
+  const o = book.markets.find((m) => m.key === marketKey)?.outcomes.find((x) => x.id === outcomeId);
+  return o?.state === "won" ? "won" : o?.state === "lost" ? "lost" : null;
+}
+
+/** Settles every open position whose outcome has finished. Cheap when there's nothing to do. */
+export async function settleFinished(leagueId: string, book: number, d: LeagueData, mb: MarketBook, tickets = false) {
+  const admin = supabaseAdmin();
+  const { data } = await admin.from("market_positions").select("market_key, outcome_id").eq("league_id", leagueId).eq("season", book);
+  const open = new Map<string, { m: string; o: string }>();
+  for (const r of data || []) open.set(poolKey(r.market_key, r.outcome_id), { m: r.market_key, o: r.outcome_id });
+  let n = 0;
+  for (const { m, o } of open.values()) {
+    const res = outcomeResult(d, mb, m, o);
+    if (!res) continue;
+    const winner = res === "void" ? "void" : res === "won" ? "yes" : "no";
+    const title = mb.markets.find((x) => x.key === m);
+    const label = title?.outcomes.find((x) => x.id === o)?.label || o;
+    const { error } = await admin.rpc("market_settle2", {
+      p_league: leagueId, p_book: book, p_market: m, p_outcome: o, p_winner: winner,
+      p_per_contract: tickets ? TICKETS_PER_CONTRACT : 1, p_tickets: tickets, p_note: `${label}${title ? `, ${title.title}` : ""}`.slice(0, 200),
+    });
+    if (error) console.error("market settle", m, o, error.message); else n++;
+  }
+  return n;
 }
 
 export type SharedFill = { at: number; m: string; o: string; side: "yes" | "no"; qty: number; price: number; kind: "buy" | "sell" | "settle"; amount: number };
@@ -120,7 +149,8 @@ export type SharedState = {
   unit: number;                 // what one winning contract pays: $1, or 100 Tickets
   linked?: boolean;             // Tickets: the viewer's Discord account is linked (/connect)
   balanceError?: string;        // Tickets: UnbelievaBoat couldn't be read
-  cash: number;
+  cash: number;                 // what the viewer can bet now (Tickets: UnbelievaBoat - open stakes + results not applied yet)
+  ticketsBreakdown?: { ub: number; open: number; pending: number };
   positions: { m: string; o: string; side: "yes" | "no"; qty: number; cost: number }[];
   fills: SharedFill[];
   leaderboard: { name: string; team: string; total: number; you: boolean }[];
@@ -136,8 +166,11 @@ export async function sharedState(leagueId: string, season: number, userId: stri
     tickets ? Promise.resolve({ data: [] as { user_id: string; cash: number }[] }) : admin.from("market_wallets").select("user_id, cash").eq("league_id", leagueId).eq("season", season),
     admin.from("market_positions").select("user_id, market_key, outcome_id, side, qty, cost").eq("league_id", leagueId).eq("season", season),
     admin.from("league_members").select("user_id, team_abbr").eq("league_id", leagueId),
-    tickets ? admin.from("market_trades").select("user_id, kind, amount").eq("league_id", leagueId).eq("season", season).limit(20000) : Promise.resolve({ data: [] as { user_id: string; kind: string; amount: number }[] }),
+    tickets
+      ? allRows<{ id: number; user_id: string; kind: string; amount: number }>((f, t) => admin.from("market_trades").select("id, user_id, kind, amount").eq("league_id", leagueId).eq("season", season).order("id").range(f, t)).then((data) => ({ data }))
+      : Promise.resolve({ data: [] as { id: number; user_id: string; kind: string; amount: number }[] }),
   ]);
+  const voids = tickets ? await voidDeltas(leagueId) : new Map<number, number>();
   const price = (m: string, o: string, side: string) => {
     const x = index[m]?.o[o];
     if (!x) return 0;
@@ -147,7 +180,7 @@ export async function sharedState(leagueId: string, season: number, userId: stri
   const users = new Set<string>([...(w.data || []).map((r) => r.user_id), ...(tr.data || []).map((r) => r.user_id)]);
   const cash = new Map((w.data || []).map((r) => [r.user_id, Number(r.cash)]));
   const flow = new Map<string, number>();   // Tickets: paid back minus paid in
-  for (const r of tr.data || []) flow.set(r.user_id, (flow.get(r.user_id) || 0) + (r.kind === "buy" ? -1 : 1) * Number(r.amount));
+  for (const r of tr.data || []) flow.set(r.user_id, (flow.get(r.user_id) || 0) + (r.kind === "buy" ? -1 : 1) * Number(r.amount) + (voids.get(Number(r.id)) || 0));
   const held = new Map<string, number>();
   // Open bets count at what they cost (they can be cancelled for exactly that until kickoff/settlement),
   // so a big bet that moves the price can't show a paper profit. Finished outcomes count at their payout.
@@ -179,14 +212,17 @@ export async function sharedState(leagueId: string, season: number, userId: stri
   let viewerCash = userId ? (cash.get(userId) ?? START_CASH) : START_CASH;
   let linked: boolean | undefined;
   let balanceError: string | undefined;
+  let ticketsBreakdown: SharedState["ticketsBreakdown"];
   if (tickets) {
     viewerCash = 0;
     if (userId) {
       const d = await discordOfUser(userId).catch(() => null);
       linked = Boolean(d);
       if (d) {
-        try { viewerCash = await ticketBalance(tickets, d.id); }
-        catch (e) { balanceError = "Couldn't read your Tickets from UnbelievaBoat right now."; console.error("ub balance", (e as Error).message); }
+        try {
+          const b = await ticketsAvailable(leagueId, userId, tickets, d.id);
+          viewerCash = b.available; ticketsBreakdown = { ub: b.ub, open: b.open, pending: b.pending };
+        } catch (e) { balanceError = "Couldn't read your Tickets from UnbelievaBoat right now."; console.error("ub balance", (e as Error).message); }
       }
     }
   }
@@ -198,96 +234,100 @@ export async function sharedState(leagueId: string, season: number, userId: stri
     linked,
     balanceError,
     cash: viewerCash,
+    ticketsBreakdown,
     positions: (pos.data || []).filter((r) => r.user_id === userId).map((r) => ({ m: r.market_key, o: r.outcome_id, side: r.side, qty: Number(r.qty), cost: Number(r.cost) })),
     fills,
     leaderboard,
   };
 }
 
-/** One Tickets buy (spend up to `tickets`) or sell (contracts), through UnbelievaBoat. */
-export async function placeTicketsTrade(args: {
-  leagueId: string; book: number; userId: string; market: string; marketTitle: string; outcome: string; outcomeLabel: string;
-  side: "yes" | "no"; kind: "buy" | "sell"; priced: Market; tickets?: number; qty?: number; cfg: TicketsConfig;
+/** Void deltas by trade id (Tickets leaderboard). */
+async function voidDeltas(leagueId: string) {
+  const { data } = await supabaseAdmin().from("market_trade_voids").select("trade_id, delta").eq("league_id", leagueId);
+  return new Map((data || []).map((r) => [Number(r.trade_id), Number(r.delta)]));
+}
+
+/** What a member can bet in Tickets: UnbelievaBoat balance - open stakes + results admins haven't applied yet. */
+export async function ticketsAvailable(leagueId: string, userId: string, cfg: TicketsConfig, discordId: string) {
+  const admin = supabaseAdmin();
+  const [ub, pos, led] = await Promise.all([
+    ticketBalance(cfg, discordId),
+    admin.from("market_positions").select("season, cost").eq("league_id", leagueId).eq("user_id", userId),
+    admin.from("market_ledger").select("amount").eq("league_id", leagueId).eq("user_id", userId).is("applied_at", null),
+  ]);
+  const open = (pos.data || []).filter((r) => Number(r.season) % 10 === 1).reduce((a, r) => a + Number(r.cost), 0);
+  const pending = (led.data || []).reduce((a, r) => a + Number(r.amount), 0);
+  return { ub, open, pending, available: Math.floor(ub - open + pending) };
+}
+
+/** Positions a new bet may not sit beside (each is [outcome, side]): the other side of the same line;
+ *  in a two-team game, the other team; in a prop ladder, the opposite direction on the player's other lines.
+ *  Holding both sides is how a cancel could be turned into a sure profit. */
+export function conflictsFor(m: Market, outcome: string, side: "yes" | "no"): [string, string][] {
+  const other = side === "yes" ? "no" : "yes";
+  const out: [string, string][] = [[outcome, other]];
+  if (m.kind === "exclusive" && m.gameId && m.outcomes.length === 2) {
+    const o2 = m.outcomes.find((x) => x.id !== outcome);
+    if (o2) out.push([o2.id, side]);
+  }
+  const g = ladderGroup(m.key, outcome);
+  if (g) for (const x of m.outcomes) if (x.id !== outcome && ladderGroup(m.key, x.id) === g) out.push([x.id, other]);
+  return out;
+}
+
+/** One buy (spend up to `amount`: dollars or Tickets) or cancel (`qty` contracts) at the crowd price.
+ *  Tickets: nothing moves in UnbelievaBoat; the stake is held against the member's balance on the site,
+ *  and results go to the weekly payouts report. A cancel refunds what the bet cost, or what it's worth
+ *  at the market now if that's less. Retried if someone traded in between. */
+export async function placeTrade(args: {
+  leagueId: string; book: number; userId: string; market: string; outcome: string; side: "yes" | "no"; kind: "buy" | "sell";
+  priced: Market; amount?: number; qty?: number; tickets?: TicketsConfig | null;
 }): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
   const admin = supabaseAdmin();
-  const d = await discordOfUser(args.userId);
-  if (!d) return { ok: false, error: "Link your Discord first: run /connect in the league's Discord and open the link." };
-  const sideName = args.side === "yes" ? "Yes" : "No";
+  const T = Boolean(args.tickets);
+  const unit = T ? TICKETS_PER_CONTRACT : 1;
+  let balance = 0;
+  if (T && args.kind === "buy") {
+    const d = await discordOfUser(args.userId);
+    if (!d) return { ok: false, error: "Link your Discord first: run /connect in the league's Discord and open the link." };
+    try { balance = await ticketBalance(args.tickets!, d.id); } catch { return { ok: false, error: "Couldn't read your Tickets from UnbelievaBoat. Try again in a minute." }; }
+  }
   for (let attempt = 0; attempt < 5; attempt++) {
     const nets = await marketNets(args.leagueId, args.book, args.market);
     const net = nets.get(args.outcome) || 0;
     const pr = pricerFor(args.priced, args.outcome, nets);
     const q = args.kind === "buy"
-      ? quoteBuyP(pr, net, args.side, (args.tickets || 0) / TICKETS_PER_CONTRACT)
+      ? quoteBuyP(pr, net, args.side, (args.amount || 0) / unit)
       : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
-    if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to sell." };
-    // whole Tickets: buyers round up; a cancelled bet gets back exactly what it cost
-    let amount: number;
-    if (args.kind === "buy") amount = Math.ceil(q.amount * TICKETS_PER_CONTRACT - 1e-6);
-    else {
-      const r = await refundFor(args.leagueId, args.book, args.userId, args.market, args.outcome, args.side, q.qty);
-      if (r == null) return { ok: false, error: "You don't hold that many contracts." };
-      amount = Math.round(r);
-    }
-    const reason = `CFM Markets: ${args.kind === "buy" ? "bet" : "cancelled"} ${q.qty} ${sideName} on ${args.outcomeLabel} (${args.marketTitle})`;
-    if (args.kind === "buy") {
-      let bal: number;
-      try { bal = await ticketBalance(args.cfg, d.id); } catch { return { ok: false, error: "Couldn't reach UnbelievaBoat. Try again in a minute." }; }
-      if (bal < amount) return { ok: false, error: `You have ${bal.toLocaleString()} Tickets; that bet costs ${amount.toLocaleString()}.` };
-      try { await moveTickets(args.cfg, d.id, -amount, reason); } catch { return { ok: false, error: "UnbelievaBoat didn't take the Tickets, so no bet was placed. Try again." }; }
-    }
-    const { data, error } = await admin.rpc("market_trade_tickets", {
+    if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to cancel." };
+    // whole Tickets: a stake rounds up, a cancel's market value rounds down
+    const amount = T
+      ? (args.kind === "buy" ? Math.ceil(q.amount * unit - 1e-6) : Math.floor(q.amount * unit + 1e-6))
+      : q.amount;
+    const { data, error } = await admin.rpc("market_trade2", {
       p_league: args.leagueId, p_book: args.book, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
-      p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount, p_expected_net: net, p_new_net: q.newNet,
-      p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000, p_reason: reason,
+      p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount,
+      p_expected: Object.fromEntries(nets), p_new_net: q.newNet,
+      p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000,
+      p_tickets: T, p_balance: balance, p_conflicts: args.kind === "buy" ? conflictsFor(args.priced, args.outcome, args.side) : null,
     });
-    if (data === "ok" && !error) {
-      if (args.kind === "sell") after(() => sendPendingTickets(args.leagueId, args.cfg).then(() => {}, () => {}));
-      return { ok: true, qty: q.qty, amount, before: q.before, after: q.after };
-    }
-    if (args.kind === "buy") {
-      // The Tickets were taken but the bet didn't go in: give them straight back.
-      try { await moveTickets(args.cfg, d.id, amount, `CFM Markets: refund, bet not placed (${args.outcomeLabel})`); }
-      catch {
-        await admin.from("market_ticket_moves").insert({ league_id: args.leagueId, book: args.book, user_id: args.userId, amount, kind: "refund", reason: `CFM Markets: refund, bet not placed (${args.outcomeLabel})` });
-      }
-    }
     if (error) return { ok: false, error: error.message };
-    if (data === "qty") return { ok: false, error: "You don't hold that many contracts." };
-    if (data !== "stale") return { ok: false, error: "Trade refused." };
+    const r = data as { r: string; amount?: number };
+    if (r.r === "ok") return { ok: true, qty: q.qty, amount: Number(r.amount ?? amount), before: q.before, after: q.after };
+    if (r.r === "cash") return { ok: false, error: T ? `You have ${Math.max(0, Number(r.amount || 0)).toLocaleString("en-US")} Tickets free to bet (your UnbelievaBoat balance minus open bets, plus results not added yet); that bet costs ${amount.toLocaleString("en-US")}.` : "Not enough cash." };
+    if (r.r === "qty") return { ok: false, error: "You don't hold that many contracts." };
+    if (r.r === "conflict") return { ok: false, error: "You already have a bet on the other side of this. Cancel it first if you've changed your mind." };
+    if (r.r !== "stale") return { ok: false, error: "Trade refused." };
   }
   return { ok: false, error: "Prices are moving fast. Try again." };
 }
 
-/** One buy (dollars) or sell (contracts) at the crowd price, retried if someone traded in between. */
-export async function placeTrade(args: {
-  leagueId: string; season: number; userId: string; market: string; outcome: string; side: "yes" | "no"; kind: "buy" | "sell";
-  priced: Market; dollars?: number; qty?: number;
-}): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
-  const admin = supabaseAdmin();
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const nets = await marketNets(args.leagueId, args.season, args.market);
-    const net = nets.get(args.outcome) || 0;
-    const pr = pricerFor(args.priced, args.outcome, nets);
-    const q = args.kind === "buy" ? quoteBuyP(pr, net, args.side, args.dollars || 0) : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
-    if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to sell." };
-    if (args.kind === "sell") {
-      const r = await refundFor(args.leagueId, args.season, args.userId, args.market, args.outcome, args.side, q.qty);
-      if (r == null) return { ok: false, error: "You don't hold that many contracts." };
-      q.amount = Math.round(r * 100) / 100;
-    }
-    const { data, error } = await admin.rpc("market_trade", {
-      p_league: args.leagueId, p_season: args.season, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
-      p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: q.amount, p_expected_net: net, p_new_net: q.newNet,
-      p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000,
-    });
-    if (error) return { ok: false, error: error.message };
-    if (data === "ok") return { ok: true, qty: q.qty, amount: q.amount, before: q.before, after: q.after };
-    if (data === "cash") return { ok: false, error: "Not enough cash." };
-    if (data === "qty") return { ok: false, error: "You don't hold that many contracts." };
-    if (data !== "stale") return { ok: false, error: "Trade refused." };
-  }
-  return { ok: false, error: "Prices are moving fast. Try again." };
+/** What cancelling a whole position gives back right now: what it cost, or its market value if that's less. */
+export async function cancelValue(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", pos: { qty: number; cost: number }, tickets: boolean) {
+  const nets = await marketNets(leagueId, book, m.key);
+  const q = quoteSellP(pricerFor(m, outcome, nets), nets.get(outcome) || 0, side, Math.floor(pos.qty));
+  const value = tickets ? Math.floor(q.amount * TICKETS_PER_CONTRACT + 1e-6) : q.amount;
+  return Math.min(pos.cost, value);
 }
 
 /** Display names: the member's EA name, else their profile name. */
@@ -307,6 +347,7 @@ export async function memberNames(ids: string[]) {
 export type AuditRow = {
   id: number; at: string; user: string; userId: string; market: string; outcome: string; side: "yes" | "no";
   kind: "buy" | "sell" | "settle"; qty: number; amount: number; before: number | null; after: number | null;
+  voided?: string;    // why it was voided (placed after the real kickoff)
 };
 /** The public trade log, newest first. Every trade by every member, never edited (see the migration's trigger). */
 export async function auditTrades(leagueId: string, season: number, opts: { market?: string; user?: string; before?: number; limit?: number } = {}) {
@@ -317,17 +358,23 @@ export async function auditTrades(leagueId: string, season: number, opts: { mark
   if (opts.before) q = q.lt("id", opts.before);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  const names = await memberNames([...new Set((data || []).map((r) => r.user_id))]);
+  const ids = (data || []).map((r) => Number(r.id));
+  const [names, vd] = await Promise.all([
+    memberNames([...new Set((data || []).map((r) => r.user_id))]),
+    ids.length ? supabaseAdmin().from("market_trade_voids").select("trade_id, reason").in("trade_id", ids) : Promise.resolve({ data: [] as { trade_id: number; reason: string }[] }),
+  ]);
+  const voided = new Map((vd.data || []).map((r) => [Number(r.trade_id), r.reason as string]));
   return (data || []).map((r): AuditRow => ({
     id: Number(r.id), at: r.created_at, user: names.get(r.user_id) || "Member", userId: r.user_id, market: r.market_key, outcome: r.outcome_id,
     side: r.side, kind: r.kind, qty: Number(r.qty), amount: Number(r.amount),
     before: r.price_before == null ? null : Number(r.price_before), after: r.price_after == null ? null : Number(r.price_after),
+    voided: voided.get(Number(r.id)),
   }));
 }
 
 /** What a markets page needs: the book (with crowd prices once shared trading is on),
  *  the viewer's wallet/leaderboard, and the league id. Settles finished outcomes first. */
-export async function marketsForPage(slug: string, book: MarketBook, season: number, index: (b: MarketBook) => PriceIndex, dataWeek?: { stage: number; week: number }) {
+export async function marketsForPage(slug: string, book: MarketBook, season: number, index: (b: MarketBook) => PriceIndex, dataWeek?: { stage: number; week: number }, d?: LeagueData) {
   const none = { book, shared: null as SharedState | null, leagueId: null as string | null, bookKey: season, tickets: null as TicketsConfig | null };
   if (!(await marketsShared())) return none;
   try {
@@ -335,8 +382,7 @@ export async function marketsForPage(slug: string, book: MarketBook, season: num
     if (!v.leagueId) return none;
     const tickets = await ticketsConfig(slug).catch(() => null);
     const key = bookKey(season, Boolean(tickets));
-    await settleFinished(v.leagueId, key, book, Boolean(tickets));
-    if (tickets) { const lid = v.leagueId; after(() => sendPendingTickets(lid, tickets).then(() => {}, () => {})); }
+    if (d) await settleFinished(v.leagueId, key, d, book, Boolean(tickets));
     // EA's live "played" flags: use what's cached, refresh in the background (never slows the page)
     const live = liveWeekCached(slug);
     refreshLiveWeek(slug);
@@ -354,7 +400,7 @@ export async function marketsForPage(slug: string, book: MarketBook, season: num
 
 // ---------------------------------------------------------------- kickoff / close times
 
-export type CloseRow = { id: number; gameId: number; closeAt: string; by: string; kind: "site" | "discord"; at: string };
+export type CloseRow = { id: number; gameId: number; closeAt: string; by: string; kind: "site" | "discord" | "verified"; at: string };
 
 /** Every close time ever set this season, newest first (public log). */
 export async function closeLog(leagueId: string, season: number, gameId?: number): Promise<CloseRow[]> {
@@ -378,6 +424,30 @@ export async function setCloseTime(leagueId: string, season: number, gameId: num
   if (error) throw new Error(error.message);
 }
 
+/** Is this site user the league's owner or a commissioner? */
+export async function isCommissioner(leagueId: string, userId: string) {
+  const admin = supabaseAdmin();
+  const { data: lg } = await admin.from("leagues").select("owner_id").eq("id", leagueId).maybeSingle();
+  if (lg?.owner_id === userId) return true;
+  const { data } = await admin.from("league_members").select("role").eq("league_id", leagueId).eq("user_id", userId).maybeSingle();
+  return data?.role === "commissioner";
+}
+/** The team a site user runs in this league (abbreviation), if any. */
+export async function teamOfUser(leagueId: string, userId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin().from("league_members").select("team_abbr").eq("league_id", leagueId).eq("user_id", userId).maybeSingle();
+  return (data?.team_abbr as string | null) || null;
+}
+/** Who may set a game's kickoff (Fable's review, 2026-11-14): the two teams' managers or an admin;
+ *  once the kickoff in force has passed, only an admin (so nobody can reopen a game that's under way).
+ *  Returns "" if allowed, else why not. */
+export function kickoffPermission(o: { admin: boolean; userTeam: string | null; homeAbbr: string; awayAbbr: string; current?: CloseRow; now?: number }) {
+  if (o.admin) return "";
+  if (o.current && Date.parse(o.current.closeAt) <= (o.now ?? Date.now())) return "Betting on this game has already closed. Only an admin can change its kickoff now.";
+  const t = (o.userTeam || "").toLowerCase();
+  if (t && (t === o.homeAbbr.toLowerCase() || t === o.awayAbbr.toLowerCase())) return "";
+  return "Only the two teams' managers (or an admin) can set this game's kickoff.";
+}
+
 export const fmtET = (iso: string | Date) => new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET";
 
 /** Marks game/prop markets closed once their kickoff has passed or EA says the game was played. */
@@ -395,14 +465,61 @@ export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, pla
   };
 }
 
-export type MoveRow = { id: number; at: string; user: string; amount: number; kind: string; reason: string; status: string; error: string | null };
-/** Every Ticket movement the site made or owes (Tickets leagues), newest first. */
-export async function ticketMoves(leagueId: string, book: number, limit = 200): Promise<MoveRow[]> {
-  const { data, error } = await supabaseAdmin().from("market_ticket_moves").select("id, user_id, amount, kind, reason, status, error, created_at")
-    .eq("league_id", leagueId).eq("book", book).order("id", { ascending: false }).limit(limit);
-  if (error) throw new Error(error.message);
-  const names = await memberNames([...new Set((data || []).map((r) => r.user_id))]);
-  return (data || []).map((r) => ({ id: Number(r.id), at: r.created_at, user: names.get(r.user_id) || "Member", amount: Number(r.amount), kind: r.kind, reason: r.reason, status: r.status, error: r.error }));
+export type LedgerRow = {
+  id: number; at: string; userId: string; user: string; kind: "result" | "cancel" | "void" | "credit"; market: string | null; outcome: string | null;
+  side: string | null; qty: number | null; cost: number | null; payout: number | null; amount: number; note: string;
+  reportKey: string | null; appliedAt: string | null; appliedBy: string | null;
+};
+/** Tickets owed to (+) or by (-) members, newest first: what the weekly payouts reports are built from. */
+export async function ledgerRows(leagueId: string, opts: { unapplied?: boolean; user?: string; limit?: number } = {}): Promise<LedgerRow[]> {
+  const rows = await allRows<Record<string, unknown>>((f, t) => {
+    let q = supabaseAdmin().from("market_ledger").select("id, user_id, kind, market_key, outcome_id, side, qty, cost, payout, amount, note, created_at, report_key, applied_at, applied_by")
+      .eq("league_id", leagueId).order("id", { ascending: false });
+    if (opts.unapplied) q = q.is("applied_at", null);
+    if (opts.user) q = q.eq("user_id", opts.user);
+    return q.range(f, t);
+  }, opts.limit ?? 5000);
+  const names = await memberNames([...new Set(rows.map((r) => String(r.user_id)))]);
+  const num = (x: unknown) => (x == null ? null : Number(x));
+  return rows.map((r) => ({
+    id: Number(r.id), at: String(r.created_at), userId: String(r.user_id), user: names.get(String(r.user_id)) || "Member", kind: r.kind as LedgerRow["kind"],
+    market: (r.market_key as string) ?? null, outcome: (r.outcome_id as string) ?? null, side: (r.side as string) ?? null,
+    qty: num(r.qty), cost: num(r.cost), payout: num(r.payout), amount: Number(r.amount), note: String(r.note || ""),
+    reportKey: (r.report_key as string) ?? null, appliedAt: (r.applied_at as string) ?? null, appliedBy: (r.applied_by as string) ?? null,
+  }));
+}
+
+// ---------------------------------------------------------------- voiding bets placed after the real kickoff
+
+/** An admin's verified kickoff for a finished game: records it, then voids every bet and cancel on the
+ *  game's markets placed at or after it. The game must be final (its markets settle first). */
+export async function verifyKickoff(a: { leagueId: string; season: number; d: LeagueData; book: MarketBook; gameId: number; kickoff: Date; tickets: boolean; by: { kind: "site" | "discord"; id: string; name: string } }) {
+  const g = a.d.games.find((x) => x.id === a.gameId);
+  if (!g?.final) return { ok: false as const, error: "That game isn't final yet. Verify the kickoff once it has been played and synced." };
+  const admin = supabaseAdmin();
+  const key = bookKey(a.season, a.tickets);
+  await settleFinished(a.leagueId, key, a.d, a.book, a.tickets);
+  const { error: ce } = await admin.from("market_game_close").insert({
+    league_id: a.leagueId, season: a.season, game_id: a.gameId, close_at: a.kickoff.toISOString(), set_by_kind: "verified", set_by_id: a.by.id, set_by_name: a.by.name.slice(0, 64),
+  });
+  if (ce) return { ok: false as const, error: ce.message };
+  const late = await allRows<{ id: number; user_id: string; market_key: string; outcome_id: string; side: string; kind: string; qty: number; amount: number; created_at: string }>((f, t) =>
+    admin.from("market_trades").select("id, user_id, market_key, outcome_id, side, kind, qty, amount, created_at")
+      .eq("league_id", a.leagueId).eq("season", key).in("kind", ["buy", "sell"]).gte("created_at", a.kickoff.toISOString())
+      .or(`market_key.eq.game-${a.gameId},market_key.like.props-${a.gameId}-*`).order("id").range(f, t));
+  const voided: typeof late = [];
+  for (const t of late) {
+    const res = outcomeResult(a.d, a.book, t.market_key, t.outcome_id);
+    if (!res) continue;
+    const mine = res === "void" ? "void" : (res === "won") === (t.side === "yes") ? "won" : "lost";
+    const { data, error } = await admin.rpc("market_void_trade", {
+      p_trade: t.id, p_result: mine, p_per_contract: a.tickets ? TICKETS_PER_CONTRACT : 1, p_tickets: a.tickets,
+      p_by: a.by.name.slice(0, 64), p_reason: `Placed after the verified kickoff (${fmtET(a.kickoff)})`,
+    });
+    if (error) return { ok: false as const, error: error.message };
+    if (data === "ok") voided.push(t);
+  }
+  return { ok: true as const, voided };
 }
 
 /** The book as everyone sees it right now (kickoff closes + crowd prices), with no viewer. For Discord posts. */

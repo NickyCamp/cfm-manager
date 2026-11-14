@@ -473,7 +473,7 @@ function buildBook(d: LeagueData): MarketBook {
   const confs = [...new Set(d.teams.map((t) => t.conference))].sort();
   const confShort = (cf: string) => cf.toUpperCase();
   const regRule = "Settles when the last regular-season game is final.";
-  const modelRule = "Prices are chances from CFM Manager's season simulation, not real money.";
+  const modelRule = "Prices start from CFM Manager's season simulation and move with members' bets.";
 
   // ---- this week's games
   const cur = d.season;
@@ -486,13 +486,14 @@ function buildBook(d: LeagueData): MarketBook {
     const m: Market = {
       key: `game-${g.id}`, gameId: g.id, cat: "games", title: `${a.name} at ${h.name}`, subtitle: `${cur.title} · who wins?`, kind: "exclusive",
       settled: false, status: g.final ? "Settled" : "Open until kickoff",
-      rules: `Settles on the final score of ${a.city} ${a.name} at ${h.city} ${h.name}. Trading stops as soon as EA reports the game played (checked live on every trade), even before the site syncs the result. ${g.week === 22 ? "Neutral site." : "Home field is worth about 1.5 points in the model."} ${modelRule}`,
+      rules: `Settles on the final score of ${a.city} ${a.name} at ${h.city} ${h.name}; a tie is void and every stake comes back. Trading stops at the kickoff time set for the game, or as soon as EA reports it played (checked live on every trade). ${g.week === 22 ? "Neutral site." : "Home field is worth about 1.5 points in the model."} ${modelRule}`,
       outcomes: [
         mk(String(a.id), tname(a), hp.map((x) => (x == null ? null : 1 - x)), { team: a.id, sub: a.user || "CPU" }),
         mk(String(h.id), tname(h), hp, { team: h.id, sub: h.user || "CPU" }),
       ],
     };
-    if (g.final) settle(m, new Set([String(g.hs > g.as ? g.home : g.away)]));
+    if (g.final && g.hs === g.as) { m.closed = true; m.status = "Tie: void, every stake comes back"; }
+    else if (g.final) settle(m, new Set([String(g.hs > g.as ? g.home : g.away)]));
     markets.push(m);
   }
 

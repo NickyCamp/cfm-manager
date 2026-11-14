@@ -17,7 +17,7 @@ export default async function MarketsPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
+  const { book, shared } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season, d);
 
   const markets: BoardMarket[] = book.markets.map((m) => {
     const visible = m.outcomes.filter((o) => o.state !== "lost" || m.kind === "independent" || Math.max(...o.history.map((x) => x ?? 0)) >= 0.01);
@@ -37,7 +37,7 @@ export default async function MarketsPage({ params, searchParams }: Props) {
         <div className="mk-hero">
           <div>
             <h2>Markets</h2>
-            <p className="muted">Trade on how the {book.season} season ends. Prices start at the chance from a simulation of the rest of the season (updated after every sync){shared ? " and then move with what league members buy and sell, so getting in early gets a better price" : ""}. Play money only: everyone starts with $1,000.</p>
+            <p className="muted">Trade on how the {book.season} season ends. Prices start at the chance from a simulation of the rest of the season (updated after every sync){shared ? " and then move with what league members buy and sell, so getting in early gets a better price" : ""}. {shared?.currency === "tickets" ? "Bets are in league Tickets: admins add or remove results in UnbelievaBoat after each advance." : "Play money only: everyone starts with $1,000."}</p>
             <p className="small"><Link href={`/l/${slug}/markets/activity`}>Public trade log →</Link> every trade by every member, for anyone to check.</p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 "use client";
-// Set when betting closes on a game (its kickoff). League members only; every change is public.
+// Set when betting closes on a game (its kickoff). The two teams' managers or a commissioner (checked on the server); every change is public.
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 

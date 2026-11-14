@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, priceIndex } from "@/lib/league/markets";
-import { auditTrades, closeLog, fmtET, marketsForPage, ticketMoves, type AuditRow, type CloseRow, type MoveRow } from "@/lib/marketStore";
+import { auditTrades, closeLog, fmtET, ledgerRows, marketsForPage, type AuditRow, type CloseRow, type LedgerRow } from "@/lib/marketStore";
 import { NoData } from "@/components/league/bits";
 import { AuditTable } from "@/components/league/markets/AuditTable";
 
@@ -16,15 +16,15 @@ export default async function MarketActivity({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
+  const { book, shared, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season, d);
   const index = priceIndex(book);
   const PAGE = 200;
   let rows: AuditRow[] = [];
   let err = "";
   let closes: CloseRow[] = [];
   if (leagueId) closes = await closeLog(leagueId, d.season.year).catch(() => []);
-  let moves: MoveRow[] = [];
-  if (leagueId && tickets && !sp.market) moves = await ticketMoves(leagueId, bookKey).catch(() => []);
+  let ledger: LedgerRow[] = [];
+  if (leagueId && tickets && !sp.market) ledger = await ledgerRows(leagueId, { user: sp.user, limit: 500 }).catch(() => []);
   const teamsById = new Map(d.teams.map((t) => [t.id, t]));
   const gameName = (id: number) => { const g = d.games.find((x) => x.id === id); return g ? `${teamsById.get(g.away)?.abbr ?? "?"} @ ${teamsById.get(g.home)?.abbr ?? "?"}` : `Game ${id}`; };
   if (leagueId) {
@@ -42,7 +42,7 @@ export default async function MarketActivity({ params, searchParams }: Props) {
         <div className="mk-detail-head">
           <div>
             <h2>Public trade log</h2>
-            <p className="muted">Every buy, sell and payout by every member in the {d.season.year} season, with the price before and after, plus every kickoff time set. Entries can&apos;t be edited or deleted, by anyone.</p>
+            <p className="muted">Every bet, cancel and settlement by every member in the {d.season.year} season, with the price before and after, plus every kickoff time set. Entries can&apos;t be edited or deleted, by anyone; a bet placed after a game&apos;s verified kickoff is marked void.</p>
           </div>
           {shared && <a className="btn" href={csv}>Download CSV</a>}
         </div>
@@ -57,17 +57,17 @@ export default async function MarketActivity({ params, searchParams }: Props) {
         )}
         {tickets && !sp.market && (
           <div className="panel mk-audit-panel">
-            <h3>Ticket transfers</h3>
-            <p className="muted small">Every Ticket the site took from or paid into a member&apos;s UnbelievaBoat balance. &quot;Waiting&quot; means it&apos;s owed and goes out on the next try.</p>
-            {moves.length ? (
+            <h3>Payouts</h3>
+            <p className="muted small">The bot doesn&apos;t move Tickets. Every settled bet becomes a line here; after each advance the bot posts them in #previous-week-payouts for admins to add or remove in UnbelievaBoat and mark applied. Your balance on the site already counts them.</p>
+            {ledger.length ? (
               <div className="tbl-wrap"><table className="tbl mk-audit">
                 <thead><tr><th scope="col">#</th><th scope="col">When</th><th scope="col">Member</th><th className="num">Tickets</th><th scope="col">What</th><th scope="col">Status</th></tr></thead>
-                <tbody>{moves.filter((x) => !sp.user || rows.some((r) => r.user === x.user)).map((x) => (
+                <tbody>{ledger.map((x) => (
                   <tr key={x.id}>
                     <td className="muted">{x.id}</td><td className="nw">{fmtET(x.at)}</td><td>{x.user}</td>
-                    <td className={`num ${x.amount > 0 ? "pos" : ""}`}>{x.amount > 0 ? "+" : "−"}{Math.abs(x.amount).toLocaleString("en-US")}</td>
-                    <td>{x.reason.replace(/^CFM Markets: /, "")}</td>
-                    <td className="nw">{x.status === "done" ? "Sent" : x.status === "sending" ? "Sending…" : <span title={x.error ?? ""}>Waiting{x.error ? ` (${x.error})` : ""}</span>}</td>
+                    <td className={`num ${x.amount > 0 ? "pos" : x.amount < 0 ? "neg" : ""}`}>{x.amount > 0 ? "+" : x.amount < 0 ? "−" : ""}{Math.round(Math.abs(x.amount)).toLocaleString("en-US")}</td>
+                    <td>{x.kind === "result" ? `${x.side === "yes" ? "Yes" : "No"} · ${x.note}` : x.kind === "cancel" ? `Cancelled after the price fell (${index[x.market || ""]?.o[x.outcome || ""]?.[2] ?? x.outcome})` : x.kind === "void" ? `Voided: ${x.note}` : x.note}</td>
+                    <td className="nw">{x.appliedAt ? <span title={x.appliedBy ?? ""}>Applied {fmtET(x.appliedAt)}</span> : x.reportKey ? "In the payouts report" : "Next report"}</td>
                   </tr>
                 ))}</tbody>
               </table></div>
@@ -81,7 +81,7 @@ export default async function MarketActivity({ params, searchParams }: Props) {
             {closes.length ? (
               <div className="tbl-wrap"><table className="tbl mk-audit">
                 <thead><tr><th scope="col">#</th><th scope="col">Set at</th><th scope="col">By</th><th scope="col">Game</th><th scope="col">Betting closes</th></tr></thead>
-                <tbody>{closes.map((c) => <tr key={c.id}><td className="muted">{c.id}</td><td className="nw">{fmtET(c.at)}</td><td>{c.by} <span className="muted">({c.kind === "discord" ? "Discord" : "site"})</span></td><td><Link href={`/l/${slug}/markets/game-${c.gameId}`}>{gameName(c.gameId)}</Link></td><td className="nw">{fmtET(c.closeAt)}</td></tr>)}</tbody>
+                <tbody>{closes.map((c) => <tr key={c.id}><td className="muted">{c.id}</td><td className="nw">{fmtET(c.at)}</td><td>{c.by} <span className="muted">({c.kind === "verified" ? "verified by an admin" : c.kind === "discord" ? "Discord" : "site"})</span></td><td><Link href={`/l/${slug}/markets/game-${c.gameId}`}>{gameName(c.gameId)}</Link></td><td className="nw">{fmtET(c.closeAt)}</td></tr>)}</tbody>
               </table></div>
             ) : <p className="muted">None yet.</p>}
           </div>

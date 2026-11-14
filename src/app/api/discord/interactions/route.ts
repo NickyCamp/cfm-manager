@@ -7,7 +7,7 @@ import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
 import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
-import { betModal, placeFromModal, type ComponentInteraction } from "@/lib/discord/marketButtons";
+import { betModal, cancelFromButton, payoutFromButton, placeFromModal, type ComponentInteraction } from "@/lib/discord/marketButtons";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
@@ -35,6 +35,19 @@ export async function POST(req: Request) {
   if (i.type === COMPONENT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mk|")) {
     return NextResponse.json(betModal(i as ComponentInteraction));
   }
+  const cid = String((i as ComponentInteraction).data?.custom_id || "");
+  // /bets "Cancel #n": cancels the whole position (private reply)
+  if (i.type === COMPONENT && cid.startsWith("mkc|")) {
+    after(async () => {
+      const text = await cancelFromButton(i as ComponentInteraction).catch((e) => { console.error("discord cancel failed", e); return "Something went wrong cancelling that. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, { content: text });
+    });
+    return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
+  }
+  // #previous-week-payouts: Applied / Undo (admins)
+  if (i.type === COMPONENT && (cid.startsWith("mpa|") || cid.startsWith("mpu|"))) {
+    return NextResponse.json(await payoutFromButton(i as ComponentInteraction));
+  }
   if (i.type === MODAL_SUBMIT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mkb|")) {
     after(async () => {
       const text = await placeFromModal(i as ComponentInteraction).catch((e) => { console.error("discord bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
@@ -46,7 +59,7 @@ export async function POST(req: Request) {
   if (i.type === COMMAND) {
     const base = new URL(req.url).origin;
     // Settings changes reply only to the person who ran them; everything else is public.
-    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels"].includes(i.data?.name || "");
+    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "balance", "bets", "payouts"].includes(i.data?.name || "");
     after(async () => {
       try {
         const msg = await runCommand(i, base);

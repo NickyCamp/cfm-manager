@@ -1,6 +1,7 @@
-// League Tickets through UnbelievaBoat (Nick, 2026-11-13). UnbelievaBoat is the
-// bank: the site takes Tickets for bets and pays sales and winnings back, and
-// records every movement in market_ticket_moves (supabase/migrations/0004).
+// League Tickets through UnbelievaBoat (Nick, 2026-11-13). UnbelievaBoat is the bank.
+// Since 2026-11-14 the site only READS balances: bets record a stake, results go in
+// market_ledger (supabase/migrations/0006), and admins add/remove Tickets by hand from
+// the weekly "Previous Week Payouts" report the bot posts (src/lib/discord/payouts.ts).
 //
 // Settings (Vercel env):
 //   UNBELIEVABOAT_TOKEN  API token from unbelievaboat.com/applications, authorized for the league's server
@@ -47,15 +48,10 @@ export async function ticketBalance(cfg: TicketsConfig, discordId: string): Prom
   const j = await ub(`/guilds/${cfg.guildId}/users/${discordId}`);
   return Number(j[cfg.field] ?? 0);
 }
-/** Adds (or with a negative amount, takes) Tickets. */
-export async function moveTickets(cfg: TicketsConfig, discordId: string, amount: number, reason: string) {
-  return ub(`/guilds/${cfg.guildId}/users/${discordId}`, { method: "PATCH", body: JSON.stringify({ [cfg.field]: Math.round(amount), reason: reason.slice(0, 200) }) });
-}
-
 // ---------------------------------------------------------------- Discord account links
 // /connect in Discord hands out a signed link (valid 15 minutes) that ties the
 // Discord account to whoever confirms it on the site. Stored in the site user's
-// auth metadata (discord_id, discord_name), so no extra table.
+// app_metadata (discord_id, discord_name), which only the server can write.
 
 function linkKey() {
   const base = process.env.EA_TOKEN_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -78,63 +74,51 @@ export function readLinkToken(token: string): { discordId: string; name: string 
     return { discordId: p.d, name: String(p.n || "") };
   } catch { return null; }
 }
+/** A site user's linked Discord account. Kept in app_metadata, which only the server can write
+ *  (user_metadata can be changed by the user themselves with the public key). */
 export async function discordOfUser(userId: string): Promise<{ id: string; name: string } | null> {
   const { data } = await supabaseAdmin().auth.admin.getUserById(userId);
-  const m = data.user?.user_metadata as Record<string, unknown> | undefined;
+  const m = data.user?.app_metadata as Record<string, unknown> | undefined;
   return m?.discord_id ? { id: String(m.discord_id), name: String(m.discord_name || "") } : null;
 }
-export async function linkDiscord(userId: string, discordId: string, name: string) {
-  byDiscordForget(discordId);
+/** Every site user, a page at a time (small leagues: a few hundred users at most). */
+async function allUsers() {
   const admin = supabaseAdmin();
+  const out: { id: string; app_metadata: Record<string, unknown> }[] = [];
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data.users.length) break;
+    out.push(...data.users.map((u) => ({ id: u.id, app_metadata: (u.app_metadata || {}) as Record<string, unknown> })));
+    if (data.users.length < 200) break;
+  }
+  return out;
+}
+/** Links a Discord account to one site user; any other site user linked to it is unlinked. */
+export async function linkDiscord(userId: string, discordId: string, name: string) {
+  byDiscord.clear();
+  const admin = supabaseAdmin();
+  for (const u of await allUsers()) {
+    if (u.id !== userId && String(u.app_metadata.discord_id || "") === discordId) {
+      const { discord_id: _a, discord_name: _b, ...rest } = u.app_metadata; void _a; void _b;
+      await admin.auth.admin.updateUserById(u.id, { app_metadata: { ...rest, discord_id: null, discord_name: null } });
+    }
+  }
   const { data } = await admin.auth.admin.getUserById(userId);
-  const meta = { ...(data.user?.user_metadata || {}), discord_id: discordId, discord_name: name };
-  const { error } = await admin.auth.admin.updateUserById(userId, { user_metadata: meta });
+  const meta = { ...(data.user?.app_metadata || {}), discord_id: discordId, discord_name: name };
+  const { error } = await admin.auth.admin.updateUserById(userId, { app_metadata: meta });
   if (error) throw new Error(error.message);
 }
 
-// ---------------------------------------------------------------- payouts
-/** Sends queued Ticket payments (sales, winnings, refunds). Each row is claimed first so it's never paid twice. */
-export async function sendPendingTickets(leagueId: string, cfg: TicketsConfig, limit = 40) {
-  const admin = supabaseAdmin();
-  const { data } = await admin.from("market_ticket_moves").select("id, user_id, amount, reason")
-    .eq("league_id", leagueId).eq("status", "pending").order("id").limit(limit);
-  let sent = 0;
-  const discordIds = new Map<string, { id: string } | null>();
-  for (const row of data || []) {
-    if (!discordIds.has(row.user_id)) discordIds.set(row.user_id, await discordOfUser(row.user_id).catch(() => null));
-    const d = discordIds.get(row.user_id);
-    if (!d) { await admin.from("market_ticket_moves").update({ error: "Discord not linked yet (/connect)" }).eq("id", row.id).eq("status", "pending"); continue; }
-    const { data: claimed } = await admin.from("market_ticket_moves").update({ status: "sending" }).eq("id", row.id).eq("status", "pending").select("id");
-    if (!claimed?.length) continue;
-    try {
-      await moveTickets(cfg, d.id, Number(row.amount), row.reason);
-      await admin.from("market_ticket_moves").update({ status: "done", done_at: new Date().toISOString(), error: null }).eq("id", row.id);
-      sent++;
-    } catch (e) {
-      // Not sent: back in the queue for the next try.
-      await admin.from("market_ticket_moves").update({ status: "pending", error: (e as Error).message.slice(0, 200) }).eq("id", row.id);
-    }
-  }
-  return sent;
-}
-
 const byDiscord = new Map<string, { at: number; userId: string | null }>();
-function byDiscordForget(id: string) { byDiscord.delete(id); }
 /** The site user linked to a Discord account (via /connect), cached 5 minutes. */
 export async function userForDiscord(discordId: string): Promise<string | null> {
   const hit = byDiscord.get(discordId);
   if (hit && Date.now() - hit.at < 5 * 60_000) return hit.userId;
-  const admin = supabaseAdmin();
   let found: string | null = null;
-  for (let page = 1; page <= 20 && !found; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-    if (error || !data.users.length) break;
-    for (const u of data.users) {
-      const id = (u.user_metadata as Record<string, unknown> | undefined)?.discord_id;
-      if (id) byDiscord.set(String(id), { at: Date.now(), userId: u.id });
-      if (String(id) === discordId) found = u.id;
-    }
-    if (data.users.length < 200) break;
+  for (const u of await allUsers()) {
+    const id = u.app_metadata.discord_id;
+    if (id) byDiscord.set(String(id), { at: Date.now(), userId: u.id });
+    if (id && String(id) === discordId) found = u.id;
   }
   byDiscord.set(discordId, { at: Date.now(), userId: found });
   return found;

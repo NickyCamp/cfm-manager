@@ -123,16 +123,20 @@ export function quoteSell(model: number, net: number, side: "yes" | "no", qty: n
 //   multi-outcome market maker: price_i = softmax(log model_i + net_i / LIQUIDITY). Money on
 //   one outcome raises it and lowers all the others; prices always add up to 100¢.
 //   A No on outcome i is the same as Yes on all the others, so the same per-outcome net works.
-// - Player-prop ladders (same player, same stat): a bet on one line also nudges the others
-//   the same direction (LADDER_SPILL of its weight), so 250+ / 300+ / 350+ stay consistent.
+// - Player-prop ladders (same player, same stat; changed 2026-11-14 after Fable's review): one
+//   market maker over the ranges the stat can land in (under 250, 250-299, 300-349, 350+).
+//   "Yes 300+" is a bet on every range from 300 up, so a bet on one line moves the player's
+//   other lines and 250+ can never be priced below 300+. (The old nudge between lines could be
+//   played by two people for a sure profit; this can't, since it's a proper cost function.)
 // Everything else stays its own Yes/No market.
 
-export const LADDER_SPILL = 0.5;
 const lse = (xs: number[]) => { const m = Math.max(...xs); return m + Math.log(xs.reduce((a, x) => a + Math.exp(x - m), 0)); };
 
 export type Pricer =
   | { kind: "binary"; model: number }
-  | { kind: "exclusive"; logw: number[]; nets: number[]; i: number };
+  | { kind: "exclusive"; logw: number[]; nets: number[]; i: number }
+  // ladder: logw per range (lowest first); line j is Yes on every range >= starts[j]
+  | { kind: "ladder"; logw: number[]; starts: number[]; nets: number[]; i: number };
 
 type PricedOutcome = { id: string; p: number; state: OutcomeState };
 type PricedMarket = { key: string; kind: "exclusive" | "independent"; outcomes: PricedOutcome[] };
@@ -163,9 +167,14 @@ export function pricerFor(m: PricedMarket, outcomeId: string, nets: Map<string, 
   }
   const g = ladderGroup(m.key, outcomeId);
   if (g) {
-    let spill = 0;
-    for (const x of m.outcomes) if (x.id !== outcomeId && ladderGroup(m.key, x.id) === g) spill += nets.get(x.id) || 0;
-    return { kind: "binary", model: sigmoid(logit(clampP(model)) + (LADDER_SPILL * spill) / LIQUIDITY) };
+    const lines = m.outcomes.filter((x) => ladderGroup(m.key, x.id) === g)
+      .map((x) => ({ id: x.id, k: Number(x.id.split(":")[2]) || 0, p: x.state === "won" ? 1 : x.state === "lost" ? 0 : clampP(x.p) }))
+      .sort((a, b) => a.k - b.k);
+    // chances must fall as the line rises: take the running minimum
+    for (let j = 1; j < lines.length; j++) lines[j].p = Math.min(lines[j].p, lines[j - 1].p);
+    const ps = [1, ...lines.map((l) => l.p), 0];
+    const logw = ps.slice(0, -1).map((p, r) => Math.log(Math.max(p - ps[r + 1], 0.001)));
+    return { kind: "ladder", logw, starts: lines.map((_, j) => j + 1), nets: lines.map((l) => nets.get(l.id) || 0), i: lines.findIndex((l) => l.id === outcomeId) };
   }
   return { kind: "binary", model };
 }
@@ -176,14 +185,23 @@ function exState(pr: Extract<Pricer, { kind: "exclusive" }>, net: number) {
   const z = lse(xs);
   return { cost: LIQUIDITY * z, p: Math.exp(xs[pr.i] - z) };
 }
+function ladderState(pr: Extract<Pricer, { kind: "ladder" }>, net: number) {
+  const nets = pr.nets.slice(); nets[pr.i] = net;
+  const xs = pr.logw.map((w, r) => w + pr.starts.reduce((a, st, j) => a + (r >= st ? nets[j] : 0), 0) / LIQUIDITY);
+  const z = lse(xs);
+  let p = 0;
+  for (let r = pr.starts[pr.i]; r < xs.length; r++) p += Math.exp(xs[r] - z);
+  return { cost: LIQUIDITY * z, p };
+}
+const setState = (pr: Exclude<Pricer, { kind: "binary" }>, net: number) => (pr.kind === "ladder" ? ladderState(pr, net) : exState(pr, net));
 /** Yes chance of the outcome at its own `net` (everyone else's nets as in the pricer). */
 export function pricedP(pr: Pricer, net: number) {
-  return pr.kind === "binary" ? crowdP(pr.model, net) : exState(pr, net).p;
+  return pr.kind === "binary" ? crowdP(pr.model, net) : setState(pr, net).p;
 }
 function costP(pr: Pricer, net: number, side: "yes" | "no", n: number) {
   if (pr.kind === "binary") return buyCostBinary(pr.model, net, side, n);
-  const c0 = exState(pr, net).cost;
-  return side === "yes" ? exState(pr, net + n).cost - c0 : n + exState(pr, net - n).cost - c0;
+  const c0 = setState(pr, net).cost;
+  return side === "yes" ? setState(pr, net + n).cost - c0 : n + setState(pr, net - n).cost - c0;
 }
 export function quoteBuyP(pr: Pricer, net: number, side: "yes" | "no", dollars: number): Quote {
   const before = pricedP(pr, net);

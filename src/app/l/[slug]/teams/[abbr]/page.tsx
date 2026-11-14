@@ -78,7 +78,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
 }
 
 async function MarketsTab({ d, team, slug }: { d: LeagueData; team: Team; slug: string }) {
-  const { book, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
+  const { book, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season, d);
   if (!leagueId) return <p className="muted">League betting isn&apos;t switched on for this league.</p>;
   const bets = await teamBets(leagueId, bookKey, team.abbr, team.user).catch(() => null);
   if (!bets) return <p className="muted">Couldn&apos;t load bets right now.</p>;

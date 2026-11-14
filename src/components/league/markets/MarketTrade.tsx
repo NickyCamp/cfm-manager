@@ -38,7 +38,7 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
   const cost = q ? (T ? Math.ceil(q.amount * unit - 1e-6) : q.amount) : (qty * price) / 100;
   const fmt = port.fmt;
   const held = port.wallet?.positions.find((p) => p.m === mkey && p.o === sel && p.side === side);
-  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, held, unit) : 0;
+  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, held, unit, port.shared) : 0;
 
   const choose = (id: string, s: Side) => {
     setSel(id); setSide(s); setMsg(null);
@@ -128,7 +128,7 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
             )}
             {held && port.canTrade && <button type="button" className="mk-link-btn mk-sell" disabled={busy} onClick={doSell}>Cancel your {held.qty} {side === "yes" ? "Yes" : "No"} for a {fmt(heldValue)} refund</button>}
             {msg && <p className={`mk-msg ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</p>}
-            <p className="hint small">{T ? (port.needsLink ? "" : `You have ${fmt(cash)}. `) : `Cash: ${money(cash)}. `}Each contract pays {T ? "100 Tickets" : "$1"} if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? " Buying moves the price for everyone, so big orders cost more per contract. You can cancel for exactly what you paid until the market locks." : ""}</p>
+            <p className="hint small">{T ? (port.needsLink ? "" : `You have ${fmt(cash)} free to bet. `) : `Cash: ${money(cash)}. `}Each contract pays {T ? "100 Tickets" : "$1"} if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? " Buying moves the price for everyone, so big orders cost more per contract. Until the market locks you can cancel for what you paid, or what the bet is worth then if that's less." : ""}</p>
             {port.shared && o.model != null && Math.abs(o.model - o.p) >= 0.005 && <p className="hint small">Simulation says {Math.round(o.model * 100)}%; league bets have moved it to {Math.round(o.p * 100)}%.</p>}
           </div>
         )}

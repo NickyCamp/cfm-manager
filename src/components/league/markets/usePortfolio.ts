@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { prices, type OutcomeState, type PriceIndex } from "@/lib/league/marketTypes";
+import { prices, quoteSell, type OutcomeState, type PriceIndex } from "@/lib/league/marketTypes";
 import type { SharedState } from "@/lib/marketStore";
 
 export const START_CASH = 1000;
@@ -45,14 +45,16 @@ export function sidePrice(index: PriceIndex, m: string, o: string, side: Side) {
   const pr = prices(i);
   return side === "yes" ? pr.yes : pr.no;
 }
-/** What cancelling `qty` of a position gives back: exactly what it cost (pro rata), until the market locks.
- *  Finished outcomes are worth their payout. */
-export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, pos: { qty: number; cost: number }, unit = 1) {
+/** What cancelling `qty` of a position gives back: what it cost (pro rata), or what it's worth at the
+ *  market now if that's less (an estimate here; the server works it out exactly). Finished outcomes are worth their payout. */
+export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, pos: { qty: number; cost: number }, unit = 1, shared = true) {
   const i = outcomeInfo(index, m, o);
   if (!i) return 0;
   if (i.state !== "open") return (i.state === "won") === (side === "yes") ? qty * unit : 0;
-  const v = pos.cost * Math.min(1, qty / pos.qty);
-  return unit === 1 ? round2(v) : Math.round(v);
+  const cost = pos.cost * Math.min(1, qty / pos.qty);
+  const market = shared ? quoteSell(i.model, i.net, side, Math.floor(qty)).amount * unit : cost;
+  const v = Math.min(cost, market);
+  return unit === 1 ? round2(v) : Math.floor(v);
 }
 
 /** Pays out local positions whose outcome has settled. Returns the same object when nothing changed. */
@@ -134,7 +136,7 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     return { ok: true, text: `Bought ${qty} ${sideName} on ${label} for ${money(cost)}. Pays ${money(qty)} if right.` };
   }, [slug, index, commit, shared, call, currency, unit]);
 
-  /** Cancel `qty` contracts for exactly what they cost. */
+  /** Cancel `qty` contracts (shared: refund = cost, or market value if less). */
   const sell = useCallback(async (m: string, o: string, side: Side, qty: number): Promise<TradeResult> => {
     const sideName = side === "yes" ? "Yes" : "No";
     if (shared) {
@@ -157,10 +159,10 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
 
   const reset = useCallback(() => { if (!shared) commit(fresh()); }, [commit, shared]);
 
-  const value = wallet ? wallet.positions.reduce((a, p) => a + sellValue(index, p.m, p.o, p.side, p.qty, p, unit), 0) : 0;
+  const value = wallet ? wallet.positions.reduce((a, p) => a + sellValue(index, p.m, p.o, p.side, p.qty, p, unit, Boolean(shared)), 0) : 0;
   return {
     wallet, buy, sell, reset, value: round2(value), total: wallet ? round2(wallet.cash + value) : START_CASH, shared: Boolean(shared), canTrade, why,
-    leaderboard: shared?.leaderboard ?? [], currency, unit, fmt, needsLink, balanceError: shared?.balanceError,
+    leaderboard: shared?.leaderboard ?? [], currency, unit, fmt, needsLink, balanceError: shared?.balanceError, breakdown: shared?.ticketsBreakdown,
   };
 }
 

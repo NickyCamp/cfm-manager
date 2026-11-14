@@ -73,3 +73,39 @@ export function parseKickoff(raw: string, tz = "America/New_York", now = Date.no
   if (t < now - 5 * 60_000 || t - now > MAX_AHEAD) return null;
   return new Date(Math.max(t, now));
 }
+
+/** Reads a typed time that has already happened (an admin verifying when a game really kicked off):
+ *  "9pm" = the latest 9pm before now, "sat 7pm" = last Saturday, "yesterday 8:30pm", "2h ago".
+ *  Within the last 3 weeks. */
+export function parseKickoffPast(raw: string, tz = "America/New_York", now = Date.now()): Date | null {
+  const s = raw.trim().toLowerCase().replace(/\s+/g, " ").replace(/\./g, "");
+  if (!s) return null;
+  const ago = /^(?:(\d+) ?h(?:ours?|rs?)?)? ?(?:(\d+) ?m(?:in(?:ute)?s?)?)? ago$/.exec(s);
+  if (ago && (ago[1] || ago[2])) return new Date(now - (Number(ago[1] || 0) * 60 + Number(ago[2] || 0)) * 60_000);
+  const m = /^(?:(today|tonight|yesterday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)[a-z]*,? )?(?:at )?(\d{1,2})(?::(\d{2}))? ?(am|pm|a|p)?$/.exec(s);
+  if (!m) return null;
+  let h = Number(m[2]); const min = Number(m[3] || 0);
+  const ap = m[4]?.[0];
+  if (min > 59 || h > 23 || (ap && (h < 1 || h > 12))) return null;
+  if (ap === "p" && h < 12) h += 12;
+  if (ap === "a" && h === 12) h = 0;
+  if (!ap && h >= 1 && h <= 11) h += 12;
+  const today = parts(now, tz);
+  const at = (addDays: number) => {
+    const base = new Date(Date.UTC(today.y, today.m - 1, today.d + addDays));
+    return zoned(base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate(), h, min, tz);
+  };
+  const day = m[1];
+  let t: number;
+  if (!day) { t = at(0); if (t > now) t = at(-1); }
+  else if (day === "today" || day === "tonight") t = at(0);
+  else if (day === "yesterday") t = at(-1);
+  else {
+    const want = DAYS.indexOf(day.slice(0, 3));
+    let back = (today.wd - want + 7) % 7;
+    if (back === 0 && at(0) > now) back = 7;
+    t = at(-back);
+  }
+  if (t > now + 60_000 || now - t > 21 * 86400_000) return null;
+  return new Date(t);
+}

@@ -29,8 +29,8 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
         <span className="tag">{T ? "League Tickets" : port.shared ? "League play money" : "Play money"}</span>
       </div>
       <div className="mk-port-stats">
-        <div><span>{T ? "Your Tickets" : "Cash"}</span><strong>{T && port.needsLink ? "—" : fmt(wallet.cash)}</strong></div>
-        <div><span>{T ? "In open bets" : "Positions"}</span><strong>{fmt(value)}</strong></div>
+        <div><span>{T ? "Free to bet" : "Cash"}</span><strong>{T && port.needsLink ? "—" : fmt(wallet.cash)}</strong></div>
+        <div><span>{T ? "In open bets" : "Positions"}</span><strong>{fmt(T ? wallet.positions.reduce((a, p) => a + p.cost, 0) : value)}</strong></div>
         {!T && <div><span>Total</span><strong>{fmt(total)}</strong></div>}
         <div><span>{T ? "Market profit" : "Profit / loss"}</span><strong className={pl > 0.004 ? "pos" : pl < -0.004 ? "neg" : ""}>{pl >= 0 ? "+" : ""}{fmt(pl)}</strong></div>
       </div>
@@ -40,7 +40,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
           {positions.map((p) => {
             const info = outcomeInfo(index, p.m, p.o);
             const price = sidePrice(index, p.m, p.o, p.side);
-            const out = sellValue(index, p.m, p.o, p.side, p.qty, p, unit);
+            const out = sellValue(index, p.m, p.o, p.side, p.qty, p, unit, port.shared);
             return (
               <li key={`${p.m}:${p.o}:${p.side}`}>
                 <div className="mk-pos-top">
@@ -55,7 +55,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
                 </div>
                 <div className="mk-pos-actions">
                   <span className="muted small">Pays {fmt(p.qty * unit)} if right</span>
-                  {info?.state === "open" && port.canTrade && <button type="button" className="mk-link-btn" disabled={busy} onClick={() => sellAll(p.m, p.o, p.side, p.qty)}>Cancel for a {fmt(out)} refund</button>}
+                  {info?.state === "open" && port.canTrade && <button type="button" className="mk-link-btn" disabled={busy} onClick={() => sellAll(p.m, p.o, p.side, p.qty)}>Cancel for {out < p.cost - 0.5 ? "about " : ""}{fmt(out)} back</button>}
                 </div>
               </li>
             );
@@ -113,8 +113,11 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
       )}
       {!port.canTrade && <p className="mk-msg err">{port.why}</p>}
       {port.balanceError && <p className="mk-msg err">{port.balanceError}</p>}
+      {T && port.breakdown && (
+        <p className="muted small">UnbelievaBoat {fmt(port.breakdown.ub)} − open bets {fmt(port.breakdown.open)} {port.breakdown.pending >= 0 ? "+" : "−"} results not added there yet {fmt(Math.abs(port.breakdown.pending))}. Admins add or remove results after each advance.</p>
+      )}
       <p className="hint small">{T
-        ? "Real league Tickets from your UnbelievaBoat balance. Contracts pay 100 Tickets if right, 0 if wrong. Prices move with everyone's bets: buy early for a better price."
+        ? "Real league Tickets. Bets are held against your UnbelievaBoat balance here; admins add or remove the results in UnbelievaBoat after each advance. Contracts pay 100 Tickets if right, 0 if wrong. Prices move with everyone's bets: buy early for a better price. A cancel gives back what the bet cost, or what it's worth now if that's less."
         : <>{port.shared ? "Fake money, one wallet per league member this season. Prices move with everyone's bets: buy early for a better price." : "Fake money, saved on this device only."} Contracts pay $1 if right, $0 if wrong.</>}</p>
     </aside>
   );

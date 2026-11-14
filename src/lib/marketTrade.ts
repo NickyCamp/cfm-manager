@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
-import { closeTimes, fmtET, isMember, marketsShared, memberNames, placeTicketsTrade, placeTrade, recordAfterTrade } from "@/lib/marketStore";
+import { closeTimes, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade } from "@/lib/marketStore";
 import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
@@ -29,7 +29,7 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
   const m = marketBook(d).markets.find((x) => x.key === a.market);
   const o = m?.outcomes.find((x) => x.id === a.outcome);
   if (!m || !o) return { ok: false, status: 404, error: "That market doesn't exist any more." };
-  if (m.settled || o.state !== "open") return { ok: false, status: 409, error: "That market has closed." };
+  if (m.settled || m.closed || o.state !== "open") return { ok: false, status: 409, error: "That market has closed." };
 
   // Game and player-prop markets: closed at the scheduled kickoff, and the moment EA says the game was played.
   if (m.gameId) {
@@ -46,9 +46,8 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
   }
 
   const tickets = await ticketsConfig(a.slug).catch(() => null);
-  const r = tickets
-    ? await placeTicketsTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, true), userId: a.userId, market: a.market, marketTitle: m.title, outcome: a.outcome, outcomeLabel: o.label, side: a.side, kind: a.kind, priced: m, tickets: amount, qty, cfg: tickets })
-    : amount > 100000 ? { ok: false as const, error: "Too much." } : await placeTrade({ leagueId: a.leagueId, season: d.season.year, userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, dollars: amount, qty });
+  if (!tickets && a.kind === "buy" && amount > 100000) return { ok: false, status: 400, error: "Too much." };
+  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets });
   if (!r.ok) return { ok: false, status: 409, error: r.error };
 
   // Post it in the league's Discord Markets channels (if set up) and refresh the prices there.
