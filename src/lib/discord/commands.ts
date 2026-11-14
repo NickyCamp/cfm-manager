@@ -99,6 +99,7 @@ export const COMMANDS = [
     options: [{ type: INTEGER, name: "week", description: "Regular-season week number", required: false, min_value: 1, max_value: 18 }],
   },
   { name: "league", description: "Which league you're seeing here, with links", ...ANYWHERE },
+  { name: "marketchannels", description: "Set up or refresh the Markets category: a channel per game this week with odds and bets", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
   {
     name: "kickoff",

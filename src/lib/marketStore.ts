@@ -350,3 +350,16 @@ export async function ticketMoves(leagueId: string, book: number, limit = 200): 
   const names = await memberNames([...new Set((data || []).map((r) => r.user_id))]);
   return (data || []).map((r) => ({ id: Number(r.id), at: r.created_at, user: names.get(r.user_id) || "Member", amount: Number(r.amount), kind: r.kind, reason: r.reason, status: r.status, error: r.error }));
 }
+
+/** The book as everyone sees it right now (kickoff closes + crowd prices), with no viewer. For Discord posts. */
+export async function marketsForDiscord(slug: string, book: MarketBook, season: number, dataWeek: { stage: number; week: number }) {
+  if (!(await marketsShared())) return null;
+  const row = await getLeagueRow(slug);
+  if (!row) return null;
+  const tickets = await ticketsConfig(slug).catch(() => null);
+  const key = bookKey(season, Boolean(tickets));
+  const live = liveWeekCached(slug);
+  const closes = await closeTimes(row.id, season);
+  const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && weekMoved(live, dataWeek)));
+  return { book: withCrowd(closed, await loadPools(row.id, key)), leagueId: row.id, tickets: Boolean(tickets) };
+}

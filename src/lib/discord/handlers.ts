@@ -24,6 +24,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { closeTimes, fmtET, marketsShared, setCloseTime } from "@/lib/marketStore";
 import { kickoffProblem, parseKickoff, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { makeLinkToken } from "@/lib/tickets";
+import { refreshGame, syncMarketChannels } from "./marketChannels";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
@@ -204,6 +205,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (!t) return reply("No team by that name.");
       const w = Number(opt(i, "week")) || 0;
       return { embeds: [twsEmbed(d, t, url, footer, w || undefined, { base, slug: lg.slug })] };
+    }
+    case "marketchannels": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!canManage(i)) return reply("Only people with Manage Server can set up the Markets category.");
+      return reply(await syncMarketChannels(lg.slug));
     }
     case "kickoff": {
       if (via !== "server") return reply("Kickoff times can only be set in the league's own Discord server (linked with `/link`).");
@@ -781,6 +787,7 @@ async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   if (!when) return reply("I couldn't read that time. Try `9pm`, `tomorrow 8:30pm`, `sat 7pm`, `in 45m` or `now` (within the next two weeks).");
   const who = i.member?.user || i.user;
   await setCloseTime(lg.id, d.season.year, g!.id, when, { kind: "discord", id: who?.id || "", name: who?.global_name || who?.username || "Discord user" });
+  await refreshGame(lg.slug, g!.id).catch(() => {});
   const now = when.getTime() <= Date.now() + 60_000;
   return reply(`${now ? "🔒 Betting is now **closed**" : "⏰ Betting closes"} on **${name(teams.get(g!.away))} at ${name(teams.get(g!.home))}**${now ? "" : ` at **${fmtET(when)}**`} (game and player-prop markets). Set by ${who?.global_name || who?.username}; logged publicly. ${url(`/markets/game-${g!.id}`)}`, false);
 }

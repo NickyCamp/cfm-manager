@@ -23,6 +23,7 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
 import { blazeLogin, refreshToken, type EaToken } from "../src/lib/ea/client";
 import { decryptJson, encryptJson } from "../src/lib/crypto";
+import { signWorkerCall } from "../src/lib/workerSig";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
 import { resolvePortraits } from "../src/lib/league/portraits";
@@ -42,7 +43,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> } } | null;
+  settings: { discord?: { channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -72,6 +73,19 @@ async function postDiscordUpdates(lg: League, prev: LeagueData | null, data: Lea
     if (msgs.length) log(`- Posted ${msgs.length} update${msgs.length === 1 ? "" : "s"} to Discord.`);
   } catch (e) {
     log(`- Discord post failed: ${(e as Error).message}`);
+  }
+}
+
+/** Asks the site to roll/refresh the league's Discord Markets channels (only if they've been set up). */
+async function refreshMarketChannels(lg: League, log: (s: string) => void) {
+  if (!lg.settings?.marketChannels || !process.env.EA_TOKEN_KEY) return;
+  try {
+    const { ts, sig } = signWorkerCall(lg.slug);
+    const res = await fetch(`${APP_URL}/api/leagues/${lg.slug}/markets/discord`, { method: "POST", headers: { "x-cfm-ts": ts, "x-cfm-sig": sig } });
+    const j = (await res.json().catch(() => ({}))) as { result?: string; error?: string };
+    log(`- Discord Markets: ${j.result || j.error || `HTTP ${res.status}`}`);
+  } catch (e) {
+    log(`- Discord Markets refresh failed: ${(e as Error).message}`);
   }
 }
 
@@ -141,6 +155,7 @@ async function syncLeague(lg: League): Promise<string> {
   log(`- Saved ${Object.keys(files).length} files (${(bundle.length / 1024).toFixed(0)} KB compressed).`);
   const built = await buildAndSave(lg.slug, files, log);
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
+  if (built) await refreshMarketChannels(lg, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);
 }
 

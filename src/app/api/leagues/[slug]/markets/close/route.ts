@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
 import { fmtET, marketsShared, memberNames, setCloseTime, viewer } from "@/lib/marketStore";
 import { kickoffProblem } from "@/lib/kickoff";
+import { refreshGame } from "@/lib/discord/marketChannels";
+import { after } from "next/server";
 
 // POST { gameId, closeAt: ISO time | "now" } — set when a game's markets close (its kickoff).
 // League members only; every change is kept and shown publicly with who made it.
@@ -21,6 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!when) return NextResponse.json({ error: "Pick a time between now and two weeks from now." }, { status: 400 });
   const name = (await memberNames([v.userId])).get(v.userId) || "Member";
   await setCloseTime(v.leagueId, d.season.year, g!.id, when, { kind: "site", id: v.userId, name });
+  after(() => refreshGame(slug, g!.id).catch(() => {}));
   return NextResponse.json({ ok: true, closeAt: when.toISOString(), text: `Betting closes ${fmtET(when)}.` });
 }
 

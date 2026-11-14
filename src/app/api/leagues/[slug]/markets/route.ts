@@ -3,7 +3,8 @@ import { after, NextResponse } from "next/server";
 export const maxDuration = 30;
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
-import { closeTimes, fmtET, marketsShared, marketsStatus, placeTicketsTrade, placeTrade, viewer } from "@/lib/marketStore";
+import { closeTimes, fmtET, marketsShared, marketsStatus, memberNames, placeTicketsTrade, placeTrade, viewer } from "@/lib/marketStore";
+import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
 import { requestSync } from "@/lib/sync";
@@ -57,5 +58,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     ? await placeTicketsTrade({ leagueId: v.leagueId, book: bookKey(d.season.year, true), userId: v.userId, market, marketTitle: m.title, outcome, outcomeLabel: o.label, side, kind, model: o.p, tickets: dollars, qty, cfg: tickets })
     : dollars > 100000 ? { ok: false as const, error: "Too much." } : await placeTrade({ leagueId: v.leagueId, season: d.season.year, userId: v.userId, market, outcome, side, kind, model: o.p, dollars, qty });
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 409 });
+  // Post the bet in the league's Discord Markets channels (if set up) and refresh the odds there.
+  const uid = v.userId;
+  after(async () => {
+    const who = (await memberNames([uid]).catch(() => new Map<string, string>())).get(uid) || "Someone";
+    await postBet(slug, { who, marketKey: market, outcomeLabel: o.label, side, kind, qty: r.qty, amount: r.amount, before: o.p, after: r.after }).catch((e) => console.error("discord bet post", (e as Error).message));
+  });
   return NextResponse.json(r);
 }
