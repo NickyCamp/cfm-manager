@@ -23,6 +23,15 @@ export type ComponentInteraction = Interaction & {
   message?: { content?: string; embeds?: Embed[]; components?: { components?: { custom_id?: string; options?: { label: string; value: string }[] }[] }[] };
 };
 
+export type BetReply = { content: string; components?: unknown[] };
+/** A "Bet placed" reply with a button to undo it (Nick, 2026-11-14). The reply is private, so only the
+ *  bettor sees the button; it cancels (game/prop bets) or cashes out (futures) just the contracts this
+ *  bet bought ("mkc|market|outcome|side|qty"). */
+function placed(text: string, market: string, outcome: string, side: string, qty: number): BetReply {
+  const fut = !/^(game|props)-/.test(market);
+  return { content: text, components: [{ type: 1, components: [{ type: 2, style: 4, label: fut ? "Cash out this bet" : "Cancel this bet", custom_id: `mkc|${market}|${outcome}|${side}|${qty}`.slice(0, 100) }] }] };
+}
+
 /** "1000", "1,000", "1k", "2.5k", "1m" → Tickets; anything else (negative, words) → NaN. */
 export function parseAmount(raw: string): number {
   const m = /^\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*([km])?\s*$/i.exec(raw);
@@ -47,7 +56,7 @@ export function betModal(i: ComponentInteraction) {
 }
 
 /** Places the bet from the amount box. Returns the private reply text. */
-export async function placeFromModal(i: ComponentInteraction): Promise<string> {
+export async function placeFromModal(i: ComponentInteraction): Promise<string | BetReply> {
   const [, market, outcome, sideRaw] = String(i.data?.custom_id || "").split("|");
   const side = sideRaw === "no" ? "no" : "yes";
   const raw = i.data?.components?.[0]?.components?.find((c) => c.custom_id === "amount")?.value || "";
@@ -64,13 +73,15 @@ export async function placeFromModal(i: ComponentInteraction): Promise<string> {
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   const pays = r.tickets ? `${(r.qty * 100).toLocaleString("en-US")} Tickets` : `$${r.qty.toFixed(2)}`;
-  return `✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`;
+  return placed(`✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`, market, outcome, side, r.qty);
 }
 
-/** "Cancel #n" / "Cash out #n" from /bets (custom_id "mkc|<market>|<outcome>|<side>"): sells the whole position. */
+/** "Cancel #n" / "Cash out #n" from /bets (custom_id "mkc|<market>|<outcome>|<side>") sells the whole position;
+ *  "Cancel this bet" on a bet confirmation adds "|<qty>" and sells just those contracts. */
 export async function cancelFromButton(i: ComponentInteraction): Promise<string> {
-  const [, market, outcome, sideRaw] = String(i.data?.custom_id || "").split("|");
+  const [, market, outcome, sideRaw, qtyRaw] = String(i.data?.custom_id || "").split("|");
   const side = sideRaw === "no" ? "no" : "yes";
+  const only = Number(qtyRaw) > 0 ? Math.floor(Number(qtyRaw)) : 0; // "Cancel this bet": just that bet's contracts
   if (!i.guild_id) return "Cancel from the league's Discord server.";
   const lg = await leagueForGuild(i.guild_id);
   if (!lg) return "This server isn't linked to a league (/link).";
@@ -83,7 +94,8 @@ export async function cancelFromButton(i: ComponentInteraction): Promise<string>
   const { data } = await supabaseAdmin().from("market_positions").select("qty").eq("league_id", lg.id).eq("season", bookKey(d.season.year, tickets))
     .eq("user_id", userId).eq("market_key", market).eq("outcome_id", outcome).eq("side", side).maybeSingle();
   if (!data) return "That bet isn't open any more.";
-  const r = await executeTrade({ slug: lg.slug, leagueId: lg.id, userId, market, outcome, side, kind: "sell", qty: Math.floor(Number(data.qty)) });
+  const held = Math.floor(Number(data.qty));
+  const r = await executeTrade({ slug: lg.slug, leagueId: lg.id, userId, market, outcome, side, kind: "sell", qty: only ? Math.min(only, held) : held });
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   return `${r.cashout ? "💵 Cashed out" : "↩️ Cancelled"} ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel}: **${money}** back.`;
@@ -127,7 +139,7 @@ export function anyPlayerModal(i: ComponentInteraction) {
 const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
 /** Places an "Any other player" award bet. Returns the private reply text. */
-export async function placeAnyPlayer(i: ComponentInteraction): Promise<string> {
+export async function placeAnyPlayer(i: ComponentInteraction): Promise<string | BetReply> {
   const market = String(i.data?.custom_id || "").split("|")[1];
   const field = (id: string) => i.data?.components?.flatMap((r) => r.components || []).find((c) => c.custom_id === id)?.value || "";
   const name = field("player").trim();
@@ -154,7 +166,7 @@ export async function placeAnyPlayer(i: ComponentInteraction): Promise<string> {
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   const pays = r.tickets ? `${(r.qty * 100).toLocaleString("en-US")} Tickets` : `$${r.qty.toLocaleString("en-US")}`;
-  return `✅ Bet placed: ${r.qty} **Yes** · ${r.outcomeLabel} for **${money}**. Pays **${pays}** if he wins it. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`;
+  return placed(`✅ Bet placed: ${r.qty} **Yes** · ${r.outcomeLabel} for **${money}**. Pays **${pays}** if he wins it. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`, market, String(pick.id), "yes", r.qty);
 }
 
 // ---------------------------------------------------------------- live quote step (Nick, 2026-11-14)
@@ -222,7 +234,7 @@ export async function quoteReply(i: ComponentInteraction): Promise<{ content: st
 }
 
 /** A quick-amount button on the quote ("mkq|market|outcome|side|amount"): places the bet. */
-export async function placeQuick(i: ComponentInteraction): Promise<string> {
+export async function placeQuick(i: ComponentInteraction): Promise<string | BetReply> {
   const [, market, outcome, sideRaw, amt] = String(i.data?.custom_id || "").split("|");
   const side = sideRaw === "no" ? "no" : "yes";
   const amount = Number(amt);
@@ -236,7 +248,7 @@ export async function placeQuick(i: ComponentInteraction): Promise<string> {
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   const pays = r.tickets ? `${(r.qty * 100).toLocaleString("en-US")} Tickets` : `$${r.qty.toFixed(2)}`;
-  return `✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`;
+  return placed(`✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`, market, outcome, side, r.qty);
 }
 
 /** "Other amount…" on the quote ("mko|market|outcome|side|team"): the amount box. */

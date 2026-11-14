@@ -7,7 +7,7 @@ import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
 import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
-import { anyPlayerModal, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
+import { anyPlayerModal, type BetReply, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
 import { refreshForMarket } from "@/lib/discord/marketChannels";
 import { leagueForGuild } from "@/lib/discord/links";
 
@@ -49,8 +49,8 @@ export async function POST(req: Request) {
   // the quote's quick-amount buttons place the bet; "Other amount…" opens the amount box
   if (i.type === COMPONENT && tapId.startsWith("mkq|")) {
     after(async () => {
-      const text = await placeQuick(i as ComponentInteraction).catch((e) => { console.error("discord quick bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
-      await editOriginal(i.application_id, i.token, { content: text, components: [] });
+      const res: string | BetReply = await placeQuick(i as ComponentInteraction).catch((e) => { console.error("discord quick bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, typeof res === "string" ? { content: res, components: [] } : { content: res.content, components: res.components ?? [] });
     });
     return NextResponse.json({ type: 6 });
   }
@@ -60,27 +60,30 @@ export async function POST(req: Request) {
   if (i.type === COMPONENT && cid.startsWith("mkany|")) return NextResponse.json(anyPlayerModal(i as ComponentInteraction));
   if (i.type === MODAL_SUBMIT && cid.startsWith("mkp|")) {
     after(async () => {
-      const text = await placeAnyPlayer(i as ComponentInteraction).catch((e) => { console.error("discord any-player bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
-      await editOriginal(i.application_id, i.token, { content: text });
+      const res: string | BetReply = await placeAnyPlayer(i as ComponentInteraction).catch((e) => { console.error("discord any-player bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, typeof res === "string" ? { content: res, components: [] } : { content: res.content, components: res.components ?? [] });
     });
     return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
   }
   // /bets "Cancel #n": cancels the whole position (private reply)
   if (i.type === COMPONENT && cid.startsWith("mkc|")) {
+    // "Cancel this bet" on a bet confirmation (has a qty) replaces that confirmation; /bets buttons answer in a new private message
+    const onConfirmation = cid.split("|").length >= 5;
     after(async () => {
       const text = await cancelFromButton(i as ComponentInteraction).catch((e) => { console.error("discord cancel failed", e); return "Something went wrong cancelling that. Try again in a minute."; });
-      await editOriginal(i.application_id, i.token, { content: text });
+      await editOriginal(i.application_id, i.token, onConfirmation ? { content: text, components: [] } : { content: text });
     });
-    return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
+    return NextResponse.json(onConfirmation ? { type: 6 } : { type: 5, data: { flags: 1 << 6 } });
   }
+
   // #previous-week-payouts: Applied / Undo (admins)
   if (i.type === COMPONENT && (cid.startsWith("mpa|") || cid.startsWith("mpu|"))) {
     return NextResponse.json(await payoutFromButton(i as ComponentInteraction));
   }
   if (i.type === MODAL_SUBMIT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mkb|")) {
     after(async () => {
-      const text = await placeFromModal(i as ComponentInteraction).catch((e) => { console.error("discord bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
-      await editOriginal(i.application_id, i.token, { content: text });
+      const res: string | BetReply = await placeFromModal(i as ComponentInteraction).catch((e) => { console.error("discord bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, typeof res === "string" ? { content: res, components: [] } : { content: res.content, components: res.components ?? [] });
     });
     return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
   }
