@@ -166,3 +166,13 @@ create index market_game_close_idx on public.market_game_close (league_id, seaso
 alter table public.market_game_close enable row level security;
 create trigger market_game_close_no_edits before update or delete on public.market_game_close
   for each row execute function public.market_trades_append_only();
+
+-- Newer Supabase projects don't grant tables made in the SQL editor to the API
+-- roles, so the app's server (service role) couldn't see these until this ran
+-- (found 2026-11-13). Browsers (anon / authenticated) still get nothing.
+grant select, insert, update, delete on
+  public.market_wallets, public.market_pools, public.market_positions,
+  public.market_trades, public.market_game_close
+to service_role;
+grant usage, select on all sequences in schema public to service_role;
+notify pgrst, 'reload schema';
