@@ -46,12 +46,13 @@ export function sidePrice(index: PriceIndex, m: string, o: string, side: Side) {
   return side === "yes" ? pr.yes : pr.no;
 }
 /** Dollars you'd get selling `qty` now (shared mode: the price slides as you sell). */
-export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, shared: boolean) {
+export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, shared: boolean, unit = 1) {
   const i = outcomeInfo(index, m, o);
   if (!i) return 0;
-  if (i.state !== "open") return (i.state === "won") === (side === "yes") ? qty : 0;
+  if (i.state !== "open") return (i.state === "won") === (side === "yes") ? qty * unit : 0;
   if (!shared) return round2((qty * sidePrice(index, m, o, side)) / 100);
-  return quoteSell(i.model, i.net, side, qty).amount;
+  const v = quoteSell(i.model, i.net, side, qty).amount * unit;
+  return unit === 1 ? v : Math.floor(v + 1e-6);
 }
 
 /** Pays out local positions whose outcome has settled. Returns the same object when nothing changed. */
@@ -91,8 +92,13 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
   const wallet: Wallet | null = shared
     ? { v: 1, cash: shared.cash, positions: shared.positions, fills: shared.fills, started: 0 }
     : local;
-  const canTrade = shared ? shared.member : true;
-  const why = shared && !shared.member ? (shared.signedIn ? "Only members of this league can trade." : "Sign in as a member of this league to trade.") : "";
+  const currency = shared?.currency ?? "usd";
+  const unit = shared?.unit ?? 1;
+  const fmt = useCallback((x: number) => fmtAmount(x, currency), [currency]);
+  const needsLink = Boolean(shared && currency === "tickets" && shared.member && shared.linked === false);
+  const canTrade = shared ? shared.member && !needsLink : true;
+  const why = shared && !shared.member ? (shared.signedIn ? "Only members of this league can trade." : "Sign in as a member of this league to trade.")
+    : needsLink ? "Link your Discord to bet Tickets: run /connect in the league's Discord and open the link it gives you." : "";
 
   const call = useCallback(async (body: Record<string, unknown>): Promise<{ ok: boolean; qty?: number; amount?: number; error?: string }> => {
     try {
@@ -111,8 +117,8 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     const label = outcomeInfo(index, m, o)?.label ?? o;
     const sideName = side === "yes" ? "Yes" : "No";
     if (shared) {
-      const r = await call({ market: m, outcome: o, side, kind: "buy", dollars });
-      return r.ok ? { ok: true, text: `Bought ${r.qty} ${sideName} on ${label} for ${money(r.amount!)}. Pays ${money(r.qty!)} if right.` } : { ok: false, text: r.error! };
+      const r = await call({ market: m, outcome: o, side, kind: "buy", amount: dollars });
+      return r.ok ? { ok: true, text: `Bought ${r.qty} ${sideName} on ${label} for ${fmtAmount(r.amount!, currency)}. Pays ${fmtAmount(r.qty! * unit, currency)} if right.` } : { ok: false, text: r.error! };
     }
     const cur = load(slug);
     const price = sidePrice(index, m, o, side);
@@ -126,14 +132,14 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     else positions.push({ m, o, side, qty, cost });
     commit({ ...cur, cash: round2(cur.cash - cost), positions, fills: [{ at: Date.now(), m, o, side, qty, price, kind: "buy" as const, amount: cost }, ...cur.fills].slice(0, 200) });
     return { ok: true, text: `Bought ${qty} ${sideName} on ${label} for ${money(cost)}. Pays ${money(qty)} if right.` };
-  }, [slug, index, commit, shared, call]);
+  }, [slug, index, commit, shared, call, currency, unit]);
 
   /** Sell `qty` contracts back at the current price. */
   const sell = useCallback(async (m: string, o: string, side: Side, qty: number): Promise<TradeResult> => {
     const sideName = side === "yes" ? "Yes" : "No";
     if (shared) {
       const r = await call({ market: m, outcome: o, side, kind: "sell", qty });
-      return r.ok ? { ok: true, text: `Sold ${r.qty} ${sideName} for ${money(r.amount!)}.` } : { ok: false, text: r.error! };
+      return r.ok ? { ok: true, text: `Sold ${r.qty} ${sideName} for ${fmtAmount(r.amount!, currency)}.` } : { ok: false, text: r.error! };
     }
     const cur = load(slug);
     const at = cur.positions.findIndex((p) => p.m === m && p.o === o && p.side === side);
@@ -147,12 +153,17 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
     else positions[at] = { ...pos, qty: pos.qty - n, cost: round2(pos.cost * (pos.qty - n) / pos.qty) };
     commit({ ...cur, cash: round2(cur.cash + amount), positions, fills: [{ at: Date.now(), m, o, side, qty: n, price, kind: "sell" as const, amount }, ...cur.fills].slice(0, 200) });
     return { ok: true, text: `Sold ${n} ${sideName} for ${money(amount)}.` };
-  }, [slug, index, commit, shared, call]);
+  }, [slug, index, commit, shared, call, currency]);
 
   const reset = useCallback(() => { if (!shared) commit(fresh()); }, [commit, shared]);
 
-  const value = wallet ? wallet.positions.reduce((a, p) => a + p.qty * sidePrice(index, p.m, p.o, p.side) / 100, 0) : 0;
-  return { wallet, buy, sell, reset, value: round2(value), total: wallet ? round2(wallet.cash + value) : START_CASH, shared: Boolean(shared), canTrade, why, leaderboard: shared?.leaderboard ?? [] };
+  const value = wallet ? wallet.positions.reduce((a, p) => a + (p.qty * sidePrice(index, p.m, p.o, p.side) / 100) * unit, 0) : 0;
+  return {
+    wallet, buy, sell, reset, value: round2(value), total: wallet ? round2(wallet.cash + value) : START_CASH, shared: Boolean(shared), canTrade, why,
+    leaderboard: shared?.leaderboard ?? [], currency, unit, fmt, needsLink, balanceError: shared?.balanceError,
+  };
 }
 
+export const fmtAmount = (x: number, currency: "usd" | "tickets") =>
+  currency === "tickets" ? `${x < 0 ? "−" : ""}${Math.round(Math.abs(x)).toLocaleString("en-US")} Tickets` : money(x);
 export const money = (x: number) => `${x < 0 ? "−" : ""}$${Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

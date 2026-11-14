@@ -23,6 +23,7 @@ import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor,
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { closeTimes, fmtET, marketsShared, setCloseTime } from "@/lib/marketStore";
 import { kickoffProblem, parseKickoff, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
+import { makeLinkToken } from "@/lib/tickets";
 import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
@@ -123,6 +124,12 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
   const name = i.data?.name || "";
   if (name === "myleague") return myLeague(i, base);
+  if (name === "connect") {
+    const who = i.member?.user || i.user;
+    if (!who) return reply("Couldn't tell who you are.");
+    const t = makeLinkToken(who.id, who.global_name || who.username);
+    return reply(`Open this link while signed in to CFM Manager to link **${who.global_name || who.username}** (it works for 15 minutes, just for you):\n${base}/link-discord?t=${t}`);
+  }
   const VIDEO_CMDS = ["alertvideo", "removealertvideo"];
   if (name === "link" || name === "unlink" || name === "notify" || VIDEO_CMDS.includes(name)) {
     if (!i.guild_id || i.context !== undefined && i.context !== 0) return reply("That command sets up a server. In DMs, use `/myleague` instead.");

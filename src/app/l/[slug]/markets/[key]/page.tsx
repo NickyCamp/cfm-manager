@@ -24,13 +24,13 @@ export default async function MarketPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
+  const { book, shared, leagueId, bookKey } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
   const m = book.markets.find((x) => x.key === key);
   if (!m) notFound();
   let trades: AuditRow[] = [];
   let closes: CloseRow[] = [];
   if (leagueId) [trades, closes] = await Promise.all([
-    auditTrades(leagueId, d.season.year, { market: m.key, limit: 50 }).catch(() => []),
+    auditTrades(leagueId, bookKey, { market: m.key, limit: 50 }).catch(() => []),
     m.gameId ? closeLog(leagueId, d.season.year, m.gameId).catch(() => []) : Promise.resolve([]),
   ]);
   const kickoff = shared && m.gameId && !m.settled ? (
@@ -91,7 +91,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
         {shared && (
           <section className="panel mk-audit-panel">
             <div className="mk-section-head"><h3>Trades in this market</h3><Link href={`/l/${slug}/markets/activity?market=${encodeURIComponent(m.key)}`}>Full log →</Link></div>
-            {trades.length ? <AuditTable slug={slug} rows={trades} index={priceIndex(book)} showMarket={false} /> : <p className="muted">No trades yet. Every trade shows here, publicly.</p>}
+            {trades.length ? <AuditTable slug={slug} rows={trades} index={priceIndex(book)} showMarket={false} currency={shared.currency} /> : <p className="muted">No trades yet. Every trade shows here, publicly.</p>}
           </section>
         )}
 

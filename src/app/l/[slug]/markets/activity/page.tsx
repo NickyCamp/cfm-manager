@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, priceIndex } from "@/lib/league/markets";
-import { auditTrades, closeLog, fmtET, marketsForPage, type AuditRow, type CloseRow } from "@/lib/marketStore";
+import { auditTrades, closeLog, fmtET, marketsForPage, ticketMoves, type AuditRow, type CloseRow, type MoveRow } from "@/lib/marketStore";
 import { NoData } from "@/components/league/bits";
 import { AuditTable } from "@/components/league/markets/AuditTable";
 
@@ -16,17 +16,19 @@ export default async function MarketActivity({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared, leagueId } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
+  const { book, shared, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
   const index = priceIndex(book);
   const PAGE = 200;
   let rows: AuditRow[] = [];
   let err = "";
   let closes: CloseRow[] = [];
   if (leagueId) closes = await closeLog(leagueId, d.season.year).catch(() => []);
+  let moves: MoveRow[] = [];
+  if (leagueId && tickets && !sp.market) moves = await ticketMoves(leagueId, bookKey).catch(() => []);
   const teamsById = new Map(d.teams.map((t) => [t.id, t]));
   const gameName = (id: number) => { const g = d.games.find((x) => x.id === id); return g ? `${teamsById.get(g.away)?.abbr ?? "?"} @ ${teamsById.get(g.home)?.abbr ?? "?"}` : `Game ${id}`; };
   if (leagueId) {
-    try { rows = await auditTrades(leagueId, d.season.year, { market: sp.market, user: sp.user, before: Number(sp.before) || undefined, limit: PAGE }); }
+    try { rows = await auditTrades(leagueId, bookKey, { market: sp.market, user: sp.user, before: Number(sp.before) || undefined, limit: PAGE }); }
     catch (e) { err = e instanceof Error ? e.message : "Couldn't load the log."; }
   }
   const filterText = [sp.market && `market: ${index[sp.market]?.t ?? sp.market}`, sp.user && `member: ${rows[0]?.user ?? "selected"}`].filter(Boolean).join(", ");
@@ -49,8 +51,27 @@ export default async function MarketActivity({ params, searchParams }: Props) {
         ) : (
           <div className="panel mk-audit-panel">
             {filterText && <p className="small">Showing {filterText}. <Link href={`/l/${slug}/markets/activity`}>Show everything</Link></p>}
-            {err ? <p className="mk-msg err">{err}</p> : rows.length ? <AuditTable slug={slug} rows={rows} index={index} /> : <p className="muted">No trades yet.</p>}
+            {err ? <p className="mk-msg err">{err}</p> : rows.length ? <AuditTable slug={slug} rows={rows} index={index} currency={shared?.currency} /> : <p className="muted">No trades yet.</p>}
             {rows.length === PAGE && <p><Link href={keep({ before: String(rows[rows.length - 1].id) })}>Older trades →</Link></p>}
+          </div>
+        )}
+        {tickets && !sp.market && (
+          <div className="panel mk-audit-panel">
+            <h3>Ticket transfers</h3>
+            <p className="muted small">Every Ticket the site took from or paid into a member&apos;s UnbelievaBoat balance. &quot;Waiting&quot; means it&apos;s owed and goes out on the next try.</p>
+            {moves.length ? (
+              <div className="tbl-wrap"><table className="tbl mk-audit">
+                <thead><tr><th scope="col">#</th><th scope="col">When</th><th scope="col">Member</th><th className="num">Tickets</th><th scope="col">What</th><th scope="col">Status</th></tr></thead>
+                <tbody>{moves.filter((x) => !sp.user || rows.some((r) => r.user === x.user)).map((x) => (
+                  <tr key={x.id}>
+                    <td className="muted">{x.id}</td><td className="nw">{fmtET(x.at)}</td><td>{x.user}</td>
+                    <td className={`num ${x.amount > 0 ? "pos" : ""}`}>{x.amount > 0 ? "+" : "−"}{Math.abs(x.amount).toLocaleString("en-US")}</td>
+                    <td>{x.reason.replace(/^CFM Markets: /, "")}</td>
+                    <td className="nw">{x.status === "done" ? "Sent" : x.status === "sending" ? "Sending…" : <span title={x.error ?? ""}>Waiting{x.error ? ` (${x.error})` : ""}</span>}</td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            ) : <p className="muted">None yet.</p>}
           </div>
         )}
         {shared && !sp.market && !sp.user && (

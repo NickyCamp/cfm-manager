@@ -7,7 +7,8 @@ const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-US", { timeZon
 const usd = (x: number) => `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const cents = (p: number | null) => (p == null ? "" : `${Math.round(p * 100)}¢`);
 
-export function AuditTable({ slug, rows, index, showMarket = true }: { slug: string; rows: AuditRow[]; index: PriceIndex; showMarket?: boolean }) {
+export function AuditTable({ slug, rows, index, showMarket = true, currency = "usd" }: { slug: string; rows: AuditRow[]; index: PriceIndex; showMarket?: boolean; currency?: "usd" | "tickets" }) {
+  const amt = (x: number) => (currency === "tickets" ? `${Math.round(x).toLocaleString("en-US")} Tickets` : usd(x));
   return (
     <div className="tbl-wrap">
       <table className="tbl mk-audit">
@@ -15,7 +16,7 @@ export function AuditTable({ slug, rows, index, showMarket = true }: { slug: str
           <tr>
             <th scope="col">#</th><th scope="col">When</th><th scope="col">Member</th><th scope="col">Action</th>
             {showMarket && <th scope="col">Market</th>}<th scope="col">Outcome</th>
-            <th className="num">Contracts</th><th className="num">Amount</th><th className="num">Yes price before → after</th>
+            <th className="num">Contracts</th><th className="num">{currency === "tickets" ? "Tickets" : "Amount"}</th><th className="num">Yes price before → after</th>
           </tr>
         </thead>
         <tbody>
@@ -32,7 +33,7 @@ export function AuditTable({ slug, rows, index, showMarket = true }: { slug: str
                 {showMarket && <td><Link href={`/l/${slug}/markets/${r.market}`}>{mk?.t ?? r.market}</Link></td>}
                 <td>{label}{r.kind === "settle" ? <span className="muted"> ({r.side === "yes" ? "Yes" : "No"})</span> : null}</td>
                 <td className="num">{r.qty}</td>
-                <td className={`num ${r.kind === "buy" ? "" : r.amount > 0 ? "pos" : ""}`}>{r.kind === "buy" ? "−" : "+"}{usd(r.amount)}</td>
+                <td className={`num ${r.kind === "buy" ? "" : r.amount > 0 ? "pos" : ""}`}>{r.kind === "buy" ? "−" : "+"}{amt(r.amount)}</td>
                 <td className="num muted">{r.before != null ? `${cents(r.before)} → ${cents(r.after)}` : ""}</td>
               </tr>
             );

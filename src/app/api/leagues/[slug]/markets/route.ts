@@ -3,7 +3,8 @@ import { after, NextResponse } from "next/server";
 export const maxDuration = 30;
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
-import { closeTimes, fmtET, marketsShared, marketsStatus, placeTrade, viewer } from "@/lib/marketStore";
+import { closeTimes, fmtET, marketsShared, marketsStatus, placeTicketsTrade, placeTrade, viewer } from "@/lib/marketStore";
+import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
 import { requestSync } from "@/lib/sync";
 
@@ -24,9 +25,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const market = String(body?.market ?? ""), outcome = String(body?.outcome ?? "");
   const side = body?.side === "no" ? "no" : body?.side === "yes" ? "yes" : null;
   const kind = body?.kind === "sell" ? "sell" : body?.kind === "buy" ? "buy" : null;
-  const dollars = Number(body?.dollars), qty = Number(body?.qty);
+  // amount: dollars (play money) or Tickets, in the league's currency
+  const dollars = Number(body?.amount ?? body?.dollars), qty = Number(body?.qty);
   if (!side || !kind) return NextResponse.json({ error: "Bad request." }, { status: 400 });
-  if (kind === "buy" && !(dollars > 0 && dollars <= 100000)) return NextResponse.json({ error: "Enter an amount." }, { status: 400 });
+  if (kind === "buy" && !(dollars > 0 && dollars <= 100_000_000)) return NextResponse.json({ error: "Enter an amount." }, { status: 400 });
   if (kind === "sell" && !(qty >= 1)) return NextResponse.json({ error: "Nothing to sell." }, { status: 400 });
 
   const d = await getLeagueData(slug);
@@ -50,7 +52,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     }
   }
 
-  const r = await placeTrade({ leagueId: v.leagueId, season: d.season.year, userId: v.userId, market, outcome, side, kind, model: o.p, dollars, qty });
+  const tickets = await ticketsConfig(slug).catch(() => null);
+  const r = tickets
+    ? await placeTicketsTrade({ leagueId: v.leagueId, book: bookKey(d.season.year, true), userId: v.userId, market, marketTitle: m.title, outcome, outcomeLabel: o.label, side, kind, model: o.p, tickets: dollars, qty, cfg: tickets })
+    : dollars > 100000 ? { ok: false as const, error: "Too much." } : await placeTrade({ leagueId: v.leagueId, season: d.season.year, userId: v.userId, market, outcome, side, kind, model: o.p, dollars, qty });
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 409 });
   return NextResponse.json(r);
 }

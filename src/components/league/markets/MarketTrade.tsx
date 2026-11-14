@@ -21,7 +21,9 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
   const firstOpen = outcomes.find((o) => o.state === "open");
   const [sel, setSel] = useState<string | undefined>(outcomes.some((o) => o.id === initialO && o.state === "open") ? initialO : firstOpen?.id);
   const [side, setSide] = useState<Side>(initialSide === "no" ? "no" : "yes");
-  const [amount, setAmount] = useState("25");
+  const T = shared?.currency === "tickets";
+  const unit = shared?.unit ?? 1;
+  const [amount, setAmount] = useState(T ? "1000" : "25");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -31,11 +33,12 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
   const dollars = Math.max(0, Number(amount) || 0);
   const cash = port.wallet?.cash ?? 0;
   // shared mode: the price slides as you buy, so quote the whole order
-  const q = o && port.shared ? quoteBuy(o.model ?? o.p, o.net ?? 0, side, Math.min(dollars, cash)) : null;
+  const q = o && port.shared ? quoteBuy(o.model ?? o.p, o.net ?? 0, side, Math.min(dollars, T && port.needsLink ? dollars : cash) / unit) : null;
   const qty = q ? q.qty : price > 0 ? Math.floor((Math.min(dollars, cash) * 100) / price + 1e-9) : 0;
-  const cost = q ? q.amount : (qty * price) / 100;
+  const cost = q ? (T ? Math.ceil(q.amount * unit - 1e-6) : q.amount) : (qty * price) / 100;
+  const fmt = port.fmt;
   const held = port.wallet?.positions.find((p) => p.m === mkey && p.o === sel && p.side === side);
-  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, port.shared) : 0;
+  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, port.shared, unit) : 0;
 
   const choose = (id: string, s: Side) => {
     setSel(id); setSide(s); setMsg(null);
@@ -102,30 +105,30 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
             </div>
             <label className="mk-amount">
               <span>Amount</span>
-              <span className="mk-amount-input"><span>$</span><input inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value.replace(/[^\d.]/g, "")); setMsg(null); }} aria-label="Dollars to spend" /></span>
+              <span className="mk-amount-input">{!T && <span>$</span>}<input inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value.replace(T ? /[^\d]/g : /[^\d.]/g, "")); setMsg(null); }} aria-label={T ? "Tickets to spend" : "Dollars to spend"} />{T && <span className="mk-unit">Tickets</span>}</span>
             </label>
             <div className="mk-quick">
-              {[10, 25, 100].map((n) => <button key={n} type="button" onClick={() => setAmount(String((Number(amount) || 0) + n))}>+${n}</button>)}
+              {(T ? [1000, 5000, 15000] : [10, 25, 100]).map((n) => <button key={n} type="button" onClick={() => setAmount(String((Number(amount) || 0) + n))}>+{T ? n.toLocaleString("en-US") : `$${n}`}</button>)}
               <button type="button" onClick={() => setAmount(String(Math.floor(cash)))}>Max</button>
             </div>
             <dl className="mk-ticket-sum">
               <div><dt>Contracts</dt><dd>{qty}</dd></div>
               {q && qty > 0 && <div><dt>Average price</dt><dd>{Math.round(q.avg * 1000) / 10}¢</dd></div>}
               {q && qty > 0 && <div><dt>Yes price after</dt><dd>{Math.round(q.after * 100)}¢</dd></div>}
-              <div><dt>Cost</dt><dd>{money(cost)}</dd></div>
-              <div><dt>Payout if {side === "yes" ? "Yes" : "No"}</dt><dd className="pos">{money(qty)}</dd></div>
-              <div><dt>Profit if right</dt><dd className="pos">+{money(qty - cost)}</dd></div>
+              <div><dt>Cost</dt><dd>{fmt(cost)}</dd></div>
+              <div><dt>Payout if {side === "yes" ? "Yes" : "No"}</dt><dd className="pos">{fmt(qty * unit)}</dd></div>
+              <div><dt>Profit if right</dt><dd className="pos">+{fmt(qty * unit - cost)}</dd></div>
             </dl>
             {port.canTrade ? (
               <button type="button" className={`btn mk-buy ${side}`} disabled={!port.wallet || qty < 1 || busy} onClick={doBuy}>
-                {busy ? "Placing…" : <>Buy {side === "yes" ? "Yes" : "No"}{qty ? ` · ${money(cost)}` : ""}</>}
+                {busy ? "Placing…" : <>Buy {side === "yes" ? "Yes" : "No"}{qty ? ` · ${fmt(cost)}` : ""}</>}
               </button>
             ) : (
               <p className="mk-msg err">{port.why}</p>
             )}
-            {held && port.canTrade && <button type="button" className="mk-link-btn mk-sell" disabled={busy} onClick={doSell}>Sell your {held.qty} {side === "yes" ? "Yes" : "No"} for {money(heldValue)}</button>}
+            {held && port.canTrade && <button type="button" className="mk-link-btn mk-sell" disabled={busy} onClick={doSell}>Sell your {held.qty} {side === "yes" ? "Yes" : "No"} for {fmt(heldValue)}</button>}
             {msg && <p className={`mk-msg ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</p>}
-            <p className="hint small">Cash: {money(cash)}. Each contract pays $1 if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? " Buying moves the price for everyone, so big orders cost more per contract." : ""}</p>
+            <p className="hint small">{T ? (port.needsLink ? "" : `You have ${fmt(cash)}. `) : `Cash: ${money(cash)}. `}Each contract pays {T ? "100 Tickets" : "$1"} if {side === "yes" ? `${o.label} hits` : `${o.label} misses`}.{port.shared ? " Buying moves the price for everyone, so big orders cost more per contract." : ""}</p>
             {port.shared && o.model != null && Math.abs(o.model - o.p) >= 0.005 && <p className="hint small">Simulation says {Math.round(o.model * 100)}%; league bets have moved it to {Math.round(o.p * 100)}%.</p>}
           </div>
         )}
