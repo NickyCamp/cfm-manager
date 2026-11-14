@@ -39,6 +39,21 @@ async function saveState(leagueId: string, state: GameChannels | null) {
   await db.from("leagues").update({ settings }).eq("id", leagueId);
 }
 
+/** Team id → the server role for that team, matched by name: "Eagles", "Philadelphia Eagles" or "PHI" (any case). */
+async function teamRoles(guildId: string, teams: Team[]): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  const r = await dc("GET", `/guilds/${guildId}/roles`);
+  if (!r.ok || !Array.isArray(r.data)) return out;
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const roles = (r.data as unknown as { id: string; name: string }[]).map((x) => ({ id: String(x.id), key: norm(x.name) }));
+  for (const t of teams) {
+    const want = [norm(t.name), norm(`${t.city} ${t.name}`), norm(t.abbr)];
+    const hit = want.map((w) => roles.find((x) => x.key === w)).find(Boolean);
+    if (hit) out.set(t.id, hit.id);
+  }
+  return out;
+}
+
 /** Team abbr (lowercase) → the Discord id of the member who runs it (linked with /connect). */
 async function managersByTeam(leagueId: string): Promise<Map<string, string>> {
   const { data } = await supabaseAdmin().from("league_members").select("user_id, team_abbr").eq("league_id", leagueId);
@@ -123,6 +138,7 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
   }
 
   const ids = await managersByTeam(lg.id);
+  const roles = await teamRoles(guildId, d.teams);
   const closes = await closeTimes(lg.id, d.season.year).catch(() => new Map<number, { closeAt: string }>());
 
   let created = 0, updated = 0;
@@ -140,11 +156,13 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
       if (!ch.ok) { await saveState(lg.id, state); return ch.status === 403 ? "The bot needs the Manage Channels permission in this server." : `Discord said ${ch.status} creating a game channel.`; }
       gc = { channelId: String(ch.data.id), messageId: null };
       state.games[String(g.id)] = gc;
-      // The opening message pings both managers (only this once; later edits don't ping).
-      const pings = [a, h].map((t) => ids.get(t.abbr.toLowerCase())).filter((x): x is string => Boolean(x));
+      // The opening message tags both teams' server roles (@Eagles @Saints; Nick, 2026-11-14), falling
+      // back to the manager's linked Discord account for a team with no role. Only this once; edits don't ping.
+      const tag = [a, h].map((t) => roles.get(t.id) ? { role: roles.get(t.id)! } : ids.get(t.abbr.toLowerCase()) ? { user: ids.get(t.abbr.toLowerCase())! } : null);
+      const text = tag.map((x, k) => x?.role ? `<@&${x.role}>` : x?.user ? `<@${x.user}>` : `**${[a, h][k].name}**`);
       const m = await dc("POST", `/channels/${gc.channelId}/messages`, {
-        content: pings.length ? `${pings.map((p) => `<@${p}>`).join(" vs ")}: your ${title} game. Schedule it here.` : undefined,
-        embeds: [embed], allowed_mentions: { users: pings },
+        content: `${text[0]} @ ${text[1]}: your ${title} game. Schedule it here.`,
+        embeds: [embed], allowed_mentions: { roles: tag.flatMap((x) => (x?.role ? [x.role] : [])), users: tag.flatMap((x) => (x?.user ? [x.user] : [])) },
       });
       gc.messageId = m.ok ? String(m.data.id) : null;
       gc.final = g.final;
@@ -161,7 +179,7 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
     }
   }
   await saveState(lg.id, state);
-  return `Game channels up to date (category **${catName}**): ${games.length} channel${games.length === 1 ? "" : "s"}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}${updated ? `, ${updated} refreshed` : ""}. Managers who've linked Discord with /connect get pinged; the rest show their PSN/Xbox name. They roll over after every advance.`;
+  return `Game channels up to date (category **${catName}**): ${games.length} channel${games.length === 1 ? "" : "s"}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}${updated ? `, ${updated} refreshed` : ""}. New channels tag both teams' roles (found ${roles.size} of ${d.teams.length} team roles${roles.size < d.teams.length ? `; missing: ${d.teams.filter((t) => !roles.has(t.id)).map((t) => t.name).slice(0, 12).join(", ")}` : ""}). They roll over after every advance.`;
 }
 
 /** /gamechannels off: deletes the category and its channels and stops the weekly rollover. */
