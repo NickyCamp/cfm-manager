@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueData } from "@/lib/league/load";
-import { CATS, marketBook, priceIndex } from "@/lib/league/markets";
+import { CATS, isAwardMarket, marketBook, priceIndex, searchAwardPlayers } from "@/lib/league/markets";
 import { auditTrades, closeLog, fmtET, marketsForPage, priceHistory, type AuditRow, type CloseRow, type PricePoint } from "@/lib/marketStore";
 import { KickoffForm } from "@/components/league/markets/KickoffForm";
 import { AuditTable } from "@/components/league/markets/AuditTable";
@@ -24,7 +24,9 @@ export default async function MarketPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const { book, shared, leagueId, bookKey } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season, d);
+  // award markets: any eligible player can be picked (?o=<player id>), found with the search box (?q=)
+  const award = isAwardMarket(key);
+  const { book, shared, leagueId, bookKey } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season, d, award && sp.o ? [[key, sp.o]] : []);
   const m = book.markets.find((x) => x.key === key);
   if (!m) notFound();
   let trades: AuditRow[] = [];
@@ -50,7 +52,8 @@ export default async function MarketPage({ params, searchParams }: Props) {
 
   // Hide long shots that never reached 1% (still listed in independent markets, where every line matters).
   const peak = (h: (number | null)[]) => Math.max(0, ...h.map((x) => x ?? 0));
-  const shown = m.outcomes.filter((o) => m.kind === "independent" || o.state === "won" || peak(o.history) >= 0.01);
+  const shown = m.outcomes.filter((o) => m.kind === "independent" || o.state === "won" || peak(o.history) >= 0.01 || o.id === sp.o || Boolean(o.net) || Boolean(o.volume));
+  const found = award && sp.q ? searchAwardPlayers(d, key, sp.q, 12) : [];
   const hidden = m.outcomes.length - shown.length;
 
   // Chart: up to 5 lines, the outcomes that matter most now (or that peaked highest once settled).
@@ -103,6 +106,23 @@ export default async function MarketPage({ params, searchParams }: Props) {
             <p className="hint small">Chance after each finished week{book.checkpoints.at(-1)?.label === "Now" ? ", plus now (this week's games played so far)" : ""}. From here on the chart also follows the market price as bets come in.</p>
           </>}
         </div>}
+
+        {award && !m.settled && (
+          <div className="panel mk-anyplayer">
+            <h3>Bet on any player</h3>
+            <p className="muted small">Any eligible player can win this, not just the ones listed. Players outside the simulation&apos;s top contenders start at a long-shot price.</p>
+            <form method="get" className="mk-kickoff-row">
+              <input name="q" defaultValue={sp.q ?? ""} placeholder="Player name" aria-label="Player name" />
+              <button type="submit" className="btn ghost">Find</button>
+            </form>
+            {sp.q && (found.length ? (
+              <ul className="mk-anyplayer-list">{found.map((p) => {
+                const t = d.teams.find((x) => x.id === p.team);
+                return <li key={p.id}><Link href={`/l/${slug}/markets/${key}?o=${p.id}&side=yes`}>{p.first} {p.last}</Link> <span className="muted">{p.pos}{t ? ` · ${t.abbr}` : ""} · {p.ovr} OVR</span></li>;
+              })}</ul>
+            ) : <p className="mk-msg err">No eligible player matches “{sp.q}”.</p>)}
+          </div>
+        )}
 
         <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} closed={m.closed} kickoff={kickoff} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} shared={shared} />
 

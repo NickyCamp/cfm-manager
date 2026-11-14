@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const d = await getLeagueData(slug);
   if (!d) return new Response("Not found", { status: 404 });
   const raw = marketBook(d);
-  const view = await marketsForDiscord(slug, raw, d.season.year, d.season);
+  const view = await marketsForDiscord(slug, raw, d.season.year, d.season, d);
   const book = view?.book ?? raw;
   const m = book.markets.find((x) => x.key === key);
   if (!m || m.gameId) return new Response("Not found", { status: 404 });

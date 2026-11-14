@@ -54,18 +54,29 @@ export default async function MarketsSetup({ params }: Props) {
           <h3>1. Add the CFM Manager bot to your server</h3>
           <p>Someone with <strong>Manage Server</strong> opens <a href={BOT_INVITE} target="_blank" rel="noreferrer">this invite link</a> and picks the server. The bot needs to see and send messages, post embeds and files, and <strong>manage channels</strong> (it creates and removes the game channels each week).</p>
 
+          <h3>Admins</h3>
+          <p>Anything marked <em>admins</em> below is for people with your server&apos;s own role named <strong>admin</strong> (any capitalization). Create that role and give it to your league admins; it needs no Discord permissions. Until a server has a role called admin, its Discord Administrators count instead.</p>
+
           <h3>2. Link the server to this league</h3>
           <p>In the server, run <code>/link league:{slug}</code> (Manage Server only). One league per server. The league must be public. Running <code>/link</code> in a different server moves the league there.</p>
 
           <h3>3. Create the Markets channels</h3>
-          <p>A server admin runs <code>/marketchannels</code>. The bot makes a <strong>Markets</strong> category with <code>#market-feed</code> (season-long markets, and every bet on them) and one channel per game this week, where every bet line has Yes/No buttons. After that it keeps itself up to date: it refreshes after every sync, rolls the game channels after each advance, and posts weekly odds charts.</p>
+          <p>An admin runs <code>/marketchannels</code>. The bot makes a <strong>Markets</strong> category, in this order:</p>
+          <ul>
+            <li><code>#market-feed</code>: the season-long markets at a glance, every bet on them, and weekly odds charts.</li>
+            <li><code>#futures</code>: bet the Super Bowl (pick a team), each division (a button per team) and the player awards. For awards, pick a contender or tap <em>Any other player</em> and type a name: any eligible player can be bet on.</li>
+            <li><code>#previous-week-payouts</code> (UnbelievaBoat leagues, after the first advance).</li>
+            <li>One channel per game this week, where every bet line has Yes/No buttons.</li>
+            <li><code>#transactions</code> at the bottom: every bet and cancel this week, cleared after each advance.</li>
+          </ul>
+          <p>After that it keeps itself up to date: it refreshes after every sync and every bet, and rolls the weekly channels after each advance. <code>/marketupdate</code> (admins) refreshes everything on demand.</p>
 
           <h3>4. Everyone links their Discord once</h3>
           <p>Each member runs <code>/connect</code> and opens the link while signed in here. That ties their Discord account to their CFM Manager account, so their Discord bets and balance are theirs. It carries over if the league moves to another server.</p>
 
           <h3>5. Optional: bet your server&apos;s UnbelievaBoat currency</h3>
           <ol className="mk-steps">
-            <li><strong>Let CFM Manager read balances.</strong> Someone with <strong>Administrator</strong> in the server opens <a href={UB_AUTHORIZE_URL} target="_blank" rel="noreferrer">UnbelievaBoat&apos;s authorize page</a> and picks the server. CFM Manager only reads balances; it never adds or removes currency.</li>
+            <li><strong>Let CFM Manager read balances.</strong> Someone with Discord&apos;s <strong>Administrator</strong> permission in the server (UnbelievaBoat requires it) opens <a href={UB_AUTHORIZE_URL} target="_blank" rel="noreferrer">UnbelievaBoat&apos;s authorize page</a> and picks the server. CFM Manager only reads balances; it never adds or removes currency.</li>
             <li><strong>Turn it on.</strong> The commissioner picks it below and says whether members keep the currency in <em>cash</em> or <em>bank</em>.</li>
             <li><strong>Give members something to bet</strong> if your server doesn&apos;t already, e.g. <code>!add-money-role cash @Members 100000</code>.</li>
           </ol>
@@ -91,6 +102,7 @@ export default async function MarketsSetup({ params }: Props) {
             <li>Prices are chances (56% = it happens about 56% of the time) and move with every bet, so earlier bets get better prices. A winning contract pays $1 in play money, or 100 Tickets.</li>
             <li>Until a market locks (kickoff for games and props, settlement for season markets), a bet can be cancelled for what it cost, or what it&apos;s worth then if that&apos;s less. You can&apos;t hold both sides of the same bet.</li>
             <li>A tied game is void and every stake comes back. There are no betting limits.</li>
+            <li>Player awards: any eligible player can be bet on (on a team, offense for MVP/OPOY/OROY, defense for DPOY/DROY, rookies for the ROY awards). Players outside the simulation&apos;s top contenders start as long shots.</li>
             <li>Every bet, cancel, payout line and kickoff is in the <Link href={`/l/${slug}/markets/activity`}>public trade log</Link>, which nobody can edit.</li>
           </ul>
         </div>
@@ -110,7 +122,8 @@ export default async function MarketsSetup({ params }: Props) {
           <div className="tbl-wrap"><table className="tbl">
             <tbody>
               <tr><td><code>/link</code></td><td>Link the server to the league (Manage Server)</td></tr>
-              <tr><td><code>/marketchannels</code></td><td>Admins: set up or refresh the Markets category</td></tr>
+              <tr><td><code>/marketchannels</code></td><td>Admins: set up the Markets category</td></tr>
+              <tr><td><code>/marketupdate</code></td><td>Admins: refresh every Markets channel with the latest odds, bets and lines</td></tr>
               <tr><td><code>/league</code></td><td>Admins: which league this server shows, with links</td></tr>
               <tr><td><code>/gamechannels year week</code></td><td>A category like &ldquo;2027 - Week 1&rdquo; with a channel per game that week, pinging both managers; rolls over after each advance (admins)</td></tr>
               <tr><td><code>/connect</code></td><td>Link your Discord to your CFM Manager account</td></tr>

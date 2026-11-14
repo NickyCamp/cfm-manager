@@ -7,10 +7,13 @@ import { ladderGroup, pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, ty
 import { after } from "next/server";
 import { bookKey, discordOfUser, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 import { propResult } from "@/lib/league/props";
+import { isAwardMarket, withAwardPlayers } from "@/lib/league/markets";
 import type { LeagueData } from "@/lib/league/types";
 
 export const START_CASH = 1000;
 const poolKey = (m: string, o: string) => `${m}|${o}`;
+/** [market, outcome] for every pool (outcome ids never contain "|"; market keys don't either). */
+const poolPairs = (pools: Map<string, unknown>) => [...pools.keys()].map((k) => { const i = k.lastIndexOf("|"); return [k.slice(0, i), k.slice(i + 1)] as [string, string]; });
 
 let available: { at: number; ok: boolean; why: string } | null = null;
 /** True once the markets migration has been run in Supabase. */
@@ -115,7 +118,10 @@ export function outcomeResult(d: LeagueData, book: MarketBook, marketKey: string
   }
   const pm = /^props-(\d+)-/.exec(marketKey);
   if (pm) return propResult(d, Number(pm[1]), outcomeId);
-  const o = book.markets.find((m) => m.key === marketKey)?.outcomes.find((x) => x.id === outcomeId);
+  const mk = book.markets.find((m) => m.key === marketKey);
+  const o = mk?.outcomes.find((x) => x.id === outcomeId);
+  // a player bet on for an award who wasn't among the listed contenders loses when the award settles
+  if (!o && mk?.settled && isAwardMarket(marketKey)) return "lost";
   return o?.state === "won" ? "won" : o?.state === "lost" ? "lost" : null;
 }
 
@@ -374,7 +380,7 @@ export async function auditTrades(leagueId: string, season: number, opts: { mark
 
 /** What a markets page needs: the book (with crowd prices once shared trading is on),
  *  the viewer's wallet/leaderboard, and the league id. Settles finished outcomes first. */
-export async function marketsForPage(slug: string, book: MarketBook, season: number, index: (b: MarketBook) => PriceIndex, dataWeek?: { stage: number; week: number }, d?: LeagueData) {
+export async function marketsForPage(slug: string, book: MarketBook, season: number, index: (b: MarketBook) => PriceIndex, dataWeek?: { stage: number; week: number }, d?: LeagueData, want: [string, string][] = []) {
   const none = { book, shared: null as SharedState | null, leagueId: null as string | null, bookKey: season, tickets: null as TicketsConfig | null };
   if (!(await marketsShared())) return none;
   try {
@@ -388,7 +394,8 @@ export async function marketsForPage(slug: string, book: MarketBook, season: num
     refreshLiveWeek(slug);
     const closes = await closeTimes(v.leagueId, season);
     const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && dataWeek && weekMoved(live, dataWeek)));
-    const crowd = withCrowd(closed, await loadPools(v.leagueId, key));
+    const pools = await loadPools(v.leagueId, key);
+    const crowd = withCrowd(d ? withAwardPlayers(closed, d, [...poolPairs(pools), ...want]) : closed, pools);
     const shared = await sharedState(v.leagueId, key, v.userId, v.member, index(crowd), tickets);
     { const lid = v.leagueId; after(() => recordPrices(lid, key, crowd).then(() => {}, () => {})); }
     return { book: crowd, shared, leagueId: v.leagueId, bookKey: key, tickets };
@@ -523,7 +530,7 @@ export async function verifyKickoff(a: { leagueId: string; season: number; d: Le
 }
 
 /** The book as everyone sees it right now (kickoff closes + crowd prices), with no viewer. For Discord posts. */
-export async function marketsForDiscord(slug: string, book: MarketBook, season: number, dataWeek: { stage: number; week: number }) {
+export async function marketsForDiscord(slug: string, book: MarketBook, season: number, dataWeek: { stage: number; week: number }, d?: LeagueData) {
   if (!(await marketsShared())) return null;
   const row = await getLeagueRow(slug);
   if (!row) return null;
@@ -532,7 +539,8 @@ export async function marketsForDiscord(slug: string, book: MarketBook, season: 
   const live = liveWeekCached(slug);
   const closes = await closeTimes(row.id, season);
   const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && weekMoved(live, dataWeek)));
-  const crowd = withCrowd(closed, await loadPools(row.id, key));
+  const pools = await loadPools(row.id, key);
+  const crowd = withCrowd(d ? withAwardPlayers(closed, d, poolPairs(pools)) : closed, pools);
   await recordPrices(row.id, key, crowd).catch(() => {});
   return { book: crowd, leagueId: row.id, tickets: Boolean(tickets) };
 }

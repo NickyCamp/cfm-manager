@@ -657,3 +657,64 @@ function labelLong(cp: Checkpoint) {
   return ({ 19: "the Wild Card round", 20: "the Divisional round", 21: "the Conference round", 23: "the Super Bowl" } as Record<number, string>)[cp.c] || cp.label;
 }
 
+
+// ---------------------------------------------------------------- awards: any player (Nick, 2026-11-14)
+// Award markets list the simulation's contenders, but any eligible player can be bet on. A player
+// who isn't listed is added as his own outcome at a small starting chance (AWARD_EXTRA_P) the
+// first time someone looks him up or bets on him; once bet on, his pool keeps him in the market.
+export const AWARD_EXTRA_P = 0.002;
+const OFF_POS = new Set(["QB", "HB", "FB", "WR", "TE"]);
+const DEF_POS = new Set(["LE", "RE", "DT", "LOLB", "MLB", "ROLB", "CB", "FS", "SS"]);
+export const isAwardMarket = (key: string) => /^award-(mvp|opoy|dpoy|oroy|droy)$/.test(key);
+
+/** Can this player win the award? On a team, right side of the ball, a rookie for the ROY awards. */
+export function awardEligible(marketKey: string, p: Player | undefined): boolean {
+  const a = AWARDS.find((x) => `award-${x.key}` === marketKey);
+  if (!a || !p || p.team === 0 || (p as Player & { gone?: boolean }).gone) return false;
+  if (a.rookie && p.yearsPro !== 0) return false;
+  return a.def ? DEF_POS.has(p.pos) : OFF_POS.has(p.pos);
+}
+
+/** Eligible players for an award whose name matches the search (best matches first, at most `limit`). */
+export function searchAwardPlayers(d: LeagueData, marketKey: string, query: string, limit = 10): Player[] {
+  const q = query.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+  if (!q) return [];
+  const words = q.split(/\s+/);
+  const scored: { p: Player; s: number }[] = [];
+  for (const p of d.players) {
+    if (!awardEligible(marketKey, p)) continue;
+    const name = `${p.first} ${p.last}`.toLowerCase().replace(/[^a-z0-9 ]/g, "");
+    if (!words.every((w) => name.includes(w))) continue;
+    scored.push({ p, s: (name === q ? 100 : 0) + (p.last.toLowerCase() === q ? 50 : 0) + p.ovr / 10 });
+  }
+  return scored.sort((a, b) => b.s - a.s).slice(0, limit).map((x) => x.p);
+}
+
+/** The book with these unlisted players added to their award markets ([market key, player id] pairs). */
+export function withAwardPlayers(book: MarketBook, d: LeagueData, want: Iterable<[string, string]>): MarketBook {
+  const add = new Map<string, Set<string>>();
+  for (const [k, o] of want) if (isAwardMarket(k)) { if (!add.has(k)) add.set(k, new Set()); add.get(k)!.add(o); }
+  if (!add.size) return book;
+  const players = new Map(d.players.map((p) => [String(p.id), p]));
+  const teams = new Map(d.teams.map((t) => [t.id, t]));
+  return {
+    ...book,
+    markets: book.markets.map((m) => {
+      const ids = add.get(m.key);
+      if (!ids) return m;
+      const have = new Set(m.outcomes.map((o) => o.id));
+      const len = m.outcomes[0]?.history.length || 1;
+      const extra: Outcome[] = [];
+      for (const id of ids) {
+        const p = players.get(id);
+        if (have.has(id) || !awardEligible(m.key, p)) continue;
+        const pp = m.settled ? 0 : AWARD_EXTRA_P;
+        extra.push({
+          id, label: pname(p), sub: `${p!.pos}${teams.get(p!.team) ? ` · ${teams.get(p!.team)!.abbr}` : ""} · not in the simulation's top contenders`,
+          team: p!.team || undefined, player: p!.id, p: pp, prev: null, history: [...Array(Math.max(0, len - 1)).fill(null), pp], state: m.settled ? "lost" : "open",
+        });
+      }
+      return extra.length ? { ...m, outcomes: [...m.outcomes, ...extra] } : m;
+    }),
+  };
+}

@@ -2,7 +2,7 @@
 // kickoff, EA's live "played" flag), then play money or Tickets, then the Discord post.
 import { after } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
-import { marketBook } from "@/lib/league/markets";
+import { isAwardMarket, marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { closeTimes, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade } from "@/lib/marketStore";
 import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
@@ -26,9 +26,10 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
 
   const d = await getLeagueData(a.slug);
   if (!d) return { ok: false, status: 404, error: "No league data yet." };
-  const m = marketBook(d).markets.find((x) => x.key === a.market);
+  // award markets: any eligible player can be bet on, listed or not
+  const m = withAwardPlayers(marketBook(d), d, [[a.market, a.outcome]]).markets.find((x) => x.key === a.market);
   const o = m?.outcomes.find((x) => x.id === a.outcome);
-  if (!m || !o) return { ok: false, status: 404, error: "That market doesn't exist any more." };
+  if (!m || !o) return { ok: false, status: 404, error: isAwardMarket(a.market) ? "That player can't win this award (wrong side of the ball, not a rookie, or not on a team)." : "That market doesn't exist any more." };
   if (m.settled || m.closed || o.state !== "open") return { ok: false, status: 409, error: "That market has closed." };
 
   // Game and player-prop markets: closed at the scheduled kickoff, and the moment EA says the game was played.

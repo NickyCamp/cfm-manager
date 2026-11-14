@@ -7,7 +7,7 @@ import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
 import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
-import { betModal, cancelFromButton, payoutFromButton, placeFromModal, type ComponentInteraction } from "@/lib/discord/marketButtons";
+import { anyPlayerModal, betModal, cancelFromButton, payoutFromButton, placeAnyPlayer, placeFromModal, selectModal, type ComponentInteraction } from "@/lib/discord/marketButtons";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
@@ -36,6 +36,16 @@ export async function POST(req: Request) {
     return NextResponse.json(betModal(i as ComponentInteraction));
   }
   const cid = String((i as ComponentInteraction).data?.custom_id || "");
+  // #futures: a team/player picked from a menu opens the amount box; "Any other player…" asks for a name too
+  if (i.type === COMPONENT && cid.startsWith("mksel|")) return NextResponse.json(selectModal(i as ComponentInteraction));
+  if (i.type === COMPONENT && cid.startsWith("mkany|")) return NextResponse.json(anyPlayerModal(i as ComponentInteraction));
+  if (i.type === MODAL_SUBMIT && cid.startsWith("mkp|")) {
+    after(async () => {
+      const text = await placeAnyPlayer(i as ComponentInteraction).catch((e) => { console.error("discord any-player bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, { content: text });
+    });
+    return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
+  }
   // /bets "Cancel #n": cancels the whole position (private reply)
   if (i.type === COMPONENT && cid.startsWith("mkc|")) {
     after(async () => {

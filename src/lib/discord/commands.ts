@@ -8,7 +8,6 @@ import { STAT_CATS } from "./stats";
 
 const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
-const ADMINISTRATOR = String(1 << 3); // admin-only commands (Nick, 2026-11-14): /league, /marketchannels, /gamechannels
 
 // Where a command can be used. Server setup commands need the bot added to the
 // server; everything else also works when someone installs the bot to their own
@@ -99,12 +98,14 @@ export const COMMANDS = [
     ...ANYWHERE,
     options: [{ type: INTEGER, name: "week", description: "Regular-season week number", required: false, min_value: 1, max_value: 18 }],
   },
-  { name: "league", description: "Admins: which league you're seeing here, with links", default_member_permissions: ADMINISTRATOR, ...ANYWHERE },
-  { name: "marketchannels", description: "Admins: set up or refresh the Markets category, a channel per game with odds and bets", default_member_permissions: ADMINISTRATOR, ...SERVER_ONLY },
+  // "Admins" = the server's own role named "admin" (Nick, 2026-11-14). Discord can't limit a command to a
+  // role by name, so these show for everyone and src/lib/discord/admin.ts checks the role when they run.
+  { name: "league", description: "Admins: which league you're seeing here, with links", ...ANYWHERE },
+  { name: "marketchannels", description: "Admins: set up the Markets category, a channel per game with odds and bets", ...SERVER_ONLY },
+  { name: "marketupdate", description: "Admins: refresh every Markets channel with the latest odds, bets and lines", ...SERVER_ONLY },
   {
     name: "gamechannels",
     description: "Admins: a category (e.g. 2027 - Week 1) with a channel per game that week; empty = this week",
-    default_member_permissions: ADMINISTRATOR,
     ...SERVER_ONLY,
     options: [
       { type: INTEGER, name: "year", description: "Season, e.g. 2027 (only the current season's schedule is loaded)", required: false, min_value: 2000, max_value: 2100 },
@@ -115,11 +116,10 @@ export const COMMANDS = [
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
   { name: "balance", description: "Your Tickets free to bet: UnbelievaBoat balance, open bets and results not added yet", ...SERVER_ONLY },
   { name: "bets", description: "Your open bets, with buttons to cancel", ...SERVER_ONLY },
-  { name: "payouts", description: "Admins: post the payouts report now (normally posted after each advance)", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
+  { name: "payouts", description: "Admins: post the payouts report now (normally posted after each advance)", ...SERVER_ONLY },
   {
     name: "verifykickoff",
     description: "Admins: set a finished game's real kickoff; bets placed after it are voided",
-    default_member_permissions: MANAGE_SERVER,
     ...SERVER_ONLY,
     options: [
       team(true),

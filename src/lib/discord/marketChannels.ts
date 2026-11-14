@@ -34,6 +34,10 @@ export type MarketChannels = {
   weekKey: string;
   chartsWeek?: string;   // week the odds charts were last posted in #market-feed
   payouts?: PayoutState; // #previous-week-payouts (Tickets leagues)
+  futuresChannelId?: string;           // #futures: Super Bowl, divisions, awards (bet buttons)
+  futures?: Record<string, Entry>;
+  txChannelId?: string;                // #transactions (bottom): every bet and cancel this week
+  txWeek?: string;
   games: Record<string, GameChannel>;
 };
 
@@ -104,6 +108,91 @@ export function gameEmbed(slug: string, d: LeagueData, g: Game, markets: Market[
   };
 }
 
+// ---------------------------------------------------------------- #futures (Nick, 2026-11-14)
+// Under #market-feed: one message per futures market with bet controls. Super Bowl: a team picker
+// per conference (select menus, 16 teams each). Divisions: a button per team. Player awards: a
+// picker with the top contenders plus "Any other player…", which asks for a name, since any
+// eligible player can be bet on (src/lib/league/markets.ts withAwardPlayers).
+const FUTURE_AWARDS = ["award-mvp", "award-opoy", "award-dpoy", "award-oroy", "award-droy"];
+const pctOf = (p: number) => `${p > 0 && p < 0.01 ? "<1" : Math.round(p * 100)}%`;
+
+export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolean): EntryMsg[] {
+  const out: EntryMsg[] = [];
+  const conf = new Map(d.teams.map((t) => [t.id, t.conference]));
+  const abbr = new Map(d.teams.map((t) => [t.id, t.abbr]));
+  const shut = (m: Market) => m.settled || Boolean(m.closed);
+  const pays = tickets ? "100 Tickets" : "$1";
+  const open = (m: Market) => m.outcomes.filter((o) => o.state === "open").sort((a, b) => b.p - a.p);
+  const head = (m: Market) => (m.settled ? `**${m.title}** · settled: ${m.outcomes.find((o) => o.state === "won")?.label ?? "—"}` : `**${m.title}**`);
+
+  const sb = markets.find((m) => m.key === "sb");
+  if (sb) {
+    const top = open(sb).slice(0, 6).map((o) => `${o.label} ${pctOf(o.p)}`).join(" · ");
+    const rows = ["AFC", "NFC"].map((cf) => {
+      const opts = open(sb).filter((o) => conf.get(o.team ?? 0) === cf).slice(0, 25);
+      return { type: 1, components: [{ type: 3, custom_id: `mksel|sb|${cf.toLowerCase()}`, placeholder: `Bet on an ${cf} team…`, disabled: shut(sb) || !opts.length,
+        options: (opts.length ? opts : [{ id: "none", label: "—", p: 0 }]).map((o) => ({ label: clip(o.label, 100), value: o.id, description: `${pctOf(o.p)} · pays ${pays} if they win it all` })) }] };
+    });
+    out.push({ key: "sb", content: clip(`${head(sb)}\n${top}`, 2000), components: rows });
+  }
+  for (const m of markets.filter((x) => x.cat === "division").sort((a, b) => a.title.localeCompare(b.title))) {
+    const os = open(m);
+    out.push({
+      key: m.key, content: clip(`${head(m)}\n${os.map((o) => `${o.label} ${pctOf(o.p)}`).join(" · ")}`, 2000),
+      components: os.length ? [{ type: 1, components: os.slice(0, 5).map((o, i) => btn(`${abbr.get(o.team ?? 0) ?? o.label} ${pctOf(o.p)}`, i === 0 ? GREEN : GREY, `mk|${m.key}|${o.id}|yes|${o.label.split(" ").pop()}`.slice(0, 100), shut(m))) }] : [],
+    });
+  }
+  for (const key of FUTURE_AWARDS) {
+    const m = markets.find((x) => x.key === key);
+    if (!m) continue;
+    const os = open(m);
+    const top = os.slice(0, 5).map((o) => `${o.label} ${pctOf(o.p)}`).join(" · ");
+    out.push({
+      key: m.key, content: clip(`${head(m)}\n${top}${os.length ? "\nAny eligible player can be bet on: pick one below or tap **Any other player**." : ""}`, 2000),
+      components: shut(m) ? [] : [
+        { type: 1, components: [{ type: 3, custom_id: `mksel|${m.key}`, placeholder: "Bet on a contender…", disabled: !os.length,
+          options: (os.length ? os : [{ id: "none", label: "—", p: 0, sub: "" }]).slice(0, 25).map((o) => ({ label: clip(o.label, 100), value: o.id, description: clip(`${pctOf(o.p)}${o.sub ? ` · ${o.sub.split(" · ").slice(0, 2).join(" · ")}` : ""}`, 100) })) }] },
+        { type: 1, components: [btn("Any other player…", GREY, `mkany|${m.key}`)] },
+      ],
+    });
+  }
+  return out;
+}
+
+/** Posts or edits the #futures messages (only the ones that changed). */
+async function fillFutures(d: LeagueData, markets: Market[], tickets: boolean, state: MarketChannels): Promise<number> {
+  if (!state.futuresChannelId) return 0;
+  state.futures ||= {};
+  let n = 0;
+  for (const e of futuresEntries(d, markets, tickets)) {
+    const sig = sigOf(e);
+    const have = state.futures[e.key];
+    if (have?.sig === sig) continue;
+    const body = { content: e.content, components: e.components, allowed_mentions: { parse: [] } };
+    const r = have ? await dc("PATCH", `/channels/${state.futuresChannelId}/messages/${have.messageId}`, body) : null;
+    if (r?.ok) { have!.sig = sig; n++; continue; }
+    const p = await dc("POST", `/channels/${state.futuresChannelId}/messages`, body);
+    if (p.ok) { state.futures[e.key] = { messageId: String(p.data.id), sig }; n++; }
+    await sleep(200);
+  }
+  return n;
+}
+
+/** Keeps the category in order: #market-feed, #futures, #previous-week-payouts, game channels, #transactions last. */
+export async function orderMarketChannels(guildId: string, state: MarketChannels) {
+  const r = await dc("GET", `/guilds/${guildId}/channels`);
+  if (!r.ok || !Array.isArray(r.data)) return;
+  const kids = (r.data as { id: string; parent_id?: string; position: number }[]).filter((c) => c.parent_id === state.categoryId).sort((a, b) => a.position - b.position);
+  const ids = new Set(kids.map((c) => c.id));
+  const head = [state.feedChannelId, state.futuresChannelId, state.payouts?.channelId].filter((x): x is string => Boolean(x && ids.has(x)));
+  const tail = state.txChannelId && ids.has(state.txChannelId) ? [state.txChannelId] : [];
+  const middle = kids.map((c) => c.id).filter((id) => !head.includes(id) && !tail.includes(id));
+  const want = [...head, ...middle, ...tail];
+  if (want.every((id, i) => kids[i]?.id === id)) return;
+  const base = kids[0]?.position ?? 0;
+  await dc("PATCH", `/guilds/${guildId}/channels`, want.map((id, i) => ({ id, position: base + i })));
+}
+
 function feedEmbed(slug: string, markets: Market[], tickets: boolean): Embed {
   const pick = ["sb", "conf-afc", "conf-nfc", "award-mvp"];
   const fields = pick.map((k) => markets.find((m) => m.key === k)).filter((m): m is Market => Boolean(m)).map((m) => ({
@@ -124,7 +213,7 @@ function feedEmbed(slug: string, markets: Market[], tickets: boolean): Embed {
 async function loadAll(slug: string) {
   const d = await getLeagueData(slug);
   if (!d) return null;
-  const view = await marketsForDiscord(slug, marketBook(d), d.season.year, d.season);
+  const view = await marketsForDiscord(slug, marketBook(d), d.season.year, d.season, d);
   if (!view) return null;
   return { d, markets: view.book.markets, leagueId: view.leagueId, tickets: view.tickets };
 }
@@ -161,6 +250,18 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     const ed = state.feedMessageId ? await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [embed] }) : null;
     if (!ed?.ok) { const m = await dc("POST", `/channels/${state.feedChannelId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } }); state.feedMessageId = m.ok ? String(m.data.id) : null; }
   }
+
+  // #futures right under the feed
+  if (state.futuresChannelId && !(await dc("GET", `/channels/${state.futuresChannelId}`)).ok) { state.futuresChannelId = undefined; state.futures = {}; }
+  if (!state.futuresChannelId) {
+    const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "futures", type: 0, parent_id: state.categoryId, topic: `Super Bowl, division and award bets: pick and bet · ${APP_URL}/l/${slug}/markets` });
+    if (ch.ok) {
+      state.futuresChannelId = String(ch.data.id); state.futures = {};
+      await dc("POST", `/channels/${state.futuresChannelId}/messages`, { allowed_mentions: { parse: [] }, embeds: [{ title: "Futures", url: `${APP_URL}/l/${slug}/markets`, color: BRAND,
+        description: `Season-long bets: the Super Bowl, every division and the player awards. Pick a team or player below, enter how much, done. Prices are chances and move with every bet and every sync; they settle at the end of the season.${tickets ? " Contracts pay 100 Tickets." : ""} Link your Discord once with /connect.` }] });
+    }
+  }
+  const futuresEdits = await fillFutures(d, markets, tickets, state);
 
   // weekly odds charts in #market-feed (once per week, after the advance)
   const key = weekKeyOf(d);
@@ -207,13 +308,27 @@ export async function syncMarketChannels(slug: string): Promise<string> {
       await sleep(300);
     }
   }
+  // #transactions at the bottom: every bet and cancel, a fresh channel each week
+  if (state.txChannelId && (state.txWeek !== key || !(await dc("GET", `/channels/${state.txChannelId}`)).ok)) {
+    if (state.txWeek !== key) await dc("DELETE", `/channels/${state.txChannelId}`);
+    state.txChannelId = undefined;
+  }
+  if (!state.txChannelId) {
+    const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "transactions", type: 0, parent_id: state.categoryId, topic: `Every bet and cancel this week · full log: ${APP_URL}/l/${slug}/markets/activity` });
+    if (ch.ok) {
+      state.txChannelId = String(ch.data.id); state.txWeek = key;
+      await dc("POST", `/channels/${state.txChannelId}/messages`, { content: `**${d.season.year} ${d.season.title}: transactions.** Every bet and cancel this week lands here. The full log, every week, is on the site: ${APP_URL}/l/${slug}/markets/activity`, allowed_mentions: { parse: [] } });
+    }
+  }
+
   let edits = 0;
   const queue = [...games];
   await Promise.all(Array.from({ length: 8 }, async () => {
     for (let g = queue.shift(); g; g = queue.shift()) edits += await fillGameChannel(slug, d, g, markets, tickets, state!.games[String(g.id)]);
   }));
+  await orderMarketChannels(guildId, state).catch(() => {});
   await saveState(lg.id, state);
-  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}.${report}`;
+  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}, #futures${futuresEdits ? ` (${futuresEdits} updated)` : ""} and #transactions.${report}`;
 }
 
 /** "Week 13" for a saved week key ("2027:1:12"). */
@@ -240,7 +355,7 @@ export async function postPayoutsNow(slug: string): Promise<string> {
   const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
   const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
   const st = settings.marketChannels as MarketChannels | undefined;
-  if (st) { st.payouts = r.state; await db.from("leagues").update({ settings }).eq("id", lg.id); }
+  if (st) { st.payouts = r.state; await db.from("leagues").update({ settings }).eq("id", lg.id); await orderMarketChannels(guildId, st).catch(() => {}); }
   return r.text;
 }
 
@@ -307,6 +422,10 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   const yesBefore = Math.round(bet.before * 100), yesAfter = Math.round(bet.after * 100);
   const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : "cancelled"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} ${bet.kind === "buy" ? "for" : "and got back"} **${money}** · Yes ${yesBefore}% → ${yesAfter}%`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
+  if (state.txChannelId) {
+    const full = gc ? text.replace(`· ${bet.outcomeLabel}`, `· ${bet.outcomeLabel} (${m?.title ?? bet.marketKey})`) : text;
+    await dc("POST", `/channels/${state.txChannelId}/messages`, { content: clip(full, 2000), allowed_mentions: { parse: [] } });
+  }
   if (gc && gameId) {
     // update every line whose price moved (linked prices move the other side and the player's other lines too)
     const g = all.d.games.find((x) => x.id === gameId);
@@ -319,8 +438,11 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
       if (gc.messageId) await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [gameEmbed(slug, all.d, g, all.markets, all.tickets)] });
       await saveEntrySigs(lg.id, gameId, gc);
     }
-  } else if (state.feedChannelId && state.feedMessageId) {
-    await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
+  } else {
+    if (state.feedChannelId && state.feedMessageId) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
+    if (state.futuresChannelId && futuresEntries(all.d, all.markets, all.tickets).some((e) => e.key === bet.marketKey)) {
+      if (await fillFutures(all.d, all.markets, all.tickets, state)) await saveFutures(lg.id, state);
+    }
   }
 }
 
@@ -345,5 +467,16 @@ async function saveEntrySigs(leagueId: string, gameId: number, gc: GameChannel) 
   const st = settings.marketChannels as MarketChannels | undefined;
   if (!st?.games[String(gameId)]) return;
   st.games[String(gameId)] = gc;
+  await db.from("leagues").update({ settings }).eq("id", leagueId);
+}
+
+/** Saves the #futures message ids/signatures without clobbering the rest of the state. */
+async function saveFutures(leagueId: string, st: MarketChannels) {
+  const db = supabaseAdmin();
+  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
+  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+  const cur = settings.marketChannels as MarketChannels | undefined;
+  if (!cur || cur.futuresChannelId !== st.futuresChannelId) return;
+  cur.futures = st.futures;
   await db.from("leagues").update({ settings }).eq("id", leagueId);
 }

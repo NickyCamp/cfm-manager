@@ -1491,3 +1491,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .mk-setup-form select { min-height: 32px; padding: 2px 6px; background: var(--rail); color-scheme: dark; }
 .mk-setup-form .btn { justify-self: start; }
 .mk-setup-link { margin-top: 24px; text-align: center; }
+
+.mk-anyplayer { margin-bottom: 16px; }
+.mk-anyplayer-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }

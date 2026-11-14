@@ -22,10 +22,11 @@ import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, team
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { cancelValue, closeTimes, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
-import { marketBook } from "@/lib/league/markets";
+import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
 import { postPayoutsNow, refreshGame, syncMarketChannels } from "./marketChannels";
+import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
@@ -37,7 +38,7 @@ export type Interaction = {
   application_id: string;
   token: string;
   guild_id?: string;
-  member?: { user: { id: string; username: string; global_name?: string | null }; permissions?: string };
+  member?: { user: { id: string; username: string; global_name?: string | null }; permissions?: string; roles?: string[] };
   user?: { id: string; username: string; global_name?: string | null };   // set instead of member in DMs
   context?: number;                           // 0 server, 1 bot DM, 2 group DM / other DM
   data?: { name: string; options?: Option[]; resolved?: { attachments?: Record<string, { url: string; filename: string; size: number; content_type?: string }> } };
@@ -63,8 +64,6 @@ const canManage = (i: Interaction) => {
   const p = BigInt(i.member?.permissions || "0");
   return (p & MANAGE_SERVER) !== BigInt(0) || (p & ADMIN) !== BigInt(0);
 };
-/** Administrator permission (a server's Admin role has it; so does the owner). */
-const isAdmin = (i: Interaction) => (BigInt(i.member?.permissions || "0") & ADMIN) !== BigInt(0);
 
 // ---------- lookups ----------
 
@@ -213,12 +212,19 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "marketchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!isAdmin(i)) return reply("Only server admins can set up the Markets category.");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await syncMarketChannels(lg.slug));
+    }
+    case "marketupdate": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      const st = lg.settings?.marketChannels as { categoryId?: string } | undefined;
+      if (!st?.categoryId) return reply("Set up the Markets category first with /marketchannels.");
       return reply(await syncMarketChannels(lg.slug));
     }
     case "gamechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!isAdmin(i)) return reply("Only server admins can set up game channels.");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       if (opt(i, "action") === "remove") return reply(await removeGameChannels(lg.slug));
       return reply(await syncGameChannels(lg.slug, { year: Number(opt(i, "year")) || undefined, week: Number(opt(i, "week")) || undefined }));
     }
@@ -228,12 +234,12 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "verifykickoff": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!canManage(i)) return reply("Only admins (Manage Server) can verify kickoffs.");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       return verifyKickoffCmd(i, lg, d, url);
     }
     case "payouts": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!canManage(i)) return reply("Only admins (Manage Server) can post the payouts report.");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       return reply(await postPayoutsNow(lg.slug));
     }
     case "balance": return balanceCmd(i, lg);
@@ -283,8 +289,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { embeds: [scoresEmbed(d, pick.stage, pick.week, url, footer)] };
     }
     case "league": {
-      // admins only in servers (Nick, 2026-11-14); DMs and group DMs have no roles, so it stays open there
-      if (i.guild_id && !isAdmin(i)) return reply("Only server admins can use /league here.");
+      // admin role only in servers (Nick, 2026-11-14); DMs and group DMs have no roles, so it stays open there
+      if (i.guild_id && !(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       const ch = via === "server" ? discordOf(lg)?.channelId : null;
       return {
         embeds: [{
@@ -811,7 +817,7 @@ async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   if (!timeRaw) return reply(line(g!), false);
   const caller = await userForDiscord(userId(i)).catch(() => null);
   const denied = kickoffPermission({
-    admin: canManage(i), userTeam: caller ? await teamOfUser(lg.id, caller).catch(() => null) : null,
+    admin: await isLeagueAdmin(i), userTeam: caller ? await teamOfUser(lg.id, caller).catch(() => null) : null,
     homeAbbr: teams.get(g!.home)?.abbr || "", awayAbbr: teams.get(g!.away)?.abbr || "", current: closes.get(g!.id),
   });
   if (denied) return reply(caller ? denied : `${denied} If you run one of these teams, link your Discord first with /connect.`);
@@ -877,7 +883,7 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   const { data } = await admin2().from("market_positions").select("market_key, outcome_id, side, qty, cost").eq("league_id", lg.id).eq("season", key).eq("user_id", uid);
   const pos = data || [];
   if (!pos.length) return reply(`You have no open bets. ${url("/markets")}`);
-  const view = await marketsForDiscord(lg.slug, marketBook(d), d.season.year, d.season);
+  const view = await marketsForDiscord(lg.slug, marketBook(d), d.season.year, d.season, d);
   const raw = marketBook(d);
   const n = (x: number) => (tickets ? `${Math.round(x).toLocaleString("en-US")} Tickets` : `$${x.toFixed(2)}`);
   const lines: string[] = [];
@@ -886,7 +892,7 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
     const m = view?.book.markets.find((x) => x.key === p.market_key);
     const o = m?.outcomes.find((x) => x.id === p.outcome_id);
     const shut = !m || m.closed || m.settled || o?.state !== "open";
-    const rawM = raw.markets.find((x) => x.key === p.market_key);
+    const rawM = withAwardPlayers(raw, d, [[p.market_key, p.outcome_id]]).markets.find((x) => x.key === p.market_key);
     const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets).catch(() => null) : null;
     lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}%` : ""}${shut ? " · locked" : back != null ? ` · cancel → ${n(back)}` : ""}`);
     if (!shut && buttons.length < 20) buttons.push({ type: 2, style: 4, label: `Cancel #${ix + 1}`, custom_id: `mkc|${p.market_key}|${p.outcome_id}|${p.side}`.slice(0, 100) });
