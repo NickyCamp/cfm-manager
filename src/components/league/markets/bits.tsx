@@ -75,3 +75,43 @@ export function PriceChart({ series, checkpoints }: { series: { label: string; v
     </svg>
   );
 }
+
+/** Market price over real time: each line holds its price until the next bet or sync moved it. */
+export function TimeChart({ times, series }: { times: number[]; series: { label: string; values: (number | null)[]; color: string }[] }) {
+  const W = 720, H = 260, L = 8, R = 44, T = 12, B = 26;
+  const t0 = times[0], t1 = Math.max(times[times.length - 1], t0 + 1);
+  const x = (t: number) => L + ((t - t0) / (t1 - t0)) * (W - L - R);
+  const y = (v: number) => T + (1 - v) * (H - T - B);
+  const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => t0 + f * (t1 - t0));
+  const labels = ticks.map((t) => fmt.format(t)).map((s, i, a) => (i && a[i - 1] === s ? "" : s));
+  return (
+    <svg className="mk-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Market price over time">
+      {[0, 0.25, 0.5, 0.75, 1].map((g) => (
+        <g key={g}>
+          <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} className="grid" />
+          <text x={W - R + 6} y={y(g) + 4} className="axis">{Math.round(g * 100)}%</text>
+        </g>
+      ))}
+      {ticks.map((t, i) => labels[i] && (
+        <text key={i} x={x(t)} y={H - 6} className="axis" textAnchor={i === 0 ? "start" : i === ticks.length - 1 ? "end" : "middle"}>{labels[i]}</text>
+      ))}
+      {series.map((s) => {
+        let d = "", prev: number | null = null;
+        s.values.forEach((v, i) => {
+          if (v == null) { prev = null; return; }
+          const px = x(times[i]).toFixed(1), py = y(v).toFixed(1);
+          d += prev == null ? `M${px},${py}` : `H${px}V${py}`;
+          prev = v;
+        });
+        const lastI = s.values.length - 1, last = s.values[lastI];
+        return (
+          <g key={s.label}>
+            <path d={d} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            {last != null && <circle cx={x(times[lastI])} cy={y(last)} r="4" fill={s.color} />}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}

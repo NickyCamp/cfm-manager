@@ -248,14 +248,13 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : "sold"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} for **${money}** · Yes ${yesBefore}¢ → ${yesAfter}¢`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
   if (gc && gameId) {
-    // update just the bet line that moved (and the game line, whose price is shown in the header too)
+    // update every line whose price moved (linked prices move the other side and the player's other lines too)
     const g = all.d.games.find((x) => x.id === gameId);
     if (g) {
       const main = all.markets.find((x) => x.key === `game-${g.id}`);
       for (const e of gameEntries(g, all.markets, Boolean(main?.closed))) {
-        if (e.key !== `${bet.marketKey}|${bet.outcomeId}` && e.key !== `${bet.marketKey}|*`) continue;
         const have = gc.entries?.[e.key];
-        if (have) { const r = await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, { content: e.content, components: e.components, allowed_mentions: { parse: [] } }); if (r.ok) have.sig = sigOf(e); }
+        if (have && have.sig !== sigOf(e)) { const r = await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, { content: e.content, components: e.components, allowed_mentions: { parse: [] } }); if (r.ok) have.sig = sigOf(e); }
       }
       if (gc.messageId) await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [gameEmbed(slug, all.d, g, all.markets, all.tickets)] });
       await saveEntrySigs(lg.id, gameId, gc);

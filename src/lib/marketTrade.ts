@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
-import { closeTimes, fmtET, isMember, marketsShared, memberNames, placeTicketsTrade, placeTrade } from "@/lib/marketStore";
+import { closeTimes, fmtET, isMember, marketsShared, memberNames, placeTicketsTrade, placeTrade, recordAfterTrade } from "@/lib/marketStore";
 import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
@@ -47,12 +47,14 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
 
   const tickets = await ticketsConfig(a.slug).catch(() => null);
   const r = tickets
-    ? await placeTicketsTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, true), userId: a.userId, market: a.market, marketTitle: m.title, outcome: a.outcome, outcomeLabel: o.label, side: a.side, kind: a.kind, model: o.p, tickets: amount, qty, cfg: tickets })
-    : amount > 100000 ? { ok: false as const, error: "Too much." } : await placeTrade({ leagueId: a.leagueId, season: d.season.year, userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, model: o.p, dollars: amount, qty });
+    ? await placeTicketsTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, true), userId: a.userId, market: a.market, marketTitle: m.title, outcome: a.outcome, outcomeLabel: o.label, side: a.side, kind: a.kind, priced: m, tickets: amount, qty, cfg: tickets })
+    : amount > 100000 ? { ok: false as const, error: "Too much." } : await placeTrade({ leagueId: a.leagueId, season: d.season.year, userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, dollars: amount, qty });
   if (!r.ok) return { ok: false, status: 409, error: r.error };
 
   // Post it in the league's Discord Markets channels (if set up) and refresh the prices there.
   const uid = a.userId;
+  const bk = tickets ? bookKey(d.season.year, true) : d.season.year;
+  after(() => recordAfterTrade(a.leagueId, bk, m).then(() => {}, (e) => console.error("price history", (e as Error).message)));
   after(async () => {
     const who = (await memberNames([uid]).catch(() => new Map<string, string>())).get(uid) || "Someone";
     await postBet(a.slug, { who, marketKey: a.market, outcomeId: a.outcome, outcomeLabel: o.label, side: a.side, kind: a.kind, qty: r.qty, amount: r.amount, before: r.before, after: r.after })

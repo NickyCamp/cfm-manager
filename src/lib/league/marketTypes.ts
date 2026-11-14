@@ -90,6 +90,7 @@ export function crowdP(model: number, net: number) {
   return sigmoid(logit(clampP(model)) + net / LIQUIDITY);
 }
 /** Dollars to buy n contracts of one side, starting from `net`. */
+export function buyCostBinary(model: number, net: number, side: "yes" | "no", n: number) { return buyCost(model, net, side, n); }
 function buyCost(model: number, net: number, side: "yes" | "no", n: number) {
   const x0 = logit(clampP(model)), b = LIQUIDITY;
   if (side === "yes") return b * (softplus(x0 + (net + n) / b) - softplus(x0 + net / b));
@@ -114,4 +115,89 @@ export function quoteSell(model: number, net: number, side: "yes" | "no", qty: n
   // selling n Yes = the reverse of buying n Yes from newNet
   const amount = Math.floor(buyCost(model, newNet, side, qty) * 100 + 1e-6) / 100;
   return { qty, amount, newNet, before, after: crowdP(model, newNet), avg: qty ? amount / qty : 0 };
+}
+
+// ---------------------------------------------------------------- linked prices (Nick, 2026-11-13)
+// Bets move related prices too, right up to kickoff:
+// - One-winner markets (who wins a game, Super Bowl, divisions, awards…) are priced as one
+//   multi-outcome market maker: price_i = softmax(log model_i + net_i / LIQUIDITY). Money on
+//   one outcome raises it and lowers all the others; prices always add up to 100¢.
+//   A No on outcome i is the same as Yes on all the others, so the same per-outcome net works.
+// - Player-prop ladders (same player, same stat): a bet on one line also nudges the others
+//   the same direction (LADDER_SPILL of its weight), so 250+ / 300+ / 350+ stay consistent.
+// Everything else stays its own Yes/No market.
+
+export const LADDER_SPILL = 0.5;
+const lse = (xs: number[]) => { const m = Math.max(...xs); return m + Math.log(xs.reduce((a, x) => a + Math.exp(x - m), 0)); };
+
+export type Pricer =
+  | { kind: "binary"; model: number }
+  | { kind: "exclusive"; logw: number[]; nets: number[]; i: number };
+
+type PricedOutcome = { id: string; p: number; state: OutcomeState };
+type PricedMarket = { key: string; kind: "exclusive" | "independent"; outcomes: PricedOutcome[] };
+
+/** Prop ladder group: "<player>:<stat>" from an outcome id "<player>:<stat>:<strike>". */
+export const ladderGroup = (marketKey: string, outcomeId: string) => {
+  if (!marketKey.startsWith("props-")) return null;
+  const parts = outcomeId.split(":");
+  return parts.length === 3 ? `${parts[0]}:${parts[1]}` : null;
+};
+
+/** How one outcome is priced, given everyone's nets in its market. `model` values are the simulation's chances. */
+export function pricerFor(m: PricedMarket, outcomeId: string, nets: Map<string, number>): Pricer {
+  const o = m.outcomes.find((x) => x.id === outcomeId);
+  const model = o?.p ?? 0.5;
+  if (m.kind === "exclusive") {
+    const open = m.outcomes.filter((x) => x.state === "open");
+    const total = open.reduce((a, x) => a + Math.max(x.p, 0.001), 0);
+    // lists that don't name everyone (awards): the unlisted rest is a hidden outcome nobody can bet
+    const rest = 1 - total;
+    const scale = total > 1 ? total : 1;
+    return {
+      kind: "exclusive",
+      logw: [...open.map((x) => Math.log(Math.max(x.p, 0.001) / scale)), ...(rest > 0.001 ? [Math.log(rest)] : [])],
+      nets: [...open.map((x) => nets.get(x.id) || 0), ...(rest > 0.001 ? [0] : [])],
+      i: open.findIndex((x) => x.id === outcomeId),
+    };
+  }
+  const g = ladderGroup(m.key, outcomeId);
+  if (g) {
+    let spill = 0;
+    for (const x of m.outcomes) if (x.id !== outcomeId && ladderGroup(m.key, x.id) === g) spill += nets.get(x.id) || 0;
+    return { kind: "binary", model: sigmoid(logit(clampP(model)) + (LADDER_SPILL * spill) / LIQUIDITY) };
+  }
+  return { kind: "binary", model };
+}
+
+function exState(pr: Extract<Pricer, { kind: "exclusive" }>, net: number) {
+  const nets = pr.nets.slice(); nets[pr.i] = net;
+  const xs = pr.logw.map((w, j) => w + nets[j] / LIQUIDITY);
+  const z = lse(xs);
+  return { cost: LIQUIDITY * z, p: Math.exp(xs[pr.i] - z) };
+}
+/** Yes chance of the outcome at its own `net` (everyone else's nets as in the pricer). */
+export function pricedP(pr: Pricer, net: number) {
+  return pr.kind === "binary" ? crowdP(pr.model, net) : exState(pr, net).p;
+}
+function costP(pr: Pricer, net: number, side: "yes" | "no", n: number) {
+  if (pr.kind === "binary") return buyCostBinary(pr.model, net, side, n);
+  const c0 = exState(pr, net).cost;
+  return side === "yes" ? exState(pr, net + n).cost - c0 : n + exState(pr, net - n).cost - c0;
+}
+export function quoteBuyP(pr: Pricer, net: number, side: "yes" | "no", dollars: number): Quote {
+  const before = pricedP(pr, net);
+  let lo = 0, hi = 1;
+  while (costP(pr, net, side, hi) <= dollars && hi < 1e6) hi *= 2;
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (costP(pr, net, side, mid) <= dollars) lo = mid; else hi = mid; }
+  const qty = Math.floor(lo + 1e-9);
+  const amount = Math.ceil(costP(pr, net, side, qty) * 100 - 1e-6) / 100;
+  const newNet = side === "yes" ? net + qty : net - qty;
+  return { qty, amount, newNet, before, after: pricedP(pr, newNet), avg: qty ? amount / qty : 0 };
+}
+export function quoteSellP(pr: Pricer, net: number, side: "yes" | "no", qty: number): Quote {
+  const before = pricedP(pr, net);
+  const newNet = side === "yes" ? net - qty : net + qty;
+  const amount = Math.floor(costP(pr, newNet, side, qty) * 100 + 1e-6) / 100;
+  return { qty, amount, newNet, before, after: pricedP(pr, newNet), avg: qty ? amount / qty : 0 };
 }

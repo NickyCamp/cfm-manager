@@ -3,7 +3,7 @@
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getLeagueRow } from "@/lib/league/load";
 import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
-import { crowdP, quoteBuy, quoteSell, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
+import { pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
 import { bookKey, discordOfUser, moveTickets, sendPendingTickets, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 
@@ -54,19 +54,37 @@ export async function loadPools(leagueId: string, season: number) {
   return pools;
 }
 
-/** The book with crowd prices: each open outcome's chance moved by what members bought. */
+/** The book with crowd prices. Bets move related prices too: in one-winner markets every
+ *  outcome (they always add up to 100¢), in prop ladders the player's other lines. */
 export function withCrowd(book: MarketBook, pools: Map<string, { net: number; volume: number }>): MarketBook {
   if (!pools.size) return book;
-  const markets: Market[] = book.markets.map((m) => ({
-    ...m,
-    outcomes: m.outcomes.map((o) => {
-      const pool = pools.get(poolKey(m.key, o.id));
-      if (!pool || o.state !== "open") return o;
-      const p = crowdP(o.p, pool.net);
-      return { ...o, model: o.p, net: pool.net, volume: pool.volume, p };
-    }),
-  }));
+  const markets: Market[] = book.markets.map((m) => {
+    const nets = new Map<string, number>();
+    for (const o of m.outcomes) { const pool = pools.get(poolKey(m.key, o.id)); if (pool?.net) nets.set(o.id, pool.net); }
+    if (!nets.size && !m.outcomes.some((o) => pools.has(poolKey(m.key, o.id)))) return m;
+    return {
+      ...m,
+      outcomes: m.outcomes.map((o) => {
+        if (o.state !== "open") return o;
+        const pool = pools.get(poolKey(m.key, o.id));
+        const net = pool?.net || 0;
+        const pr = pricerFor(m, o.id, nets);
+        const p = pricedP(pr, net);
+        // model/net drive the in-browser trade preview (a close approximation; the server quotes exactly)
+        const preview = pr.kind === "binary" ? { model: pr.model, net } : { model: p, net: 0 };
+        return { ...o, ...preview, volume: pool?.volume || 0, p };
+      }),
+    };
+  });
   return { ...book, markets };
+}
+
+/** Everyone's nets in one market (for linked pricing). */
+async function marketNets(leagueId: string, book: number, market: string) {
+  const { data } = await supabaseAdmin().from("market_pools").select("outcome_id, net").eq("league_id", leagueId).eq("season", book).eq("market_key", market);
+  const nets = new Map<string, number>();
+  for (const r of data || []) nets.set(r.outcome_id, Number(r.net));
+  return nets;
 }
 
 /** Pay out positions on outcomes that have finished. Cheap when there's nothing to do. */
@@ -174,19 +192,19 @@ export async function sharedState(leagueId: string, season: number, userId: stri
 /** One Tickets buy (spend up to `tickets`) or sell (contracts), through UnbelievaBoat. */
 export async function placeTicketsTrade(args: {
   leagueId: string; book: number; userId: string; market: string; marketTitle: string; outcome: string; outcomeLabel: string;
-  side: "yes" | "no"; kind: "buy" | "sell"; model: number; tickets?: number; qty?: number; cfg: TicketsConfig;
+  side: "yes" | "no"; kind: "buy" | "sell"; priced: Market; tickets?: number; qty?: number; cfg: TicketsConfig;
 }): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
   const admin = supabaseAdmin();
   const d = await discordOfUser(args.userId);
   if (!d) return { ok: false, error: "Link your Discord first: run /connect in the league's Discord and open the link." };
   const sideName = args.side === "yes" ? "Yes" : "No";
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: pool } = await admin.from("market_pools").select("net").eq("league_id", args.leagueId).eq("season", args.book)
-      .eq("market_key", args.market).eq("outcome_id", args.outcome).maybeSingle();
-    const net = pool ? Number(pool.net) : 0;
+    const nets = await marketNets(args.leagueId, args.book, args.market);
+    const net = nets.get(args.outcome) || 0;
+    const pr = pricerFor(args.priced, args.outcome, nets);
     const q = args.kind === "buy"
-      ? quoteBuy(args.model, net, args.side, (args.tickets || 0) / TICKETS_PER_CONTRACT)
-      : quoteSell(args.model, net, args.side, Math.floor(args.qty || 0));
+      ? quoteBuyP(pr, net, args.side, (args.tickets || 0) / TICKETS_PER_CONTRACT)
+      : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
     if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to sell." };
     // whole Tickets: buyers round up, sellers round down
     const amount = args.kind === "buy" ? Math.ceil(q.amount * TICKETS_PER_CONTRACT - 1e-6) : Math.floor(q.amount * TICKETS_PER_CONTRACT + 1e-6);
@@ -223,14 +241,14 @@ export async function placeTicketsTrade(args: {
 /** One buy (dollars) or sell (contracts) at the crowd price, retried if someone traded in between. */
 export async function placeTrade(args: {
   leagueId: string; season: number; userId: string; market: string; outcome: string; side: "yes" | "no"; kind: "buy" | "sell";
-  model: number; dollars?: number; qty?: number;
+  priced: Market; dollars?: number; qty?: number;
 }): Promise<{ ok: true; qty: number; amount: number; before: number; after: number } | { ok: false; error: string }> {
   const admin = supabaseAdmin();
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: pool } = await admin.from("market_pools").select("net").eq("league_id", args.leagueId).eq("season", args.season)
-      .eq("market_key", args.market).eq("outcome_id", args.outcome).maybeSingle();
-    const net = pool ? Number(pool.net) : 0;
-    const q = args.kind === "buy" ? quoteBuy(args.model, net, args.side, args.dollars || 0) : quoteSell(args.model, net, args.side, Math.floor(args.qty || 0));
+    const nets = await marketNets(args.leagueId, args.season, args.market);
+    const net = nets.get(args.outcome) || 0;
+    const pr = pricerFor(args.priced, args.outcome, nets);
+    const q = args.kind === "buy" ? quoteBuyP(pr, net, args.side, args.dollars || 0) : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
     if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to sell." };
     const { data, error } = await admin.rpc("market_trade", {
       p_league: args.leagueId, p_season: args.season, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
@@ -300,6 +318,7 @@ export async function marketsForPage(slug: string, book: MarketBook, season: num
     const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && dataWeek && weekMoved(live, dataWeek)));
     const crowd = withCrowd(closed, await loadPools(v.leagueId, key));
     const shared = await sharedState(v.leagueId, key, v.userId, v.member, index(crowd), tickets);
+    { const lid = v.leagueId; after(() => recordPrices(lid, key, crowd).then(() => {}, () => {})); }
     return { book: crowd, shared, leagueId: v.leagueId, bookKey: key, tickets };
   } catch (e) {
     console.error("markets shared state", slug, e);
@@ -371,4 +390,51 @@ export async function marketsForDiscord(slug: string, book: MarketBook, season: 
   const closes = await closeTimes(row.id, season);
   const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && weekMoved(live, dataWeek)));
   return { book: withCrowd(closed, await loadPools(row.id, key)), leagueId: row.id, tickets: Boolean(tickets) };
+}
+
+// ---------------------------------------------------------------- price history (odds over time)
+
+export type PricePoint = { at: string; prices: Record<string, number>; cause: "sync" | "bet" };
+/** Season-long markets get a chart; single-game markets close within days. */
+const charted = (m: Market) => !m.gameId;
+const pricesOf = (m: Market) => Object.fromEntries(m.outcomes.map((o) => [o.id, Math.round(o.p * 10000) / 10000]));
+const moved = (a: Record<string, number>, b: Record<string, number> | undefined) => {
+  if (!b) return true;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return true;
+  return ka.some((k) => b[k] == null || Math.abs(a[k] - b[k]) >= 0.005);
+};
+const lastRecorded = new Map<string, number>();
+
+/** Writes the current price of every season-long market that moved since its last row.
+ *  Throttled per server instance; called from page loads, so the weekly model moves get caught. */
+export async function recordPrices(leagueId: string, book: number, crowd: MarketBook, cause: "sync" | "bet" = "sync", only?: string) {
+  const tk = `${leagueId}:${book}`;
+  if (!only && Date.now() - (lastRecorded.get(tk) || 0) < 5 * 60_000) return;
+  if (!only) lastRecorded.set(tk, Date.now());
+  const admin = supabaseAdmin();
+  const { data, error } = await admin.rpc("market_price_latest", { p_league: leagueId, p_book: book });
+  if (error) return; // table not created yet
+  const last = new Map<string, Record<string, number>>((data || []).map((r: { market_key: string; prices: Record<string, number> }) => [r.market_key, r.prices]));
+  const rows = crowd.markets.filter((m) => charted(m) && (!only || m.key === only)).map((m) => ({ m, prices: pricesOf(m) }))
+    .filter(({ m, prices }) => moved(prices, last.get(m.key)))
+    .map(({ m, prices }) => ({ league_id: leagueId, book, market_key: m.key, prices, cause }));
+  if (rows.length) await admin.from("market_price_points").insert(rows);
+}
+
+/** After a bet: record that market's new prices. */
+export async function recordAfterTrade(leagueId: string, book: number, m: Market) {
+  if (!charted(m)) return;
+  const pools = new Map<string, { net: number; volume: number }>();
+  for (const [id, net] of await marketNets(leagueId, book, m.key)) pools.set(poolKey(m.key, id), { net, volume: 0 });
+  const crowd = withCrowd({ markets: [m] } as unknown as MarketBook, pools);
+  await recordPrices(leagueId, book, crowd, "bet", m.key);
+}
+
+/** One market's price history, oldest first. */
+export async function priceHistory(leagueId: string, book: number, market: string): Promise<PricePoint[]> {
+  const { data, error } = await supabaseAdmin().from("market_price_points").select("prices, cause, created_at")
+    .eq("league_id", leagueId).eq("book", book).eq("market_key", market).order("id", { ascending: true }).limit(5000);
+  if (error) return [];
+  return (data || []).map((r) => ({ at: r.created_at, prices: r.prices as Record<string, number>, cause: r.cause }));
 }
