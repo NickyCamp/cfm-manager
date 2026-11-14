@@ -12,6 +12,7 @@ import type { Embed } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, searchAwardPlayers, withAwardPlayers } from "@/lib/league/markets";
+import { MAX_BET_TICKETS } from "@/lib/league/marketTypes";
 import { closeTimes, fmtET, liveQuote, ticketsAvailable } from "@/lib/marketStore";
 import { discordOfUser } from "@/lib/tickets";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
@@ -50,7 +51,7 @@ export function betModal(i: ComponentInteraction) {
     data: {
       custom_id: `mkb|${market}|${outcome}|${side}`.slice(0, 100),
       title,
-      components: [{ type: 1, components: [{ type: 4, custom_id: "amount", style: 1, label: "How much to bet (Tickets)", placeholder: "e.g. 1000 or 2.5k", required: true, min_length: 1, max_length: 9 }] }],
+      components: [{ type: 1, components: [{ type: 4, custom_id: "amount", style: 1, label: "How much to bet (Tickets)", placeholder: "e.g. 1000 or 2.5k (max 5k)", required: true, min_length: 1, max_length: 9 }] }],
     },
   };
 }
@@ -131,7 +132,7 @@ export function anyPlayerModal(i: ComponentInteraction) {
       title: clip(`Any player · ${title}`, 45),
       components: [
         { type: 1, components: [{ type: 4, custom_id: "player", style: 1, label: "Player (first and last name)", placeholder: "e.g. Josh Allen", required: true, min_length: 2, max_length: 60 }] },
-        { type: 1, components: [{ type: 4, custom_id: "amount", style: 1, label: "How much to bet (Tickets)", placeholder: "e.g. 1000 or 2.5k", required: true, min_length: 1, max_length: 9 }] },
+        { type: 1, components: [{ type: 4, custom_id: "amount", style: 1, label: "How much to bet (Tickets)", placeholder: "e.g. 1000 or 2.5k (max 5k)", required: true, min_length: 1, max_length: 9 }] },
       ],
     },
   };
@@ -212,7 +213,7 @@ export async function quoteReply(i: ComponentInteraction): Promise<{ content: st
     if (g?.final) return { content: "That game has been played, so betting is closed. The channel has been refreshed." };
     if (close && Date.parse(close.closeAt) <= Date.now()) return { content: `Betting on this game closed at kickoff (${fmtET(close.closeAt)}). The channel has been refreshed.` };
   }
-  const amounts = tickets ? [500, 1000, 5000, 10000] : [10, 25, 50, 100];
+  const amounts = tickets ? [500, 1000, 2500, MAX_BET_TICKETS] : [10, 25, 50, 100];
   const extend = (ids: string[]) => withAwardPlayers(marketBook(d), d, ids.map((id) => [t.market, id] as [string, string])).markets.find((x) => x.key === t.market);
   const q = await liveQuote(lg.id, bookKey(d.season.year, tickets), m, t.outcome, t.side, amounts, tickets, extend);
   let free: number | null = null;
@@ -226,7 +227,7 @@ export async function quoteReply(i: ComponentInteraction): Promise<{ content: st
     Number.isFinite(t.shown) && Math.abs(t.shown - now) >= 3 ? `⚠️ The button showed ${t.shown}%: someone bet since that message was last updated. You'd get the live price.` : "",
     ...q.buys.map((b) => `• **${money(b.amount)}** buys about **${b.qty.toLocaleString("en-US")}**, pays **${money(b.pays)}** if right (price → ${pct(b.after)})`),
     free != null ? `You have **${money(free)}** free to bet.` : "",
-    "-# Prices move with every bet: you get the price at the moment you tap.",
+    `-# Prices move with every bet: you get the price at the moment you tap. Max ${tickets ? `${MAX_BET_TICKETS.toLocaleString("en-US")} Tickets` : "$50"} per bet.`,
   ].filter(Boolean);
   const buttons = q.buys.map((b) => ({ type: 2, style: 1, label: `Bet ${short(b.amount)}`, custom_id: `mkq|${t.market}|${t.outcome}|${t.side}|${b.amount}`.slice(0, 100), disabled: free != null && b.amount > free || b.qty < 1 }));
   buttons.push({ type: 2, style: 2, label: "Other amount…", custom_id: `mko|${t.market}|${t.outcome}|${t.side}|${t.team}`.slice(0, 100), disabled: false });

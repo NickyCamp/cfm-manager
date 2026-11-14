@@ -2,7 +2,7 @@
 import type React from "react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { prices, quoteBuy, type PriceIndex } from "@/lib/league/marketTypes";
+import { prices, quoteBuy, type PriceIndex, MAX_BET_DOLLARS, MAX_BET_TICKETS } from "@/lib/league/marketTypes";
 import type { SharedState } from "@/lib/marketStore";
 import { Chance, Delta, MiniBadge, type TeamLite } from "./bits";
 import type { BoardOutcome } from "./MarketsBoard";
@@ -22,6 +22,7 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
   const [sel, setSel] = useState<string | undefined>(outcomes.some((o) => o.id === initialO && o.state === "open") ? initialO : firstOpen?.id);
   const [side, setSide] = useState<Side>(initialSide === "no" ? "no" : "yes");
   const T = shared?.currency === "tickets";
+  const maxBet = T ? MAX_BET_TICKETS : MAX_BET_DOLLARS;
   const unit = shared?.unit ?? 1;
   const [amount, setAmount] = useState(T ? "1000" : "25");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -104,12 +105,12 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
               <button type="button" className={`mk-btn no${side === "no" ? " on" : ""}`} aria-pressed={side === "no"} onClick={() => { setSide("no"); setMsg(null); }}>No {pr.no}%</button>
             </div>
             <label className="mk-amount">
-              <span>Amount</span>
-              <span className="mk-amount-input">{!T && <span>$</span>}<input inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value.replace(T ? /[^\d]/g : /[^\d.]/g, "")); setMsg(null); }} aria-label={T ? "Tickets to spend" : "Dollars to spend"} />{T && <span className="mk-unit">Tickets</span>}</span>
+              <span>Amount <span className="muted small">(max {T ? maxBet.toLocaleString("en-US") : `$${maxBet}`} per bet)</span></span>
+              <span className="mk-amount-input">{!T && <span>$</span>}<input inputMode="decimal" value={amount} onChange={(e) => { const v = e.target.value.replace(T ? /[^\d]/g : /[^\d.]/g, ""); setAmount(Number(v) > maxBet ? String(maxBet) : v); setMsg(null); }} aria-label={T ? "Tickets to spend" : "Dollars to spend"} />{T && <span className="mk-unit">Tickets</span>}</span>
             </label>
             <div className="mk-quick">
-              {(T ? [1000, 5000, 15000] : [10, 25, 100]).map((n) => <button key={n} type="button" onClick={() => setAmount(String((Number(amount) || 0) + n))}>+{T ? n.toLocaleString("en-US") : `$${n}`}</button>)}
-              <button type="button" onClick={() => setAmount(String(Math.floor(cash)))}>Max</button>
+              {(T ? [500, 1000, 2500] : [5, 10, 25]).map((n) => <button key={n} type="button" onClick={() => setAmount(String(Math.min(maxBet, (Number(amount) || 0) + n)))}>+{T ? n.toLocaleString("en-US") : `$${n}`}</button>)}
+              <button type="button" onClick={() => setAmount(String(Math.floor(Math.min(cash, maxBet))))}>Max</button>
             </div>
             <dl className="mk-ticket-sum">
               <div><dt>Contracts</dt><dd>{qty}</dd></div>

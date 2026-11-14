@@ -80,6 +80,9 @@ export function chanceText(p: number, state: OutcomeState = "open") {
 // $50 of Yes at 50¢ moves it to about 59¢.
 
 export const LIQUIDITY = 250;
+/** Most one bet can stake (Nick, 2026-11-14: "cap the bets at a max of 5k per bet"); play money is the same in dollars. */
+export const MAX_BET_TICKETS = 5000;
+export const MAX_BET_DOLLARS = 50;
 const clampP = (p: number) => Math.min(0.99, Math.max(0.01, p));
 const logit = (p: number) => Math.log(p / (1 - p));
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
