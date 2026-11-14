@@ -29,7 +29,7 @@ export type BetReply = { content: string; components?: unknown[] };
  *  bet bought ("mkc|market|outcome|side|qty"). */
 function placed(text: string, market: string, outcome: string, side: string, qty: number): BetReply {
   const fut = !/^(game|props)-/.test(market);
-  return { content: text, components: [{ type: 1, components: [{ type: 2, style: 4, label: fut ? "Cash out this bet" : "Cancel this bet", custom_id: `mkc|${market}|${outcome}|${side}|${qty}`.slice(0, 100) }] }] };
+  return { content: `${text}\n-# This message disappears when you leave the channel. To ${fut ? "cash out" : "cancel"} later, tap 🎟️ My bets in the channel or use /bets.`, components: [{ type: 1, components: [{ type: 2, style: 4, label: fut ? "Cash out this bet" : "Cancel this bet", custom_id: `mkc|${market}|${outcome}|${side}|${qty}`.slice(0, 100) }] }] };
 }
 
 /** "1000", "1,000", "1k", "2.5k", "1m" → Tickets; anything else (negative, words) → NaN. */

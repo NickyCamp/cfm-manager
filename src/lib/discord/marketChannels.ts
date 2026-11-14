@@ -57,6 +57,8 @@ type Component = Record<string, unknown>;
 type EntryMsg = { key: string; content: string; components: Component[] };
 const btn = (label: string, style: number, custom_id: string, disabled = false): Component => ({ type: 2, style, label: clip(label, 80), custom_id, disabled });
 const GREEN = 3, RED = 4, GREY = 2;
+/** "🎟️ My bets": your open bets with Cancel / Cash out buttons, privately (handlers.ts myBets). */
+const MY_BETS_ROW = { type: 1, components: [{ type: 2, style: 1, label: "🎟️ My bets", custom_id: "mkmy" }] };
 
 /** One message per bet line for a game: who wins (both teams as buttons), then each player prop with Yes/No. */
 export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryMsg[] {
@@ -163,6 +165,7 @@ export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolea
       ],
     });
   }
+  out.push({ key: "mybets", content: "**Your bets**: tap to see your open bets, privately, with a button to cancel or cash out each one.", components: [MY_BETS_ROW] });
   return out;
 }
 
@@ -257,8 +260,8 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   }
   if (state.feedChannelId) {
     const embed = feedEmbed(slug, markets, tickets);
-    const ed = state.feedMessageId ? await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [embed] }) : null;
-    if (!ed?.ok) { const m = await dc("POST", `/channels/${state.feedChannelId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } }); state.feedMessageId = m.ok ? String(m.data.id) : null; }
+    const ed = state.feedMessageId ? await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [embed], components: [MY_BETS_ROW] }) : null;
+    if (!ed?.ok) { const m = await dc("POST", `/channels/${state.feedChannelId}/messages`, { embeds: [embed], components: [MY_BETS_ROW], allowed_mentions: { parse: [] } }); state.feedMessageId = m.ok ? String(m.data.id) : null; }
   }
 
   // #futures right under the feed
@@ -439,8 +442,8 @@ async function postOddsCharts(slug: string, d: LeagueData, markets: Market[], ch
 async function fillGameChannel(slug: string, d: LeagueData, g: Game, markets: Market[], tickets: boolean, gc: GameChannel): Promise<number> {
   let n = 0;
   const embed = gameEmbed(slug, d, g, markets, tickets);
-  const ed = gc.messageId ? await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed] }) : null;
-  if (!ed?.ok) { const m = await dc("POST", `/channels/${gc.channelId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } }); gc.messageId = m.ok ? String(m.data.id) : null; n++; }
+  const ed = gc.messageId ? await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed], components: [MY_BETS_ROW] }) : null;
+  if (!ed?.ok) { const m = await dc("POST", `/channels/${gc.channelId}/messages`, { embeds: [embed], components: [MY_BETS_ROW], allowed_mentions: { parse: [] } }); gc.messageId = m.ok ? String(m.data.id) : null; n++; }
   gc.entries ||= {};
   const main = markets.find((m) => m.key === `game-${g.id}`);
   for (const e of gameEntries(g, markets, Boolean(main?.closed))) {
@@ -486,7 +489,7 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
     // update every line whose price moved (linked prices move the other side and the player's other lines too)
     await refreshGameSettled(slug, lg.id, gameId, gc, all);
   } else {
-    if (state.feedChannelId && state.feedMessageId) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
+    if (state.feedChannelId && state.feedMessageId) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)], components: [MY_BETS_ROW] });
     if (state.futuresChannelId && futuresEntries(all.d, all.markets, all.tickets).some((e) => e.key === bet.marketKey)) await refreshForMarket(slug, bet.marketKey);
   }
 }
@@ -531,7 +534,7 @@ export async function refreshForMarket(slug: string, marketKey: string) {
   let all = await loadAll(slug);
   for (let round = 0; all && round < 3; round++) {
     const changed = await fillFutures(all.d, all.markets, all.tickets, state);
-    if (state.feedChannelId && state.feedMessageId && round === 0) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
+    if (state.feedChannelId && state.feedMessageId && round === 0) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)], components: [MY_BETS_ROW] });
     if (changed) await saveFutures(lg.id, state);
     const next = await loadAll(slug);
     if (!next || futuresEntries(next.d, next.markets, next.tickets).every((e) => !state.futures?.[e.key] || state.futures[e.key].sig === sigOf(e))) return;

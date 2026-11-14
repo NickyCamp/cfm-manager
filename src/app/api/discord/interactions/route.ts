@@ -5,7 +5,7 @@
 // data may need loading.
 import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
-import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
+import { autocomplete, myBets, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
 import { anyPlayerModal, type BetReply, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
 import { refreshForMarket } from "@/lib/discord/marketChannels";
@@ -47,6 +47,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
   }
   // the quote's quick-amount buttons place the bet; "Other amount…" opens the amount box
+  // "🎟️ My bets": your open bets with Cancel / Cash out buttons (private)
+  if (i.type === COMPONENT && tapId === "mkmy") {
+    const base = new URL(req.url).origin;
+    after(async () => {
+      const msg = await myBets(i, base).catch((e) => { console.error("discord my bets failed", e); return { content: "Something went wrong. Try /bets." }; });
+      await editOriginal(i.application_id, i.token, msg);
+    });
+    return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
+  }
   if (i.type === COMPONENT && tapId.startsWith("mkq|")) {
     after(async () => {
       const res: string | BetReply = await placeQuick(i as ComponentInteraction).catch((e) => { console.error("discord quick bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });

@@ -875,6 +875,15 @@ async function balanceCmd(i: Interaction, lg: LinkedLeague): Promise<Message> {
     return reply("Couldn't read your Tickets from UnbelievaBoat right now. Try again in a minute.");
   }
 }
+/** The "🎟️ My bets" button on game channels, #futures and #market-feed ("mkmy"): the same private list as /bets.
+ *  (Private replies vanish when you leave the channel, so this is the way back to a Cancel button.) */
+export async function myBets(i: Interaction, base: string): Promise<Message> {
+  const lg = i.guild_id ? await leagueForGuild(i.guild_id) : null;
+  if (!lg) return reply("This server isn't linked to a league (/link).");
+  const d = await getLeagueData(lg.slug);
+  if (!d) return reply("No league data yet.");
+  return betsCmd(i, lg, d, (path = "") => `${base}/l/${lg.slug}${path}`);
+}
 async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?: string) => string): Promise<Message> {
   const uid = await linkedUser(i);
   if (!uid) return reply("Link your Discord to your CFM Manager account first: run /connect.");
