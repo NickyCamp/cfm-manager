@@ -477,16 +477,22 @@ export type TeamBet = {
 
 /** Every bet by the member(s) running this team, rebuilt from the public trade log:
  *  open positions, and finished ones (settled, or fully cancelled) with their result. */
-export async function teamBets(leagueId: string, book: number, teamAbbr: string): Promise<{ open: TeamBet[]; done: TeamBet[]; members: string[] }> {
+export async function teamBets(leagueId: string, book: number, teamAbbr: string, teamUser?: string): Promise<{ open: TeamBet[]; done: TeamBet[]; members: string[] }> {
   const admin = supabaseAdmin();
-  const { data: mem } = await admin.from("league_members").select("user_id, team_abbr").eq("league_id", leagueId);
-  const ids = (mem || []).filter((r) => (r.team_abbr || "").toLowerCase() === teamAbbr.toLowerCase()).map((r) => r.user_id);
-  if (!ids.length) return { open: [], done: [], members: [] };
-  const [{ data, error }, names] = await Promise.all([
-    admin.from("market_trades").select("user_id, market_key, outcome_id, side, kind, qty, amount, created_at")
-      .eq("league_id", leagueId).eq("season", book).in("user_id", ids).order("id", { ascending: true }).limit(10000),
-    memberNames(ids),
+  // The team's member: set on the site (team_abbr), or whose EA name is the team's in-game user.
+  const [{ data: mem }, { data: traders }] = await Promise.all([
+    admin.from("league_members").select("user_id, team_abbr").eq("league_id", leagueId),
+    admin.from("market_trades").select("user_id").eq("league_id", leagueId).eq("season", book).limit(20000),
   ]);
+  const all = [...new Set([...(mem || []).map((r) => r.user_id), ...(traders || []).map((r) => r.user_id)])];
+  const allNames = await memberNames(all);
+  const who = (teamUser || "").trim().toLowerCase();
+  const ids = all.filter((id) => (mem || []).some((r) => r.user_id === id && (r.team_abbr || "").toLowerCase() === teamAbbr.toLowerCase())
+    || (who && (allNames.get(id) || "").trim().toLowerCase() === who));
+  if (!ids.length) return { open: [], done: [], members: [] };
+  const names = allNames;
+  const { data, error } = await admin.from("market_trades").select("user_id, market_key, outcome_id, side, kind, qty, amount, created_at")
+    .eq("league_id", leagueId).eq("season", book).in("user_id", ids).order("id", { ascending: true }).limit(10000);
   if (error) throw new Error(error.message);
   const live = new Map<string, TeamBet>();
   const done: TeamBet[] = [];

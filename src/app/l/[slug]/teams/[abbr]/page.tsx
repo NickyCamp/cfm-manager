@@ -80,9 +80,9 @@ export default async function TeamPage({ params, searchParams }: Props) {
 async function MarketsTab({ d, team, slug }: { d: LeagueData; team: Team; slug: string }) {
   const { book, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
   if (!leagueId) return <p className="muted">League betting isn&apos;t switched on for this league.</p>;
-  const bets = await teamBets(leagueId, bookKey, team.abbr).catch(() => null);
+  const bets = await teamBets(leagueId, bookKey, team.abbr, team.user).catch(() => null);
   if (!bets) return <p className="muted">Couldn&apos;t load bets right now.</p>;
-  if (!bets.members.length) return <p className="muted">No league member is set as running the {team.name}, so there are no bets to show.</p>;
+  if (!bets.members.length) return <p className="muted">{team.user ? `${team.user} hasn\u2019t linked a site account to this league yet, so there are no bets to show.` : `The ${team.name} are a CPU team, so there are no bets to show.`}</p>;
   return <TeamBets slug={slug} open={bets.open} done={bets.done} markets={book.markets} tickets={Boolean(tickets)} members={bets.members} />;
 }
 
