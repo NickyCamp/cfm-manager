@@ -17,9 +17,13 @@ import { canSeeCardArt, cardFramePath, signedCardArtFor } from "@/lib/cardArtSto
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
 import { standInArt } from "@/lib/league/headshots";
 import { CapGauge } from "@/components/league/CapGauge";
+import { marketBook } from "@/lib/league/markets";
+import { priceIndex } from "@/lib/league/marketTypes";
+import { marketsForPage, teamBets } from "@/lib/marketStore";
+import { TeamBets } from "@/components/league/markets/TeamBets";
 
 type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string }> };
-const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"]] as const;
+const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"], ["markets", "Markets"]] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, abbr } = await params;
@@ -66,10 +70,20 @@ export default async function TeamPage({ params, searchParams }: Props) {
         {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" ? "details" : "years"} base={base} />
           : tab === "schedule" ? <ScheduleTab d={d} team={team} slug={slug} />
           : tab === "stats" ? <StatsTab d={d} team={team} slug={slug} />
+          : tab === "markets" ? <MarketsTab d={d} team={team} slug={slug} />
           : <RosterTab d={d} team={team} roster={roster} slug={slug} list={view === "list"} unit={unit} base={base} />}
       </div>
     </main>
   );
+}
+
+async function MarketsTab({ d, team, slug }: { d: LeagueData; team: Team; slug: string }) {
+  const { book, leagueId, bookKey, tickets } = await marketsForPage(slug, marketBook(d), d.season.year, priceIndex, d.season);
+  if (!leagueId) return <p className="muted">League betting isn't switched on for this league.</p>;
+  const bets = await teamBets(leagueId, bookKey, team.abbr).catch(() => null);
+  if (!bets) return <p className="muted">Couldn't load bets right now.</p>;
+  if (!bets.members.length) return <p className="muted">No league member is set as running the {team.name}, so there are no bets to show.</p>;
+  return <TeamBets slug={slug} open={bets.open} done={bets.done} markets={book.markets} tickets={Boolean(tickets)} members={bets.members} />;
 }
 
 function CapOutlook({ d, team, base }: { d: LeagueData; team: Team; base: string }) {

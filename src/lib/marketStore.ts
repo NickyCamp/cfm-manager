@@ -466,3 +466,50 @@ export async function priceHistory(leagueId: string, book: number, market: strin
   if (error) return [];
   return (data || []).map((r) => ({ at: r.created_at, prices: r.prices as Record<string, number>, cause: r.cause }));
 }
+
+// ---------------------------------------------------------------- one team's bets (team page Markets tab)
+
+export type TeamBet = {
+  market: string; outcome: string; side: "yes" | "no"; user: string;
+  qty: number; cost: number; placed: string;          // first bet in this position
+  result?: "won" | "lost" | "cancelled"; payout?: number; closedAt?: string;
+};
+
+/** Every bet by the member(s) running this team, rebuilt from the public trade log:
+ *  open positions, and finished ones (settled, or fully cancelled) with their result. */
+export async function teamBets(leagueId: string, book: number, teamAbbr: string): Promise<{ open: TeamBet[]; done: TeamBet[]; members: string[] }> {
+  const admin = supabaseAdmin();
+  const { data: mem } = await admin.from("league_members").select("user_id, team_abbr").eq("league_id", leagueId);
+  const ids = (mem || []).filter((r) => (r.team_abbr || "").toLowerCase() === teamAbbr.toLowerCase()).map((r) => r.user_id);
+  if (!ids.length) return { open: [], done: [], members: [] };
+  const [{ data, error }, names] = await Promise.all([
+    admin.from("market_trades").select("user_id, market_key, outcome_id, side, kind, qty, amount, created_at")
+      .eq("league_id", leagueId).eq("season", book).in("user_id", ids).order("id", { ascending: true }).limit(10000),
+    memberNames(ids),
+  ]);
+  if (error) throw new Error(error.message);
+  const live = new Map<string, TeamBet>();
+  const done: TeamBet[] = [];
+  for (const r of data || []) {
+    const k = `${r.user_id}|${r.market_key}|${r.outcome_id}|${r.side}`;
+    const qty = Number(r.qty), amount = Number(r.amount);
+    let b = live.get(k);
+    if (r.kind === "buy") {
+      if (!b) { b = { market: r.market_key, outcome: r.outcome_id, side: r.side, user: names.get(r.user_id) || "Member", qty: 0, cost: 0, placed: r.created_at }; live.set(k, b); }
+      b.qty += qty; b.cost += amount;
+    } else if (b) {
+      if (r.kind === "settle") {
+        done.push({ ...b, result: amount > 0 ? "won" : "lost", payout: amount, closedAt: r.created_at });
+        live.delete(k);
+      } else {
+        const share = Math.min(1, qty / b.qty);
+        const refunded = { ...b, qty, cost: b.cost * share, result: "cancelled" as const, payout: amount, closedAt: r.created_at };
+        b.cost -= b.cost * share; b.qty -= qty;
+        done.push(refunded);
+        if (b.qty < 0.0001) live.delete(k);
+      }
+    }
+  }
+  done.sort((a, b) => Date.parse(b.closedAt!) - Date.parse(a.closedAt!));
+  return { open: [...live.values()].sort((a, b) => Date.parse(b.placed) - Date.parse(a.placed)), done, members: ids.map((id) => names.get(id) || "Member") };
+}
