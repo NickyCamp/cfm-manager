@@ -1476,3 +1476,18 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .mk-result.won { color: #2fd69c; background: rgba(47,214,156,.12); }
 .mk-result.lost { color: #ff6b7a; background: rgba(255,107,122,.12); }
 .mk-result.cancelled { color: var(--muted, #8a93b2); }
+
+/* Markets setup guide (/l/<slug>/markets/setup) */
+.mk-setup { margin-top: 16px; }
+.mk-setup h3 { margin: 18px 0 6px; }
+.mk-setup h3:first-child { margin-top: 0; }
+.mk-setup ul, .mk-setup ol { padding-left: 20px; }
+.mk-setup li { margin: 6px 0; }
+.mk-checklist { list-style: none; padding-left: 0 !important; }
+.mk-checklist li span { display: inline-block; width: 1.4em; color: var(--ink-soft); }
+.mk-checklist li.done span { color: var(--ok); }
+.mk-setup-form { display: grid; gap: 8px; margin-top: 10px; }
+.mk-setup-form label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mk-setup-form select { min-height: 32px; padding: 2px 6px; background: var(--rail); color-scheme: dark; }
+.mk-setup-form .btn { justify-self: start; }
+.mk-setup-link { margin-top: 24px; text-align: center; }

@@ -3,10 +3,12 @@
 // market_ledger (supabase/migrations/0006), and admins add/remove Tickets by hand from
 // the weekly "Previous Week Payouts" report the bot posts (src/lib/discord/payouts.ts).
 //
-// Settings (Vercel env):
-//   UNBELIEVABOAT_TOKEN  API token from unbelievaboat.com/applications, authorized for the league's server
-//   TICKETS_LEAGUES      comma-separated league slugs that bet in Tickets, e.g. "ncl"
-//   TICKETS_BALANCE      "cash" (default) or "bank": which UnbelievaBoat balance holds Tickets
+// Settings:
+//   UNBELIEVABOAT_TOKEN  (Vercel) API token from unbelievaboat.com/applications; it works in every
+//                        server where a server admin opened UB_AUTHORIZE_URL and picked that server
+//   leagues.settings.tickets = { enabled, field }  per league, set by its commissioner on
+//                        /l/<slug>/markets/setup ("cash" or "bank": which balance holds Tickets)
+//   TICKETS_LEAGUES / TICKETS_BALANCE  (Vercel, older) used only for leagues with no setting of their own
 // The league's Discord server is the one linked with the bot's /link.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -17,15 +19,24 @@ const UB = "https://unbelievaboat.com/api/v1";
 
 export type TicketsConfig = { guildId: string; field: "cash" | "bank" };
 
-/** Tickets settings for a league, or null if it bets play money. */
+/** UnbelievaBoat's page for letting CFM Manager read balances in a server (needs Discord Administrator there). */
+export const UB_AUTHORIZE_URL = `https://unbelievaboat.com/applications/authorize?app_id=${process.env.UNBELIEVABOAT_APP_ID || "1570965539797468846"}`;
+export type TicketsSetting = { enabled?: boolean; field?: "cash" | "bank" };
+
+/** Tickets settings for a league, or null if it bets play money. A commissioner turns Tickets on for
+ *  their league on the Markets setup page (leagues.settings.tickets); TICKETS_LEAGUES is the older
+ *  env switch and still works when the league has no setting of its own. */
 export async function ticketsConfig(slug: string): Promise<TicketsConfig | null> {
   if (!process.env.UNBELIEVABOAT_TOKEN) return null;
-  const on = (process.env.TICKETS_LEAGUES || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (!on.includes(slug.toLowerCase())) return null;
   const lg = await leagueBySlug(slug);
-  const guildId = lg ? discordOf(lg)?.guildId : null;
+  if (!lg) return null;
+  const own = (lg.settings?.tickets || null) as TicketsSetting | null;
+  const envOn = (process.env.TICKETS_LEAGUES || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean).includes(slug.toLowerCase());
+  if (!(own?.enabled ?? envOn)) return null;
+  const guildId = discordOf(lg)?.guildId;
   if (!guildId) return null;
-  return { guildId, field: process.env.TICKETS_BALANCE === "bank" ? "bank" : "cash" };
+  const field = own?.field ?? (process.env.TICKETS_BALANCE === "bank" ? "bank" : "cash");
+  return { guildId, field };
 }
 
 /** Which book a league's trades go in: play money keeps the season number, Tickets use season*10+1. */

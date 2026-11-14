@@ -27,7 +27,7 @@ import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZ
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
 import { postPayoutsNow, refreshGame, syncMarketChannels } from "./marketChannels";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
-import { discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
+import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
 export type Interaction = {
@@ -302,6 +302,8 @@ async function link(i: Interaction, base: string): Promise<Message> {
   // If the league was linked to another server, it moves here (and that server's update channel is dropped).
   const prev = discordOf(lg);
   const keepChannel = prev && prev.guildId === i.guild_id ? prev.channelId ?? null : null;
+  // Moving to another server: forget the old server's Markets channels so the next /marketchannels builds them here.
+  if (prev && prev.guildId !== i.guild_id) await clearMarketChannels(lg.id);
   await setDiscord(lg.id, { guildId: i.guild_id!, channelId: keepChannel, linkedBy: i.member?.user.id, linkedAt: new Date().toISOString() });
   return reply(`Linked to **${lg.name}** (${base}/l/${lg.slug}). Try \`/player\`, \`/cap\` or \`/playoffs\`. To get updates after each sync, run \`/notify channel:#your-channel\`.`, false);
 }

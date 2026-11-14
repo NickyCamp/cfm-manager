@@ -33,6 +33,16 @@ export async function setDiscord(leagueId: string, discord: DiscordSettings | nu
   if (error) throw new Error(error.message);
 }
 
+/** Drops the saved Markets category/channels (the league moved to another server). */
+export async function clearMarketChannels(leagueId: string) {
+  const db = supabaseAdmin();
+  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
+  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+  if (!settings.marketChannels) return;
+  delete settings.marketChannels;
+  await db.from("leagues").update({ settings }).eq("id", leagueId);
+}
+
 export const discordOf = (lg: LinkedLeague) => (lg.settings?.discord || null) as DiscordSettings | null;
 
 // ---------- personal leagues (user-installed bot: DMs, group DMs, unlinked servers) ----------

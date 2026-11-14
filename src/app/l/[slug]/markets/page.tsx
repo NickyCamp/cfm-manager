@@ -9,9 +9,9 @@ import { MarketsBoard, type BoardMarket } from "@/components/league/markets/Mark
 export const metadata: Metadata = { title: "Markets" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | undefined>> };
 
-// Kalshi-style play-money prediction markets (Nick, 2026-11-13). Prices come
-// from a season simulation (src/lib/league/markets.ts); trades live in the
-// visitor's browser only.
+// Kalshi-style prediction markets (Nick, 2026-11-13). Prices come from a season
+// simulation (src/lib/league/markets.ts) and move with members' bets
+// (src/lib/marketStore.ts). Setup for other leagues: ./setup/page.tsx.
 export default async function MarketsPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
@@ -42,6 +42,7 @@ export default async function MarketsPage({ params, searchParams }: Props) {
           </div>
         </div>
         <MarketsBoard slug={slug} markets={markets} teams={teams} index={priceIndex(book)} sinceLabel={book.sinceLabel} initialCat={sp.cat ?? "all"} shared={shared} />
+        <p className="muted small mk-setup-link">Running this in your own league&apos;s Discord? <Link href={`/l/${slug}/markets/setup`}>Setup guide</Link></p>
       </div>
     </main>
   );
