@@ -347,6 +347,23 @@ export async function cancelValue(leagueId: string, book: number, m: Market, out
   return isFutures(m.key) ? value : Math.min(pos.cost, value);
 }
 
+/** The live price of one side and what each amount would buy right now (Discord's quote step). */
+export async function liveQuote(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", amounts: number[], tickets: boolean, extend?: (ids: string[]) => Market | undefined) {
+  const unit = tickets ? TICKETS_PER_CONTRACT : 1;
+  const nets = await marketNets(leagueId, book, m.key);
+  const priced = (extend && extend([...nets.keys(), outcome])) || m;
+  const pr = pricerFor(priced, outcome, nets);
+  const net = nets.get(outcome) || 0;
+  const yes = pricedP(pr, net);
+  return {
+    price: side === "yes" ? yes : 1 - yes,
+    buys: amounts.map((amount) => {
+      const q = quoteBuyP(pr, net, side, amount / unit);
+      return { amount, qty: q.qty, pays: q.qty * unit, after: side === "yes" ? q.after : 1 - q.after };
+    }),
+  };
+}
+
 /** Display names: the member's EA name, else their profile name. */
 export async function memberNames(ids: string[]) {
   const names = new Map<string, string>();

@@ -7,7 +7,9 @@ import { after, NextResponse } from "next/server";
 import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
 import { autocomplete, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
-import { anyPlayerModal, betModal, cancelFromButton, payoutFromButton, placeAnyPlayer, placeFromModal, selectModal, type ComponentInteraction } from "@/lib/discord/marketButtons";
+import { anyPlayerModal, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
+import { refreshForMarket } from "@/lib/discord/marketChannels";
+import { leagueForGuild } from "@/lib/discord/links";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
@@ -32,12 +34,29 @@ export async function POST(req: Request) {
   }
 
   // Markets channels: a Yes/No button opens the amount box; submitting it places the bet (private reply).
-  if (i.type === COMPONENT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mk|")) {
-    return NextResponse.json(betModal(i as ComponentInteraction));
+  // A bet button or a #futures pick: answer privately with the live price and quick amounts, then
+  // refresh the message that was tapped (channel messages can lag a bet or two behind the site).
+  const tapId = String((i as ComponentInteraction).data?.custom_id || "");
+  if (i.type === COMPONENT && (tapId.startsWith("mk|") || tapId.startsWith("mksel|"))) {
+    after(async () => {
+      const q = await quoteReply(i as ComponentInteraction).catch((e) => { console.error("discord quote failed", e); return { content: "Something went wrong getting the price. Try again in a minute." } as { content: string; components?: unknown[] }; });
+      await editOriginal(i.application_id, i.token, { content: q.content, components: q.components ?? [] });
+      const lg = i.guild_id ? await leagueForGuild(i.guild_id).catch(() => null) : null;
+      if (lg) await refreshForMarket(lg.slug, tapId.split("|")[1]).catch((e) => console.error("discord refresh failed", e));
+    });
+    return NextResponse.json({ type: 5, data: { flags: 1 << 6 } });
   }
+  // the quote's quick-amount buttons place the bet; "Other amount…" opens the amount box
+  if (i.type === COMPONENT && tapId.startsWith("mkq|")) {
+    after(async () => {
+      const text = await placeQuick(i as ComponentInteraction).catch((e) => { console.error("discord quick bet failed", e); return "Something went wrong placing that bet. Try again in a minute."; });
+      await editOriginal(i.application_id, i.token, { content: text, components: [] });
+    });
+    return NextResponse.json({ type: 6 });
+  }
+  if (i.type === COMPONENT && tapId.startsWith("mko|")) return NextResponse.json(otherAmountModal(i as ComponentInteraction));
   const cid = String((i as ComponentInteraction).data?.custom_id || "");
   // #futures: a team/player picked from a menu opens the amount box; "Any other player…" asks for a name too
-  if (i.type === COMPONENT && cid.startsWith("mksel|")) return NextResponse.json(selectModal(i as ComponentInteraction));
   if (i.type === COMPONENT && cid.startsWith("mkany|")) return NextResponse.json(anyPlayerModal(i as ComponentInteraction));
   if (i.type === MODAL_SUBMIT && cid.startsWith("mkp|")) {
     after(async () => {

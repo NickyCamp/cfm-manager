@@ -88,6 +88,9 @@ export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryM
   return out;
 }
 // Short fingerprint of a message's text + buttons, so unchanged lines aren't re-sent (and the saved state stays small).
+/** The text actually sent: the line plus when its odds last changed (left out of the fingerprint, so
+ *  messages are only edited when the odds or buttons change). */
+const stamped = (e: EntryMsg) => `${e.content}\n-# odds updated ${new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })} ET`;
 const sigOf = (e: EntryMsg) => createHash("sha1").update(JSON.stringify([e.content, e.components])).digest("base64url").slice(0, 12);
 
 export function gameEmbed(slug: string, d: LeagueData, g: Game, markets: Market[], tickets: boolean): Embed {
@@ -168,7 +171,7 @@ async function fillFutures(d: LeagueData, markets: Market[], tickets: boolean, s
     const sig = sigOf(e);
     const have = state.futures[e.key];
     if (have?.sig === sig) continue;
-    const body = { content: e.content, components: e.components, allowed_mentions: { parse: [] } };
+    const body = { content: stamped(e), components: e.components, allowed_mentions: { parse: [] } };
     const r = have ? await dc("PATCH", `/channels/${state.futuresChannelId}/messages/${have.messageId}`, body) : null;
     if (r?.ok) { have!.sig = sig; n++; continue; }
     const p = await dc("POST", `/channels/${state.futuresChannelId}/messages`, body);
@@ -428,7 +431,7 @@ async function fillGameChannel(slug: string, d: LeagueData, g: Game, markets: Ma
     const sig = sigOf(e);
     const have = gc.entries[e.key];
     if (have?.sig === sig) continue;
-    const body = { content: e.content, components: e.components, allowed_mentions: { parse: [] } };
+    const body = { content: stamped(e), components: e.components, allowed_mentions: { parse: [] } };
     const r = have ? await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, body) : null;
     if (r?.ok) { have!.sig = sig; n++; continue; }
     const p = await dc("POST", `/channels/${gc.channelId}/messages`, body);
@@ -459,21 +462,10 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   }
   if (gc && gameId) {
     // update every line whose price moved (linked prices move the other side and the player's other lines too)
-    const g = all.d.games.find((x) => x.id === gameId);
-    if (g) {
-      const main = all.markets.find((x) => x.key === `game-${g.id}`);
-      for (const e of gameEntries(g, all.markets, Boolean(main?.closed))) {
-        const have = gc.entries?.[e.key];
-        if (have && have.sig !== sigOf(e)) { const r = await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, { content: e.content, components: e.components, allowed_mentions: { parse: [] } }); if (r.ok) have.sig = sigOf(e); }
-      }
-      if (gc.messageId) await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [gameEmbed(slug, all.d, g, all.markets, all.tickets)] });
-      await saveEntrySigs(lg.id, gameId, gc);
-    }
+    await refreshGameSettled(slug, lg.id, gameId, gc, all);
   } else {
     if (state.feedChannelId && state.feedMessageId) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
-    if (state.futuresChannelId && futuresEntries(all.d, all.markets, all.tickets).some((e) => e.key === bet.marketKey)) {
-      if (await fillFutures(all.d, all.markets, all.tickets, state)) await saveFutures(lg.id, state);
-    }
+    if (state.futuresChannelId && futuresEntries(all.d, all.markets, all.tickets).some((e) => e.key === bet.marketKey)) await refreshForMarket(slug, bet.marketKey);
   }
 }
 
@@ -484,10 +476,45 @@ export async function refreshGame(slug: string, gameId: number) {
   const gc = state?.games[String(gameId)];
   if (!lg || !gc || !process.env.DISCORD_BOT_TOKEN) return;
   const all = await loadAll(slug);
-  const g = all?.d.games.find((x) => x.id === gameId);
-  if (!all || !g) return;
-  await fillGameChannel(slug, all.d, g, all.markets, all.tickets, gc);
-  await saveEntrySigs(lg.id, gameId, gc);
+  if (!all) return;
+  await refreshGameSettled(slug, lg.id, gameId, gc, all);
+}
+
+/** Refreshes a game channel, then checks again: if another bet moved the odds while this refresh was
+ *  running (two bets close together each start one), it goes round again, so the last edit always
+ *  shows the newest odds. At most 3 rounds. */
+async function refreshGameSettled(slug: string, leagueId: string, gameId: number, gc: GameChannel, first: NonNullable<Awaited<ReturnType<typeof loadAll>>>) {
+  let all = first;
+  for (let round = 0; round < 3; round++) {
+    const g = all.d.games.find((x) => x.id === gameId);
+    if (!g) return;
+    await fillGameChannel(slug, all.d, g, all.markets, all.tickets, gc);
+    await saveEntrySigs(leagueId, gameId, gc);
+    const next = await loadAll(slug);
+    if (!next) return;
+    const main = next.markets.find((x) => x.key === `game-${g.id}`);
+    const fresh = gameEntries(g, next.markets, Boolean(main?.closed));
+    if (fresh.every((e) => !gc.entries?.[e.key] || gc.entries[e.key].sig === sigOf(e))) return;
+    all = next;
+  }
+}
+
+/** Brings the message(s) for one market up to date (a bet button was tapped): its game channel, or #futures and the feed. */
+export async function refreshForMarket(slug: string, marketKey: string) {
+  const gm = /^(?:game|props)-(\d+)/.exec(marketKey);
+  if (gm) return refreshGame(slug, Number(gm[1]));
+  const lg = await leagueBySlug(slug);
+  const state = lg?.settings?.marketChannels as MarketChannels | undefined;
+  if (!lg || !state || !process.env.DISCORD_BOT_TOKEN) return;
+  let all = await loadAll(slug);
+  for (let round = 0; all && round < 3; round++) {
+    const changed = await fillFutures(all.d, all.markets, all.tickets, state);
+    if (state.feedChannelId && state.feedMessageId && round === 0) await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [feedEmbed(slug, all.markets, all.tickets)] });
+    if (changed) await saveFutures(lg.id, state);
+    const next = await loadAll(slug);
+    if (!next || futuresEntries(next.d, next.markets, next.tickets).every((e) => !state.futures?.[e.key] || state.futures[e.key].sig === sigOf(e))) return;
+    all = next;
+  }
 }
 
 /** Saves one game's message ids/signatures without clobbering the rest of the state. */
