@@ -102,7 +102,7 @@ export default async function MarketsSetup({ params }: Props) {
             <li>Prices are chances (56% = it happens about 56% of the time) and move with every bet, so earlier bets get better prices. A winning contract pays $1 in play money, or 100 Tickets.</li>
             <li>Game and prop bets can be cancelled until kickoff for what they cost, or what they&apos;re worth then if that&apos;s less. Season-long bets (futures) can&apos;t be cancelled: they can be <strong>cashed out</strong> at the market price any time before they settle, which is more than the stake if the odds moved your way and less if not. You can&apos;t hold both sides of the same bet.</li>
             <li>In Discord, tapping Yes/No (or picking a team or player) first shows you, privately, the <strong>live</strong> price and what 500 / 1k / 5k / 10k would buy, since the channel messages can be a bet or two behind. Tap an amount to bet, or <em>Other amount</em>. You always get the live price.</li>
-            <li>A tied game is void and every stake comes back. One bet can be at most 5,000 Tickets ($50 in play money).</li>
+            <li>A tied game is void and every stake comes back. Bets are capped at 5,000 Tickets each by default ($50 in play money). Admins can change that, and add a cap on how much each person can bet per Madden week, with <code>/betcap</code>.</li>
             <li>Player awards: any eligible player can be bet on (on a team, offense for MVP/OPOY/OROY, defense for DPOY/DROY, rookies for the ROY awards). Players outside the simulation&apos;s top contenders start as long shots.</li>
             <li>Every bet, cancel, payout line and kickoff is in the <Link href={`/l/${slug}/markets/activity`}>public trade log</Link>, which nobody can edit.</li>
           </ul>
@@ -131,6 +131,7 @@ export default async function MarketsSetup({ params }: Props) {
               <tr><td><code>/kickoff team time</code></td><td>When betting closes on your game (either manager; admins any time)</td></tr>
               <tr><td><code>/balance</code></td><td>What you can bet: UnbelievaBoat balance, open bets and results not added yet</td></tr>
               <tr><td><code>/bets</code></td><td>Your open bets, with Cancel buttons</td></tr>
+              <tr><td><code>/betcap per_bet per_user</code></td><td>Admins: cap each bet, and each person&apos;s total per Madden week (0 = no cap); empty shows the caps</td></tr>
               <tr><td><code>/payouts</code></td><td>Admins: post the payouts report now</td></tr>
               <tr><td><code>/verifykickoff team time</code></td><td>Admins: set a finished game&apos;s real kickoff and void later bets</td></tr>
             </tbody>

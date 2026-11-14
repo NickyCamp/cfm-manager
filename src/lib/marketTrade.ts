@@ -3,8 +3,7 @@
 import { after } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
 import { isAwardMarket, marketBook, withAwardPlayers } from "@/lib/league/markets";
-import { MAX_BET_DOLLARS, MAX_BET_TICKETS } from "@/lib/league/marketTypes";
-import { closeTimes, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade } from "@/lib/marketStore";
+import { betCaps, closeTimes, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade, betThisWeek, weekStartedAt } from "@/lib/marketStore";
 import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
@@ -48,8 +47,17 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
   }
 
   const tickets = await ticketsConfig(a.slug).catch(() => null);
-  const cap = tickets ? MAX_BET_TICKETS : MAX_BET_DOLLARS;
-  if (a.kind === "buy" && amount > cap) return { ok: false, status: 400, error: `The most one bet can be is ${tickets ? `${cap.toLocaleString("en-US")} Tickets` : `$${cap}`}.` };
+  // the league's caps (/betcap): per bet, and per member per Madden week
+  if (a.kind === "buy") {
+    const caps = await betCaps(a.leagueId, Boolean(tickets));
+    const fmt = (n: number) => (tickets ? `${Math.round(n).toLocaleString("en-US")} Tickets` : `$${n.toLocaleString("en-US")}`);
+    if (caps.perBet != null && amount > caps.perBet) return { ok: false, status: 400, error: `The most one bet can be is ${fmt(caps.perBet)}.` };
+    if (caps.perUserWeek != null) {
+      const since = await weekStartedAt(a.leagueId, `${d.season.year}:${d.season.stage}:${d.season.week}`);
+      const used = await betThisWeek(a.leagueId, a.userId, since);
+      if (used + amount > caps.perUserWeek) return { ok: false, status: 400, error: `The most anyone can bet in one week is ${fmt(caps.perUserWeek)}. You've bet ${fmt(used)} this week, so you can bet up to ${fmt(Math.max(0, caps.perUserWeek - used))} more until the league advances.` };
+    }
+  }
   const extend = isAwardMarket(a.market) ? (ids: string[]) => withAwardPlayers(marketBook(d), d, ids.map((id) => [a.market, id] as [string, string])).markets.find((x) => x.key === a.market) : undefined;
   const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets, extend });
   if (!r.ok) return { ok: false, status: 409, error: r.error };

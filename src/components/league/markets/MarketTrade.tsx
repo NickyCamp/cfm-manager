@@ -22,7 +22,9 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
   const [sel, setSel] = useState<string | undefined>(outcomes.some((o) => o.id === initialO && o.state === "open") ? initialO : firstOpen?.id);
   const [side, setSide] = useState<Side>(initialSide === "no" ? "no" : "yes");
   const T = shared?.currency === "tickets";
-  const maxBet = T ? MAX_BET_TICKETS : MAX_BET_DOLLARS;
+  const caps = shared?.caps;
+  const maxBet = caps ? (caps.perBet ?? Number.MAX_SAFE_INTEGER) : T ? MAX_BET_TICKETS : MAX_BET_DOLLARS;
+  const capNote = [caps?.perBet != null || !caps ? `max ${T ? maxBet.toLocaleString("en-US") : `$${maxBet}`} per bet` : "", caps?.perUserWeek != null ? `${T ? caps.perUserWeek.toLocaleString("en-US") : `$${caps.perUserWeek}`} per week` : ""].filter(Boolean).join(" · ");
   const unit = shared?.unit ?? 1;
   const [amount, setAmount] = useState(T ? "1000" : "25");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -105,7 +107,7 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
               <button type="button" className={`mk-btn no${side === "no" ? " on" : ""}`} aria-pressed={side === "no"} onClick={() => { setSide("no"); setMsg(null); }}>No {pr.no}%</button>
             </div>
             <label className="mk-amount">
-              <span>Amount <span className="muted small">(max {T ? maxBet.toLocaleString("en-US") : `$${maxBet}`} per bet)</span></span>
+              <span>Amount {capNote && <span className="muted small">({capNote})</span>}</span>
               <span className="mk-amount-input">{!T && <span>$</span>}<input inputMode="decimal" value={amount} onChange={(e) => { const v = e.target.value.replace(T ? /[^\d]/g : /[^\d.]/g, ""); setAmount(Number(v) > maxBet ? String(maxBet) : v); setMsg(null); }} aria-label={T ? "Tickets to spend" : "Dollars to spend"} />{T && <span className="mk-unit">Tickets</span>}</span>
             </label>
             <div className="mk-quick">

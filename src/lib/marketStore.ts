@@ -3,7 +3,7 @@
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getLeagueRow } from "@/lib/league/load";
 import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
-import { ladderGroup, pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
+import { ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
 import { bookKey, discordOfUser, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 import { propResult } from "@/lib/league/props";
@@ -157,6 +157,7 @@ export type SharedState = {
   balanceError?: string;        // Tickets: UnbelievaBoat couldn't be read
   cash: number;                 // what the viewer can bet now (Tickets: UnbelievaBoat - open stakes + results not applied yet)
   ticketsBreakdown?: { ub: number; open: number; pending: number };
+  caps?: BetCaps;
   positions: { m: string; o: string; side: "yes" | "no"; qty: number; cost: number }[];
   fills: SharedFill[];
   leaderboard: { name: string; team: string; total: number; you: boolean }[];
@@ -241,6 +242,7 @@ export async function sharedState(leagueId: string, season: number, userId: stri
     balanceError,
     cash: viewerCash,
     ticketsBreakdown,
+    caps: await betCaps(leagueId, Boolean(tickets)),
     positions: (pos.data || []).filter((r) => r.user_id === userId).map((r) => ({ m: r.market_key, o: r.outcome_id, side: r.side, qty: Number(r.qty), cost: Number(r.cost) })),
     fills,
     leaderboard,
@@ -264,6 +266,40 @@ export async function ticketsAvailable(leagueId: string, userId: string, cfg: Ti
   const open = (pos.data || []).filter((r) => Number(r.season) % 10 === 1).reduce((a, r) => a + Number(r.cost), 0);
   const pending = (led.data || []).reduce((a, r) => a + Number(r.amount), 0);
   return { ub, open, pending, available: Math.floor(ub - open + pending) };
+}
+
+// ---------------------------------------------------------------- bet caps (/betcap, Nick 2026-11-14)
+/** A league's bet caps, in its currency (Tickets or dollars); null = no cap. Stored in leagues.settings.betCaps
+ *  by /betcap. perBet = the most one bet can stake (default 5,000 Tickets / $50); perUserWeek = the most one
+ *  member (Discord user / site account) can bet in one Madden week, all markets together (default none). */
+export type BetCaps = { perBet: number | null; perUserWeek: number | null };
+export async function betCaps(leagueId: string, tickets: boolean): Promise<BetCaps> {
+  const { data } = await supabaseAdmin().from("leagues").select("settings").eq("id", leagueId).maybeSingle();
+  const c = ((data?.settings as Record<string, unknown> | null)?.betCaps || {}) as { perBet?: number | null; perUserWeek?: number | null };
+  return {
+    perBet: c.perBet === undefined ? (tickets ? MAX_BET_TICKETS : MAX_BET_DOLLARS) : c.perBet || null,
+    perUserWeek: c.perUserWeek || null,
+  };
+}
+
+/** When the league's current Madden week started, as first seen by the site (leagues.settings.marketWeek).
+ *  The first look after an advance records it, so the week's count starts within minutes of the advance. */
+export async function weekStartedAt(leagueId: string, weekKey: string): Promise<string> {
+  const db = supabaseAdmin();
+  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
+  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+  const w = settings.marketWeek as { key?: string; startedAt?: string } | undefined;
+  if (w?.key === weekKey && w.startedAt) return w.startedAt;
+  const startedAt = new Date().toISOString();
+  settings.marketWeek = { key: weekKey, startedAt };
+  await db.from("leagues").update({ settings }).eq("id", leagueId);
+  return startedAt;
+}
+/** What a member has bet since the week started: stakes placed minus what cancels / cash-outs gave back. */
+export async function betThisWeek(leagueId: string, userId: string, since: string) {
+  const rows = await allRows<{ kind: string; amount: number }>((f, t) => supabaseAdmin().from("market_trades").select("kind, amount")
+    .eq("league_id", leagueId).eq("user_id", userId).in("kind", ["buy", "sell"]).gte("created_at", since).order("id").range(f, t));
+  return Math.max(0, rows.reduce((a, r) => a + (r.kind === "buy" ? 1 : -1) * Number(r.amount), 0));
 }
 
 /** Futures (season-long markets) cash out at the market price; game and prop bets cancel (Nick, 2026-11-14). */

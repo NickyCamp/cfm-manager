@@ -116,6 +116,15 @@ export const COMMANDS = [
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
   { name: "balance", description: "Your Tickets free to bet: UnbelievaBoat balance, open bets and results not added yet", ...SERVER_ONLY },
   { name: "bets", description: "Your open bets, with buttons to cancel", ...SERVER_ONLY },
+  {
+    name: "betcap",
+    description: "Admins: cap each bet and each user's total per Madden week (0 = no cap); empty = show caps",
+    ...SERVER_ONLY,
+    options: [
+      { type: INTEGER, name: "per_bet", description: "Most one bet can be (Tickets, or $ in play money); 0 = no cap", required: false, min_value: 0, max_value: 100000000 },
+      { type: INTEGER, name: "per_user", description: "Most one user can bet in one Madden week, all bets together; 0 = no cap", required: false, min_value: 0, max_value: 100000000 },
+    ],
+  },
   { name: "payouts", description: "Admins: post the payouts report now (normally posted after each advance)", ...SERVER_ONLY },
   {
     name: "verifykickoff",

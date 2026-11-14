@@ -21,7 +21,7 @@ import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { cancelValue, closeTimes, isFutures, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
+import { betCaps, cancelValue, closeTimes, isFutures, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
 import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
@@ -236,6 +236,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       return verifyKickoffCmd(i, lg, d, url);
+    }
+    case "betcap": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await betCapCmd(i, lg), false);
     }
     case "payouts": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
@@ -915,4 +920,25 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
     flags: EPHEMERAL,
     components: rows,
   };
+}
+
+// ---------- /betcap (Nick, 2026-11-14): per-bet and per-member-per-market caps ----------
+async function betCapCmd(i: Interaction, lg: LinkedLeague): Promise<string> {
+  const tickets = Boolean(await ticketsConfig(lg.slug).catch(() => null));
+  const perBet = opt(i, "per_bet"), perUser = opt(i, "per_user");
+  const fmt = (n: number | null) => (n == null ? "no cap" : tickets ? `${n.toLocaleString("en-US")} Tickets` : `$${n.toLocaleString("en-US")}`);
+  if (perBet != null || perUser != null) {
+    const db = admin2();
+    const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
+    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+    const cur = { ...((settings.betCaps as Record<string, unknown>) || {}) };
+    if (perBet != null) cur.perBet = Number(perBet) || null;          // 0 → no cap
+    if (perUser != null) cur.perUserWeek = Number(perUser) || null;
+    settings.betCaps = cur;
+    const { error } = await db.from("leagues").update({ settings }).eq("id", lg.id);
+    if (error) return `Couldn't save that: ${error.message}`;
+  }
+  const c = await betCaps(lg.id, tickets);
+  const who = i.member?.user.global_name || i.member?.user.username || "An admin";
+  return `${perBet != null || perUser != null ? `🔒 **${who}** set the bet caps.` : "**Bet caps**"}\n• Per bet: **${fmt(c.perBet)}**\n• Per user per Madden week (all their bets that week; cancels and cash-outs give room back; resets when the league advances): **${fmt(c.perUserWeek)}**\n-# Applies to new bets on the site and in Discord. Change with /betcap per_bet:… per_user:… (0 = no cap).`;
 }
