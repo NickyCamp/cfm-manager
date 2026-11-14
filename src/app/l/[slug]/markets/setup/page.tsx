@@ -110,6 +110,7 @@ export default async function MarketsSetup({ params }: Props) {
           <div className="tbl-wrap"><table className="tbl">
             <tbody>
               <tr><td><code>/link</code>, <code>/marketchannels</code></td><td>Setup (Manage Server)</td></tr>
+              <tr><td><code>/gamechannels year week</code></td><td>A category like &ldquo;2027 - Week 1&rdquo; with a channel per game that week, pinging both managers; rolls over after each advance (Manage Server)</td></tr>
               <tr><td><code>/connect</code></td><td>Link your Discord to your CFM Manager account</td></tr>
               <tr><td><code>/kickoff team time</code></td><td>When betting closes on your game (either manager; admins any time)</td></tr>
               <tr><td><code>/balance</code></td><td>What you can bet: UnbelievaBoat balance, open bets and results not added yet</td></tr>

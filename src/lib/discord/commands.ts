@@ -100,6 +100,17 @@ export const COMMANDS = [
   },
   { name: "league", description: "Which league you're seeing here, with links", ...ANYWHERE },
   { name: "marketchannels", description: "Set up or refresh the Markets category: a channel per game this week with odds and bets", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
+  {
+    name: "gamechannels",
+    description: "Make a category (e.g. 2027 - Week 1) with a channel per game that week; empty = this week",
+    default_member_permissions: MANAGE_SERVER,
+    ...SERVER_ONLY,
+    options: [
+      { type: INTEGER, name: "year", description: "Season, e.g. 2027 (only the current season's schedule is loaded)", required: false, min_value: 2000, max_value: 2100 },
+      { type: INTEGER, name: "week", description: "Week 1-18; playoffs: 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl", required: false, min_value: 1, max_value: 22 },
+      { type: STRING, name: "action", description: "Leave empty to build/refresh; Remove deletes the game channels", required: false, choices: [{ name: "Remove", value: "remove" }] },
+    ],
+  },
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
   { name: "balance", description: "Your Tickets free to bet: UnbelievaBoat balance, open bets and results not added yet", ...SERVER_ONLY },
   { name: "bets", description: "Your open bets, with buttons to cancel", ...SERVER_ONLY },

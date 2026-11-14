@@ -26,6 +26,7 @@ import { marketBook } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
 import { postPayoutsNow, refreshGame, syncMarketChannels } from "./marketChannels";
+import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
@@ -212,6 +213,12 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!canManage(i)) return reply("Only people with Manage Server can set up the Markets category.");
       return reply(await syncMarketChannels(lg.slug));
+    }
+    case "gamechannels": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!canManage(i)) return reply("Only people with Manage Server can set up game channels.");
+      if (opt(i, "action") === "remove") return reply(await removeGameChannels(lg.slug));
+      return reply(await syncGameChannels(lg.slug, { year: Number(opt(i, "year")) || undefined, week: Number(opt(i, "week")) || undefined }));
     }
     case "kickoff": {
       if (via !== "server") return reply("Kickoff times can only be set in the league's own Discord server (linked with `/link`).");

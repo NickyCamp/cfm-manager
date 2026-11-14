@@ -43,7 +43,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown } | null;
+  settings: { discord?: { channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -86,6 +86,19 @@ async function refreshMarketChannels(lg: League, log: (s: string) => void) {
     log(`- Discord Markets: ${j.result || j.error || `HTTP ${res.status}`}`);
   } catch (e) {
     log(`- Discord Markets refresh failed: ${(e as Error).message}`);
+  }
+}
+
+/** Asks the site to roll/refresh the league's weekly game channels (only if /gamechannels was run). */
+async function refreshGameChannels(lg: League, log: (s: string) => void) {
+  if (!lg.settings?.gameChannels || !process.env.EA_TOKEN_KEY) return;
+  try {
+    const { ts, sig } = signWorkerCall(lg.slug);
+    const res = await fetch(`${APP_URL}/api/leagues/${lg.slug}/discord/gamechannels`, { method: "POST", headers: { "x-cfm-ts": ts, "x-cfm-sig": sig } });
+    const j = (await res.json().catch(() => ({}))) as { result?: string; error?: string };
+    log(`- Discord game channels: ${j.result || j.error || `HTTP ${res.status}`}`);
+  } catch (e) {
+    log(`- Discord game channels refresh failed: ${(e as Error).message}`);
   }
 }
 
@@ -156,6 +169,7 @@ async function syncLeague(lg: League): Promise<string> {
   const built = await buildAndSave(lg.slug, files, log);
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
   if (built) await refreshMarketChannels(lg, log);
+  if (built) await refreshGameChannels(lg, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);
 }
 

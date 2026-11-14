@@ -38,8 +38,9 @@ export async function clearMarketChannels(leagueId: string) {
   const db = supabaseAdmin();
   const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
   const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  if (!settings.marketChannels) return;
+  if (!settings.marketChannels && !settings.gameChannels) return;
   delete settings.marketChannels;
+  delete settings.gameChannels; // the weekly game channels belong to the old server too
   await db.from("leagues").update({ settings }).eq("id", leagueId);
 }
 
