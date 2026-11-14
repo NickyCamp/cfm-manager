@@ -877,7 +877,7 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
     const shut = !m || m.closed || m.settled || o?.state !== "open";
     const rawM = raw.markets.find((x) => x.key === p.market_key);
     const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets).catch(() => null) : null;
-    lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}¢` : ""}${shut ? " · locked" : back != null ? ` · cancel → ${n(back)}` : ""}`);
+    lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}%` : ""}${shut ? " · locked" : back != null ? ` · cancel → ${n(back)}` : ""}`);
     if (!shut && buttons.length < 20) buttons.push({ type: 2, style: 4, label: `Cancel #${ix + 1}`, custom_id: `mkc|${p.market_key}|${p.outcome_id}|${p.side}`.slice(0, 100) });
   }
   const rows = [];

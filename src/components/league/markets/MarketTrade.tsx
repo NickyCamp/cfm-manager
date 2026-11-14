@@ -75,8 +75,8 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
                   <span className="mk-row-chance"><Chance p={x.p} state={x.state} /><Delta p={x.p} prev={x.prev} state={x.state} /></span>
                   {x.state === "open" && !closed ? (
                     <span className="mk-btns">
-                      <button type="button" className={`mk-btn yes${active && side === "yes" ? " on" : ""}`} onClick={() => choose(x.id, "yes")}>Yes {p.yes}¢</button>
-                      <button type="button" className={`mk-btn no${active && side === "no" ? " on" : ""}`} onClick={() => choose(x.id, "no")}>No {p.no}¢</button>
+                      <button type="button" className={`mk-btn yes${active && side === "yes" ? " on" : ""}`} onClick={() => choose(x.id, "yes")}>Yes {p.yes}%</button>
+                      <button type="button" className={`mk-btn no${active && side === "no" ? " on" : ""}`} onClick={() => choose(x.id, "no")}>No {p.no}%</button>
                     </span>
                   ) : (
                     <span className="mk-btns"><span className={`mk-result ${x.state}`}>{x.state === "won" ? "Yes ✓" : x.state === "lost" ? "No" : "Closed"}</span></span>
@@ -100,8 +100,8 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
               <div><strong>{o.label}</strong><div className="muted small">{title}</div></div>
             </div>
             <div className="mk-side-toggle" role="group" aria-label="Side">
-              <button type="button" className={`mk-btn yes${side === "yes" ? " on" : ""}`} aria-pressed={side === "yes"} onClick={() => { setSide("yes"); setMsg(null); }}>Yes {pr.yes}¢</button>
-              <button type="button" className={`mk-btn no${side === "no" ? " on" : ""}`} aria-pressed={side === "no"} onClick={() => { setSide("no"); setMsg(null); }}>No {pr.no}¢</button>
+              <button type="button" className={`mk-btn yes${side === "yes" ? " on" : ""}`} aria-pressed={side === "yes"} onClick={() => { setSide("yes"); setMsg(null); }}>Yes {pr.yes}%</button>
+              <button type="button" className={`mk-btn no${side === "no" ? " on" : ""}`} aria-pressed={side === "no"} onClick={() => { setSide("no"); setMsg(null); }}>No {pr.no}%</button>
             </div>
             <label className="mk-amount">
               <span>Amount</span>
@@ -113,8 +113,8 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
             </div>
             <dl className="mk-ticket-sum">
               <div><dt>Contracts</dt><dd>{qty}</dd></div>
-              {q && qty > 0 && <div><dt>Average price</dt><dd>{Math.round(q.avg * 1000) / 10}¢</dd></div>}
-              {q && qty > 0 && <div><dt>Yes price after</dt><dd>{Math.round(q.after * 100)}¢</dd></div>}
+              {q && qty > 0 && <div><dt>Average price</dt><dd>{Math.round(q.avg * 1000) / 10}%</dd></div>}
+              {q && qty > 0 && <div><dt>Yes price after</dt><dd>{Math.round(q.after * 100)}%</dd></div>}
               <div><dt>Cost</dt><dd>{fmt(cost)}</dd></div>
               <div><dt>Payout if {side === "yes" ? "Yes" : "No"}</dt><dd className="pos">{fmt(qty * unit)}</dd></div>
               <div><dt>Profit if right</dt><dd className="pos">+{fmt(qty * unit - cost)}</dd></div>

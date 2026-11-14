@@ -57,8 +57,8 @@ export function TeamBets({ slug, open, done, markets, tickets, members }: { slug
                       <BetCell b={b} />
                       <td className="num">{Math.round(b.qty).toLocaleString("en-US")}</td>
                       <td className="num">{amt(b.cost)}</td>
-                      <td className="num">{Math.round((b.cost / b.qty / unit) * 100)}¢</td>
-                      <td className="num">{now == null ? "—" : `${Math.round(now * 100)}¢`}</td>
+                      <td className="num">{Math.round((b.cost / b.qty / unit) * 100)}%</td>
+                      <td className="num">{now == null ? "—" : `${Math.round(now * 100)}%`}</td>
                       <td className="num pos">{amt(b.qty * unit)}</td>
                       <td className="small">{m?.closed ? "Locked" : m?.gameId ? "At kickoff" : "At settlement"}</td>
                       <td className="nw small">{day(b.placed)}</td>

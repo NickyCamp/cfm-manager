@@ -57,7 +57,7 @@ export async function placeFromModal(i: ComponentInteraction): Promise<string> {
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   const pays = r.tickets ? `${(r.qty * 100).toLocaleString("en-US")} Tickets` : `$${r.qty.toFixed(2)}`;
-  return `✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}¢). Pays **${pays}** if right. The price moved ${Math.round(r.before * 100)}¢ → ${Math.round(r.after * 100)}¢.`;
+  return `✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.`;
 }
 
 /** "Cancel #n" from /bets (custom_id "mkc|<market>|<outcome>|<side>"): cancels the whole position. */

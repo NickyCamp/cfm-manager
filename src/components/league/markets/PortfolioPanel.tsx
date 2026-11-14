@@ -49,8 +49,8 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
                 </div>
                 {!onlyMarket && <Link className="mk-pos-market" href={`/l/${slug}/markets/${p.m}`}>{info?.title ?? p.m}</Link>}
                 <div className="mk-pos-nums">
-                  <span>{p.qty} @ {Math.round((p.cost / p.qty / unit) * 100)}¢</span>
-                  <span>now {price}¢</span>
+                  <span>{p.qty} @ {Math.round((p.cost / p.qty / unit) * 100)}%</span>
+                  <span>now {price}%</span>
                   <span>cost {fmt(p.cost)}</span>
                 </div>
                 <div className="mk-pos-actions">
@@ -75,7 +75,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
               const verb = f.kind === "buy" ? "Bought" : f.kind === "sell" ? "Cancelled" : f.amount > 0 ? "Paid out" : "Expired";
               return (
                 <li key={i}>
-                  <span>{verb} {f.qty} {f.side === "yes" ? "Yes" : "No"} · {info?.label ?? f.o}{f.kind !== "settle" ? ` @ ${f.price}¢` : ""}</span>
+                  <span>{verb} {f.qty} {f.side === "yes" ? "Yes" : "No"} · {info?.label ?? f.o}{f.kind !== "settle" ? ` @ ${f.price}%` : ""}</span>
                   <span className={f.kind === "buy" ? "" : f.amount > 0 ? "pos" : "neg"}>{f.kind === "buy" ? "−" : "+"}{fmt(f.amount)}</span>
                 </li>
               );

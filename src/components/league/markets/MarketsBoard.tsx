@@ -70,8 +70,8 @@ export function MarketsBoard({ slug, markets, teams, index, sinceLabel, initialC
                 <span className="mk-row-chance"><Chance p={o.p} state={o.state} /><Delta p={o.p} prev={o.prev} state={o.state} /></span>
                 {o.state === "open" && !m.settled && !m.closed ? (
                   <span className="mk-btns">
-                    <Link className="mk-btn yes" href={href("yes")} aria-label={`Buy Yes on ${o.label} at ${pr.yes} cents`}>Yes {pr.yes}¢</Link>
-                    <Link className="mk-btn no" href={href("no")} aria-label={`Buy No on ${o.label} at ${pr.no} cents`}>No {pr.no}¢</Link>
+                    <Link className="mk-btn yes" href={href("yes")} aria-label={`Buy Yes on ${o.label} at ${pr.yes}%`}>Yes {pr.yes}%</Link>
+                    <Link className="mk-btn no" href={href("no")} aria-label={`Buy No on ${o.label} at ${pr.no}%`}>No {pr.no}%</Link>
                   </span>
                 ) : (
                   <span className="mk-btns"><span className={`mk-result ${o.state}`}>{o.state === "won" ? "Yes ✓" : o.state === "lost" ? "No" : "Closed"}</span></span>

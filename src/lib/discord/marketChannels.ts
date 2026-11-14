@@ -64,7 +64,7 @@ export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryM
       key: `${main.key}|*`,
       content: `**Who wins?** ${main.outcomes.map((o) => `${o.label} ${o.state === "won" ? "✅" : o.state === "lost" ? "❌" : `**${chanceText(o.p)}**`}`).join(" · ")}`,
       components: [{ type: 1, components: main.outcomes.map((o, i) => o.state !== "open" ? btn(`${o.label}: ${o.state === "won" ? "won" : "lost"}`, GREY, `mkx|${main.key}|${o.id}|${i}`, true)
-        : btn(`${o.label} ${prices(o).yes}¢`, i === 0 ? GREEN : RED, `mk|${main.key}|${o.id}|yes|${o.label.split(" ").pop()}`.slice(0, 100), shut)) }],
+        : btn(`${o.label} ${prices(o).yes}%`, i === 0 ? GREEN : RED, `mk|${main.key}|${o.id}|yes|${o.label.split(" ").pop()}`.slice(0, 100), shut)) }],
     });
   }
   for (const m of markets.filter((x) => x.key.startsWith(`props-${g.id}-`))) {
@@ -77,7 +77,7 @@ export function gameEntries(g: Game, markets: Market[], closed: boolean): EntryM
         content: `**${o.label}**${result}${o.state === "open" ? ` · ${chanceText(o.p)}` : ""}${o.sub ? `\n-# ${o.sub}` : ""}`,
         components: [{ type: 1, components: o.state !== "open"
           ? [btn(o.state === "won" ? "Yes won" : "No won", GREY, `mkx|${m.key}|${o.id}`, true)]
-          : [btn(`Yes ${pr.yes}¢`, GREEN, `mk|${m.key}|${o.id}|yes`, shut), btn(`No ${pr.no}¢`, RED, `mk|${m.key}|${o.id}|no`, shut)] }],
+          : [btn(`Yes ${pr.yes}%`, GREEN, `mk|${m.key}|${o.id}|yes`, shut), btn(`No ${pr.no}%`, RED, `mk|${m.key}|${o.id}|no`, shut)] }],
       });
     }
   }
@@ -99,7 +99,7 @@ export function gameEmbed(slug: string, d: LeagueData, g: Game, markets: Market[
     title: `${a.city} ${a.name} at ${h.city} ${h.name}`,
     url: `${APP_URL}/l/${slug}/markets/game-${g.id}`,
     color: hexColor(h.primary) || BRAND,
-    description: `${d.season.title} · ${status}\nEvery line below is a bet: tap **Yes** or **No**, enter how much, done. The price is the chance (56¢ = 56%) and moves with every bet. Each contract pays ${unit} if right. Link your Discord once with /connect.`,
+    description: `${d.season.title} · ${status}\nEvery line below is a bet: tap **Yes** or **No**, enter how much, done. The price is the chance and moves with every bet. Each contract pays ${unit} if right. Link your Discord once with /connect.`,
     footer: { text: `${a.abbr} @ ${h.abbr} · updated ${fmtET(new Date())}` },
   };
 }
@@ -305,7 +305,7 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   if (!channel) return;
   const money = all.tickets ? `${Math.round(bet.amount).toLocaleString("en-US")} Tickets` : `$${bet.amount.toFixed(2)}`;
   const yesBefore = Math.round(bet.before * 100), yesAfter = Math.round(bet.after * 100);
-  const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : "cancelled"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} ${bet.kind === "buy" ? "for" : "and got back"} **${money}** · Yes ${yesBefore}¢ → ${yesAfter}¢`;
+  const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : "cancelled"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} ${bet.kind === "buy" ? "for" : "and got back"} **${money}** · Yes ${yesBefore}% → ${yesAfter}%`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
   if (gc && gameId) {
     // update every line whose price moved (linked prices move the other side and the player's other lines too)

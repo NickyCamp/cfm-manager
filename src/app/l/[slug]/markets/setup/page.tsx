@@ -88,7 +88,7 @@ export default async function MarketsSetup({ params }: Props) {
         <div className="panel mk-setup">
           <h3>Rules members should know</h3>
           <ul>
-            <li>Prices are chances in cents (56¢ = 56%) and move with every bet, so earlier bets get better prices. A winning contract pays $1 in play money, or 100 Tickets.</li>
+            <li>Prices are chances (56% = it happens about 56% of the time) and move with every bet, so earlier bets get better prices. A winning contract pays $1 in play money, or 100 Tickets.</li>
             <li>Until a market locks (kickoff for games and props, settlement for season markets), a bet can be cancelled for what it cost, or what it&apos;s worth then if that&apos;s less. You can&apos;t hold both sides of the same bet.</li>
             <li>A tied game is void and every stake comes back. There are no betting limits.</li>
             <li>Every bet, cancel, payout line and kickoff is in the <Link href={`/l/${slug}/markets/activity`}>public trade log</Link>, which nobody can edit.</li>

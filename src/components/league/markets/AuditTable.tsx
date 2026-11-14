@@ -5,7 +5,7 @@ import type { AuditRow } from "@/lib/marketStore";
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET";
 const usd = (x: number) => `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const cents = (p: number | null) => (p == null ? "" : `${Math.round(p * 100)}¢`);
+const cents = (p: number | null) => (p == null ? "" : `${Math.round(p * 100)}%`);
 
 export function AuditTable({ slug, rows, index, showMarket = true, currency = "usd" }: { slug: string; rows: AuditRow[]; index: PriceIndex; showMarket?: boolean; currency?: "usd" | "tickets" }) {
   const amt = (x: number) => (currency === "tickets" ? `${Math.round(x).toLocaleString("en-US")} Tickets` : usd(x));
