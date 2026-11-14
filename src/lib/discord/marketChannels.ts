@@ -468,12 +468,18 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   const gc = gameId ? state.games[String(gameId)] : undefined;
   const channel = gc?.channelId || state.feedChannelId;
   if (!channel) return;
-  const money = all.tickets ? `${Math.round(bet.amount).toLocaleString("en-US")} Tickets` : `$${bet.amount.toFixed(2)}`;
-  const yesBefore = Math.round(bet.before * 100), yesAfter = Math.round(bet.after * 100);
-  const text = `🎟️ **${bet.who}** ${bet.kind === "buy" ? "bet" : /^(game|props)-/.test(bet.marketKey) ? "cancelled" : "cashed out"} ${bet.qty} **${bet.side === "yes" ? "Yes" : "No"}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`} ${bet.kind === "buy" ? "for" : "and got back"} **${money}** · Yes ${yesBefore}% → ${yesAfter}%`;
+  // Spell out what the bet locked in (Nick, 2026-11-14): stake, the price it got, and the fixed payout.
+  const unit = all.tickets ? 100 : 1;
+  const fmtMoney = (n: number) => (all.tickets ? `${Math.round(n).toLocaleString("en-US")} Tickets` : `$${n.toFixed(2)}`);
+  const sidePct = (yesP: number) => Math.round((bet.side === "yes" ? yesP : 1 - yesP) * 100);
+  const sideName = bet.side === "yes" ? "Yes" : "No";
+  const what = `**${sideName}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`}`;
+  const text = bet.kind === "buy"
+    ? `🎟️ **${bet.who}** bet **${fmtMoney(bet.amount)}** on ${what} · ${bet.qty.toLocaleString("en-US")} contracts at **${Math.round((bet.amount / bet.qty / unit) * 100)}%** avg (was ${sidePct(bet.before)}%, now ${sidePct(bet.after)}%) · **pays ${fmtMoney(bet.qty * unit)}** if it hits`
+    : `↩️ **${bet.who}** ${/^(game|props)-/.test(bet.marketKey) ? "cancelled" : "cashed out"} ${bet.qty.toLocaleString("en-US")} ${what} and got back **${fmtMoney(bet.amount)}** · ${sideName} ${sidePct(bet.before)}% → ${sidePct(bet.after)}%`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
   if (state.txChannelId) {
-    const full = gc ? text.replace(`· ${bet.outcomeLabel}`, `· ${bet.outcomeLabel} (${m?.title ?? bet.marketKey})`) : text;
+    const full = gc ? text.replace(`· ${bet.outcomeLabel}`, `· ${bet.outcomeLabel} (${m?.title ?? bet.marketKey})`) : text; // game posts leave out the game name
     await dc("POST", `/channels/${state.txChannelId}/messages`, { content: clip(full, 2000), allowed_mentions: { parse: [] } });
   }
   if (gc && gameId) {
