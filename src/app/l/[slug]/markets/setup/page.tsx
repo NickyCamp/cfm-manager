@@ -35,6 +35,7 @@ export default async function MarketsSetup({ params }: Props) {
       <div className="wrap">
         <nav className="mk-crumbs" aria-label="Breadcrumb"><Link href={`/l/${slug}/markets`}>Markets</Link><span aria-hidden> / </span>Setup guide</nav>
         <h2>Running the Markets in your league&apos;s Discord</h2>
+        <p className="muted small">Commissioners: every admin command below is also on the <Link href={`/l/${slug}/admin`}>admin page</Link>.</p>
         <p className="muted">Any league on CFM Manager can use the Markets on the site as they are, with play money. These steps add the Discord side: a channel per game with bet buttons, and, if your server uses UnbelievaBoat, betting its currency with weekly payout reports for your admins.</p>
 
         <div className="panel mk-setup">

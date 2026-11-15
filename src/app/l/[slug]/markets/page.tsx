@@ -42,7 +42,7 @@ export default async function MarketsPage({ params, searchParams }: Props) {
           </div>
         </div>
         <MarketsBoard slug={slug} markets={markets} teams={teams} index={priceIndex(book)} sinceLabel={book.sinceLabel} initialCat={sp.cat ?? "all"} shared={shared} />
-        <p className="muted small mk-setup-link">Running this in your own league&apos;s Discord? <Link href={`/l/${slug}/markets/setup`}>Setup guide</Link></p>
+        <p className="muted small mk-setup-link">Running this in your own league&apos;s Discord? <Link href={`/l/${slug}/markets/setup`}>Setup guide</Link> · <Link href={`/l/${slug}/admin`}>Admin</Link></p>
       </div>
     </main>
   );
