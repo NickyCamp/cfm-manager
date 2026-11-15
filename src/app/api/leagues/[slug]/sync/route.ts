@@ -13,7 +13,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ slug: 
   const { data: lg } = await admin.from("leagues").select("id, owner_id").eq("slug", slug).maybeSingle();
   if (!lg) return NextResponse.json({ error: "No such league." }, { status: 404 });
   const { data: member } = await admin.from("league_members").select("user_id").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle();
-  if (!member && lg.owner_id !== user.id) return NextResponse.json({ error: "Only league members can start a sync." }, { status: 403 });
+  if (!member) return NextResponse.json({ error: "Only league members can start a sync." }, { status: 403 });
 
   const r = await requestSync(slug, { minGapMs: MANUAL_COOLDOWN_MS, mode: "full", by: `manual:${user.id}` });
   if (r.started) return NextResponse.json({ ok: true, message: "Sync started. New data shows up in about 3 minutes." });

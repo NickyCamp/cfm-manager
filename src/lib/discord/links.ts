@@ -89,7 +89,7 @@ export type MyLeague = LinkedLeague & { why: "member" | "server" | "myleague" };
 
 /**
  * The leagues this Discord account can pick with /league: every league their CFM Manager
- * account is a member or owner of (needs /connect), plus their /myleague and this server's
+ * account is a member of (needs /connect), plus their /myleague and this server's
  * linked league. Private leagues are left out (Discord answers are visible to the chat).
  */
 export async function leaguesForDiscordUser(discordId: string, guildId?: string): Promise<{ leagues: MyLeague[]; connected: boolean }> {
@@ -104,8 +104,7 @@ export async function leaguesForDiscordUser(discordId: string, guildId?: string)
   if (userId) {
     const { data: m } = await db.from("league_members").select("league_id").eq("user_id", userId);
     const ids = (m || []).map((r) => r.league_id as string);
-    const { data: rows } = await db.from("leagues").select("id, slug, name, is_public, settings")
-      .or([`owner_id.eq.${userId}`, ids.length ? `id.in.(${ids.join(",")})` : ""].filter(Boolean).join(","));
+    const { data: rows } = ids.length ? await db.from("leagues").select("id, slug, name, is_public, settings").in("id", ids) : { data: [] };
     for (const lg of ((rows || []) as LinkedLeague[]).sort((a, b) => a.name.localeCompare(b.name))) add(lg, "member");
   }
   add(await leagueForUser(discordId), "myleague");

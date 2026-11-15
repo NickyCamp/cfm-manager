@@ -205,6 +205,56 @@ async function rebuildLeague(lg: League): Promise<string> {
   return ok ? "rebuilt" : "failed";
 }
 
+// ---------- leagues everyone removed (Nick, 2026-11-14) ----------
+// "Remove" on the dashboard by the last member sets settings.orphanedAt. Orphaned leagues don't sync;
+// after 30 days with nobody adding it back, the league and all its files are deleted.
+const ORPHAN_DAYS = 30;
+
+/** Every file path under a folder in a bucket, one level of subfolders deep. */
+async function filesUnder(bucket: string, prefix: string): Promise<string[]> {
+  const out: string[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const { data, error } = await db.storage.from(bucket).list(prefix, { limit: 100, offset });
+    if (error || !data) break;
+    for (const f of data) {
+      if (f.id) out.push(`${prefix}/${f.name}`);
+      else out.push(...(await filesUnder(bucket, `${prefix}/${f.name}`)));
+    }
+    if (data.length < 100) break;
+  }
+  return out;
+}
+
+/** "skip" (still inside the 30 days), "deleted", "back" (someone rejoined) or null (not orphaned). */
+async function handleOrphan(lg: League): Promise<string | null> {
+  const at = (lg.settings as { orphanedAt?: string } | null)?.orphanedAt;
+  if (!at) return null;
+  const { count } = await db.from("league_members").select("user_id", { count: "exact", head: true }).eq("league_id", lg.id);
+  if (count) {
+    // Someone is a member again: the clock stops.
+    const settings = { ...(lg.settings as Record<string, unknown>) };
+    delete settings.orphanedAt;
+    await db.from("leagues").update({ settings }).eq("id", lg.id);
+    lg.settings = settings as League["settings"];
+    return null;
+  }
+  const due = new Date(new Date(at).getTime() + ORPHAN_DAYS * 86_400_000);
+  if (Date.now() < due.getTime()) return `no members since ${at.slice(0, 10)}, not syncing; deleted on ${due.toISOString().slice(0, 10)} unless someone adds it back`;
+  const files = [
+    ...(await filesUnder("league-data", lg.slug)).map((p) => ["league-data", p] as const),
+    ...(await filesUnder("card-art", lg.slug)).map((p) => ["card-art", p] as const),
+    ["player-nicknames", `${lg.slug}.json`] as const,
+    ["card-layouts", `${lg.slug}.json`] as const,
+  ];
+  const { error } = await db.from("leagues").delete().eq("id", lg.id); // members, sync runs, markets cascade
+  if (error) return `orphan delete failed: ${error.message}`;
+  for (const bucket of ["league-data", "card-art", "player-nicknames", "card-layouts"]) {
+    const paths = files.filter(([b]) => b === bucket).map(([, p]) => p);
+    for (let i = 0; i < paths.length; i += 100) await db.storage.from(bucket).remove(paths.slice(i, i + 100));
+  }
+  return `deleted (no members for ${ORPHAN_DAYS} days; ${files.length} files)`;
+}
+
 (async () => {
   let q = db.from("leagues").select("id, slug, name, ea_league_id, console, ea_connection_id, last_sync_key, last_synced_at, settings").order("created_at");
   if (ONLY) q = q.eq("slug", ONLY);
@@ -214,7 +264,11 @@ async function rebuildLeague(lg: League): Promise<string> {
 
   const results: string[] = [];
   for (const lg of leagues as League[]) {
-    try { results.push(`${lg.slug}: ${MODE === "rebuild" ? await rebuildLeague(lg) : await syncLeague(lg)}`); }
+    try {
+      const orphan = await handleOrphan(lg);
+      if (orphan) { console.log(`[${lg.slug}] ${orphan}`); results.push(`${lg.slug}: ${orphan}`); continue; }
+      results.push(`${lg.slug}: ${MODE === "rebuild" ? await rebuildLeague(lg) : await syncLeague(lg)}`);
+    }
     catch (e) { results.push(`${lg.slug}: crashed (${(e as Error).message})`); console.error(e); }
   }
   console.log("\nSummary\n" + results.join("\n"));

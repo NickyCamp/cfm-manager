@@ -37,13 +37,23 @@ export async function POST(req: Request) {
   // console too gave PC players their own copy of a PS5 league (2026-11-13).
   const { data: existing } = await admin
     .from("leagues")
-    .select("id, slug, owner_id")
+    .select("id, slug, owner_id, settings")
     .eq("ea_league_id", body.eaLeagueId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (existing) {
-    await admin.from("league_members").upsert({ league_id: existing.id, user_id: user.id, role: existing.owner_id === user.id ? "commissioner" : "member" }, { onConflict: "league_id,user_id", ignoreDuplicates: true });
+    // Everyone had removed it (30-day delete clock running): whoever adds it back owns it, syncs it with
+    // their EA connection, and the clock stops.
+    const settings = { ...((existing.settings as Record<string, unknown>) || {}) };
+    const orphaned = Boolean(settings.orphanedAt);
+    if (orphaned) {
+      delete settings.orphanedAt;
+      await admin.from("leagues").update({ settings, owner_id: user.id, ea_connection_id: conn.id }).eq("id", existing.id);
+    }
+    const owner = orphaned || existing.owner_id === user.id;
+    await admin.from("league_members").upsert({ league_id: existing.id, user_id: user.id, role: owner ? "commissioner" : "member" }, { onConflict: "league_id,user_id", ignoreDuplicates: true });
+    if (orphaned) await triggerSync(existing.slug).catch(() => false);
     return NextResponse.json({ slug: existing.slug, joined: true });
   }
 

@@ -27,8 +27,8 @@ export default async function LeagueLayout({ children, params }: { children: Rea
     const user = await currentUser().catch(() => null);
     if (user) {
       const admin = supabaseAdmin();
-      const { data: lg } = await admin.from("leagues").select("id, owner_id").eq("slug", slug).maybeSingle();
-      if (lg) member = lg.owner_id === user.id || Boolean((await admin.from("league_members").select("user_id").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle()).data);
+      const { data: lg } = await admin.from("leagues").select("id").eq("slug", slug).maybeSingle();
+      if (lg) member = Boolean((await admin.from("league_members").select("user_id").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle()).data);
     }
   }
 

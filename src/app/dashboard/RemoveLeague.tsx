@@ -27,7 +27,7 @@ export function RemoveLeague({ slug, name }: { slug: string; name: string }) {
   }
   return (
     <div className="remove-league">
-      <span>Remove {name} from your leagues? The league&apos;s site stays up for everyone else, and you can add it again anytime.</span>
+      <span>Remove {name} from your leagues? It also leaves your Discord league list. The site stays up for everyone else; if nobody&apos;s left in it, it&apos;s deleted after 30 days unless someone adds it again.</span>
       {error && <span className="notice error">{error}</span>}
       <span className="remove-league-btns">
         <button type="button" className="btn btn-primary" disabled={busy} onClick={remove}>{busy ? "Removing…" : "Yes, remove"}</button>
