@@ -118,7 +118,8 @@ function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: st
   if (i.data?.name !== "league") return null;
   const opts = i.data.options || [];
   const get = (n: string) => opts.find((o) => o.name === n);
-  const cmd = String(get("command")?.value ?? "");
+  // No command picked: a player shows his card, a team its page, nothing at all the league's info (Nick, 2026-11-14).
+  const cmd = String(get("command")?.value ?? "") || (get("player")?.value ? "player" : get("team")?.value ? "team" : "info");
   const pick = String(get("league")?.value ?? "").trim();
   // Autocomplete keeps every typed box (the focused one may not belong to the command); commands keep only what they use.
   const keep = i.type === 4 ? opts.filter((o) => o.name !== "league" && o.name !== "command") : opts.filter((o) => (USES[cmd] || []).includes(o.name));

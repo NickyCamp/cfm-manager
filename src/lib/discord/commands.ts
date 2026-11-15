@@ -116,13 +116,13 @@ export const COMMANDS = [
   // command, then fill in what that command needs. Player/team names come from the picked league.
   {
     name: "league",
-    description: "Look up any league you're in: pick the league, then the command (player, tws, stats…)",
+    description: "Look up a player (or team, stats…) in any league you're in, from any Discord",
     ...ANYWHERE,
     options: [
       { type: STRING, name: "league", description: "Start typing: every league you're in (link your account with /connect)", required: true, autocomplete: true },
-      { type: STRING, name: "command", description: "What to show", required: true, choices: LEAGUE_CMDS.map(([value, name]) => ({ name, value })) },
-      { type: STRING, name: "player", description: "For player, contract, funfact: start typing a name", required: false, autocomplete: true },
-      { type: STRING, name: "team", description: "For team, tws, cap, rookie, stats, funfact: start typing a team", required: false, autocomplete: true },
+      { type: STRING, name: "player", description: "Start typing a name from that league", required: false, autocomplete: true },
+      { type: STRING, name: "team", description: "Start typing a team from that league (alone: the team's page)", required: false, autocomplete: true },
+      { type: STRING, name: "command", description: "Optional: something else (tws, stats…); a player alone shows his card", required: false, choices: LEAGUE_CMDS.map(([value, name]) => ({ name, value })) },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: STRING, name: "category", description: "For stats: which stat", required: false, choices: STAT_CATS.map((c) => ({ name: c.label, value: c.key })) },
       { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028", required: false, min_value: 2000, max_value: 2100 },
