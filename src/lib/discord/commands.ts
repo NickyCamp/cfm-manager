@@ -125,6 +125,16 @@ export const COMMANDS = [
       { type: INTEGER, name: "per_user", description: "Most one user can bet in one Madden week, all bets together; 0 = no cap", required: false, min_value: 0, max_value: 100000000 },
     ],
   },
+  {
+    name: "economy",
+    description: "Admins: the house cut of winnings, lowest price and cash-out fee (in %); empty = show them",
+    ...SERVER_ONLY,
+    options: [
+      { type: INTEGER, name: "cut", description: "% of a winning bet's profit kept by the house (default 5)", required: false, min_value: 0, max_value: 50 },
+      { type: INTEGER, name: "floor", description: "Lowest price a bet can buy at, in % (default 3: long shots pay at most 33x)", required: false, min_value: 0, max_value: 20 },
+      { type: INTEGER, name: "cashout_fee", description: "% kept when a futures bet is cashed out (default 2)", required: false, min_value: 0, max_value: 50 },
+    ],
+  },
   { name: "payouts", description: "Admins: post the payouts report now (normally posted after each advance)", ...SERVER_ONLY },
   {
     name: "verifykickoff",

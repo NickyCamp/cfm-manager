@@ -6,6 +6,7 @@
 -- Run once in the SQL editor; safe to re-run.
 
 alter table public.market_positions add column if not exists prepaid numeric(14,2) not null default 0;
+alter table public.market_ledger add column if not exists fee numeric(14,2) not null default 0;
 
 drop function if exists public.market_trade2(uuid, int, uuid, text, text, text, text, numeric, numeric, jsonb, numeric, numeric, numeric, boolean, numeric, jsonb, boolean);
 
@@ -93,21 +94,26 @@ begin
 end;
 $$;
 
-create or replace function public.market_settle2(p_league uuid, p_book int, p_market text, p_outcome text, p_winner text, p_per_contract numeric, p_tickets boolean, p_note text)
+-- Settlement, now with the house's cut of winnings (Nick, 2026-11-14): p_cut (e.g. 0.05) of a winning
+-- position's profit (payout - stake) is kept by the house. market_ledger.fee records it.
+drop function if exists public.market_settle2(uuid, int, text, text, text, numeric, boolean, text);
+create or replace function public.market_settle2(p_league uuid, p_book int, p_market text, p_outcome text, p_winner text, p_per_contract numeric, p_tickets boolean, p_note text, p_cut numeric default 0)
 returns int
 language plpgsql security definer set search_path = public as $$
-declare r record; n int := 0; pay numeric;
+declare r record; n int := 0; pay numeric; fee numeric;
 begin
   if p_winner not in ('yes', 'no', 'void') then return 0; end if;
   perform pg_advisory_xact_lock(hashtextextended('mkt:' || p_league || ':' || p_book || ':' || p_market, 0));
   for r in select * from market_positions where league_id = p_league and season = p_book and market_key = p_market and outcome_id = p_outcome for update loop
     pay := case when p_winner = 'void' then r.cost when r.side = p_winner then r.qty * p_per_contract else 0 end;
+    fee := case when p_winner <> 'void' and pay > r.cost then round((pay - r.cost) * greatest(0, least(p_cut, 0.5)), 2) else 0 end;
+    pay := pay - fee;
     insert into market_trades (league_id, season, user_id, market_key, outcome_id, side, kind, qty, amount)
       values (p_league, p_book, r.user_id, p_market, p_outcome, r.side, 'settle', r.qty, pay);
     if p_tickets then
-      insert into market_ledger (league_id, book, user_id, kind, market_key, outcome_id, side, qty, cost, payout, amount, note)
+      insert into market_ledger (league_id, book, user_id, kind, market_key, outcome_id, side, qty, cost, payout, amount, note, fee)
         values (p_league, p_book, r.user_id, 'result', p_market, p_outcome, r.side, r.qty, r.cost, pay, pay - (r.cost - r.prepaid),
-                case when p_winner = 'void' then 'Void: stake back (' || p_note || ')' when r.side = p_winner then 'Won (' || p_note || ')' else 'Lost (' || p_note || ')' end);
+                case when p_winner = 'void' then 'Void: stake back (' || p_note || ')' when r.side = p_winner then 'Won (' || p_note || ')' || case when fee > 0 then ' · house cut ' || round(fee) else '' end else 'Lost (' || p_note || ')' end, fee);
     else
       insert into market_wallets (league_id, season, user_id) values (p_league, p_book, r.user_id) on conflict do nothing;
       update market_wallets set cash = cash + pay where league_id = p_league and season = p_book and user_id = r.user_id;
@@ -118,6 +124,8 @@ begin
   return n;
 end;
 $$;
+revoke execute on function public.market_settle2(uuid, int, text, text, text, numeric, boolean, text, numeric) from public, anon, authenticated;
+grant execute on function public.market_settle2(uuid, int, text, text, text, numeric, boolean, text, numeric) to service_role;
 
 revoke execute on function public.market_trade2(uuid, int, uuid, text, text, text, text, numeric, numeric, jsonb, numeric, numeric, numeric, boolean, numeric, jsonb, boolean, numeric) from public, anon, authenticated;
 grant execute on function public.market_trade2(uuid, int, uuid, text, text, text, text, numeric, numeric, jsonb, numeric, numeric, numeric, boolean, numeric, jsonb, boolean, numeric) to service_role;

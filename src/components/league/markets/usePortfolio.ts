@@ -50,14 +50,14 @@ export const isFutures = (marketKey: string) => !/^(game|props)-/.test(marketKey
 
 /** What cancelling `qty` of a position gives back: what it cost (pro rata), or what it's worth at the
  *  market now if that's less (an estimate here; the server works it out exactly). Finished outcomes are worth their payout. */
-export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, pos: { qty: number; cost: number }, unit = 1, shared = true) {
+export function sellValue(index: PriceIndex, m: string, o: string, side: Side, qty: number, pos: { qty: number; cost: number }, unit = 1, shared = true, cashoutFee = 0) {
   const i = outcomeInfo(index, m, o);
   if (!i) return 0;
   if (i.state !== "open") return (i.state === "won") === (side === "yes") ? qty * unit : 0;
   const cost = pos.cost * Math.min(1, qty / pos.qty);
   const market = shared ? quoteSell(i.model, i.net, side, Math.floor(qty)).amount * unit : cost;
   // futures cash out at market value; game/prop bets cancel for the cost, or less if the price fell
-  const v = shared && isFutures(m) ? market : Math.min(cost, market);
+  const v = shared && isFutures(m) ? market * (1 - cashoutFee) : Math.min(cost, market);
   return unit === 1 ? round2(v) : Math.floor(v);
 }
 
@@ -163,10 +163,10 @@ export function usePortfolio(slug: string, index: PriceIndex, shared?: SharedSta
 
   const reset = useCallback(() => { if (!shared) commit(fresh()); }, [commit, shared]);
 
-  const value = wallet ? wallet.positions.reduce((a, p) => a + sellValue(index, p.m, p.o, p.side, p.qty, p, unit, Boolean(shared)), 0) : 0;
+  const value = wallet ? wallet.positions.reduce((a, p) => a + sellValue(index, p.m, p.o, p.side, p.qty, p, unit, Boolean(shared), shared?.economy?.cashoutFee ?? 0), 0) : 0;
   return {
     wallet, buy, sell, reset, value: round2(value), total: wallet ? round2(wallet.cash + value) : START_CASH, shared: Boolean(shared), canTrade, why,
-    leaderboard: shared?.leaderboard ?? [], currency, unit, fmt, needsLink, balanceError: shared?.balanceError, breakdown: shared?.ticketsBreakdown,
+    leaderboard: shared?.leaderboard ?? [], currency, unit, fmt, needsLink, balanceError: shared?.balanceError, breakdown: shared?.ticketsBreakdown, economy: shared?.economy,
   };
 }
 

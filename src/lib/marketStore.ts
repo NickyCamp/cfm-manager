@@ -3,7 +3,7 @@
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getLeagueRow } from "@/lib/league/load";
 import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
-import { ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
+import { DEFAULT_ECONOMY, ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP, pricerFor, quoteBuyFloored, quoteBuyP, quoteSellP, type Economy, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
 import { bookKey, discordOfUser, moveTickets, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 import { propResult } from "@/lib/league/props";
@@ -128,6 +128,7 @@ export function outcomeResult(d: LeagueData, book: MarketBook, marketKey: string
 /** Settles every open position whose outcome has finished. Cheap when there's nothing to do. */
 export async function settleFinished(leagueId: string, book: number, d: LeagueData, mb: MarketBook, tickets = false) {
   const admin = supabaseAdmin();
+  const eco = await economyOf(leagueId).catch(() => DEFAULT_ECONOMY);
   const { data } = await admin.from("market_positions").select("market_key, outcome_id").eq("league_id", leagueId).eq("season", book);
   const open = new Map<string, { m: string; o: string }>();
   for (const r of data || []) open.set(poolKey(r.market_key, r.outcome_id), { m: r.market_key, o: r.outcome_id });
@@ -141,6 +142,7 @@ export async function settleFinished(leagueId: string, book: number, d: LeagueDa
     const { error } = await admin.rpc("market_settle2", {
       p_league: leagueId, p_book: book, p_market: m, p_outcome: o, p_winner: winner,
       p_per_contract: tickets ? TICKETS_PER_CONTRACT : 1, p_tickets: tickets, p_note: `${label}${title ? `, ${title.title}` : ""}`.slice(0, 200),
+      ...(eco.cut > 0 ? { p_cut: eco.cut } : {}),
     });
     if (error) console.error("market settle", m, o, error.message); else n++;
   }
@@ -158,6 +160,7 @@ export type SharedState = {
   cash: number;                 // what the viewer can bet now (Tickets: UnbelievaBoat - open stakes + results not applied yet)
   ticketsBreakdown?: { ub: number; open: number; pending: number };
   caps?: BetCaps;
+  economy?: Economy;
   positions: { m: string; o: string; side: "yes" | "no"; qty: number; cost: number }[];
   fills: SharedFill[];
   leaderboard: { name: string; team: string; total: number; you: boolean }[];
@@ -243,6 +246,7 @@ export async function sharedState(leagueId: string, season: number, userId: stri
     cash: viewerCash,
     ticketsBreakdown,
     caps: await betCaps(leagueId, Boolean(tickets)),
+    economy: await economyOf(leagueId).catch(() => DEFAULT_ECONOMY),
     positions: (pos.data || []).filter((r) => r.user_id === userId).map((r) => ({ m: r.market_key, o: r.outcome_id, side: r.side, qty: Number(r.qty), cost: Number(r.cost) })),
     fills,
     leaderboard,
@@ -281,6 +285,13 @@ export async function betCaps(leagueId: string, tickets: boolean): Promise<BetCa
     perBet: c.perBet === undefined ? (tickets ? MAX_BET_TICKETS : MAX_BET_DOLLARS) : c.perBet || null,
     perUserWeek: c.perUserWeek || null,
   };
+}
+
+/** The league's economy rules (leagues.settings.economy, set with /economy), defaults filled in. */
+export async function economyOf(leagueId: string): Promise<Economy> {
+  const { data } = await supabaseAdmin().from("leagues").select("settings").eq("id", leagueId).maybeSingle();
+  const e = ((data?.settings as Record<string, unknown> | null)?.economy || {}) as Partial<Economy>;
+  return { cut: e.cut ?? DEFAULT_ECONOMY.cut, floor: e.floor ?? DEFAULT_ECONOMY.floor, cashoutFee: e.cashoutFee ?? DEFAULT_ECONOMY.cashoutFee };
 }
 
 /** When the league's current Madden week started, as first seen by the site (leagues.settings.marketWeek).
@@ -331,6 +342,7 @@ export async function placeTrade(args: {
   priced: Market; amount?: number; qty?: number; tickets?: TicketsConfig | null;
   /** The market again with these outcome ids included (award markets: players others have bet on). */
   extend?: (outcomeIds: string[]) => Market | undefined;
+  economy?: Economy;
 }): Promise<{ ok: true; qty: number; amount: number; before: number; after: number; cashout: boolean } | { ok: false; error: string }> {
   const cashout = args.kind === "sell" && isFutures(args.market);
   const admin = supabaseAdmin();
@@ -363,12 +375,15 @@ export async function placeTrade(args: {
       const net = nets.get(args.outcome) || 0;
       const priced = (args.extend && args.extend([...nets.keys(), args.outcome])) || args.priced;
       const pr = pricerFor(priced, args.outcome, nets);
+      const eco = args.economy ?? DEFAULT_ECONOMY;
       const q = args.kind === "buy"
-        ? quoteBuyP(pr, net, args.side, (args.amount || 0) / unit)
+        ? quoteBuyFloored(pr, net, args.side, (args.amount || 0) / unit, eco.floor)
         : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
       if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to cancel." };
+      // futures cash-outs keep the house's cash-out fee
+      const value = cashout ? q.amount * (1 - eco.cashoutFee) : q.amount;
       // whole Tickets: a stake rounds up, a cancel's market value rounds down
-      const amount = T ? (args.kind === "buy" ? Math.ceil(q.amount * unit - 1e-6) : Math.floor(q.amount * unit + 1e-6)) : q.amount;
+      const amount = T ? (args.kind === "buy" ? Math.ceil(q.amount * unit - 1e-6) : Math.floor(value * unit + 1e-6)) : (args.kind === "buy" ? q.amount : Math.floor(value * 100) / 100);
       const { data, error } = await admin.rpc("market_trade2", {
         p_league: args.leagueId, p_book: args.book, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
         p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount,
@@ -410,16 +425,16 @@ export async function placeTrade(args: {
 
 /** What selling a whole position gives back right now: futures cash out at market value; game/prop bets
  *  cancel for what they cost, or their market value if that's less. */
-export async function cancelValue(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", pos: { qty: number; cost: number }, tickets: boolean, extend?: (ids: string[]) => Market | undefined) {
+export async function cancelValue(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", pos: { qty: number; cost: number }, tickets: boolean, extend?: (ids: string[]) => Market | undefined, eco?: Economy) {
   const nets = await marketNets(leagueId, book, m.key);
   const priced = (extend && extend([...nets.keys(), outcome])) || m;
   const q = quoteSellP(pricerFor(priced, outcome, nets), nets.get(outcome) || 0, side, Math.floor(pos.qty));
   const value = tickets ? Math.floor(q.amount * TICKETS_PER_CONTRACT + 1e-6) : q.amount;
-  return isFutures(m.key) ? value : Math.min(pos.cost, value);
+  return isFutures(m.key) ? Math.floor(value * (1 - (eco ?? DEFAULT_ECONOMY).cashoutFee)) : Math.min(pos.cost, value);
 }
 
 /** The live price of one side and what each amount would buy right now (Discord's quote step). */
-export async function liveQuote(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", amounts: number[], tickets: boolean, extend?: (ids: string[]) => Market | undefined) {
+export async function liveQuote(leagueId: string, book: number, m: Market, outcome: string, side: "yes" | "no", amounts: number[], tickets: boolean, extend?: (ids: string[]) => Market | undefined, eco: Economy = DEFAULT_ECONOMY) {
   const unit = tickets ? TICKETS_PER_CONTRACT : 1;
   const nets = await marketNets(leagueId, book, m.key);
   const priced = (extend && extend([...nets.keys(), outcome])) || m;
@@ -429,8 +444,9 @@ export async function liveQuote(leagueId: string, book: number, m: Market, outco
   return {
     price: side === "yes" ? yes : 1 - yes,
     buys: amounts.map((amount) => {
-      const q = quoteBuyP(pr, net, side, amount / unit);
-      return { amount, qty: q.qty, pays: q.qty * unit, after: side === "yes" ? q.after : 1 - q.after };
+      const q = quoteBuyFloored(pr, net, side, amount / unit, eco.floor);
+      const pays = q.qty * unit, stake = Math.ceil(q.amount * unit);
+      return { amount, qty: q.qty, pays, keep: Math.floor(pays - Math.max(0, pays - stake) * eco.cut), after: side === "yes" ? q.after : 1 - q.after };
     }),
   };
 }
@@ -571,6 +587,34 @@ export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, pla
   };
 }
 
+// ---------------------------------------------------------------- house ledger (Nick, 2026-11-14)
+export type HouseWeek = { week: string; staked: number; returned: number; paid: number; voids: number; cut: number; net: number };
+/** Week by week (Sunday–Saturday, Eastern): what members staked, got back from cancels / cash-outs, were paid
+ *  at settlement, and the house cut. net = returned + paid + voids − staked: positive = the markets created
+ *  money (members won it from the house), negative = they removed it. Open bets count as staked. */
+export async function houseLedger(leagueId: string, book: number): Promise<{ weeks: HouseWeek[]; total: HouseWeek }> {
+  const db = supabaseAdmin();
+  const [tr, vd, fees] = await Promise.all([
+    allRows<{ kind: string; amount: number; created_at: string }>((f, t) => db.from("market_trades").select("kind, amount, created_at").eq("league_id", leagueId).eq("season", book).order("id").range(f, t)),
+    db.from("market_trade_voids").select("delta, created_at").eq("league_id", leagueId).then((r) => r.data || []),
+    allRows<{ fee: number; created_at: string }>((f, t) => db.from("market_ledger").select("fee, created_at").eq("league_id", leagueId).eq("book", book).gt("fee", 0).order("id").range(f, t)).catch(() => []),
+  ]);
+  const weekOf = (iso: string) => {
+    const et = new Date(new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York" }));
+    et.setDate(et.getDate() - et.getDay());
+    return `${et.getFullYear()}-${String(et.getMonth() + 1).padStart(2, "0")}-${String(et.getDate()).padStart(2, "0")}`;
+  };
+  const by = new Map<string, HouseWeek>();
+  const row = (w: string) => { if (!by.has(w)) by.set(w, { week: w, staked: 0, returned: 0, paid: 0, voids: 0, cut: 0, net: 0 }); return by.get(w)!; };
+  for (const t of tr) { const r = row(weekOf(t.created_at)); const a = Number(t.amount); if (t.kind === "buy") r.staked += a; else if (t.kind === "sell") r.returned += a; else if (t.kind === "settle") r.paid += a; }
+  for (const v of vd) row(weekOf(v.created_at)).voids += Number(v.delta);
+  for (const f of fees) row(weekOf(f.created_at)).cut += Number(f.fee);
+  const weeks = [...by.values()].sort((a, b) => b.week.localeCompare(a.week));
+  for (const w of weeks) w.net = w.returned + w.paid + w.voids - w.staked;
+  const total = weeks.reduce((t, w) => ({ ...t, staked: t.staked + w.staked, returned: t.returned + w.returned, paid: t.paid + w.paid, voids: t.voids + w.voids, cut: t.cut + w.cut, net: t.net + w.net }), { week: "Total", staked: 0, returned: 0, paid: 0, voids: 0, cut: 0, net: 0 });
+  return { weeks, total };
+}
+
 export type MoveRow = { id: number; at: string; user: string; amount: number; kind: string; reason: string; status: string; error: string | null };
 /** Every Ticket movement the bot made in UnbelievaBoat (stakes taken, cancels / cash-outs / unused stakes returned), newest first. */
 export async function ticketMoveRows(leagueId: string, limit = 300): Promise<MoveRow[]> {
@@ -622,12 +666,16 @@ export async function verifyKickoff(a: { leagueId: string; season: number; d: Le
       .eq("league_id", a.leagueId).eq("season", key).in("kind", ["buy", "sell"]).gte("created_at", a.kickoff.toISOString())
       .or(`market_key.eq.game-${a.gameId},market_key.like.props-${a.gameId}-*`).order("id").range(f, t));
   const voided: typeof late = [];
+  const cut = (await economyOf(a.leagueId).catch(() => DEFAULT_ECONOMY)).cut;
   for (const t of late) {
     const res = outcomeResult(a.d, a.book, t.market_key, t.outcome_id);
     if (!res) continue;
     const mine = res === "void" ? "void" : (res === "won") === (t.side === "yes") ? "won" : "lost";
+    // a winning bet was paid net of the house cut, so its reversal uses the same net payout
+    const per = a.tickets ? TICKETS_PER_CONTRACT : 1;
+    const gross = Number(t.qty) * per, fee = mine === "won" && t.kind === "buy" ? Math.max(0, gross - Number(t.amount)) * cut : 0;
     const { data, error } = await admin.rpc("market_void_trade", {
-      p_trade: t.id, p_result: mine, p_per_contract: a.tickets ? TICKETS_PER_CONTRACT : 1, p_tickets: a.tickets,
+      p_trade: t.id, p_result: mine, p_per_contract: Number(t.qty) > 0 ? (gross - fee) / Number(t.qty) : per, p_tickets: a.tickets,
       p_by: a.by.name.slice(0, 64), p_reason: `Placed after the verified kickoff (${fmtET(a.kickoff)})`,
     });
     if (error) return { ok: false as const, error: error.message };

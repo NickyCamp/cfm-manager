@@ -21,7 +21,7 @@ import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { betCaps, cancelValue, closeTimes, isFutures, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
+import { betCaps, cancelValue, closeTimes, economyOf, isFutures, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
 import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
@@ -236,6 +236,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       return verifyKickoffCmd(i, lg, d, url);
+    }
+    case "economy": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await economyCmd(i, lg), false);
     }
     case "betcap": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
@@ -899,6 +904,7 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   if (!pos.length) return reply(`You have no open bets. ${url("/markets")}`);
   const view = await marketsForDiscord(lg.slug, marketBook(d), d.season.year, d.season, d);
   const raw = marketBook(d);
+  const eco = await economyOf(lg.id).catch(() => undefined);
   const n = (x: number) => (tickets ? `${Math.round(x).toLocaleString("en-US")} Tickets` : `$${x.toFixed(2)}`);
   const lines: string[] = [];
   const buttons: Record<string, unknown>[] = [];
@@ -908,7 +914,7 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
     const shut = !m || m.closed || m.settled || o?.state !== "open";
     const rawM = withAwardPlayers(raw, d, [[p.market_key, p.outcome_id]]).markets.find((x) => x.key === p.market_key);
     const ext = (ids: string[]) => withAwardPlayers(raw, d, ids.map((id) => [p.market_key, id] as [string, string])).markets.find((x) => x.key === p.market_key);
-    const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets, ext).catch(() => null) : null;
+    const back = !shut && rawM ? await cancelValue(lg.id, key, rawM, p.outcome_id, p.side, { qty: Number(p.qty), cost: Number(p.cost) }, tickets, ext, eco).catch(() => null) : null;
     const fut = isFutures(p.market_key);
     lines.push(`**${ix + 1}.** ${p.side === "yes" ? "Yes" : "No"} · ${o?.label ?? p.outcome_id} (${m?.title ?? p.market_key}) · ${Math.round(Number(p.qty))} for ${n(Number(p.cost))}${o?.state === "open" ? ` · now ${Math.round((p.side === "yes" ? o.p : 1 - o.p) * 100)}%` : ""}${shut ? " · locked" : back != null ? ` · ${fut ? "cash out" : "cancel"} → ${n(back)}` : ""}`);
     if (!shut && buttons.length < 20) buttons.push({ type: 2, style: 4, label: `${fut ? "Cash out" : "Cancel"} #${ix + 1}`, custom_id: `mkc|${p.market_key}|${p.outcome_id}|${p.side}`.slice(0, 100) });
@@ -916,7 +922,7 @@ async function betsCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   const rows = [];
   for (let k = 0; k < buttons.length; k += 5) rows.push({ type: 1, components: buttons.slice(k, k + 5) });
   return {
-    content: `**Your open bets**${pos.length > 20 ? ` (first 20 of ${pos.length})` : ""}\n${lines.join("\n")}\nGame and prop bets cancel for what they cost (or what they're worth now, if less) until kickoff. Futures cash out at what they're worth now. ${url("/markets")}`,
+    content: `**Your open bets**${pos.length > 20 ? ` (first 20 of ${pos.length})` : ""}\n${lines.join("\n")}\nGame and prop bets cancel for what they cost (or what they're worth now, if less) until kickoff. Futures cash out at what they're worth now, less the cash-out fee. ${url("/markets")}`,
     flags: EPHEMERAL,
     components: rows,
   };
@@ -941,4 +947,31 @@ async function betCapCmd(i: Interaction, lg: LinkedLeague): Promise<string> {
   const c = await betCaps(lg.id, tickets);
   const who = i.member?.user.global_name || i.member?.user.username || "An admin";
   return `${perBet != null || perUser != null ? `🔒 **${who}** set the bet caps.` : "**Bet caps**"}\n• Per bet: **${fmt(c.perBet)}**\n• Per user per Madden week (all their bets that week; cancels and cash-outs give room back; resets when the league advances): **${fmt(c.perUserWeek)}**\n-# Applies to new bets on the site and in Discord. Change with /betcap per_bet:… per_user:… (0 = no cap).`;
+}
+
+// ---------- /economy (Nick, 2026-11-14): house cut, price floor, cash-out fee ----------
+async function economyCmd(i: Interaction, lg: LinkedLeague): Promise<string> {
+  const cut = opt(i, "cut"), floor = opt(i, "floor"), fee = opt(i, "cashout_fee");
+  const changed = cut != null || floor != null || fee != null;
+  if (changed) {
+    const db = admin2();
+    const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
+    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
+    const cur = { ...((settings.economy as Record<string, unknown>) || {}) };
+    if (cut != null) cur.cut = Number(cut) / 100;
+    if (floor != null) cur.floor = Number(floor) / 100;
+    if (fee != null) cur.cashoutFee = Number(fee) / 100;
+    settings.economy = cur;
+    const { error } = await db.from("leagues").update({ settings }).eq("id", lg.id);
+    if (error) return `Couldn't save that: ${error.message}`;
+  }
+  const e = await economyOf(lg.id);
+  const pct = (x: number) => `${Math.round(x * 1000) / 10}%`;
+  const who = i.member?.user.global_name || i.member?.user.username || "An admin";
+  return `${changed ? `🏦 **${who}** changed the house rules.` : "**House rules**"}
+• House cut: **${pct(e.cut)}** of a winning bet's profit (a bet that pays 1,000 on a 400 stake keeps ${Math.round(600 * (1 - e.cut)).toLocaleString("en-US")} of the 600 profit)
+• Lowest price: **${pct(e.floor)}**${e.floor > 0 ? ` (a long shot pays at most ${Math.floor(1 / e.floor)}x)` : ""}
+• Futures cash-out fee: **${pct(e.cashoutFee)}**
+• Always on: nobody can bet on their own game (either team or its props), or against their own team.
+-# Change with /economy cut:… floor:… cashout_fee:… (whole percents).`;
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, priceIndex } from "@/lib/league/markets";
-import { auditTrades, closeLog, fmtET, ledgerRows, marketsForPage, ticketMoveRows, type AuditRow, type CloseRow, type LedgerRow, type MoveRow } from "@/lib/marketStore";
+import { auditTrades, closeLog, fmtET, houseLedger, ledgerRows, marketsForPage, ticketMoveRows, type AuditRow, type CloseRow, type LedgerRow, type MoveRow } from "@/lib/marketStore";
 import { NoData } from "@/components/league/bits";
 import { AuditTable } from "@/components/league/markets/AuditTable";
 
@@ -25,6 +25,7 @@ export default async function MarketActivity({ params, searchParams }: Props) {
   if (leagueId) closes = await closeLog(leagueId, d.season.year).catch(() => []);
   let ledger: LedgerRow[] = [];
   if (leagueId && tickets && !sp.market) ledger = await ledgerRows(leagueId, { user: sp.user, limit: 500 }).catch(() => []);
+  const house = leagueId && shared && !sp.market && !sp.user ? await houseLedger(leagueId, bookKey).catch(() => null) : null;
   const moves: MoveRow[] = leagueId && tickets && !sp.market && !sp.user ? await ticketMoveRows(leagueId).catch(() => []) : [];
   const teamsById = new Map(d.teams.map((t) => [t.id, t]));
   const gameName = (id: number) => { const g = d.games.find((x) => x.id === id); return g ? `${teamsById.get(g.away)?.abbr ?? "?"} @ ${teamsById.get(g.home)?.abbr ?? "?"}` : `Game ${id}`; };
@@ -73,6 +74,25 @@ export default async function MarketActivity({ params, searchParams }: Props) {
                 ))}</tbody>
               </table></div>
             ) : <p className="muted">None yet.</p>}
+          </div>
+        )}
+        {house && house.weeks.length > 0 && (
+          <div className="panel mk-audit-panel">
+            <h3>House ledger</h3>
+            <p className="muted small">What the markets did to the league&apos;s {tickets ? "Tickets" : "money"}, week by week (Sunday to Saturday). <strong>Net</strong> above zero means members won more from the house than they lost (new {tickets ? "Tickets" : "money"} in the economy); below zero means the house took it out. Open bets count as staked until they settle.</p>
+            <div className="tbl-wrap"><table className="tbl mk-audit">
+              <thead><tr><th scope="col">Week of</th><th className="num">Staked</th><th className="num">Cancels / cash-outs</th><th className="num">Paid at settlement</th><th className="num">Voids</th><th className="num">House cut</th><th className="num">Net</th></tr></thead>
+              <tbody>{[...house.weeks, house.total].map((w) => {
+                const f = (n: number) => Math.round(n).toLocaleString("en-US");
+                return (
+                  <tr key={w.week} className={w.week === "Total" ? "mk-total" : undefined}>
+                    <td className="nw">{w.week === "Total" ? <strong>Total</strong> : w.week}</td>
+                    <td className="num">{f(w.staked)}</td><td className="num">{f(w.returned)}</td><td className="num">{f(w.paid)}</td><td className="num">{f(w.voids)}</td><td className="num">{f(w.cut)}</td>
+                    <td className={`num ${w.net > 0 ? "pos" : w.net < 0 ? "neg" : ""}`}><strong>{w.net > 0 ? "+" : w.net < 0 ? "−" : ""}{f(Math.abs(w.net))}</strong></td>
+                  </tr>
+                );
+              })}</tbody>
+            </table></div>
           </div>
         )}
         {tickets && moves.length > 0 && (

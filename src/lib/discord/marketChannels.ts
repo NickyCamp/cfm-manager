@@ -478,7 +478,7 @@ export async function postBet(slug: string, bet: { who: string; marketKey: strin
   const sideName = bet.side === "yes" ? "Yes" : "No";
   const what = `**${sideName}** · ${bet.outcomeLabel}${gc ? "" : ` (${m?.title ?? bet.marketKey})`}`;
   const text = bet.kind === "buy"
-    ? `🎟️ **${bet.who}** bet **${fmtMoney(bet.amount)}** on ${what} · ${bet.qty.toLocaleString("en-US")} contracts at **${Math.round((bet.amount / bet.qty / unit) * 100)}%** avg (was ${sidePct(bet.before)}%, now ${sidePct(bet.after)}%) · **pays ${fmtMoney(bet.qty * unit)}** if it hits`
+    ? `🎟️ **${bet.who}** bet **${fmtMoney(bet.amount)}** on ${what} · ${bet.qty.toLocaleString("en-US")} contracts at **${Math.round((bet.amount / bet.qty / unit) * 100)}%** avg (was ${sidePct(bet.before)}%, now ${sidePct(bet.after)}%) · **pays ${fmtMoney(bet.qty * unit)}** if it hits (before the house cut)`
     : `↩️ **${bet.who}** ${/^(game|props)-/.test(bet.marketKey) ? "cancelled" : "cashed out"} ${bet.qty.toLocaleString("en-US")} ${what} and got back **${fmtMoney(bet.amount)}** · ${sideName} ${sidePct(bet.before)}% → ${sidePct(bet.after)}%`;
   await dc("POST", `/channels/${channel}/messages`, { content: clip(text, 2000), allowed_mentions: { parse: [] } });
   if (state.txChannelId) {

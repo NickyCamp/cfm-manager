@@ -40,7 +40,7 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
           {positions.map((p) => {
             const info = outcomeInfo(index, p.m, p.o);
             const price = sidePrice(index, p.m, p.o, p.side);
-            const out = sellValue(index, p.m, p.o, p.side, p.qty, p, unit, port.shared);
+            const out = sellValue(index, p.m, p.o, p.side, p.qty, p, unit, port.shared, port.economy?.cashoutFee ?? 0);
             return (
               <li key={`${p.m}:${p.o}:${p.side}`}>
                 <div className="mk-pos-top">

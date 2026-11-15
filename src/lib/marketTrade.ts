@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
 import { isAwardMarket, marketBook, withAwardPlayers } from "@/lib/league/markets";
-import { betCaps, closeTimes, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade, betThisWeek, weekStartedAt } from "@/lib/marketStore";
+import { betCaps, closeTimes, economyOf, teamOfUser, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade, betThisWeek, weekStartedAt } from "@/lib/marketStore";
 import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { liveWeek, weekMoved } from "@/lib/eaLive";
@@ -47,6 +47,17 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
   }
 
   const tickets = await ticketsConfig(a.slug).catch(() => null);
+  if (a.kind === "buy") {
+    // Integrity (Nick, 2026-11-14): managers can't bet on their own game at all (either team or its props),
+    // and can't bet against their own team anywhere else. Backing your own team in futures is fine.
+    const abbr = await teamOfUser(a.leagueId, a.userId).catch(() => null);
+    const mine = abbr ? d.teams.find((t) => t.abbr.toLowerCase() === abbr.toLowerCase())?.id : undefined;
+    if (mine) {
+      const g = m.gameId ? d.games.find((x) => x.id === m.gameId) : undefined;
+      if (g && (g.home === mine || g.away === mine)) return { ok: false, status: 403, error: "You can't bet on your own game: not either team, and not its player props." };
+      if (o.team === mine && a.side === "no") return { ok: false, status: 403, error: "You can't bet against your own team." };
+    }
+  }
   // the league's caps (/betcap): per bet, and per member per Madden week
   if (a.kind === "buy") {
     const caps = await betCaps(a.leagueId, Boolean(tickets));
@@ -59,7 +70,8 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
     }
   }
   const extend = isAwardMarket(a.market) ? (ids: string[]) => withAwardPlayers(marketBook(d), d, ids.map((id) => [a.market, id] as [string, string])).markets.find((x) => x.key === a.market) : undefined;
-  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets, extend });
+  const economy = await economyOf(a.leagueId).catch(() => undefined);
+  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets, extend, economy });
   if (!r.ok) return { ok: false, status: 409, error: r.error };
 
   // Post it in the league's Discord Markets channels (if set up) and refresh the prices there.

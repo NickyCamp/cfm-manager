@@ -82,6 +82,11 @@ export function chanceText(p: number, state: OutcomeState = "open") {
 export const LIQUIDITY = 250;
 /** Most one bet can stake (Nick, 2026-11-14: "cap the bets at a max of 5k per bet"); play money is the same in dollars. */
 export const MAX_BET_TICKETS = 5000;
+/** House rules that protect a league's economy (Nick, 2026-11-14), set per league with /economy:
+ *  cut = share of a winning bet's profit kept by the house; floor = lowest price a contract sells for
+ *  (long shots can't pay more than 1/floor); cashoutFee = share kept when a futures bet cashes out. */
+export type Economy = { cut: number; floor: number; cashoutFee: number };
+export const DEFAULT_ECONOMY: Economy = { cut: 0.05, floor: 0.03, cashoutFee: 0.02 };
 export const MAX_BET_DOLLARS = 50;
 const clampP = (p: number) => Math.min(0.99, Math.max(0.01, p));
 const logit = (p: number) => Math.log(p / (1 - p));
@@ -205,6 +210,16 @@ function costP(pr: Pricer, net: number, side: "yes" | "no", n: number) {
   if (pr.kind === "binary") return buyCostBinary(pr.model, net, side, n);
   const c0 = setState(pr, net).cost;
   return side === "yes" ? setState(pr, net + n).cost - c0 : n + setState(pr, net - n).cost - c0;
+}
+/** quoteBuyP with the house's price floor: contracts never sell below `floor` each (e.g. 3¢ = at most 33x). */
+export function quoteBuyFloored(pr: Pricer, net: number, side: "yes" | "no", dollars: number, floor: number): Quote {
+  const q = quoteBuyP(pr, net, side, dollars);
+  if (!(floor > 0) || q.qty < 1 || q.avg >= floor) return q;
+  const qty = Math.floor(dollars / floor + 1e-9);
+  if (qty < 1) return { ...q, qty: 0, amount: 0, avg: 0 };
+  const amount = Math.ceil(Math.max(costP(pr, net, side, qty), qty * floor) * 100 - 1e-6) / 100;
+  const newNet = side === "yes" ? net + qty : net - qty;
+  return { qty, amount, newNet, before: q.before, after: pricedP(pr, newNet), avg: amount / qty };
 }
 export function quoteBuyP(pr: Pricer, net: number, side: "yes" | "no", dollars: number): Quote {
   const before = pricedP(pr, net);

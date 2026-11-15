@@ -36,12 +36,17 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
   const dollars = Math.max(0, Number(amount) || 0);
   const cash = port.wallet?.cash ?? 0;
   // shared mode: the price slides as you buy, so quote the whole order
-  const q = o && port.shared ? quoteBuy(o.model ?? o.p, o.net ?? 0, side, Math.min(dollars, T && port.needsLink ? dollars : cash) / unit) : null;
+  const eco = shared?.economy;
+  const q0 = o && port.shared ? quoteBuy(o.model ?? o.p, o.net ?? 0, side, Math.min(dollars, T && port.needsLink ? dollars : cash) / unit) : null;
+  // the house's lowest price (e.g. 3%): long shots are sold at the floor
+  const q = q0 && eco && q0.qty > 0 && q0.avg < eco.floor
+    ? (() => { const n = Math.floor((Math.min(dollars, T && port.needsLink ? dollars : cash) / unit) / eco.floor + 1e-9); return { ...q0, qty: n, amount: n * eco.floor, avg: eco.floor }; })()
+    : q0;
   const qty = q ? q.qty : price > 0 ? Math.floor((Math.min(dollars, cash) * 100) / price + 1e-9) : 0;
   const cost = q ? (T ? Math.ceil(q.amount * unit - 1e-6) : q.amount) : (qty * price) / 100;
   const fmt = port.fmt;
   const held = port.wallet?.positions.find((p) => p.m === mkey && p.o === sel && p.side === side);
-  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, held, unit, port.shared) : 0;
+  const heldValue = held && o ? sellValue(index, mkey, o.id, side, held.qty, held, unit, port.shared, shared?.economy?.cashoutFee ?? 0) : 0;
 
   const choose = (id: string, s: Side) => {
     setSel(id); setSide(s); setMsg(null);
@@ -119,8 +124,9 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
               {q && qty > 0 && <div><dt>Average price</dt><dd>{Math.round(q.avg * 1000) / 10}%</dd></div>}
               {q && qty > 0 && <div><dt>Yes price after</dt><dd>{Math.round(q.after * 100)}%</dd></div>}
               <div><dt>Cost</dt><dd>{fmt(cost)}</dd></div>
-              <div><dt>Payout if {side === "yes" ? "Yes" : "No"}</dt><dd className="pos">{fmt(qty * unit)}</dd></div>
-              <div><dt>Profit if right</dt><dd className="pos">+{fmt(qty * unit - cost)}</dd></div>
+              <div><dt>Payout if {side === "yes" ? "Yes" : "No"}</dt><dd className="pos">{fmt(qty * unit - (eco ? Math.max(0, qty * unit - cost) * eco.cut : 0))}</dd></div>
+              <div><dt>Profit if right</dt><dd className="pos">+{fmt((qty * unit - cost) * (1 - (eco?.cut ?? 0)))}</dd></div>
+              {eco && eco.cut > 0 && qty > 0 && <div><dt>House cut</dt><dd className="muted">{Math.round(eco.cut * 100)}% of profit</dd></div>}
             </dl>
             {port.canTrade ? (
               <button type="button" className={`btn mk-buy ${side}`} disabled={!port.wallet || qty < 1 || busy} onClick={doBuy}>

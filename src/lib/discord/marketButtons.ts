@@ -12,7 +12,7 @@ import type { Embed } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, searchAwardPlayers, withAwardPlayers } from "@/lib/league/markets";
-import { betCaps, betThisWeek, closeTimes, fmtET, liveQuote, ticketsAvailable, weekStartedAt } from "@/lib/marketStore";
+import { betCaps, betThisWeek, closeTimes, economyOf, fmtET, liveQuote, ticketsAvailable, weekStartedAt } from "@/lib/marketStore";
 import { discordOfUser } from "@/lib/tickets";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { payoutButton } from "./payouts";
@@ -73,7 +73,7 @@ export async function placeFromModal(i: ComponentInteraction): Promise<string | 
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   const pays = r.tickets ? `${(r.qty * 100).toLocaleString("en-US")} Tickets` : `$${r.qty.toFixed(2)}`;
-  return placed(`✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right, locked in. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.${amount - r.amount >= 1 ? `\n-# Bets buy whole contracts, so ${Math.round(amount - r.amount).toLocaleString("en-US")} of the ${Math.round(amount).toLocaleString("en-US")} wasn't needed and wasn't spent.` : ""}`, market, outcome, side, r.qty);
+  return placed(`✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right, locked in (the house keeps a cut of the profit). The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.${amount - r.amount >= 1 ? `\n-# Bets buy whole contracts, so ${Math.round(amount - r.amount).toLocaleString("en-US")} of the ${Math.round(amount).toLocaleString("en-US")} wasn't needed and wasn't spent.` : ""}`, market, outcome, side, r.qty);
 }
 
 /** "Cancel #n" / "Cash out #n" from /bets (custom_id "mkc|<market>|<outcome>|<side>") sells the whole position;
@@ -219,7 +219,8 @@ export async function quoteReply(i: ComponentInteraction): Promise<{ content: st
     ? Math.max(0, caps.perUserWeek - await betThisWeek(lg.id, userId, await weekStartedAt(lg.id, `${d.season.year}:${d.season.stage}:${d.season.week}`)))
     : null;
   const extend = (ids: string[]) => withAwardPlayers(marketBook(d), d, ids.map((id) => [t.market, id] as [string, string])).markets.find((x) => x.key === t.market);
-  const q = await liveQuote(lg.id, bookKey(d.season.year, tickets), m, t.outcome, t.side, amounts, tickets, extend);
+  const eco = await economyOf(lg.id);
+  const q = await liveQuote(lg.id, bookKey(d.season.year, tickets), m, t.outcome, t.side, amounts, tickets, extend, eco);
   let free: number | null = null;
   if (cfg) { const disc = await discordOfUser(userId).catch(() => null); free = await ticketsAvailable(lg.id, userId, cfg, disc?.id || discordId).then((b) => b.available, () => null); }
   const money = (n: number) => (tickets ? `${Math.round(n).toLocaleString("en-US")} Tickets` : `$${n.toLocaleString("en-US")}`);
@@ -229,7 +230,8 @@ export async function quoteReply(i: ComponentInteraction): Promise<{ content: st
   const lines = [
     `**${what}** (${m.title}) is **${pct(q.price)}** right now.`,
     Number.isFinite(t.shown) && Math.abs(t.shown - now) >= 3 ? `⚠️ The button showed ${t.shown}%: someone bet since that message was last updated. You'd get the live price.` : "",
-    ...q.buys.map((b) => `• **${money(b.amount)}** buys about **${b.qty.toLocaleString("en-US")}**, pays **${money(b.pays)}** if right (price → ${pct(b.after)})`),
+    ...q.buys.map((b) => `• **${money(b.amount)}** buys about **${b.qty.toLocaleString("en-US")}**, pays **${money(b.keep)}** if right${eco.cut > 0 ? " after the house cut" : ""} (price → ${pct(b.after)})`),
+    q.price < eco.floor ? `-# Long shot: bets here are priced at the ${Math.round(eco.floor * 100)}% minimum.` : "",
     free != null ? `You have **${money(free)}** free to bet.` : "",
     weekLeft != null ? `You can bet **${money(weekLeft)}** more this week (cap ${money(caps.perUserWeek!)} per week).` : "",
     `-# Prices move with every bet: you get the price at the moment you tap.${caps.perBet != null ? ` Max ${money(caps.perBet)} per bet.` : ""}`,
@@ -254,7 +256,7 @@ export async function placeQuick(i: ComponentInteraction): Promise<string | BetR
   if (!r.ok) return r.error;
   const money = r.tickets ? `${Math.round(r.amount).toLocaleString("en-US")} Tickets` : `$${r.amount.toFixed(2)}`;
   const pays = r.tickets ? `${(r.qty * 100).toLocaleString("en-US")} Tickets` : `$${r.qty.toFixed(2)}`;
-  return placed(`✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right, locked in. The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.${amount - r.amount >= 1 ? `\n-# Bets buy whole contracts, so ${Math.round(amount - r.amount).toLocaleString("en-US")} of the ${Math.round(amount).toLocaleString("en-US")} wasn't needed and wasn't spent.` : ""}`, market, outcome, side, r.qty);
+  return placed(`✅ Bet placed: ${r.qty} **${side === "yes" ? "Yes" : "No"}** · ${r.outcomeLabel} for **${money}** (avg ${Math.round((r.amount / r.qty / (r.tickets ? 100 : 1)) * 100)}%). Pays **${pays}** if right, locked in (the house keeps a cut of the profit). The price moved ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%.${amount - r.amount >= 1 ? `\n-# Bets buy whole contracts, so ${Math.round(amount - r.amount).toLocaleString("en-US")} of the ${Math.round(amount).toLocaleString("en-US")} wasn't needed and wasn't spent.` : ""}`, market, outcome, side, r.qty);
 }
 
 /** "Other amount…" on the quote ("mko|market|outcome|side|team"): the amount box. */
