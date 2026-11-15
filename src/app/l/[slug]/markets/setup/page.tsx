@@ -76,7 +76,7 @@ export default async function MarketsSetup({ params }: Props) {
 
           <h3>5. Optional: bet your server&apos;s UnbelievaBoat currency</h3>
           <ol className="mk-steps">
-            <li><strong>Let CFM Manager read balances.</strong> Someone with Discord&apos;s <strong>Administrator</strong> permission in the server (UnbelievaBoat requires it) opens <a href={UB_AUTHORIZE_URL} target="_blank" rel="noreferrer">UnbelievaBoat&apos;s authorize page</a> and picks the server. CFM Manager only reads balances; it never adds or removes currency.</li>
+            <li><strong>Let CFM Manager read balances.</strong> Someone with Discord&apos;s <strong>Administrator</strong> permission in the server (UnbelievaBoat requires it) opens <a href={UB_AUTHORIZE_URL} target="_blank" rel="noreferrer">UnbelievaBoat&apos;s authorize page</a> and picks the server. CFM Manager takes each bet&apos;s stake from the member&apos;s balance when the bet is placed (so it can&apos;t be spent elsewhere) and gives cancels and cash-outs straight back; winnings are added by admins from the payouts report. Every change is listed in the trade log.</li>
             <li><strong>Turn it on.</strong> The commissioner picks it below and says whether members keep the currency in <em>cash</em> or <em>bank</em>.</li>
             <li><strong>Give members something to bet</strong> if your server doesn&apos;t already, e.g. <code>!add-money-role cash @Members 100000</code>.</li>
           </ol>

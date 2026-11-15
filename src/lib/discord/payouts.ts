@@ -24,7 +24,9 @@ function lineFor(r: LedgerRow): string {
   const amt = `**${signed(r.amount)}**`;
   if (r.kind === "result") {
     const icon = r.note.startsWith("Void") ? "↩️" : r.note.startsWith("Won") ? "✅" : "❌";
-    return `${icon} ${side}${r.note} · staked ${n0(r.cost || 0)}, paid ${n0(r.payout || 0)} · ${amt}`;
+    // stakes taken from UnbelievaBoat when the bet was placed aren't taken again here
+    const taken = Math.round((r.amount - ((r.payout || 0) - (r.cost || 0))) * 100) / 100;
+    return `${icon} ${side}${r.note} · staked ${n0(r.cost || 0)}${taken >= 0.5 ? " (already taken)" : ""}, pays ${n0(r.payout || 0)} · ${amt}`;
   }
   if (r.kind === "cashout") return `💵 ${side}cashed out (${r.market}) · staked ${n0(r.cost || 0)}, got ${n0(r.payout || 0)} · ${amt}`;
   if (r.kind === "cancel") return `✂️ ${side}cancelled after the price fell (${r.market}) · staked ${n0(r.cost || 0)}, refunded ${n0(r.payout || 0)} · ${amt}`;

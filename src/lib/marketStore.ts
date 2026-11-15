@@ -5,7 +5,7 @@ import { getLeagueRow } from "@/lib/league/load";
 import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
 import { ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP, pricerFor, quoteBuyP, quoteSellP, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
-import { bookKey, discordOfUser, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
+import { bookKey, discordOfUser, moveTickets, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 import { propResult } from "@/lib/league/props";
 import { isAwardMarket, withAwardPlayers } from "@/lib/league/markets";
 import type { LeagueData } from "@/lib/league/types";
@@ -260,10 +260,11 @@ export async function ticketsAvailable(leagueId: string, userId: string, cfg: Ti
   const admin = supabaseAdmin();
   const [ub, pos, led] = await Promise.all([
     ticketBalance(cfg, discordId),
-    admin.from("market_positions").select("season, cost").eq("league_id", leagueId).eq("user_id", userId),
+    admin.from("market_positions").select("season, cost, prepaid").eq("league_id", leagueId).eq("user_id", userId),
     admin.from("market_ledger").select("amount").eq("league_id", leagueId).eq("user_id", userId).is("applied_at", null),
   ]);
-  const open = (pos.data || []).filter((r) => Number(r.season) % 10 === 1).reduce((a, r) => a + Number(r.cost), 0);
+  // open stakes not yet taken from UnbelievaBoat (bets since 2026-11-14 are taken when placed: prepaid)
+  const open = (pos.data || []).filter((r) => Number(r.season) % 10 === 1).reduce((a, r) => a + Number(r.cost) - Number(r.prepaid ?? 0), 0);
   const pending = (led.data || []).reduce((a, r) => a + Number(r.amount), 0);
   return { ub, open, pending, available: Math.floor(ub - open + pending) };
 }
@@ -335,42 +336,76 @@ export async function placeTrade(args: {
   const admin = supabaseAdmin();
   const T = Boolean(args.tickets);
   const unit = T ? TICKETS_PER_CONTRACT : 1;
-  let balance = 0;
+  type Out = { ok: true; qty: number; amount: number; before: number; after: number; cashout: boolean; credit: number } | { ok: false; error: string };
+
+  // Tickets buys: the stake leaves UnbelievaBoat before the bet is recorded (Nick, 2026-11-14), so it
+  // can't be spent elsewhere. Whatever isn't used (whole contracts, or a bet that doesn't go in) goes back.
+  let disc: { id: string } | null = null;
+  let debited = 0;
+  if (T) {
+    disc = await discordOfUser(args.userId);
+    if (!disc) return { ok: false, error: "Link your Discord first: run /connect in the league's Discord and open the link." };
+  }
   if (T && args.kind === "buy") {
-    const d = await discordOfUser(args.userId);
-    if (!d) return { ok: false, error: "Link your Discord first: run /connect in the league's Discord and open the link." };
-    try { balance = await ticketBalance(args.tickets!, d.id); } catch { return { ok: false, error: "Couldn't read your Tickets from UnbelievaBoat. Try again in a minute." }; }
+    const want = Math.floor(args.amount || 0);
+    let b;
+    try { b = await ticketsAvailable(args.leagueId, args.userId, args.tickets!, disc!.id); } catch { return { ok: false, error: "Couldn't read your Tickets from UnbelievaBoat. Try again in a minute." }; }
+    const room = Math.floor(Math.min(b.ub, b.available));
+    if (want > room) return { ok: false, error: `You have ${Math.max(0, room).toLocaleString("en-US")} Tickets free to bet; that bet is ${want.toLocaleString("en-US")}.` };
+    const mv = await moveTickets({ cfg: args.tickets!, leagueId: args.leagueId, book: args.book, userId: args.userId, discordId: disc!.id, amount: -want, kind: "bet", reason: `CFM Markets: stake on ${args.market}` });
+    if (!mv.ok) return { ok: false, error: `Couldn't take the stake from UnbelievaBoat, so no bet was placed (${mv.error ?? "unknown error"}).` };
+    debited = want;
   }
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const nets = await marketNets(args.leagueId, args.book, args.market);
-    const net = nets.get(args.outcome) || 0;
-    const priced = (args.extend && args.extend([...nets.keys(), args.outcome])) || args.priced;
-    const pr = pricerFor(priced, args.outcome, nets);
-    const q = args.kind === "buy"
-      ? quoteBuyP(pr, net, args.side, (args.amount || 0) / unit)
-      : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
-    if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to cancel." };
-    // whole Tickets: a stake rounds up, a cancel's market value rounds down
-    const amount = T
-      ? (args.kind === "buy" ? Math.ceil(q.amount * unit - 1e-6) : Math.floor(q.amount * unit + 1e-6))
-      : q.amount;
-    const { data, error } = await admin.rpc("market_trade2", {
-      p_league: args.leagueId, p_book: args.book, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
-      p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount,
-      p_expected: Object.fromEntries(nets), p_new_net: q.newNet,
-      p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000,
-      p_tickets: T, p_balance: balance, p_conflicts: args.kind === "buy" ? conflictsFor(priced, args.outcome, args.side) : null,
-      ...(cashout ? { p_cashout: true } : {}),
-    });
-    if (error) return { ok: false, error: error.message };
-    const r = data as { r: string; amount?: number };
-    if (r.r === "ok") return { ok: true, qty: q.qty, amount: Number(r.amount ?? amount), before: q.before, after: q.after, cashout };
-    if (r.r === "cash") return { ok: false, error: T ? `You have ${Math.max(0, Number(r.amount || 0)).toLocaleString("en-US")} Tickets free to bet (your UnbelievaBoat balance minus open bets, plus results not added yet); that bet costs ${amount.toLocaleString("en-US")}.` : "Not enough cash." };
-    if (r.r === "qty") return { ok: false, error: "You don't hold that many contracts." };
-    if (r.r === "conflict") return { ok: false, error: "You already have a bet on the other side of this. Cancel it first if you've changed your mind." };
-    if (r.r !== "stale") return { ok: false, error: "Trade refused." };
+
+  const attempt = async (): Promise<Out> => {
+    for (let n = 0; n < 5; n++) {
+      const nets = await marketNets(args.leagueId, args.book, args.market);
+      const net = nets.get(args.outcome) || 0;
+      const priced = (args.extend && args.extend([...nets.keys(), args.outcome])) || args.priced;
+      const pr = pricerFor(priced, args.outcome, nets);
+      const q = args.kind === "buy"
+        ? quoteBuyP(pr, net, args.side, (args.amount || 0) / unit)
+        : quoteSellP(pr, net, args.side, Math.floor(args.qty || 0));
+      if (q.qty < 1) return { ok: false, error: args.kind === "buy" ? "That's not enough for one contract." : "Nothing to cancel." };
+      // whole Tickets: a stake rounds up, a cancel's market value rounds down
+      const amount = T ? (args.kind === "buy" ? Math.ceil(q.amount * unit - 1e-6) : Math.floor(q.amount * unit + 1e-6)) : q.amount;
+      const { data, error } = await admin.rpc("market_trade2", {
+        p_league: args.leagueId, p_book: args.book, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
+        p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount,
+        p_expected: Object.fromEntries(nets), p_new_net: q.newNet,
+        p_price_before: Math.round(q.before * 10000) / 10000, p_price_after: Math.round(q.after * 10000) / 10000,
+        p_tickets: T, p_balance: 0, p_conflicts: args.kind === "buy" ? conflictsFor(priced, args.outcome, args.side) : null,
+        ...(cashout ? { p_cashout: true } : {}),
+        ...(debited ? { p_prepaid: Math.min(debited, amount) } : {}),
+      });
+      if (error) return { ok: false, error: error.message };
+      const r = data as { r: string; amount?: number; credit?: number };
+      if (r.r === "ok") return { ok: true, qty: q.qty, amount: Number(r.amount ?? amount), before: q.before, after: q.after, cashout, credit: Number(r.credit ?? 0) };
+      if (r.r === "cash") return { ok: false, error: T ? `You have ${Math.max(0, Number(r.amount || 0)).toLocaleString("en-US")} Tickets free to bet; that bet costs ${amount.toLocaleString("en-US")}.` : "Not enough cash." };
+      if (r.r === "qty") return { ok: false, error: "You don't hold that many contracts." };
+      if (r.r === "conflict") return { ok: false, error: "You already have a bet on the other side of this. Cancel it first if you've changed your mind." };
+      if (r.r !== "stale") return { ok: false, error: "Trade refused." };
+    }
+    return { ok: false, error: "Prices are moving fast. Try again." };
+  };
+  const res = await attempt();
+
+  if (T) {
+    // give back what the stake didn't use (or all of it if the bet didn't go in), and pay out cancels / cash-outs
+    const back = debited ? debited - (res.ok ? Math.ceil(res.amount) : 0) : 0;
+    const credit = res.ok && args.kind === "sell" ? Math.floor(res.credit) : 0;
+    const total = back + credit;
+    if (total > 0) {
+      const why = credit ? `CFM Markets: ${cashout ? "cash out" : "cancel"} on ${args.market}` : `CFM Markets: unused stake on ${args.market}`;
+      const mv = await moveTickets({ cfg: args.tickets!, leagueId: args.leagueId, book: args.book, userId: args.userId, discordId: disc!.id, amount: total, kind: "refund", reason: why });
+      if (!mv.ok) {
+        // couldn't send it: put it on the payouts report so an admin pays it
+        await admin.from("market_ledger").insert({ league_id: args.leagueId, book: args.book, user_id: args.userId, kind: "credit", market_key: args.market, outcome_id: args.outcome, side: args.side, amount: total,
+          note: `${credit ? (cashout ? "Cash-out" : "Cancel refund") : "Unused stake"} the bot couldn't send to UnbelievaBoat (move ${mv.id ?? "?"}: check UnbelievaBoat first, it may have gone through)` });
+      }
+    }
   }
-  return { ok: false, error: "Prices are moving fast. Try again." };
+  return res.ok ? { ok: true, qty: res.qty, amount: res.amount, before: res.before, after: res.after, cashout: res.cashout } : res;
 }
 
 /** What selling a whole position gives back right now: futures cash out at market value; game/prop bets
@@ -534,6 +569,14 @@ export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, pla
       return { ...m, status: "Open until played (no kickoff set)" };
     }),
   };
+}
+
+export type MoveRow = { id: number; at: string; user: string; amount: number; kind: string; reason: string; status: string; error: string | null };
+/** Every Ticket movement the bot made in UnbelievaBoat (stakes taken, cancels / cash-outs / unused stakes returned), newest first. */
+export async function ticketMoveRows(leagueId: string, limit = 300): Promise<MoveRow[]> {
+  const { data } = await supabaseAdmin().from("market_ticket_moves").select("id, user_id, amount, kind, reason, status, error, created_at").eq("league_id", leagueId).order("id", { ascending: false }).limit(limit);
+  const names = await memberNames([...new Set((data || []).map((r) => r.user_id))]);
+  return (data || []).map((r) => ({ id: Number(r.id), at: r.created_at, user: names.get(r.user_id) || "Member", amount: Number(r.amount), kind: r.kind, reason: r.reason, status: r.status, error: r.error }));
 }
 
 export type LedgerRow = {

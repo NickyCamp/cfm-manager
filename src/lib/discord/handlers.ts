@@ -875,7 +875,7 @@ async function balanceCmd(i: Interaction, lg: LinkedLeague): Promise<Message> {
   try {
     const b = await ticketsAvailable(lg.id, uid, cfg, disc?.id || userId(i));
     const n = (x: number) => Math.round(x).toLocaleString("en-US");
-    return reply(`🎟️ **${n(b.available)} Tickets** free to bet\n• UnbelievaBoat balance: ${n(b.ub)}\n• In open bets: −${n(b.open)}\n• Results not added in UnbelievaBoat yet: ${b.pending >= 0 ? "+" : "−"}${n(Math.abs(b.pending))}\nAdmins add/remove results each week from #previous-week-payouts.`);
+    return reply(`🎟️ **${n(b.available)} Tickets** free to bet\n• UnbelievaBoat balance: ${n(b.ub)}${b.open > 0.5 ? `\n• Older bets not yet taken from UnbelievaBoat: −${n(b.open)}` : ""}\n• Results not added in UnbelievaBoat yet: ${b.pending >= 0 ? "+" : "−"}${n(Math.abs(b.pending))}\nStakes leave UnbelievaBoat when you bet; cancels and cash-outs come straight back; admins add winnings from #previous-week-payouts.`);
   } catch {
     return reply("Couldn't read your Tickets from UnbelievaBoat right now. Try again in a minute.");
   }

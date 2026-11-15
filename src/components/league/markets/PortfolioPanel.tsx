@@ -114,10 +114,10 @@ export function PortfolioPanel({ slug, index, port, onlyMarket }: { slug: string
       {!port.canTrade && <p className="mk-msg err">{port.why}</p>}
       {port.balanceError && <p className="mk-msg err">{port.balanceError}</p>}
       {T && port.breakdown && (
-        <p className="muted small">UnbelievaBoat {fmt(port.breakdown.ub)} − open bets {fmt(port.breakdown.open)} {port.breakdown.pending >= 0 ? "+" : "−"} results not added there yet {fmt(Math.abs(port.breakdown.pending))}. Admins add or remove results after each advance.</p>
+        <p className="muted small">UnbelievaBoat {fmt(port.breakdown.ub)}{port.breakdown.open > 0.5 ? ` − older bets not yet taken from it ${fmt(port.breakdown.open)}` : ""} {port.breakdown.pending >= 0 ? "+" : "−"} results not added there yet {fmt(Math.abs(port.breakdown.pending))}. Admins add results after each advance.</p>
       )}
       <p className="hint small">{T
-        ? "Real league Tickets. Bets are held against your UnbelievaBoat balance here; admins add or remove the results in UnbelievaBoat after each advance. Contracts pay 100 Tickets if right, 0 if wrong. Prices move with everyone's bets: buy early for a better price. Game and prop bets can be cancelled until kickoff for what they cost (or what they're worth then, if less). Season-long bets can be cashed out at what they're worth now: more than you paid if the odds moved your way, less if not."
+        ? "Real league Tickets. A bet takes its stake from your UnbelievaBoat balance straight away, and cancels and cash-outs go straight back; winnings are added by admins after each advance. Contracts pay 100 Tickets if right, 0 if wrong. Prices move with everyone's bets: buy early for a better price. Game and prop bets can be cancelled until kickoff for what they cost (or what they're worth then, if less). Season-long bets can be cashed out at what they're worth now: more than you paid if the odds moved your way, less if not."
         : <>{port.shared ? "Fake money, one wallet per league member this season. Prices move with everyone's bets: buy early for a better price." : "Fake money, saved on this device only."} Contracts pay $1 if right, $0 if wrong.</>}</p>
     </aside>
   );

@@ -59,6 +59,30 @@ export async function ticketBalance(cfg: TicketsConfig, discordId: string): Prom
   const j = await ub(`/guilds/${cfg.guildId}/users/${discordId}`);
   return Number(j[cfg.field] ?? 0);
 }
+/** Adds (or with a negative amount, takes) Tickets in UnbelievaBoat, logged in market_ticket_moves first.
+ *  Used only for bet stakes (taken when a bet is placed) and cancels / cash-outs (given back straight away),
+ *  since 2026-11-14 (Nick: "prevent it"). Winnings still go through the payouts report.
+ *  A clear refusal marks the move failed; anything ambiguous (timeout, 5xx) is marked failed with
+ *  "check UnbelievaBoat", never retried blindly. Returns true only if UnbelievaBoat confirmed it. */
+export async function moveTickets(a: { cfg: TicketsConfig; leagueId: string; book: number; userId: string; discordId: string; amount: number; kind: "bet" | "refund"; reason: string }): Promise<{ ok: boolean; id: number | null; error?: string }> {
+  const db = supabaseAdmin();
+  const amount = Math.round(a.amount);
+  if (!amount) return { ok: true, id: null };
+  const { data: row, error: le } = await db.from("market_ticket_moves").insert({ league_id: a.leagueId, book: a.book, user_id: a.userId, amount, kind: a.kind, reason: a.reason.slice(0, 200), status: "sending" }).select("id").single();
+  if (le || !row) return { ok: false, id: null, error: `Couldn't log the Ticket move: ${le?.message ?? "no row"}` };
+  const id = Number(row.id);
+  try {
+    await ub(`/guilds/${a.cfg.guildId}/users/${a.discordId}`, { method: "PATCH", body: JSON.stringify({ [a.cfg.field]: amount, reason: `${a.reason} [move ${id}]`.slice(0, 200) }) });
+    await db.from("market_ticket_moves").update({ status: "done", done_at: new Date().toISOString() }).eq("id", id);
+    return { ok: true, id };
+  } catch (e) {
+    const msg = (e as Error).message;
+    const clear = /UnbelievaBoat 4\d\d/.test(msg);
+    await db.from("market_ticket_moves").update({ status: "failed", error: (clear ? msg : `${msg} (may have gone through: check UnbelievaBoat)`).slice(0, 300) }).eq("id", id);
+    return { ok: false, id, error: msg };
+  }
+}
+
 // ---------------------------------------------------------------- Discord account links
 // /connect in Discord hands out a signed link (valid 15 minutes) that ties the
 // Discord account to whoever confirms it on the site. Stored in the site user's

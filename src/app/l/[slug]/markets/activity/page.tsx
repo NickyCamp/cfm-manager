@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, priceIndex } from "@/lib/league/markets";
-import { auditTrades, closeLog, fmtET, ledgerRows, marketsForPage, type AuditRow, type CloseRow, type LedgerRow } from "@/lib/marketStore";
+import { auditTrades, closeLog, fmtET, ledgerRows, marketsForPage, ticketMoveRows, type AuditRow, type CloseRow, type LedgerRow, type MoveRow } from "@/lib/marketStore";
 import { NoData } from "@/components/league/bits";
 import { AuditTable } from "@/components/league/markets/AuditTable";
 
@@ -25,6 +25,7 @@ export default async function MarketActivity({ params, searchParams }: Props) {
   if (leagueId) closes = await closeLog(leagueId, d.season.year).catch(() => []);
   let ledger: LedgerRow[] = [];
   if (leagueId && tickets && !sp.market) ledger = await ledgerRows(leagueId, { user: sp.user, limit: 500 }).catch(() => []);
+  const moves: MoveRow[] = leagueId && tickets && !sp.market && !sp.user ? await ticketMoveRows(leagueId).catch(() => []) : [];
   const teamsById = new Map(d.teams.map((t) => [t.id, t]));
   const gameName = (id: number) => { const g = d.games.find((x) => x.id === id); return g ? `${teamsById.get(g.away)?.abbr ?? "?"} @ ${teamsById.get(g.home)?.abbr ?? "?"}` : `Game ${id}`; };
   if (leagueId) {
@@ -72,6 +73,23 @@ export default async function MarketActivity({ params, searchParams }: Props) {
                 ))}</tbody>
               </table></div>
             ) : <p className="muted">None yet.</p>}
+          </div>
+        )}
+        {tickets && moves.length > 0 && (
+          <div className="panel mk-audit-panel">
+            <h3>Ticket moves</h3>
+            <p className="muted small">Every change the bot made in UnbelievaBoat: stakes taken when bets are placed, and cancels, cash-outs and unused stakes given back. Winnings are added by admins from the payouts report.</p>
+            <div className="tbl-wrap"><table className="tbl mk-audit">
+              <thead><tr><th scope="col">#</th><th scope="col">When</th><th scope="col">Member</th><th className="num">Tickets</th><th scope="col">What</th><th scope="col">Status</th></tr></thead>
+              <tbody>{moves.map((x) => (
+                <tr key={x.id}>
+                  <td className="muted">{x.id}</td><td className="nw">{fmtET(x.at)}</td><td>{x.user}</td>
+                  <td className={`num ${x.amount > 0 ? "pos" : "neg"}`}>{x.amount > 0 ? "+" : "−"}{Math.abs(x.amount).toLocaleString("en-US")}</td>
+                  <td>{x.reason.replace("CFM Markets: ", "")}</td>
+                  <td className="nw" title={x.error ?? ""}>{x.status === "done" ? "Done" : x.status === "failed" ? `⚠️ ${x.error?.includes("check UnbelievaBoat") ? "Check UnbelievaBoat" : "Failed"}` : x.status === "sending" ? "⚠️ Check UnbelievaBoat" : x.status}</td>
+                </tr>
+              ))}</tbody>
+            </table></div>
           </div>
         )}
         {shared && !sp.market && !sp.user && (
