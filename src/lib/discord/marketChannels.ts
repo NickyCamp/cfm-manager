@@ -38,6 +38,8 @@ export type MarketChannels = {
   futures?: Record<string, Entry>;
   txChannelId?: string;                // #transactions (bottom): every bet and cancel this week
   txWeek?: string;
+  locked?: string[];   // channels already set to bot-only (members can't type)
+  lockError?: string;
   games: Record<string, GameChannel>;
 };
 
@@ -186,6 +188,42 @@ async function fillFutures(d: LeagueData, markets: Market[], tickets: boolean, s
     await sleep(200);
   }
   return n;
+}
+
+// ---------------------------------------------------------------- bot-only (Nick, 2026-11-14)
+// "only the bot should be allowed to type messages in the market chats": in the Markets category and every
+// channel in it, @everyone can't send messages or start/post in threads; the bot itself is explicitly allowed.
+// Buttons, menus and slash commands still work (those aren't messages). Needs the bot to have Manage Roles
+// ("Manage Permissions") in the server; without it the sync says so and channels stay as they are.
+const SEND = BigInt(1) << BigInt(11), THREADS = (BigInt(1) << BigInt(35)) | (BigInt(1) << BigInt(36)) | (BigInt(1) << BigInt(38));
+const BOT_ALLOW = (BigInt(1) << BigInt(10)) | SEND | (BigInt(1) << BigInt(14)) | (BigInt(1) << BigInt(15)) | (BigInt(1) << BigInt(16)) | (BigInt(1) << BigInt(38));
+let botId: string | null = null;
+async function botUserId() {
+  if (botId) return botId;
+  const r = await dc("GET", "/users/@me");
+  botId = r.ok ? String(r.data.id) : null;
+  return botId;
+}
+/** Makes these channels bot-only (skips ones already done). Returns an error to show, or "". */
+export async function lockMarketChannels(guildId: string, state: MarketChannels, ids: (string | undefined)[]): Promise<string> {
+  const me = await botUserId();
+  if (!me) return "";
+  const done = new Set(state.locked || []);
+  for (const id of ids) {
+    if (!id || done.has(id)) continue;
+    const a = await dc("PUT", `/channels/${id}/permissions/${me}`, { type: 1, allow: String(BOT_ALLOW), deny: "0" });
+    const b = a.ok ? await dc("PUT", `/channels/${id}/permissions/${guildId}`, { type: 0, allow: "0", deny: String(SEND | THREADS) }) : a;
+    if (!b.ok) {
+      state.lockError = b.status === 403 ? "To make the Markets channels bot-only, give the CFM Manager role the **Manage Roles** permission (Server Settings → Roles), then run /marketupdate." : `Discord said ${b.status} locking a channel.`;
+      state.locked = [...done];
+      return state.lockError;
+    }
+    done.add(id);
+    await sleep(150);
+  }
+  state.locked = [...done];
+  state.lockError = undefined;
+  return "";
 }
 
 /** Keeps the category in order: #market-feed, #futures, #previous-week-payouts, game channels, #transactions last. */
@@ -351,9 +389,10 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   await Promise.all(Array.from({ length: 8 }, async () => {
     for (let g = queue.shift(); g; g = queue.shift()) edits += await fillGameChannel(slug, d, g, markets, tickets, state!.games[String(g.id)]);
   }));
+  const lockErr = await lockMarketChannels(guildId, state, [state.categoryId, state.feedChannelId, state.futuresChannelId, state.payouts?.channelId, state.txChannelId, ...Object.values(state.games).map((g) => g.channelId)]).catch(() => "");
   await orderMarketChannels(guildId, state).catch(() => {});
   await saveState(lg.id, state);
-  return `Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}, #futures${futuresEdits ? ` (${futuresEdits} updated)` : ""} and #transactions.${report}`;
+  return `${lockErr ? `⚠️ ${lockErr}\n` : ""}Markets category up to date: ${games.length} game channel${games.length === 1 ? "" : "s"} for ${d.season.title}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}, ${edits} bet line${edits === 1 ? "" : "s"} posted or updated, plus #market-feed${charts ? ` (${charts} odds charts posted)` : ""}, #futures${futuresEdits ? ` (${futuresEdits} updated)` : ""} and #transactions.${report}`;
 }
 
 /** /marketchannels (Nick, 2026-11-14): deletes the Markets category and every channel in it, then builds
@@ -408,7 +447,12 @@ export async function postPayoutsNow(slug: string): Promise<string> {
   const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
   const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
   const st = settings.marketChannels as MarketChannels | undefined;
-  if (st) { st.payouts = r.state; await db.from("leagues").update({ settings }).eq("id", lg.id); await orderMarketChannels(guildId, st).catch(() => {}); }
+  if (st) {
+    st.payouts = r.state;
+    await lockMarketChannels(guildId, st, [r.state.channelId]).catch(() => "");
+    await db.from("leagues").update({ settings }).eq("id", lg.id);
+    await orderMarketChannels(guildId, st).catch(() => {});
+  }
   return r.text;
 }
 

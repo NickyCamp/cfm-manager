@@ -12,7 +12,7 @@ type Props = { params: Promise<{ slug: string }> };
 // How any league runs the Markets in its own Discord (Nick, 2026-11-14: "standardize this with
 // instructions on the markets tab somewhere out of the way incase any other leagues want to try it").
 // Linked quietly from the bottom of the Markets page. Shows this league's progress through the steps.
-const BOT_INVITE = "https://discord.com/oauth2/authorize?client_id=1570587209743073343&scope=bot+applications.commands&permissions=52240";
+const BOT_INVITE = "https://discord.com/oauth2/authorize?client_id=1570587209743073343&scope=bot+applications.commands&permissions=268487696";
 
 export default async function MarketsSetup({ params }: Props) {
   const { slug } = await params;
@@ -53,7 +53,7 @@ export default async function MarketsSetup({ params }: Props) {
 
         <div className="panel mk-setup">
           <h3>1. Add the CFM Manager bot to your server</h3>
-          <p>Someone with <strong>Manage Server</strong> opens <a href={BOT_INVITE} target="_blank" rel="noreferrer">this invite link</a> and picks the server. The bot needs to see and send messages, post embeds and files, and <strong>manage channels</strong> (it creates and removes the game channels each week).</p>
+          <p>Someone with <strong>Manage Server</strong> opens <a href={BOT_INVITE} target="_blank" rel="noreferrer">this invite link</a> and picks the server. The bot needs to see and send messages, post embeds and files, <strong>manage channels</strong> (it creates and removes the game channels each week) and <strong>manage roles</strong> (so only the bot can post in the Markets channels; members still bet with the buttons). If your bot was added before, give its role Manage Roles in Server Settings → Roles.</p>
 
           <h3>Admins</h3>
           <p>Anything marked <em>admins</em> below is for people with your server&apos;s own role named <strong>admin</strong> (any capitalization). Create that role and give it to your league admins; it needs no Discord permissions. Until a server has a role called admin, its Discord Administrators count instead.</p>
