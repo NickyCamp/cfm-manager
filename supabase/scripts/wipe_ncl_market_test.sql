@@ -1,27 +1,24 @@
 -- One-off (Nick, 2026-11-14): wipe NCL's test betting before the league moves to its main Discord.
--- Removes every bet, position, pool, payout line, Ticket move, kickoff, odds-history point and
--- play-money wallet for NCL only. League data, members, Discord link and settings are untouched.
--- The history tables are append-only by trigger, so triggers are switched off for this
--- transaction only (session_replication_role = replica; that also skips FK cascades, hence the order).
-begin;
-set local session_replication_role = replica;
-
-create temp table _ncl on commit drop as select id from public.leagues where slug = 'ncl';
-
-delete from public.market_trade_voids  where league_id in (select id from _ncl);
-delete from public.market_ledger       where league_id in (select id from _ncl);
-delete from public.market_ticket_moves where league_id in (select id from _ncl);
-delete from public.market_trades       where league_id in (select id from _ncl);
-delete from public.market_positions    where league_id in (select id from _ncl);
-delete from public.market_pools        where league_id in (select id from _ncl);
-delete from public.market_wallets      where league_id in (select id from _ncl);
-delete from public.market_game_close   where league_id in (select id from _ncl);
-delete from public.market_price_points where league_id in (select id from _ncl);
-
--- Forget the per-week cap clock so the main server starts a fresh week.
-update public.leagues set settings = settings - 'marketWeek' where id in (select id from _ncl);
-
-commit;
+-- One DO block = one transaction (the SQL editor runs statements separately, so a temp table
+-- or BEGIN/COMMIT across statements doesn't work). Append-only triggers are off for this
+-- transaction only; that also skips FK cascades, hence the delete order.
+do $$
+declare lid uuid := (select id from public.leagues where slug = 'ncl');
+begin
+  if lid is null then raise exception 'No league with slug ncl'; end if;
+  perform set_config('session_replication_role', 'replica', true);
+  delete from public.market_trade_voids  where league_id = lid;
+  delete from public.market_ledger       where league_id = lid;
+  delete from public.market_ticket_moves where league_id = lid;
+  delete from public.market_trades       where league_id = lid;
+  delete from public.market_positions    where league_id = lid;
+  delete from public.market_pools        where league_id = lid;
+  delete from public.market_wallets      where league_id = lid;
+  delete from public.market_game_close   where league_id = lid;
+  delete from public.market_price_points where league_id = lid;
+  update public.leagues set settings = settings - 'marketWeek' where id = lid;
+  perform set_config('session_replication_role', 'origin', true);
+end $$;
 
 -- Check: every count should be 0.
 select
