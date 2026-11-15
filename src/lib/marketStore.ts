@@ -1,7 +1,7 @@
 // Shared play-money trading for the Markets tab (tables from supabase/migrations/0003_markets.sql).
 // Server only: everything goes through the service role after checking who the user is.
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
-import { getLeagueRow } from "@/lib/league/load";
+import { getLeagueData, getLeagueRow } from "@/lib/league/load";
 import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
 import { DEFAULT_ECONOMY, ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP, pricerFor, quoteBuyFloored, quoteBuyP, quoteSellP, type Economy, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
@@ -546,13 +546,29 @@ export async function setCloseTime(leagueId: string, season: number, gameId: num
   if (error) throw new Error(error.message);
 }
 
-/** Is this site user the league's owner or a commissioner? */
+/** Is this site user a commissioner here? The person who added the league, a member marked
+ *  commissioner, or (Nick, 2026-11-14) anyone who's the league owner or an admin in Madden itself:
+ *  matched by the EA name they connected, or the team they run on the site. Follows every sync. */
 export async function isCommissioner(leagueId: string, userId: string) {
   const admin = supabaseAdmin();
-  const { data: lg } = await admin.from("leagues").select("owner_id").eq("id", leagueId).maybeSingle();
-  if (lg?.owner_id === userId) return true;
-  const { data } = await admin.from("league_members").select("role").eq("league_id", leagueId).eq("user_id", userId).maybeSingle();
-  return data?.role === "commissioner";
+  const { data: lg } = await admin.from("leagues").select("owner_id, slug").eq("id", leagueId).maybeSingle();
+  if (!lg) return false;
+  if (lg.owner_id === userId) return true;
+  const { data } = await admin.from("league_members").select("role, team_abbr").eq("league_id", leagueId).eq("user_id", userId).maybeSingle();
+  if (data?.role === "commissioner") return true;
+  if (!data) return false; // must be in the league on the site
+  return isMaddenAdmin(lg.slug, userId, data.team_abbr);
+}
+/** Is this user (a league member) the owner or an admin of the league in Madden? */
+export async function isMaddenAdmin(slug: string, userId: string, teamAbbr?: string | null) {
+  const d = await getLeagueData(slug).catch(() => null);
+  const list = d?.admins || [];
+  if (!list.length) return false;
+  const norm = (x: string) => x.trim().toLowerCase();
+  if (teamAbbr && list.some((a) => a.team && norm(a.team) === norm(teamAbbr))) return true;
+  const { data: conns } = await supabaseAdmin().from("ea_connections").select("persona_name").eq("user_id", userId);
+  const mine = new Set((conns || []).map((c) => norm(c.persona_name || "")).filter(Boolean));
+  return list.some((a) => a.user && mine.has(norm(a.user)));
 }
 /** The team a site user runs in this league (abbreviation), if any. */
 export async function teamOfUser(leagueId: string, userId: string): Promise<string | null> {

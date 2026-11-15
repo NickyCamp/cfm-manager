@@ -194,7 +194,21 @@ export function buildLeagueData(files: Raw): LeagueData {
     games,
     lines: [...lines.values()],
     teamGames,
+    admins: maddenAdmins(hub, teams),
   };
+}
+
+/** Madden's commissioners, from the league hub's member list (owner and admins). */
+function maddenAdmins(hub: Any, teams: Team[]): NonNullable<LeagueData["admins"]> {
+  const map = hub?.userAdminHubInfo?.userInfoMap || {};
+  const abbr = new Map(teams.map((t) => [t.id, t.abbr]));
+  const out: NonNullable<LeagueData["admins"]> = [];
+  for (const u of Object.values(map) as Any[]) {
+    const owner = u.isOwner || u.adminLevel === "ADMINLEVEL_OWNER";
+    if (!owner && !u.isAdmin && u.adminLevel !== "ADMINLEVEL_ADMIN") continue;
+    out.push({ user: String(u.userName || ""), team: abbr.get(u.team) || "", level: owner ? "owner" : "admin" });
+  }
+  return out;
 }
 
 /**

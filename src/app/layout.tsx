@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { BOT_INVITE_URL } from "@/lib/discord/invite";
 import "@fontsource/barlow/400.css";
 import "@fontsource/barlow/600.css";
 import "@fontsource/barlow/700.css";
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <nav className="head-links" aria-label="Account">
               <Link href="/macro">Macro Builder</Link>
+              <a href={BOT_INVITE_URL} target="_blank" rel="noreferrer" title="Add the CFM Manager bot to a Discord server you manage">Add to Discord</a>
               {user ? (
                 <>
                   <Link href="/dashboard">My leagues</Link>

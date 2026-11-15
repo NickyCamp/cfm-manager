@@ -4,6 +4,7 @@
 // short-lived signed URLs. Object path: <league slug>/<player id>.jpg
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 import { getLeagueData } from "@/lib/league/load";
+import { isMaddenAdmin } from "@/lib/marketStore";
 
 export const CARD_ART_BUCKET = "card-art";
 const URL_TTL_SECONDS = 60 * 60;
@@ -68,9 +69,10 @@ export async function cardArtAccess(slug: string, playerTeamId: number | undefin
   const admin = supabaseAdmin();
   const { data: lg } = await admin.from("leagues").select("id, owner_id").eq("slug", slug).maybeSingle();
   if (!lg) return { canEdit: false };
-  const { data: m } = await admin.from("league_members").select("role").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle();
+  const { data: m } = await admin.from("league_members").select("role, team_abbr").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle();
   if (lg.owner_id === user.id || m?.role === "commissioner") return { canEdit: true };
   if (!m) return { canEdit: false, why: "Only league members can change card art." };
+  if (await isMaddenAdmin(slug, user.id, m.team_abbr)) return { canEdit: true };
   const notYours = "You can only change card art for players on your own team.";
   if (!playerTeamId) return { canEdit: false, why: notYours };
   const [{ data: conns }, data] = await Promise.all([
@@ -133,8 +135,8 @@ export async function nicknameAccess(slug: string, playerTeamId: number | undefi
   const admin = supabaseAdmin();
   const { data: lg } = await admin.from("leagues").select("id, owner_id").eq("slug", slug).maybeSingle();
   if (!lg) return { canEdit: false };
-  const { data: m } = await admin.from("league_members").select("role").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle();
-  const commish = lg.owner_id === user.id || m?.role === "commissioner";
+  const { data: m } = await admin.from("league_members").select("role, team_abbr").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle();
+  const commish = lg.owner_id === user.id || m?.role === "commissioner" || (Boolean(m) && (await isMaddenAdmin(slug, user.id, m?.team_abbr)));
   if (!m && !commish) return { canEdit: false, why: "Only league members can set nicknames." };
   const [{ data: conns }, data] = await Promise.all([
     admin.from("ea_connections").select("persona_name").eq("user_id", user.id),

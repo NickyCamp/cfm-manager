@@ -9,6 +9,7 @@ import { LeagueNav } from "@/components/league/LeagueNav";
 import { syncStatusText } from "@/lib/format";
 import { Toaster } from "@/components/league/Toaster";
 import { canSeeCardArt } from "@/lib/cardArtStore";
+import { isCommissioner } from "@/lib/marketStore";
 
 export const dynamic = "force-dynamic";
 
@@ -22,13 +23,14 @@ export default async function LeagueLayout({ children, params }: { children: Rea
   // sync after the response is sent (never slows the page).
   const canDispatch = dispatchConfigured();
   if (canDispatch) after(() => requestSync(slug, { minGapMs: VISIT_STALE_MS, mode: "auto", by: "visit" }).catch((e) => console.error("visit sync", slug, e)));
-  let member = false;
-  if (canDispatch) {
-    const user = await currentUser().catch(() => null);
-    if (user) {
-      const admin = supabaseAdmin();
-      const { data: lg } = await admin.from("leagues").select("id").eq("slug", slug).maybeSingle();
-      if (lg) member = Boolean((await admin.from("league_members").select("user_id").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle()).data);
+  let member = false, commish = false;
+  const user = await currentUser().catch(() => null);
+  if (user) {
+    const admin = supabaseAdmin();
+    const { data: lg } = await admin.from("leagues").select("id").eq("slug", slug).maybeSingle();
+    if (lg) {
+      member = canDispatch && Boolean((await admin.from("league_members").select("user_id").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle()).data);
+      commish = await isCommissioner(lg.id, user.id).catch(() => false);
     }
   }
 
@@ -48,7 +50,7 @@ export default async function LeagueLayout({ children, params }: { children: Rea
               {member && <><span className="dot-sep" aria-hidden /><SyncNowButton slug={slug} /></>}
             </div>
           </div>
-          {data && <LeagueNav slug={slug} />}
+          {data && <LeagueNav slug={slug} admin={commish} />}
           <Toaster />
         </div>
       </div>

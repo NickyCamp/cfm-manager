@@ -116,6 +116,8 @@ export type LeagueData = {
   games: Game[];
   lines: StatLine[];
   teamGames: TeamGame[];
+  /** Madden's own commissioners (EA league hub: owner and admins), refreshed on every sync. */
+  admins?: { user: string; team: string; level: "owner" | "admin" }[];
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;

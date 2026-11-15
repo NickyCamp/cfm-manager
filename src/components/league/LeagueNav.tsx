@@ -19,7 +19,8 @@ const TABS = [
   ["markets", "Markets"],
 ] as const;
 
-export function LeagueNav({ slug }: { slug: string }) {
+export function LeagueNav({ slug, admin = false }: { slug: string; admin?: boolean }) {
+  const tabs = admin ? [...TABS, ["admin", "Admin"] as const] : TABS;
   const path = usePathname();
   const base = `/l/${slug}`;
   const active = (seg: string) => {
@@ -37,11 +38,11 @@ export function LeagueNav({ slug }: { slug: string }) {
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [open]);
-  const current = TABS.find(([seg]) => active(seg))?.[1] ?? "Home";
+  const current = tabs.find(([seg]) => active(seg))?.[1] ?? "Home";
   return (
     <>
       <nav className="league-nav" aria-label="League">
-        {TABS.map(([seg, label]) => (
+        {tabs.map(([seg, label]) => (
           <Link key={seg} href={seg ? `${base}/${seg}` : base} aria-current={active(seg) ? "page" : undefined}>
             {label}
           </Link>
@@ -52,7 +53,7 @@ export function LeagueNav({ slug }: { slug: string }) {
         <span>{current}</span><span aria-hidden className={`chev ${open ? "up" : ""}`}>▾</span>
       </button>
       <div id="league-menu" className={`league-menu ${open ? "open" : ""}`}>
-        {TABS.map(([seg, label], i) => (
+        {tabs.map(([seg, label], i) => (
           <Link key={seg} href={seg ? `${base}/${seg}` : base} aria-current={active(seg) ? "page" : undefined} style={{ transitionDelay: open ? `${i * 30}ms` : "0ms" }}>
             {label}
           </Link>
