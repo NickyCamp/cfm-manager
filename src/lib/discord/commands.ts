@@ -6,7 +6,7 @@
 import { ALERT_EVENTS } from "./api";
 import { STAT_CATS } from "./stats";
 
-const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
+const SUB = 1, STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
 
 // Where a command can be used. Server setup commands need the bot added to the
@@ -18,7 +18,11 @@ const ANYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] };
 const player = { type: STRING, name: "player", description: "Start typing a name", required: true, autocomplete: true };
 const team = (required: boolean) => ({ type: STRING, name: "team", description: "Start typing a team", required, autocomplete: true });
 
-export const COMMANDS = [
+// The commands /league can run for another league: the read-only ones (no server setup, no betting).
+const LEAGUE_SUBS = ["player", "contract", "cap", "team", "rookie", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs"];
+const leaguePick = (required: boolean) => ({ type: STRING, name: "league", description: "Start typing: every league you're in (link your account with /connect)", required, autocomplete: true });
+
+const PLAIN = [
   {
     name: "link",
     description: "Connect this Discord server to a CFM Manager league",
@@ -98,9 +102,26 @@ export const COMMANDS = [
     ...ANYWHERE,
     options: [{ type: INTEGER, name: "week", description: "Regular-season week number", required: false, min_value: 1, max_value: 18 }],
   },
+];
+
+export const COMMANDS = [
+  ...PLAIN,
   // "Admins" = the server's own role named "admin" (Nick, 2026-11-14). Discord can't limit a command to a
   // role by name, so these show for everyone and src/lib/discord/admin.ts checks the role when they run.
-  { name: "league", description: "Admins: which league you're seeing here, with links", ...ANYWHERE },
+  // /league <command> league:<pick> … : the everyday commands for any league you're in (Nick, 2026-11-14),
+  // not just the one linked to this server. Built from the plain commands, with a league picker first.
+  {
+    name: "league",
+    description: "Run a command for any league you're in: pick the league first",
+    ...ANYWHERE,
+    options: [
+      ...LEAGUE_SUBS.map((n) => {
+        const c = PLAIN.find((x) => x.name === n)!;
+        return { type: SUB, name: n, description: c.description, options: [leaguePick(true), ...((c as { options?: object[] }).options || [])] };
+      }),
+      { type: SUB, name: "info", description: "Which league you're seeing here, with links (admins, in servers)", options: [leaguePick(false)] },
+    ],
+  },
   { name: "marketchannels", description: "Admins: delete and rebuild the Markets category from scratch (payouts channel kept)", ...SERVER_ONLY },
   { name: "marketupdate", description: "Admins: refresh every Markets channel with the latest odds, bets and lines", ...SERVER_ONLY },
   {

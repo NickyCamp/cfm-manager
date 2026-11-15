@@ -29,7 +29,7 @@ import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels 
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
-import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
+import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, leaguesForDiscordUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
 export type Interaction = {
@@ -41,6 +41,7 @@ export type Interaction = {
   member?: { user: { id: string; username: string; global_name?: string | null }; permissions?: string; roles?: string[] };
   user?: { id: string; username: string; global_name?: string | null };   // set instead of member in DMs
   context?: number;                           // 0 server, 1 bot DM, 2 group DM / other DM
+  forced?: LinkedLeague;                      // set by /league: run the command for this league instead
   data?: { name: string; options?: Option[]; resolved?: { attachments?: Record<string, { url: string; filename: string; size: number; content_type?: string }> } };
 };
 
@@ -48,6 +49,7 @@ const userId = (i: Interaction) => i.member?.user.id || i.user?.id || "";
 
 /** The server's league if this server is linked, otherwise the person's own league (/myleague). */
 async function resolveLeague(i: Interaction): Promise<{ lg: LinkedLeague; via: "server" | "user" } | null> {
+  if (i.forced) return { lg: i.forced, via: "user" };
   if (i.guild_id) {
     const lg = await leagueForGuild(i.guild_id);
     if (lg) return { lg, via: "server" };
@@ -101,9 +103,47 @@ function findTeam(d: LeagueData, value: unknown): Team | undefined {
 const teamOf = (d: LeagueData, id: number) => d.teams.find((t) => t.id === id);
 const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free agent");
 
+// ---------- /league: the same commands for any league you're in ----------
+
+const LEAGUE_PICK_SUBS = new Set(["player", "contract", "cap", "team", "rookie", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs"]);
+
+/** /league <sub> league:<slug> …  →  the plain <sub> command with its own options, plus the picked league's slug. */
+function unwrapLeague(i: Interaction): { sub: Option; pick: string; inner: Interaction } | null {
+  const sub = i.data?.name === "league" ? i.data.options?.find((o) => o.type === 1) : undefined;
+  if (!sub) return null;
+  const opts = sub.options || [];
+  const pick = String(opts.find((o) => o.name === "league")?.value ?? "").trim();
+  return { sub, pick, inner: { ...i, data: { ...i.data!, name: sub.name, options: opts.filter((o) => o.name !== "league") } } };
+}
+
+const slugOf = (raw: string) => raw.toLowerCase().replace(/^.*\/l\//, "").replace(/[/?#].*$/, "").trim();
+
+/** The picked league, if it's one of this person's leagues (by slug or name). */
+async function pickedLeague(i: Interaction, pick: string): Promise<{ lg?: LinkedLeague; mine: LinkedLeague[]; connected: boolean }> {
+  const { leagues: mine, connected } = await leaguesForDiscordUser(userId(i), i.guild_id);
+  const n = slugOf(pick);
+  const lg = n ? mine.find((l) => l.slug === n) || mine.find((l) => norm(l.name) === norm(pick)) : undefined;
+  return { lg, mine, connected };
+}
+
 // ---------- autocomplete ----------
 
 export async function autocomplete(i: Interaction): Promise<{ name: string; value: string }[]> {
+  const w = unwrapLeague(i);
+  if (w) {
+    if (w.sub.options?.find((o) => o.focused)?.name === "league") {
+      // The league picker: every league this person is in, the one this server is linked to marked.
+      const { leagues } = await leaguesForDiscordUser(userId(i), i.guild_id);
+      const n = norm(w.pick);
+      return leagues
+        .filter((l) => !n || norm(`${l.name} ${l.slug}`).includes(n))
+        .slice(0, 25)
+        .map((l) => ({ name: `${l.name} (${l.slug})${l.why === "server" ? " · this server" : ""}`.slice(0, 100), value: l.slug }));
+    }
+    // Player/team names come from the picked league (or this chat's usual league until one is picked).
+    const { lg } = w.pick ? await pickedLeague(i, w.pick) : { lg: undefined };
+    return autocomplete(lg ? { ...w.inner, forced: lg } : w.inner);
+  }
   const lg = (await resolveLeague(i))?.lg;
   if (!lg) return [];
   const d = await getLeagueData(lg.slug);
@@ -127,6 +167,29 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 // ---------- commands ----------
 
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
+  const w = unwrapLeague(i);
+  if (w && w.sub.name !== "info") {
+    if (!LEAGUE_PICK_SUBS.has(w.sub.name)) return reply("That command can't be run for another league.");
+    const { lg, mine, connected } = await pickedLeague(i, w.pick);
+    if (!lg) {
+      const list = mine.map((l) => `\`${l.slug}\` ${l.name}`).join("\n");
+      return reply([
+        w.pick ? `**${w.pick}** isn't one of your leagues.` : "Pick a league.",
+        list ? `Your leagues:\n${list}` : "No leagues found for you.",
+        connected ? "" : "Run `/connect` to link your Discord to your CFM Manager account, and every league you're in shows up here.",
+      ].filter(Boolean).join("\n"));
+    }
+    return runCommand({ ...w.inner, forced: lg }, base);
+  }
+  if (w) {
+    // /league info [league]: the picked league, or this chat's usual one
+    i = { ...w.inner, data: { ...w.inner.data!, name: "league" } };
+    if (w.pick) {
+      const { lg } = await pickedLeague(i, w.pick);
+      if (!lg) return reply(`**${w.pick}** isn't one of your leagues. Start typing in the league box to see them.`);
+      i = { ...i, forced: lg };
+    }
+  }
   const name = i.data?.name || "";
   if (name === "myleague") return myLeague(i, base);
   if (name === "connect") {
@@ -299,7 +362,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { embeds: [scoresEmbed(d, pick.stage, pick.week, url, footer)] };
     }
     case "league": {
-      // admin role only in servers (Nick, 2026-11-14); DMs and group DMs have no roles, so it stays open there
+      // /league info: admin role only in servers (Nick, 2026-11-14); DMs and group DMs have no roles, so it stays open there
       if (i.guild_id && !(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       const ch = via === "server" ? discordOf(lg)?.channelId : null;
       return {
@@ -308,7 +371,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
           description: [
             `**${d.season.year} ${d.season.title}** · data from ${new Date(d.pulledAt).toUTCString().replace(" GMT", " UTC")}`,
             `[Standings](${url("/standings")}) · [Cap](${url("/cap")}) · [Contract tool](${url("/contracts")}) · [Playoffs](${url("/playoffs")}) · [Draft](${url("/draft")})`,
-            via === "user" ? "This is your league (`/myleague`)." : ch ? `This server's league. Updates post in <#${ch}>.` : "This server's league. Updates aren't posting anywhere yet (`/notify`).",
+            i.forced ? "Picked with `/league`." : via === "user" ? "This is your league (`/myleague`)." : ch ? `This server's league. Updates post in <#${ch}>.` : "This server's league. Updates aren't posting anywhere yet (`/notify`).",
           ].join("\n"),
         }],
       };
