@@ -18,11 +18,11 @@ const ANYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] };
 const player = { type: STRING, name: "player", description: "Start typing a name", required: true, autocomplete: true };
 const team = (required: boolean) => ({ type: STRING, name: "team", description: "Start typing a team", required, autocomplete: true });
 
-// What /league can show for another league: the read-only commands (no server setup, no betting).
-export const LEAGUE_CMDS: [string, string][] = [
-  ["player", "Player card"], ["contract", "Contract ask"], ["tws", "This week's game (team)"], ["stats", "Stat leaders (category)"],
-  ["team", "Team"], ["cap", "Cap space"], ["rookie", "Top rookies"], ["standings", "Standings"], ["playoffs", "Playoff picture"],
-  ["scores", "Scores"], ["funfact", "Fun fact"], ["pack", "Open a pack"], ["packs", "Pack leaderboard"], ["info", "League info and links"],
+// /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
+export const LEAGUE_MORE: [string, string][] = [
+  ["standings", "Standings"], ["playoffs", "Playoff picture"], ["scores", "Scores (week box)"], ["cap", "League cap space (year box)"],
+  ["rookie", "Top rookies (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
+  ["packs", "Pack leaderboard"], ["info", "League info and links"],
 ];
 
 const PLAIN = [
@@ -111,23 +111,27 @@ export const COMMANDS = [
   ...PLAIN,
   // "Admins" = the server's own role named "admin" (Nick, 2026-11-14). Discord can't limit a command to a
   // role by name, so these show for everyone and src/lib/discord/admin.ts checks the role when they run.
-  // /league league:<pick> command:<pick> …: the everyday commands for any league you're in, from any
-  // Discord (Nick, 2026-11-14). One command: pick the league first (every league you're in), then which
-  // command, then fill in what that command needs. Player/team names come from the picked league.
+  // /league league:<pick> <box>:<value>: the everyday commands for any league you're in, from any Discord
+  // (Nick, 2026-11-14), e.g. /league league:eml27 player:Patrick Mahomes or tws:Eagles. Fill one box;
+  // names come from the picked league.
   {
     name: "league",
-    description: "Look up a player (or team, stats…) in any league you're in, from any Discord",
+    description: "Any league you're in, from any Discord: pick the league, then player, tws, stats…",
     ...ANYWHERE,
     options: [
       { type: STRING, name: "league", description: "Start typing: every league you're in (link your account with /connect)", required: true, autocomplete: true },
-      { type: STRING, name: "player", description: "Start typing a name from that league", required: false, autocomplete: true },
-      { type: STRING, name: "team", description: "Start typing a team from that league (alone: the team's page)", required: false, autocomplete: true },
-      { type: STRING, name: "command", description: "Optional: something else (tws, stats…); a player alone shows his card", required: false, choices: LEAGUE_CMDS.map(([value, name]) => ({ name, value })) },
+      { type: STRING, name: "player", description: "A player's card (start typing a name from that league)", required: false, autocomplete: true },
+      { type: STRING, name: "tws", description: "A team's game this week (or the week box): start typing a team", required: false, autocomplete: true },
+      { type: STRING, name: "stats", description: "Top 10 in a stat this season (add the team box for one team)", required: false, choices: STAT_CATS.map((c) => ({ name: c.label, value: c.key })) },
+      { type: STRING, name: "team", description: "A team's page (start typing a team)", required: false, autocomplete: true },
+      { type: STRING, name: "cap", description: "A team's cap space by year (add the year box to focus a season)", required: false, autocomplete: true },
+      { type: STRING, name: "contract", description: "What a player will likely ask for on his next deal", required: false, autocomplete: true },
+      { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
-      { type: STRING, name: "category", description: "For stats: which stat", required: false, choices: STAT_CATS.map((c) => ({ name: c.label, value: c.key })) },
       { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028", required: false, min_value: 2000, max_value: 2100 },
     ],
   },
+
   { name: "marketchannels", description: "Admins: delete and rebuild the Markets category from scratch (payouts channel kept)", ...SERVER_ONLY },
   { name: "marketupdate", description: "Admins: refresh every Markets channel with the latest odds, bets and lines", ...SERVER_ONLY },
   {

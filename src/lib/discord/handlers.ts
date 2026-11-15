@@ -106,24 +106,33 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 // ---------- /league: the same commands for any league you're in ----------
 
 const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "info"]);
-// What each /league command needs filled in, and which of /league's boxes it reads.
-const NEEDS: Record<string, string[]> = { player: ["player"], contract: ["player"], team: ["team"], tws: ["team"], stats: ["category"] };
-const USES: Record<string, string[]> = {
-  player: ["player"], contract: ["player"], team: ["team"], tws: ["team", "week"], stats: ["category", "team"],
-  cap: ["team", "year"], rookie: ["team"], funfact: ["player", "team"], scores: ["week"],
-};
+// Boxes that are a command themselves, and which plain-command option their value becomes.
+const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
+// Which helper boxes each command also reads.
+const EXTRA: Record<string, string[]> = { tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team"], funfact: ["player", "team"] };
 
-/** /league league:<slug> command:<cmd> …  →  the plain <cmd> command with just its own options, plus the picked league. */
+/**
+ * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
+ * The "more" box wins, then tws, stats, cap, contract, player, team; nothing filled shows the league's info.
+ */
 function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: string; inner: Interaction } | null {
   if (i.data?.name !== "league") return null;
-  const opts = i.data.options || [];
+  const opts = (i.data.options || []).filter((o) => o.value !== "" && o.value != null || o.focused);
   const get = (n: string) => opts.find((o) => o.name === n);
-  // No command picked: a player shows his card, a team its page, nothing at all the league's info (Nick, 2026-11-14).
-  const cmd = String(get("command")?.value ?? "") || (get("player")?.value ? "player" : get("team")?.value ? "team" : "info");
   const pick = String(get("league")?.value ?? "").trim();
-  // Autocomplete keeps every typed box (the focused one may not belong to the command); commands keep only what they use.
-  const keep = i.type === 4 ? opts.filter((o) => o.name !== "league" && o.name !== "command") : opts.filter((o) => (USES[cmd] || []).includes(o.name));
-  return { cmd, pick, focused: opts.find((o) => o.focused)?.name, inner: { ...i, data: { ...i.data, name: cmd || "league", options: keep } } };
+  if (i.type === 4) {
+    // Autocomplete: tws/cap list teams, contract lists players, all from the picked league.
+    const f = opts.find((o) => o.focused);
+    const as = BOX_CMDS.find(([box]) => box === f?.name)?.[2] || f?.name || "";
+    const inner = f ? [{ ...f, name: as }] : [];
+    return { cmd: "", pick, focused: f?.name, inner: { ...i, data: { ...i.data, name: "league", options: inner } } };
+  }
+  const more = String(get("more")?.value ?? "");
+  const box = more ? undefined : BOX_CMDS.find(([b]) => get(b));
+  const cmd = more || box?.[1] || "info";
+  const own = box ? [{ ...get(box[0])!, name: box[2] }] : [];
+  const extra = opts.filter((o) => (EXTRA[cmd] || []).includes(o.name) && !own.some((x) => x.name === o.name));
+  return { cmd, pick, inner: { ...i, data: { ...i.data, name: cmd, options: [...own, ...extra] } } };
 }
 
 const slugOf = (raw: string) => raw.toLowerCase().replace(/^.*\/l\//, "").replace(/[/?#].*$/, "").trim();
@@ -189,9 +198,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         connected ? "" : "Run `/connect` to link your Discord to your CFM Manager account, and every league you're in shows up here.",
       ].filter(Boolean).join("\n"));
     }
-    if (!LEAGUE_PICK_CMDS.has(w.cmd)) return reply("Pick a command from the list.");
-    const missing = (NEEDS[w.cmd] || []).filter((n) => !w.inner.data?.options?.some((o) => o.name === n && o.value !== ""));
-    if (missing.length) return reply(`For **${w.cmd}**, fill in the **${missing.join(", ")}** box too.`);
+    if (!LEAGUE_PICK_CMDS.has(w.cmd)) return reply("Pick something from the list.");
     if (w.cmd === "scores" && Number(opt(w.inner, "week")) > 18) return reply("Scores go by regular-season week, 1 to 18.");
     i = { ...w.inner, forced: lg };
   }
