@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
+import { weekTitle } from "@/lib/league/derive";
 import { leagueBySlug, discordOf } from "@/lib/discord/links";
 import { betCaps, closeTimes, economyOf, fmtET, isCommissioner, ledgerRows, viewer } from "@/lib/marketStore";
 import { discordOfUser, ticketsConfig, type TicketsSetting } from "@/lib/tickets";
@@ -51,7 +52,7 @@ export default async function AdminPage({ params }: Props) {
     caps, eco,
     owed: owed.filter((u) => u.net !== 0 || u.ids.length).sort((a, b) => a.name.localeCompare(b.name)),
     week: week.map((g) => ({ id: g.id, name: name(g), kickoff: closes.get(g.id)?.closeAt ?? null, kickoffText: closes.get(g.id) ? fmtET(closes.get(g.id)!.closeAt) : null, final: Boolean(g.final) })),
-    finals: finals.map((g) => ({ id: g.id, name: `${name(g)} · ${g.stage === 1 ? `week ${g.week + 1}` : "preseason"}`, kickoffText: closes.get(g.id) ? `${closes.get(g.id)!.kind === "verified" ? "verified" : "listed"} ${fmtET(closes.get(g.id)!.closeAt)}` : "no kickoff on record" })),
+    finals: finals.map((g) => ({ id: g.id, name: `${name(g)} · ${weekTitle(d, g.stage, g.week)}`, kickoffText: closes.get(g.id) ? `${closes.get(g.id)!.kind === "verified" ? "verified" : "listed"} ${fmtET(closes.get(g.id)!.closeAt)}` : "no kickoff on record" })),
     discord: { linked: Boolean(guild), markets: Boolean(mc?.categoryId), games: Boolean(gc?.categoryId) },
     seasonTitle: `${d.season.year} ${d.season.title}`,
   };
