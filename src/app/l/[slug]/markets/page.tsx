@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HowItWorks } from "@/components/league/markets/HowItWorks";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook, priceIndex } from "@/lib/league/markets";
 import { marketsForPage } from "@/lib/marketStore";
@@ -37,10 +38,11 @@ export default async function MarketsPage({ params, searchParams }: Props) {
         <div className="mk-hero">
           <div>
             <h2>Markets</h2>
-            <p className="muted">Trade on how the {book.season} season ends. Prices start at the chance from a simulation of the rest of the season (updated after every sync){shared ? " and then move with what league members buy and sell, so getting in early gets a better price" : ""}. {shared?.currency === "tickets" ? "Bets are in league Tickets: admins add or remove results in UnbelievaBoat after each advance." : "Play money only: everyone starts with $1,000."}</p>
+            <p className="muted">Trade on how the {book.season} season ends. Prices start at the chance from a simulation of the rest of the season (updated after every sync){shared ? " and then move with what league members buy and sell, so getting in early gets a better price" : ""}. {shared?.currency === "tickets" ? "Bets are in league Tickets: stakes come out of UnbelievaBoat when you bet, and admins add winnings after each advance." : "Play money only: everyone starts with $1,000."}</p>
             <p className="small"><Link href={`/l/${slug}/markets/activity`}>Public trade log →</Link> every trade by every member, for anyone to check.</p>
           </div>
         </div>
+        <HowItWorks slug={slug} shared={shared} />
         <MarketsBoard slug={slug} markets={markets} teams={teams} index={priceIndex(book)} sinceLabel={book.sinceLabel} initialCat={sp.cat ?? "all"} shared={shared} />
         <p className="muted small mk-setup-link">Running this in your own league&apos;s Discord? <Link href={`/l/${slug}/markets/setup`}>Setup guide</Link> · <Link href={`/l/${slug}/admin`}>Admin</Link></p>
       </div>

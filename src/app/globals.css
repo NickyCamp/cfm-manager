@@ -1502,3 +1502,15 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .admin-panel input[inputmode] { width: 7em; }
 .admin-panel .admin-game { min-width: 10em; }
 .admin-panel form.admin-row + form.admin-row { border-top: 1px solid var(--line, rgba(255,255,255,.08)); padding-top: 10px; }
+
+/* Markets: "How this works" */
+.mk-how { margin: 12px 0 18px; }
+.mk-how summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.mk-how summary::-webkit-details-marker { display: none; }
+.mk-how summary::before { content: "▸"; color: var(--ink-soft); }
+.mk-how[open] summary::before { content: "▾"; }
+.mk-how-body { display: grid; gap: 4px; margin-top: 10px; max-width: 72ch; }
+.mk-how-body h4 { margin: 14px 0 4px; }
+.mk-how-body ul { padding-left: 20px; margin: 4px 0; }
+.mk-how-body li { margin: 4px 0; }
+.mk-how-ex { border-left: 3px solid var(--ok); padding-left: 10px; }
