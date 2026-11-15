@@ -105,15 +105,24 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 
 // ---------- /league: the same commands for any league you're in ----------
 
-const LEAGUE_PICK_SUBS = new Set(["player", "contract", "cap", "team", "rookie", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs"]);
+const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "info"]);
+// What each /league command needs filled in, and which of /league's boxes it reads.
+const NEEDS: Record<string, string[]> = { player: ["player"], contract: ["player"], team: ["team"], tws: ["team"], stats: ["category"] };
+const USES: Record<string, string[]> = {
+  player: ["player"], contract: ["player"], team: ["team"], tws: ["team", "week"], stats: ["category", "team"],
+  cap: ["team", "year"], rookie: ["team"], funfact: ["player", "team"], scores: ["week"],
+};
 
-/** /league <sub> league:<slug> …  →  the plain <sub> command with its own options, plus the picked league's slug. */
-function unwrapLeague(i: Interaction): { sub: Option; pick: string; inner: Interaction } | null {
-  const sub = i.data?.name === "league" ? i.data.options?.find((o) => o.type === 1) : undefined;
-  if (!sub) return null;
-  const opts = sub.options || [];
-  const pick = String(opts.find((o) => o.name === "league")?.value ?? "").trim();
-  return { sub, pick, inner: { ...i, data: { ...i.data!, name: sub.name, options: opts.filter((o) => o.name !== "league") } } };
+/** /league league:<slug> command:<cmd> …  →  the plain <cmd> command with just its own options, plus the picked league. */
+function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: string; inner: Interaction } | null {
+  if (i.data?.name !== "league") return null;
+  const opts = i.data.options || [];
+  const get = (n: string) => opts.find((o) => o.name === n);
+  const cmd = String(get("command")?.value ?? "");
+  const pick = String(get("league")?.value ?? "").trim();
+  // Autocomplete keeps every typed box (the focused one may not belong to the command); commands keep only what they use.
+  const keep = i.type === 4 ? opts.filter((o) => o.name !== "league" && o.name !== "command") : opts.filter((o) => (USES[cmd] || []).includes(o.name));
+  return { cmd, pick, focused: opts.find((o) => o.focused)?.name, inner: { ...i, data: { ...i.data, name: cmd || "league", options: keep } } };
 }
 
 const slugOf = (raw: string) => raw.toLowerCase().replace(/^.*\/l\//, "").replace(/[/?#].*$/, "").trim();
@@ -131,7 +140,7 @@ async function pickedLeague(i: Interaction, pick: string): Promise<{ lg?: Linked
 export async function autocomplete(i: Interaction): Promise<{ name: string; value: string }[]> {
   const w = unwrapLeague(i);
   if (w) {
-    if (w.sub.options?.find((o) => o.focused)?.name === "league") {
+    if (w.focused === "league") {
       // The league picker: every league this person is in, the one this server is linked to marked.
       const { leagues } = await leaguesForDiscordUser(userId(i), i.guild_id);
       const n = norm(w.pick);
@@ -140,9 +149,9 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
         .slice(0, 25)
         .map((l) => ({ name: `${l.name} (${l.slug})${l.why === "server" ? " · this server" : ""}`.slice(0, 100), value: l.slug }));
     }
-    // Player/team names come from the picked league (or this chat's usual league until one is picked).
+    // Player/team names come from the picked league (nothing until one is picked).
     const { lg } = w.pick ? await pickedLeague(i, w.pick) : { lg: undefined };
-    return autocomplete(lg ? { ...w.inner, forced: lg } : w.inner);
+    return lg ? autocomplete({ ...w.inner, forced: lg }) : [];
   }
   const lg = (await resolveLeague(i))?.lg;
   if (!lg) return [];
@@ -168,8 +177,8 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
   const w = unwrapLeague(i);
-  if (w && w.sub.name !== "info") {
-    if (!LEAGUE_PICK_SUBS.has(w.sub.name)) return reply("That command can't be run for another league.");
+  if (w) {
+    // /league league:<pick> command:<cmd> … (any league you're in, from any Discord)
     const { lg, mine, connected } = await pickedLeague(i, w.pick);
     if (!lg) {
       const list = mine.map((l) => `\`${l.slug}\` ${l.name}`).join("\n");
@@ -179,16 +188,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         connected ? "" : "Run `/connect` to link your Discord to your CFM Manager account, and every league you're in shows up here.",
       ].filter(Boolean).join("\n"));
     }
-    return runCommand({ ...w.inner, forced: lg }, base);
-  }
-  if (w) {
-    // /league info [league]: the picked league, or this chat's usual one
-    i = { ...w.inner, data: { ...w.inner.data!, name: "league" } };
-    if (w.pick) {
-      const { lg } = await pickedLeague(i, w.pick);
-      if (!lg) return reply(`**${w.pick}** isn't one of your leagues. Start typing in the league box to see them.`);
-      i = { ...i, forced: lg };
-    }
+    if (!LEAGUE_PICK_CMDS.has(w.cmd)) return reply("Pick a command from the list.");
+    const missing = (NEEDS[w.cmd] || []).filter((n) => !w.inner.data?.options?.some((o) => o.name === n && o.value !== ""));
+    if (missing.length) return reply(`For **${w.cmd}**, fill in the **${missing.join(", ")}** box too.`);
+    if (w.cmd === "scores" && Number(opt(w.inner, "week")) > 18) return reply("Scores go by regular-season week, 1 to 18.");
+    i = { ...w.inner, forced: lg };
   }
   const name = i.data?.name || "";
   if (name === "myleague") return myLeague(i, base);
@@ -361,9 +365,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const pick = w ? { stage: 1, week: w - 1 } : defaultScoresWeek(d);
       return { embeds: [scoresEmbed(d, pick.stage, pick.week, url, footer)] };
     }
+    case "info":
     case "league": {
-      // /league info: admin role only in servers (Nick, 2026-11-14); DMs and group DMs have no roles, so it stays open there
-      if (i.guild_id && !(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      // From /league: one of your own leagues, open to anyone (the old admin-only /league info is folded in here).
+      if (!i.forced && i.guild_id && !(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       const ch = via === "server" ? discordOf(lg)?.channelId : null;
       return {
         embeds: [{
