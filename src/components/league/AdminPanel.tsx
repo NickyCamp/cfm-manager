@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TicketsSettingForm } from "@/components/league/markets/TicketsSettingForm";
+import { BOT_INVITE_URL } from "@/lib/discord/invite";
 import type { BetCaps } from "@/lib/marketStore";
 import type { Economy } from "@/lib/league/marketTypes";
 
@@ -136,8 +137,12 @@ export function AdminPanel({ data }: { data: AdminData }) {
       </section>
 
       <section className="panel mk-setup">
-        <h3>Discord channels</h3>
-        {!data.discord.linked ? <p className="muted">Link a Discord server first: run <code>/link league:{data.slug}</code> there.</p> : (
+        <h3>Discord</h3>
+        <div className="admin-row">
+          <a className="btn discord-btn" href={BOT_INVITE_URL} target="_blank" rel="noreferrer">{data.discord.linked ? "Add CFM Manager to another server" : "Add CFM Manager to your Discord"}</a>
+          <span className="muted small">{data.discord.linked ? "This league is linked to a Discord server." : <>Pick your league&apos;s server, then run <code>/link league:{data.slug}</code> there (needs Manage Server).</>}</span>
+        </div>
+        {!data.discord.linked ? null : (
           <>
             <div className="admin-row">
               <button type="button" className="btn ghost" disabled={busy === "mu" || !data.discord.markets} onClick={() => run("mu", { action: "marketupdate" })}>Refresh Markets channels (/marketupdate)</button>

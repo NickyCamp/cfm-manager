@@ -5,6 +5,7 @@ import { leagueBySlug, discordOf } from "@/lib/discord/links";
 import { isCommissioner, marketsShared, viewer } from "@/lib/marketStore";
 import { discordOfUser, ticketBalance, ticketsConfig, UB_AUTHORIZE_URL, type TicketsSetting } from "@/lib/tickets";
 import { TicketsSettingForm } from "@/components/league/markets/TicketsSettingForm";
+import { BOT_INVITE_URL } from "@/lib/discord/invite";
 
 export const metadata: Metadata = { title: "Setup guide · Markets" };
 type Props = { params: Promise<{ slug: string }> };
@@ -12,7 +13,7 @@ type Props = { params: Promise<{ slug: string }> };
 // How any league runs the Markets in its own Discord (Nick, 2026-11-14: "standardize this with
 // instructions on the markets tab somewhere out of the way incase any other leagues want to try it").
 // Linked quietly from the bottom of the Markets page. Shows this league's progress through the steps.
-const BOT_INVITE = "https://discord.com/oauth2/authorize?client_id=1570587209743073343&scope=bot+applications.commands&permissions=268487696";
+const BOT_INVITE = BOT_INVITE_URL;
 
 export default async function MarketsSetup({ params }: Props) {
   const { slug } = await params;
@@ -53,6 +54,7 @@ export default async function MarketsSetup({ params }: Props) {
 
         <div className="panel mk-setup">
           <h3>1. Add the CFM Manager bot to your server</h3>
+          <p><a className="btn discord-btn" href={BOT_INVITE} target="_blank" rel="noreferrer">Add CFM Manager to Discord</a></p>
           <p>Someone with <strong>Manage Server</strong> opens <a href={BOT_INVITE} target="_blank" rel="noreferrer">this invite link</a> and picks the server. The bot needs to see and send messages, post embeds and files, <strong>manage channels</strong> (it creates and removes the game channels each week) and <strong>manage roles</strong> (so only the bot can post in the Markets channels; members still bet with the buttons). If your bot was added before, give its role Manage Roles in Server Settings → Roles.</p>
 
           <h3>Admins</h3>

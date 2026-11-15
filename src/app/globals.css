@@ -1514,3 +1514,7 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .mk-how-body ul { padding-left: 20px; margin: 4px 0; }
 .mk-how-body li { margin: 4px 0; }
 .mk-how-ex { border-left: 3px solid var(--ok); padding-left: 10px; }
+
+/* "Add CFM Manager to Discord" */
+.btn.discord-btn { background: #5865f2; color: #fff; border-color: #5865f2; }
+.btn.discord-btn:hover { background: #4752c4; border-color: #4752c4; }
