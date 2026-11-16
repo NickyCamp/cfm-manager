@@ -11,7 +11,7 @@ import {
 import { money } from "@/lib/league/format";
 import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
-import { recommend, type MarketPlayer } from "@/lib/league/recommend";
+import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { standInArt } from "@/lib/league/headshots";
 import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
@@ -761,12 +761,13 @@ function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed 
   const lines = top.map((p, k) => {
     const r = recommend(byId.get(p.id)!, market);
     const head = `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}** · age ${p.age}${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · now ${money(p.contract.capHit)}`;
-    const ask = r
-      ? `Ask: **${money(r.apy)}/yr** · ${r.length} yr${r.length === 1 ? "" : "s"}, ${money(r.total)} (${money(r.bonus)} bonus)`
-      : "Ask: not enough similar signed players to price a deal";
     const ds = p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0
       ? ` · Madden: ${money((p.desired.salary + p.desired.bonus) / p.desired.length)}/yr, ${p.desired.length} yrs` : "";
-    return `${head}\n-# ${ask}${ds}`;
+    const ask = r
+      ? `-# Ask: **${money(r.apy)}/yr** · ${r.length} yr${r.length === 1 ? "" : "s"}, ${money(r.total)} (${money(r.bonus)} bonus)${ds}`
+        + `\n-# Cap hit: ${askCapHits(r, capSeason(d) + p.contract.yearsLeft).map((h) => `${h.year} ${money(h.capHit)}`).join(" · ")}`
+      : `-# Ask: not enough similar signed players to price a deal${ds}`;
+    return `${head}\n${ask}`;
   });
   const freed = all.reduce((a, p) => a + p.contract.capHit, 0);
   const more = all.length > top.length ? `\n\n+${all.length - top.length} more on the [team page](${url(`/teams/${t.abbr.toLowerCase()}?tab=cap&view=expiring`)}).` : "";

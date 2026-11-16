@@ -21,7 +21,7 @@ import { marketBook } from "@/lib/league/markets";
 import { priceIndex } from "@/lib/league/marketTypes";
 import { marketsForPage, teamBets } from "@/lib/marketStore";
 import { TeamBets } from "@/components/league/markets/TeamBets";
-import { recommend, type MarketPlayer } from "@/lib/league/recommend";
+import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
 
 type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string; sort?: string; dir?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"], ["markets", "Markets"]] as const;
@@ -315,7 +315,10 @@ function ExpiringContracts({ d, team, expiring, slug }: { d: LeagueData; team: T
   }));
   const byId = new Map(market.map((m) => [m.id, m]));
   const rows = expiring
-    .map((p) => ({ p, r: recommend(byId.get(p.id)!, market) }))
+    .map((p) => {
+      const r = recommend(byId.get(p.id)!, market);
+      return { p, r, hits: r ? askCapHits(r, (d.season.capYear ?? d.season.year) + p.contract.yearsLeft) : [] };
+    })
     .sort((a, b) => (b.r?.apy ?? 0) - (a.r?.apy ?? 0) || b.p.ovr - a.p.ovr);
   const capYear = d.season.capYear ?? d.season.year;
   const nextYear = capYear + 1;
@@ -333,10 +336,10 @@ function ExpiringContracts({ d, team, expiring, slug }: { d: LeagueData; team: T
         <table className="tbl">
           <caption>Expiring contracts <span className="muted">highest projected ask first</span></caption>
           <thead>
-            <tr><th>Player</th><th className="num">Age</th><th className="num">OVR</th><th className="num hide-sm">Cap hit now</th><th className="num">Projected ask</th><th className="num hide-sm">Bonus</th><th className="num hide-sm">Madden&apos;s ask</th><th></th></tr>
+            <tr><th>Player</th><th className="num">Age</th><th className="num">OVR</th><th className="num hide-sm">Cap hit now</th><th className="num">Projected ask</th><th className="num hide-sm">Bonus</th><th className="num" title="Cap hit of the projected deal, first year (later years below)">New cap hit</th><th className="num hide-sm">Madden&apos;s ask</th><th></th></tr>
           </thead>
           <tbody>
-            {rows.map(({ p, r }) => (
+            {rows.map(({ p, r, hits }) => (
               <tr key={p.id}>
                 <td className="cap-name"><PlayerLink slug={slug} player={p} /> <span className="muted small">{p.pos}</span> <DevTag dev={p.dev} /></td>
                 <td className="num">{p.age}</td>
@@ -344,6 +347,8 @@ function ExpiringContracts({ d, team, expiring, slug }: { d: LeagueData; team: T
                 <td className="num hide-sm">{money(p.contract.capHit)}</td>
                 <td className="num strong">{r ? <>{money(r.apy)}<span className="muted">/yr</span><div className="muted small">{r.length} yr{r.length === 1 ? "" : "s"}, {money(r.total)} total</div></> : <span className="muted" title="Not enough similar signed players to price a deal">—</span>}</td>
                 <td className="num hide-sm">{r ? money(r.bonus) : "—"}</td>
+                <td className="num">{hits.length ? <>{money(hits[0].capHit)}<span className="muted small"> in {hits[0].year}</span>
+                  <div className="muted small ask-years">{hits.slice(1).map((h) => <span key={h.year}>{String(h.year).slice(2)}: {money(h.capHit)}</span>)}</div></> : "—"}</td>
                 <td className="num hide-sm">{p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0
                   ? <>{money((p.desired.salary + p.desired.bonus) / p.desired.length)}<span className="muted">/yr</span><div className="muted small">{p.desired.length} yrs, {money(p.desired.salary + p.desired.bonus)}</div></>
                   : <span className="muted">—</span>}</td>
@@ -353,7 +358,7 @@ function ExpiringContracts({ d, team, expiring, slug }: { d: LeagueData; team: T
           </tbody>
         </table>
       </div>
-      <p className="hint">Projected ask is priced off this league&apos;s own market: the best per-year deal among similar players at his position (OVR and age), plus 2%, with length based on age. A new deal would start in {nextYear}. &quot;Madden&apos;s ask&quot; is the game&apos;s own number when the export includes it. &quot;Build offer&quot; opens the Contract tool with him loaded.</p>
+      <p className="hint">Projected ask is priced off this league&apos;s own market: the best per-year deal among similar players at his position (OVR and age), plus 2%, with length based on age. &quot;New cap hit&quot; is that deal&apos;s cap hit by season: salary rises each year (Madden deals start low) and the bonus is spread over up to 5 years. It starts the season after his current deal ends ({nextYear} for most). &quot;Madden&apos;s ask&quot; is the game&apos;s own number when the export includes it. &quot;Build offer&quot; opens the Contract tool with him loaded.</p>
     </>
   );
 }

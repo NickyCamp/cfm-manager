@@ -10,6 +10,8 @@
 // take less per year than his current (non-rookie) deal. Length follows age;
 // the bonus share is the median of the top peers' (capped at 60%).
 
+import { calculateOffer } from "./cap";
+
 export type MarketPlayer = {
   id: number; n: string; pos: string; t: number; age: number; ovr: number; ps: boolean; yp: number;
   c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number];
@@ -73,4 +75,11 @@ export function recommend(p: MarketPlayer, all: MarketPlayer[]): Recommendation 
     return { apy, length, total: totalValue, bonus, yearlySalary: (totalValue - bonus) / length, peers, bar, tierLabel: label, keepsOwn, group: g };
   }
   return null;
+}
+
+/** Year-by-year cap hits of a recommended deal (salaries rise each year, bonus spread over up to 5 years),
+ *  starting the season after his current deal ends: startYear = cap season + years left (0 left = this season). */
+export function askCapHits(r: Recommendation, startYear: number): { year: number; capHit: number }[] {
+  return calculateOffer({ startYear, length: r.length, yearlySalary: r.yearlySalary, totalBonus: r.bonus }).rows
+    .map((x) => ({ year: x.year, capHit: x.capHit }));
 }
