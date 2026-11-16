@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getLeagueData } from "@/lib/league/load";
-import { capSeason, nextDraftYear, PROJECTION_YEARS } from "@/lib/league/derive";
+import { capSeason, committedByTeam, nextDraftYear, PROJECTION_YEARS } from "@/lib/league/derive";
 import { isCapSet, leagueCap, MAX_BONUS_PRORATION_YEARS, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { NoData } from "@/components/league/bits";
@@ -27,17 +27,14 @@ export default async function TradesPage({ params, searchParams }: Props) {
   const years = Array.from({ length: PROJECTION_YEARS + 1 }, (_, i) => year + i);
 
   const players: TradePlayer[] = [];
-  const committed = new Map<number, number[]>(d.teams.map((t) => [t.id, years.map(() => 0)]));
+  const proj = new Map(d.players.filter((p) => !p.gone && p.team).map((p) => [p.id, projectPlayer(p, year)]));
+  const committed = committedByTeam(d, years, proj);
   const active = new Map<number, number>();
   for (const p of d.players) {
     if (p.gone || !p.team) continue;
-    const pr = projectPlayer(p, year);
+    const pr = proj.get(p.id)!;
     const c = p.contract;
-    if (!p.ps) {
-      active.set(p.team, (active.get(p.team) || 0) + 1);
-      const row = committed.get(p.team);
-      if (row) years.forEach((y, i) => { if (i > 0) row[i] += (pr.hits[y] || 0) + (pr.dead[y] || 0); });
-    }
+    if (!p.ps) active.set(p.team, (active.get(p.team) || 0) + 1);
     // His bonus share in each season he's signed for: the deal's bonus spread
     // over up to 5 seasons, never more than what's left to charge (the penalty
     // also covers void-year bonus after the deal ends).
@@ -60,7 +57,6 @@ export default async function TradesPage({ params, searchParams }: Props) {
 
   const teams: TradeTeam[] = [...d.teams].sort((a, b) => a.city.localeCompare(b.city)).map((t) => {
     const row = committed.get(t.id)!;
-    row[0] = t.cap.spent;
     return {
       id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary, active: active.get(t.id) || 0,
       committed: row, cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),

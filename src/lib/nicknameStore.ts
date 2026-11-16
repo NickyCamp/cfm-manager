@@ -31,28 +31,45 @@ export function cleanNickname(raw: unknown): string {
     .trim();
 }
 
+function parseNicknames(text: string): Map<number, string> {
+  const out = new Map<number, string>();
+  const raw = JSON.parse(text) as Record<string, unknown>;
+  for (const [id, n] of Object.entries(raw || {})) {
+    const nick = cleanNickname(n);
+    if (Number(id) > 0 && nick) out.set(Number(id), nick);
+  }
+  return out;
+}
+
 /** Every nickname in the league (player id → nickname). Empty on any error. */
 export async function leagueNicknames(slug: string): Promise<Map<number, string>> {
-  const out = new Map<number, string>();
   try {
     await ensureBucket();
     const { data, error } = await supabaseAdmin().storage.from(BUCKET).download(`${slug}.json`);
-    if (error || !data) return out;
-    const raw = JSON.parse(await data.text()) as Record<string, unknown>;
-    for (const [id, n] of Object.entries(raw || {})) {
-      const nick = cleanNickname(n);
-      if (Number(id) > 0 && nick) out.set(Number(id), nick);
-    }
+    if (error || !data) return new Map();
+    return parseNicknames(await data.text());
   } catch (e) {
     console.error("nicknames", slug, e);
+    return new Map();
   }
-  return out;
+}
+
+/** The league's nicknames for saving: throws when the file exists but can't be read, so a storage
+ *  hiccup can't make the save below write a file holding only the one new nickname. */
+async function nicknamesForSave(slug: string): Promise<Map<number, string>> {
+  const store = supabaseAdmin().storage.from(BUCKET);
+  const { data: files, error: le } = await store.list("", { search: `${slug}.json`, limit: 100 });
+  if (le) throw new Error(le.message);
+  if (!(files || []).some((f) => f.name === `${slug}.json`)) return new Map();
+  const { data, error } = await store.download(`${slug}.json`);
+  if (error || !data) throw new Error(error?.message || "Couldn't read the league's nicknames.");
+  return parseNicknames(await data.text());
 }
 
 /** Set (or clear with "") one player's nickname. Read-modify-write of the league file. */
 export async function saveNickname(slug: string, playerId: number, nickname: string) {
   await ensureBucket();
-  const all = await leagueNicknames(slug);
+  const all = await nicknamesForSave(slug);
   const nick = cleanNickname(nickname);
   if (nick) all.set(playerId, nick); else all.delete(playerId);
   const body = JSON.stringify(Object.fromEntries([...all].map(([id, n]) => [String(id), n])));

@@ -420,6 +420,17 @@ export async function placeTrade(args: {
     if (want > room) return { ok: false, error: `You have ${Math.max(0, room).toLocaleString("en-US")} Tickets free to bet; that bet is ${want.toLocaleString("en-US")}.` };
     const mv = await moveTickets({ cfg: args.tickets!, leagueId: args.leagueId, book: args.book, userId: args.userId, discordId: disc!.id, amount: -want, kind: "bet", reason: `CFM Markets: stake on ${args.market}` });
     if (!mv.ok) return { ok: false, error: `Couldn't take the stake from UnbelievaBoat, so no bet was placed (${mv.error ?? "unknown error"}).` };
+    // The balance was read before the stake was taken, so two bets sent at the same moment (or Tickets spent
+    // in Discord in between) could both pass the check above. UnbelievaBoat reports the balance after the
+    // move: if this stake pushed it below zero, the Tickets weren't there. Put the stake back and refuse.
+    if (mv.balance != null && mv.balance < 0) {
+      const undo = await moveTickets({ cfg: args.tickets!, leagueId: args.leagueId, book: args.book, userId: args.userId, discordId: disc!.id, amount: want, kind: "refund", reason: `CFM Markets: stake returned, not enough Tickets for ${args.market}` });
+      if (!undo.ok) {
+        await admin.from("market_ledger").insert({ league_id: args.leagueId, book: args.book, user_id: args.userId, kind: "credit", market_key: args.market, outcome_id: args.outcome, side: args.side, amount: want,
+          note: `Stake for a refused bet the bot couldn't send back to UnbelievaBoat (move ${undo.id ?? "?"}: check UnbelievaBoat first, it may have gone through)` });
+      }
+      return { ok: false, error: "You don't have enough Tickets free for that bet (another bet or purchase used them a moment ago). No bet was placed." };
+    }
     debited = want;
   }
 
@@ -624,19 +635,44 @@ export async function isMaddenAdmin(slug: string, userId: string, teamAbbr?: str
   const mine = new Set((conns || []).map((c) => norm(c.persona_name || "")).filter(Boolean));
   return list.some((a) => a.user && mine.has(norm(a.user)));
 }
+/** Every team a site user runs in this league (abbreviations). Two sources, both counted:
+ *  - league_members.team_abbr, when someone has set it by hand in the database (nothing in the app writes it);
+ *  - EA itself: each team in the export carries the PSN/Xbox name of the person controlling it (Team.user),
+ *    matched against the EA persona names the user connected. Same rule as the card-art lock
+ *    (cardArtStore.ts), and it follows every sync.
+ *  Before 2026-11-16 only team_abbr was read, so the own-game betting rule and the "two teams' managers"
+ *  kickoff rule never matched anyone. Throws if the lookups fail (callers decide whether to refuse). */
+export async function teamsOfUser(leagueId: string, userId: string): Promise<string[]> {
+  const admin = supabaseAdmin();
+  const [mem, lg, conns] = await Promise.all([
+    admin.from("league_members").select("team_abbr").eq("league_id", leagueId).eq("user_id", userId).maybeSingle(),
+    admin.from("leagues").select("slug").eq("id", leagueId).maybeSingle(),
+    admin.from("ea_connections").select("persona_name").eq("user_id", userId),
+  ]);
+  const failed = mem.error || lg.error || conns.error;
+  if (failed) throw new Error(failed.message);
+  const out: string[] = [];
+  const add = (abbr: string | null | undefined) => { if (abbr && !out.some((x) => x.toLowerCase() === abbr.toLowerCase())) out.push(abbr); };
+  add(mem.data?.team_abbr as string | null);
+  const names = new Set((conns.data || []).map((c) => String(c.persona_name || "").trim().toLowerCase()).filter(Boolean));
+  if (names.size && lg.data?.slug) {
+    const d = await getLeagueData(lg.data.slug as string);
+    for (const t of d?.teams || []) if (t.user && names.has(t.user.trim().toLowerCase())) add(t.abbr);
+  }
+  return out;
+}
 /** The team a site user runs in this league (abbreviation), if any. */
 export async function teamOfUser(leagueId: string, userId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin().from("league_members").select("team_abbr").eq("league_id", leagueId).eq("user_id", userId).maybeSingle();
-  return (data?.team_abbr as string | null) || null;
+  return (await teamsOfUser(leagueId, userId))[0] ?? null;
 }
 /** Who may set a game's kickoff (Fable's review, 2026-11-14): the two teams' managers or an admin;
  *  once the kickoff in force has passed, only an admin (so nobody can reopen a game that's under way).
  *  Returns "" if allowed, else why not. */
-export function kickoffPermission(o: { admin: boolean; userTeam: string | null; homeAbbr: string; awayAbbr: string; current?: CloseRow; now?: number }) {
+export function kickoffPermission(o: { admin: boolean; userTeam: string | string[] | null; homeAbbr: string; awayAbbr: string; current?: CloseRow; now?: number }) {
   if (o.admin) return "";
   if (o.current && Date.parse(o.current.closeAt) <= (o.now ?? Date.now())) return "Betting on this game has already closed. Only an admin can change its kickoff now.";
-  const t = (o.userTeam || "").toLowerCase();
-  if (t && (t === o.homeAbbr.toLowerCase() || t === o.awayAbbr.toLowerCase())) return "";
+  const mine = (Array.isArray(o.userTeam) ? o.userTeam : [o.userTeam || ""]).map((t) => t.toLowerCase()).filter(Boolean);
+  if (mine.includes(o.homeAbbr.toLowerCase()) || mine.includes(o.awayAbbr.toLowerCase())) return "";
   return "Only the two teams' managers (or an admin) can set this game's kickoff.";
 }
 

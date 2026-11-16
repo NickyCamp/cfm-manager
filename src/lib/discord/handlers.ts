@@ -22,7 +22,7 @@ import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { betCaps, cancelValue, closeTimes, economyOf, isFutures, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
+import { betCaps, cancelValue, closeTimes, economyOf, isFutures, isMember, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamsOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
 import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
@@ -408,6 +408,14 @@ async function link(i: Interaction, base: string): Promise<Message> {
   const lg = await leagueBySlug(slug);
   if (!lg) return reply(`No league at **${slug}**. Use the part after /l/ in the league's address, e.g. \`ncl\` for ${base}/l/ncl.`);
   if (!lg.is_public) return reply(`${lg.name} is private, so it can't be shown in Discord.`);
+  // Linking decides which server's "admin" role runs the league's bot commands (/betcap, /economy,
+  // /verifykickoff, payouts) and which server's UnbelievaBoat balances its Tickets bets use, and it moves
+  // the league away from any server it was linked to. So it takes a member of the league (matched through
+  // /connect), not just Manage Server in whatever server the command was run in.
+  const linker = await userForDiscord(userId(i)).catch(() => null);
+  if (!linker || !(await isMember(lg.id, linker).catch(() => false))) {
+    return reply(`Only members of **${lg.name}** can link it to a Discord server. ${linker ? "Your CFM Manager account isn't in that league: add it from Connect EA on the site first." : "Run `/connect` first to link your Discord to your CFM Manager account, then run `/link` again."}`);
+  }
   const current = await leagueForGuild(i.guild_id!);
   if (current && current.id !== lg.id) await setDiscord(current.id, null);
   // If the league was linked to another server, it moves here (and that server's update channel is dropped).
@@ -950,7 +958,7 @@ async function kickoff(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?
   if (!timeRaw) return reply(line(g!), false);
   const caller = await userForDiscord(userId(i)).catch(() => null);
   const denied = kickoffPermission({
-    admin: await isLeagueAdmin(i), userTeam: caller ? await teamOfUser(lg.id, caller).catch(() => null) : null,
+    admin: await isLeagueAdmin(i), userTeam: caller ? await teamsOfUser(lg.id, caller).catch(() => null) : null,
     homeAbbr: teams.get(g!.home)?.abbr || "", awayAbbr: teams.get(g!.away)?.abbr || "", current: closes.get(g!.id),
   });
   if (denied) return reply(caller ? denied : `${denied} If you run one of these teams, link your Discord first with /connect.`);

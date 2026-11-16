@@ -33,7 +33,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return NextResponse.json({ error: "Use a JPEG, PNG or WebP image." }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "That image is too large (3 MB max)." }, { status: 413 });
   const { error } = await supabaseAdmin().storage.from(CARD_ART_BUCKET)
-    .upload(cardArtPath(g.slug, g.id), await file.arrayBuffer(), { contentType: "image/jpeg", upsert: true, cacheControl: "60" });
+    .upload(cardArtPath(g.slug, g.id), await file.arrayBuffer(), { contentType: file.type, upsert: true, cacheControl: "60" });
   if (error) return NextResponse.json({ error: "Couldn't save the image. Try again." }, { status: 502 });
   return NextResponse.json({ ok: true });
 }

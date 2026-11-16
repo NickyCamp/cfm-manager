@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 /** Supabase client acting as the signed-in user (cookies). Respects row-level security. */
 export async function supabaseUser() {
@@ -28,11 +29,13 @@ export function supabaseAdmin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false } });
 }
 
-export async function currentUser() {
+/** The signed-in user. One auth lookup per page render (a league page asks several times: the layout,
+ *  the card-art and logo checks, the markets viewer), each of which was its own request to Supabase. */
+export const currentUser = cache(async () => {
   const sb = await supabaseUser();
   const { data } = await sb.auth.getUser();
   return data.user;
-}
+});
 
 export function supabaseConfigured() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);

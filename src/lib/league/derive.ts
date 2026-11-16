@@ -214,6 +214,25 @@ export function capYears(d: LeagueData) {
 }
 
 /**
+ * Every team's committed cap for each of `years` (years[0] must be the cap season): this season is
+ * Madden's own "spent" (dead money included); later seasons add up projected cap hits and void-year
+ * bonus of everyone signed (practice squad and departed players left out). The one rule the team Cap
+ * tab (teamCapProjection below), the Contract tool and the Trade Tool all use, so they can't disagree.
+ * Pass `proj` to reuse projections already worked out.
+ */
+export function committedByTeam(d: LeagueData, years: number[], proj?: Map<number, ReturnType<typeof projectPlayer>>) {
+  const out = new Map<number, number[]>(d.teams.map((t) => [t.id, years.map((_, i) => (i === 0 ? t.cap.spent : 0))]));
+  for (const p of d.players) {
+    if (p.gone || !p.team || p.ps) continue;
+    const row = out.get(p.team);
+    if (!row) continue;
+    const pr = proj?.get(p.id) ?? projectPlayer(p, capSeason(d));
+    years.forEach((y, i) => { if (i > 0) row[i] += (pr.hits[y] || 0) + (pr.dead[y] || 0); });
+  }
+  return out;
+}
+
+/**
  * A team's cap by year. This season uses Madden's own spent/available numbers
  * (they include dead money); later years add up projected cap hits of
  * everyone signed through that year (practice squad left out), plus void-year
