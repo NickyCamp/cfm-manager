@@ -5,7 +5,7 @@ import { dispatchConfigured } from "@/lib/dispatch";
 import { requestSync, VISIT_STALE_MS } from "@/lib/sync";
 import { SyncNowButton } from "@/components/league/SyncNowButton";
 import { getLeagueData, getLeagueRow } from "@/lib/league/load";
-import { LeagueNav } from "@/components/league/LeagueNav";
+import { LeagueNav, LeagueTools } from "@/components/league/LeagueNav";
 import { syncStatusText } from "@/lib/format";
 import { Toaster } from "@/components/league/Toaster";
 import { canSeeCardArt } from "@/lib/cardArtStore";
@@ -41,6 +41,7 @@ export default async function LeagueLayout({ children, params }: { children: Rea
     <div className={logosOn ? "logos-on" : undefined} style={{ display: "contents" }}>
       <div className="league-head">
         <div className="wrap">
+          <div className="league-title-row">
           <div className="league-title">
             <h1>{row.name}</h1>
             <div className="league-sub">
@@ -50,7 +51,9 @@ export default async function LeagueLayout({ children, params }: { children: Rea
               {member && <><span className="dot-sep" aria-hidden /><SyncNowButton slug={slug} /></>}
             </div>
           </div>
-          {data && <LeagueNav slug={slug} admin={commish} />}
+          {data && <LeagueTools slug={slug} admin={commish} />}
+          </div>
+          {data && <LeagueNav slug={slug} />}
           <Toaster />
         </div>
       </div>

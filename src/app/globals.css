@@ -203,6 +203,17 @@ input:focus, textarea:focus { border-color: var(--field); outline: none; box-sha
 .league-title h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); margin: 0; }
 .league-sub { color: #c6d6cc; font-size: 0.92rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dot-sep { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+.league-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+.league-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 4px; max-width: 700px; }
+.league-tools a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--rail); color: var(--ink-soft);
+  text-decoration: none; font: 700 0.95rem var(--display); letter-spacing: 0.01em; white-space: nowrap; }
+.league-tools a:hover { color: var(--ink); border-color: #3a4468; }
+.league-tools a[aria-current="page"] { background: var(--accent-grad); border-color: transparent; color: #fff; }
+.league-tools a.is-admin { border-style: dashed; }
+@media (max-width: 640px) {
+  .league-tools { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; width: 100%; margin-top: 0; }
+  .league-tools::-webkit-scrollbar { display: none; }
+}
 .league-nav { display: flex; gap: 2px; margin-top: 12px; overflow-x: auto; scrollbar-width: none; }
 .league-nav::-webkit-scrollbar { display: none; }
 .league-nav a {
