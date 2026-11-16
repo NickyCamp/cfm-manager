@@ -166,7 +166,7 @@ const defScore = (s: S) => s.tk + s.sk * 8 + s.int * 10 + s.ff * 6 + s.fr * 4 + 
 // ---------------------------------------------------------------- awards (Nick, 2026-11-16)
 // Madden's own awards: MVP and Coach of the Year for the whole league; every other award is
 // given per conference: OPOY, DPOY, OROY, DROY, and a Player of the Year for every position
-// (linebackers together, safeties together, none for FB or LS). EA's export doesn't carry the
+// (offensive line together, defensive line together, linebackers together, safeties together, none for FB or LS). EA's export doesn't carry the
 // winners, so a commissioner enters each one on the Admin page (leagues.settings.awards) and the
 // market settles on that. The formulas below only set the starting prices.
 const OFF_POS = new Set(["QB", "HB", "FB", "WR", "TE"]);
@@ -202,8 +202,8 @@ const AWARD_BASES: AwardBase[] = [
   pos1("hb", "HB", ["HB"], offPos),
   pos1("wr", "WR", ["WR"], offPos),
   pos1("te", "TE", ["TE"], offPos),
-  pos1("lt", "LT", ["LT"], olPos), pos1("lg", "LG", ["LG"], olPos), pos1("c", "C", ["C"], olPos), pos1("rg", "RG", ["RG"], olPos), pos1("rt", "RT", ["RT"], olPos),
-  pos1("le", "LEDG", ["LEDG", "LE"], defPos), pos1("re", "REDG", ["REDG", "RE"], defPos), pos1("dt", "DT", ["DT"], defPos),
+  pos1("ol", "OL", ["LT", "LG", "C", "RG", "RT"], { ...olPos, posLabel: "LT/LG/C/RG/RT" }),
+  pos1("dl", "DL", ["LEDG", "REDG", "LE", "RE", "EDGE", "DT"], { ...defPos, posLabel: "LEDG/REDG/DT" }),
   pos1("lb", "LB", LB_POS, defPos),
   pos1("cb", "CB", ["CB"], defPos),
   pos1("s", "Safety", ["FS", "SS"], defPos),

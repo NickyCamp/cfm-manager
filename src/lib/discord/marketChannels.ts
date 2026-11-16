@@ -124,7 +124,7 @@ export function gameEmbed(slug: string, d: LeagueData, g: Game, markets: Market[
 // per conference (select menus, 16 teams each). Divisions: a button per team. Player awards: a
 // picker with the top contenders plus "Any other player…", which asks for a name, since any
 // eligible player can be bet on (src/lib/league/markets.ts withAwardPlayers).
-// MVP, then each conference's OPOY/DPOY/OROY/DROY (Madden splits them by conference). The 34
+// MVP, then each conference's OPOY/DPOY/OROY/DROY (Madden splits them by conference). The 22
 // position awards (QB of the Year…) are on the site only, so #futures stays readable.
 const FUTURE_AWARD = /^award-(mvp|(opoy|dpoy|oroy|droy)-[a-z]+)$/;
 const pctOf = (p: number) => `${p > 0 && p < 0.01 ? "<1" : Math.round(p * 100)}%`;
@@ -170,7 +170,7 @@ export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolea
     });
   }
   if (markets.some((m) => m.cat === "posawards")) {
-    out.push({ key: "posawards", content: `**Position awards**: every position's Player of the Year in each conference (QB, HB, WR, TE, each OL spot, LE, RE, DT, LB, CB, S, K, P). Bet on them on the site: Markets tab → Position awards.`, components: [] });
+    out.push({ key: "posawards", content: `**Position awards**: every position's Player of the Year in each conference (QB, HB, WR, TE, OL, DL, LB, CB, S, K, P). Bet on them on the site: Markets tab → Position awards.`, components: [] });
   }
   out.push({ key: "mybets", content: "**Your bets**: tap to see your open bets, privately, with a button to cancel or cash out each one.", components: [MY_BETS_ROW] });
   return out;

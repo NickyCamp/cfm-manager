@@ -50,7 +50,7 @@ export function HowItWorks({ slug, shared }: { slug: string; shared: SharedState
             <li>A game and its props close at the <strong>kickoff time</strong> its managers set (<code>/kickoff</code> in Discord, or on the game&apos;s market page), or as soon as EA reports the game played.</li>
             <li>Bets settle on the final score and box score after the next sync. A tied game is void and every stake comes back.</li>
             <li>Season-long bets settle when the season decides them: the regular season&apos;s end for divisions and win totals, the Super Bowl for the champion.</li>
-            <li><strong>Awards</strong> follow Madden&apos;s own: MVP and Coach of the Year for the whole league; OPOY, DPOY, OROY, DROY and a Player of the Year for every position (linebackers together, safeties together, no FB or LS) in each conference. Betting on them closes when the regular season ends, and they settle on Madden&apos;s winners once a commissioner enters them (EA&apos;s export doesn&apos;t include awards).</li>
+            <li><strong>Awards</strong> follow Madden&apos;s own: MVP and Coach of the Year for the whole league; OPOY, DPOY, OROY, DROY and a Player of the Year for every position (offensive line together, defensive line together, linebackers together, safeties together, no FB or LS) in each conference. Betting on them closes when the regular season ends, and they settle on Madden&apos;s winners once a commissioner enters them (EA&apos;s export doesn&apos;t include awards).</li>
             <li>If a kickoff turns out to have been set too late, an admin can verify the real one. Any bet placed after it is voided.</li>
           </ul>
         </section>
