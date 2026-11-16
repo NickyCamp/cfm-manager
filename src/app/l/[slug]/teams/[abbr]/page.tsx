@@ -21,6 +21,7 @@ import { marketBook } from "@/lib/league/markets";
 import { priceIndex } from "@/lib/league/marketTypes";
 import { marketsForPage, teamBets } from "@/lib/marketStore";
 import { TeamBets } from "@/components/league/markets/TeamBets";
+import { recommend, type MarketPlayer } from "@/lib/league/recommend";
 
 type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string; sort?: string; dir?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"], ["markets", "Markets"]] as const;
@@ -67,7 +68,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
             <Link key={k} href={k === "roster" ? base : `${base}?tab=${k}`} aria-current={tab === k ? "page" : undefined}>{label}</Link>
           ))}
         </nav>
-        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" ? "details" : "years"} base={base} sort={sort} dir={dir} />
+        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" || view === "expiring" ? view : "years"} base={base} sort={sort} dir={dir} />
           : tab === "schedule" ? <ScheduleTab d={d} team={team} slug={slug} />
           : tab === "stats" ? <StatsTab d={d} team={team} slug={slug} />
           : tab === "markets" ? <MarketsTab d={d} team={team} slug={slug} />
@@ -231,7 +232,7 @@ function sortContracts(list: Player[], key: ContractSort, dir: 1 | -1) {
   });
 }
 
-function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirParam }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details"; base: string; sort?: string; dir?: string }) {
+function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirParam }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details" | "expiring"; base: string; sort?: string; dir?: string }) {
   const sort: ContractSort = isContractSort(sortParam) ? sortParam : "cap";
   const dir: 1 | -1 = dirParam === "asc" ? 1 : dirParam === "desc" ? -1 : CONTRACT_SORTS[sort].text ? 1 : -1;
   const sortHref = (k: ContractSort) => {
@@ -266,14 +267,15 @@ function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirPa
         <Tile label="Cap space" value={<CountUp value={team.cap.available} />} neg={team.cap.available < 0} />
         <Tile label="Spent" value={<CountUp value={team.cap.spent} />} sub={`of ${money(team.cap.room)}`} />
         <Tile label="Dead money (est.)" value={<CountUp value={dead} />} sub="cap spent not on the roster" />
-        <Tile label="Expiring deals" value={`${expiring.length}`} sub={money(expiring.reduce((a, p) => a + p.contract.capHit, 0))} />
+        <Link href={`${base}?tab=cap&view=expiring`} className="tile-link"><Tile label="Expiring deals" value={`${expiring.length}`} sub={money(expiring.reduce((a, p) => a + p.contract.capHit, 0))} /></Link>
       </div>
       <CapGauge used={team.cap.room ? (team.cap.spent / team.cap.room) * 100 : 0} color={team.primary} />
       <div className="seg" role="tablist" aria-label="Cap view">
         <Link href={`${base}?tab=cap`} aria-current={view === "years" ? "page" : undefined}>Cap by year</Link>
         <Link href={`${base}?tab=cap&view=details`} aria-current={view === "details" ? "page" : undefined}>Contract details</Link>
+        <Link href={`${base}?tab=cap&view=expiring`} aria-current={view === "expiring" ? "page" : undefined}>Expiring</Link>
       </div>
-      {view === "years" ? <CapByYear d={d} team={team} slug={slug} /> : (
+      {view === "years" ? <CapByYear d={d} team={team} slug={slug} /> : view === "expiring" ? <ExpiringContracts d={d} team={team} expiring={expiring} slug={slug} /> : (
         <>
         <nav className="week-chips sort-chips" aria-label="Sort contracts">
           <span className="sort-label">Sort</span>
@@ -299,6 +301,59 @@ function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirPa
         </>
       )}
       {view === "details" && <p className="hint">Cap hit is this season. &quot;Cut saves&quot; and &quot;Dead if cut&quot; are Madden&apos;s own numbers for releasing the player today.</p>}
+    </>
+  );
+}
+
+// Players in the last year of their deal, with what they'll likely ask for next.
+// "Projected ask" is the same market-based recommendation as the Contract tool;
+// "Madden's ask" is the game's own number when the export has it (often only near the end of a deal).
+function ExpiringContracts({ d, team, expiring, slug }: { d: LeagueData; team: Team; expiring: Player[]; slug: string }) {
+  const market: MarketPlayer[] = d.players.filter((x) => !x.gone).map((x) => ({
+    id: x.id, n: `${x.first} ${x.last}`, pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
+    c: [x.contract.length, x.contract.yearsLeft, x.contract.salary, x.contract.bonus, x.contract.capHit],
+  }));
+  const byId = new Map(market.map((m) => [m.id, m]));
+  const rows = expiring
+    .map((p) => ({ p, r: recommend(byId.get(p.id)!, market) }))
+    .sort((a, b) => (b.r?.apy ?? 0) - (a.r?.apy ?? 0) || b.p.ovr - a.p.ovr);
+  const capYear = d.season.capYear ?? d.season.year;
+  const nextYear = capYear + 1;
+  const freed = expiring.reduce((a, p) => a + p.contract.capHit, 0);
+  const keepAll = rows.reduce((a, { r }) => a + (r?.apy ?? 0), 0);
+  if (!rows.length) return <p className="hint">Nobody on {team.name}&apos;s roster is in the last year of his deal.</p>;
+  return (
+    <>
+      <div className="stat-tiles">
+        <Tile label="Last-year deals" value={`${rows.length}`} sub={`free agents after ${capYear}`} />
+        <Tile label="Cap they take now" value={money(freed)} sub="comes off the books if they walk" />
+        <Tile label="Cost to keep all (per yr)" value={money(keepAll)} sub="sum of projected asks" />
+      </div>
+      <div className="panel tbl-wrap">
+        <table className="tbl">
+          <caption>Expiring contracts <span className="muted">highest projected ask first</span></caption>
+          <thead>
+            <tr><th>Player</th><th className="num">Age</th><th className="num">OVR</th><th className="num hide-sm">Cap hit now</th><th className="num">Projected ask</th><th className="num hide-sm">Bonus</th><th className="num hide-sm">Madden&apos;s ask</th><th></th></tr>
+          </thead>
+          <tbody>
+            {rows.map(({ p, r }) => (
+              <tr key={p.id}>
+                <td className="cap-name"><PlayerLink slug={slug} player={p} /> <span className="muted small">{p.pos}</span> <DevTag dev={p.dev} /></td>
+                <td className="num">{p.age}</td>
+                <td className="num">{p.ovr}</td>
+                <td className="num hide-sm">{money(p.contract.capHit)}</td>
+                <td className="num strong">{r ? <>{money(r.apy)}<span className="muted">/yr</span><div className="muted small">{r.length} yr{r.length === 1 ? "" : "s"}, {money(r.total)} total</div></> : <span className="muted" title="Not enough similar signed players to price a deal">—</span>}</td>
+                <td className="num hide-sm">{r ? money(r.bonus) : "—"}</td>
+                <td className="num hide-sm">{p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0
+                  ? <>{money((p.desired.salary + p.desired.bonus) / p.desired.length)}<span className="muted">/yr</span><div className="muted small">{p.desired.length} yrs, {money(p.desired.salary + p.desired.bonus)}</div></>
+                  : <span className="muted">—</span>}</td>
+                <td className="num"><Link href={`/l/${slug}/contracts?player=${p.id}`} className="small">Build offer</Link></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">Projected ask is priced off this league&apos;s own market: the best per-year deal among similar players at his position (OVR and age), plus 2%, with length based on age. A new deal would start in {nextYear}. &quot;Madden&apos;s ask&quot; is the game&apos;s own number when the export includes it. &quot;Build offer&quot; opens the Contract tool with him loaded.</p>
     </>
   );
 }
