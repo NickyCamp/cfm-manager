@@ -86,7 +86,7 @@ export function buildLeagueData(files: Raw): LeagueData {
       id: t.teamId, abbr: t.abbrName, city: t.cityName, name: t.displayName, primary: hex(t.primaryColor), secondary: hex(t.secondaryColor),
       division: t.divName || s.divisionName || "", conference: s.conferenceName || (String(t.divName || "").split(" ")[0]),
       user: t.userName || "", ovr: num(t.ovrRating),
-      cap: { room: num(s.capRoom), spent: num(s.capSpent), available: num(s.capAvailable) },
+      cap: { room: num(s.capRoom), spent: num(s.capSpent), available: signed32(num(s.capAvailable)) },
       rec: {
         w: num(s.totalWins), l: num(s.totalLosses), t: num(s.totalTies), pct: num(s.winPct),
         divW: num(s.divWins), divL: num(s.divLosses), divT: num(s.divTies),
@@ -198,6 +198,14 @@ export function buildLeagueData(files: Raw): LeagueData {
     teamGames,
     admins: maddenAdmins(hub, teams),
   };
+}
+
+/**
+ * EA sends capAvailable as an unsigned 32-bit number, so a team over the cap wraps
+ * around to about $4.29B (NCL 2026-11-16: SF $320K over showed $4,294,647,296).
+ */
+function signed32(n: number) {
+  return n >= 2 ** 31 ? n - 2 ** 32 : n;
 }
 
 /** Madden's commissioners, from the league hub's member list (owner and admins). */
