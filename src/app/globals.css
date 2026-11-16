@@ -1500,7 +1500,8 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .admin-panel .admin-row label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .admin-panel input, .admin-panel select { min-height: 34px; padding: 4px 8px; background: var(--rail); color: inherit; border: 1px solid var(--line, rgba(255,255,255,.15)); border-radius: 6px; color-scheme: dark; }
 .admin-panel input[inputmode] { width: 7em; }
-.admin-panel .admin-game { min-width: 10em; }
+.admin-panel .admin-row select { max-width: 100%; }
+.admin-panel .admin-game { min-width: 16em; }
 .admin-panel form.admin-row + form.admin-row { border-top: 1px solid var(--line, rgba(255,255,255,.08)); padding-top: 10px; }
 
 /* Markets: "How this works" */

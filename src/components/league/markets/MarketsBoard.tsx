@@ -13,7 +13,7 @@ export type BoardMarket = {
   outcomes: BoardOutcome[]; spark: (number | null)[]; count: number;
 };
 
-const ALL_PER_CAT: Partial<Record<MarketCat, number>> = { games: 4, props: 4, awards: 4, division: 4, wins: 2, leaders: 2, playoffs: 2 };
+const ALL_PER_CAT: Partial<Record<MarketCat, number>> = { games: 4, props: 4, awards: 4, posawards: 4, division: 4, wins: 2, leaders: 2, playoffs: 2 };
 
 export function MarketsBoard({ slug, markets, teams, index, sinceLabel, initialCat, shared }: {
   slug: string; markets: BoardMarket[]; teams: TeamLite[]; index: PriceIndex; sinceLabel: string | null; initialCat: string; shared?: SharedState | null;

@@ -148,15 +148,7 @@ function preseasonWins(d: LeagueData) {
 
 // ---------------------------------------------------------------- players
 
-type AwardKey = "mvp" | "opoy" | "dpoy" | "oroy" | "droy";
 type LeadKey = "py" | "ry" | "rcy" | "sk" | "int";
-const AWARDS: { key: AwardKey; title: string; short: string; def: boolean; rookie: boolean }[] = [
-  { key: "mvp", title: "Most Valuable Player", short: "MVP", def: false, rookie: false },
-  { key: "opoy", title: "Offensive Player of the Year", short: "OPOY", def: false, rookie: false },
-  { key: "dpoy", title: "Defensive Player of the Year", short: "DPOY", def: true, rookie: false },
-  { key: "oroy", title: "Offensive Rookie of the Year", short: "OROY", def: false, rookie: true },
-  { key: "droy", title: "Defensive Rookie of the Year", short: "DROY", def: true, rookie: true },
-];
 const LEADS: { key: LeadKey; title: string; unit: string }[] = [
   { key: "py", title: "Passing yards leader", unit: "pass yds" },
   { key: "ry", title: "Rushing yards leader", unit: "rush yds" },
@@ -164,21 +156,74 @@ const LEADS: { key: LeadKey; title: string; unit: string }[] = [
   { key: "sk", title: "Sack leader", unit: "sacks" },
   { key: "int", title: "Interceptions leader", unit: "INT" },
 ];
-const STAT_KEYS = ["py", "ptd", "pint", "ry", "rtd", "rfum", "rc", "rcy", "rctd", "tk", "sk", "int", "ff", "fr", "pd", "dtd", "sfty"] as const;
+const STAT_KEYS = ["py", "ptd", "pint", "ry", "rtd", "rfum", "rc", "rcy", "rctd", "tk", "sk", "int", "ff", "fr", "pd", "dtd", "sfty", "fga", "fgm", "xpm", "pnt20", "pntnet"] as const;
 type S = Record<(typeof STAT_KEYS)[number], number>;
 
-const offScore = (s: S, passW: number) =>
-  passW * (s.py * 0.04 + s.ptd * 4 - s.pint * 2) + s.ry * 0.1 + s.rtd * 6 + s.rcy * 0.1 + s.rctd * 6 + s.rc * 0.5 - s.rfum * 2;
+const passOf = (s: S) => s.py * 0.04 + s.ptd * 4 - s.pint * 2;
+const scrimOf = (s: S) => s.ry * 0.1 + s.rtd * 6 + s.rcy * 0.1 + s.rctd * 6 + s.rc * 0.5 - s.rfum * 2;
 const defScore = (s: S) => s.tk + s.sk * 8 + s.int * 10 + s.ff * 6 + s.fr * 4 + s.pd * 2.5 + s.dtd * 12 + s.sfty * 6;
 
-function awardScore(key: AwardKey, s: S, pos: string, teamWins: number) {
-  switch (key) {
-    case "mvp": return offScore(s, 1) * (pos === "QB" ? QB_MVP : 1) + teamWins * 8;
-    case "opoy": return offScore(s, 0.7);
-    case "oroy": return offScore(s, 0.8);
-    case "dpoy": case "droy": return defScore(s);
+// ---------------------------------------------------------------- awards (Nick, 2026-11-16)
+// Madden's own awards: MVP and Coach of the Year for the whole league; every other award is
+// given per conference: OPOY, DPOY, OROY, DROY, and a Player of the Year for every position
+// (linebackers together, safeties together, none for FB or LS). EA's export doesn't carry the
+// winners, so a commissioner enters each one on the Admin page (leagues.settings.awards) and the
+// market settles on that. The formulas below only set the starting prices.
+const OFF_POS = new Set(["QB", "HB", "FB", "WR", "TE"]);
+const LB_POS = ["LOLB", "MLB", "ROLB", "LB", "SAM", "MIKE", "WILL"];
+const DEF_POS = new Set(["LE", "RE", "DT", "EDGE", ...LB_POS, "CB", "FS", "SS"]);
+const OL_POS = new Set(["LT", "LG", "C", "RG", "RT"]);
+type StatCol = [keyof Totals, string];
+const OFF_COLS: StatCol[] = [["py", "pass yds"], ["ptd", "pass TD"], ["ry", "rush yds"], ["rcy", "rec yds"], ["rtd", "rush TD"], ["rctd", "rec TD"]];
+const DEF_COLS: StatCol[] = [["tk", "tkl"], ["sk", "sk"], ["int", "INT"]];
+type AwardBase = {
+  id: string; title: string; short: string; pos: Set<string>; rookie?: boolean; perConf: boolean; cat: "awards" | "posawards";
+  lin: (s: S) => number;     // stat part (linear, so the simulation can scale the rest of the season by form)
+  ovrW?: number;             // + overall × this (offensive line: no stats to go on)
+  winW?: number;             // + team wins × this
+  qbMult?: boolean;          // MVP voters lean QB
+  formula: string; cols: StatCol[];
+};
+const OFF_F = "0.04 per passing yard, 4 per passing TD, −2 per INT, 0.1 per rushing/receiving yard, 6 per rushing/receiving TD, 0.5 per catch, −2 per fumble";
+const DEF_F = "tackles + 8 per sack + 10 per INT + 6 per forced fumble + 4 per recovery + 2.5 per pass defended + 12 per TD + 6 per safety";
+const pos1 = (id: string, title: string, pos: string[], f: Partial<AwardBase> & Pick<AwardBase, "lin" | "formula" | "cols">): AwardBase =>
+  ({ id, title: `${title} of the Year`, short: `${title} of the Year`, pos: new Set(pos), perConf: true, cat: "posawards", ...f });
+const offPos = { lin: scrimOf, formula: "0.1 per rushing/receiving yard, 6 per rushing/receiving TD, 0.5 per catch, −2 per fumble", cols: OFF_COLS.slice(2) };
+const defPos = { lin: defScore, formula: DEF_F, cols: DEF_COLS };
+const olPos = { lin: () => 0, ovrW: 1, winW: 0.5, formula: "overall rating + half a point per team win (EA's export has no blocking stats)", cols: [] as StatCol[] };
+const AWARD_BASES: AwardBase[] = [
+  { id: "mvp", title: "Most Valuable Player", short: "MVP", pos: OFF_POS, perConf: false, cat: "awards", lin: (s) => passOf(s) + scrimOf(s), qbMult: true, winW: 8, formula: `${OFF_F}; QBs ×${QB_MVP}, plus 8 per team win`, cols: OFF_COLS },
+  { id: "opoy", title: "Offensive Player of the Year", short: "OPOY", pos: OFF_POS, perConf: true, cat: "awards", lin: (s) => passOf(s) * 0.7 + scrimOf(s), formula: OFF_F.replace("passing yard", "passing yard (passing ×0.7)"), cols: OFF_COLS },
+  { id: "dpoy", title: "Defensive Player of the Year", short: "DPOY", pos: DEF_POS, perConf: true, cat: "awards", lin: defScore, formula: DEF_F, cols: DEF_COLS },
+  { id: "oroy", title: "Offensive Rookie of the Year", short: "OROY", pos: OFF_POS, rookie: true, perConf: true, cat: "awards", lin: (s) => passOf(s) * 0.8 + scrimOf(s), formula: OFF_F.replace("passing yard", "passing yard (passing ×0.8)"), cols: OFF_COLS },
+  { id: "droy", title: "Defensive Rookie of the Year", short: "DROY", pos: DEF_POS, rookie: true, perConf: true, cat: "awards", lin: defScore, formula: DEF_F, cols: DEF_COLS },
+  pos1("qb", "QB", ["QB"], { lin: (s) => passOf(s) + scrimOf(s), winW: 3, formula: `${OFF_F}, plus 3 per team win`, cols: OFF_COLS.slice(0, 3) }),
+  pos1("hb", "HB", ["HB"], offPos),
+  pos1("wr", "WR", ["WR"], offPos),
+  pos1("te", "TE", ["TE"], offPos),
+  pos1("lt", "LT", ["LT"], olPos), pos1("lg", "LG", ["LG"], olPos), pos1("c", "C", ["C"], olPos), pos1("rg", "RG", ["RG"], olPos), pos1("rt", "RT", ["RT"], olPos),
+  pos1("le", "LE", ["LE"], defPos), pos1("re", "RE", ["RE"], defPos), pos1("dt", "DT", ["DT"], defPos),
+  pos1("lb", "LB", LB_POS, defPos),
+  pos1("cb", "CB", ["CB"], defPos),
+  pos1("s", "Safety", ["FS", "SS"], defPos),
+  pos1("k", "Kicker", ["K"], { lin: (s) => s.fgm * 5 - s.fga * 2 + s.xpm, formula: "3 per field goal made, −2 per miss, 1 per extra point", cols: [["fgm", "FG"], ["fga", "FGA"], ["xpm", "XP"]] }),
+  pos1("p", "Punter", ["P"], { lin: (s) => s.pntnet * 0.05 + s.pnt20 * 2, formula: "0.05 per net punting yard, 2 per punt inside the 20", cols: [["pnt", "punts"], ["pnt20", "in 20"]] }),
+];
+export type AwardDef = AwardBase & { key: string; conf: string | null; fullTitle: string };
+
+/** Every award market for this league: MVP, then each conference's awards (keys like award-opoy-afc, award-qb-nfc). */
+export function awardDefs(d: Pick<LeagueData, "teams">): AwardDef[] {
+  const confs = [...new Set(d.teams.map((t) => t.conference).filter(Boolean))].sort();
+  const out: AwardDef[] = [];
+  for (const b of AWARD_BASES) {
+    if (!b.perConf) { out.push({ ...b, key: `award-${b.id}`, conf: null, fullTitle: b.short === b.title ? b.title : `${b.title} (${b.short})` }); continue; }
+    for (const cf of confs) out.push({ ...b, key: `award-${b.id}-${cf.toLowerCase()}`, conf: cf, fullTitle: b.cat === "posawards" ? `${cf.toUpperCase()} ${b.title}` : `${cf.toUpperCase()} ${b.title} (${b.short})` });
   }
+  return out;
 }
+const posText = (a: Pick<AwardBase, "pos">) => [...a.pos].filter((x) => !["LB", "SAM", "MIKE", "WILL", "EDGE"].includes(x)).join("/");
+/** League-wide award keys from before 2026-11-16 (OPOY…DROY weren't split by conference). */
+const LEGACY_AWARD = /^award-(opoy|dpoy|oroy|droy)$/;
 
 type Cand = { id: number; team: number; pos: string; cur: S; rest: S };
 
@@ -186,7 +231,7 @@ type Cand = { id: number; team: number; pos: string; cur: S; rest: S };
 
 type Snap = {
   team: Map<number, { po: number; div: number; seed1: number; conf: number; sb: number; wins: number; over: number }>;
-  awards: Record<AwardKey, Map<number, number>>;
+  awards: Record<string, Map<number, number>>;
   leads: Record<LeadKey, Map<number, number>>;
   coy: Map<number, number>;           // team id → chance its coach wins
   games: Map<number, number>;         // game id → home win chance
@@ -260,14 +305,24 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
     }
     cands.push({ id: pid, team: p.team && idx.has(p.team) && now ? p.team : t.team, pos: p.pos, cur, rest: restS });
   }
+  // offensive linemen have no stat lines: every one on a team is a candidate (scored on overall)
+  for (const p of d.players) {
+    if (!OL_POS.has(p.pos) || totals.has(p.id) || p.gone || !idx.has(p.team)) continue;
+    const z = Object.fromEntries(STAT_KEYS.map((k) => [k, 0])) as S;
+    cands.push({ id: p.id, team: p.team, pos: p.pos, cur: z, rest: { ...z } });
+  }
   const expected = (cd: Cand) => { const s = {} as S; for (const k of STAT_KEYS) s[k] = cd.cur[k] + cd.rest[k]; return s; };
   const expTeamW = (team: number) => { const i = idx.get(team); return i == null ? 0 : baseW[i] + remaining[i] / 2; };
-  const awardCands = new Map<AwardKey, Cand[]>();
-  for (const a of AWARDS) {
-    const pool = cands.filter((cd) => !a.rookie || players.get(cd.id)?.yearsPro === 0);
-    const scored = pool.map((cd) => ({ cd, s: awardScore(a.key, expected(cd), cd.pos, expTeamW(cd.team)) })).filter((x) => x.s > 0);
+  const defs = awardDefs(d);
+  const confOf = (team: number) => { const i = idx.get(team); return i == null ? "" : teams[i].conference; };
+  const mult = (a: AwardDef, cd: Cand) => (a.qbMult && cd.pos === "QB" ? QB_MVP : 1);
+  const baseOf = (a: AwardDef, cd: Cand) => (a.ovrW ? (players.get(cd.id)?.ovr || 0) * a.ovrW : 0);
+  const awardCands = new Map<string, Cand[]>();
+  for (const a of defs) {
+    const pool = cands.filter((cd) => a.pos.has(cd.pos) && (!a.rookie || players.get(cd.id)?.yearsPro === 0) && (!a.conf || confOf(cd.team) === a.conf));
+    const scored = pool.map((cd) => ({ cd, s: a.lin(expected(cd)) * mult(a, cd) + baseOf(a, cd) + (a.winW || 0) * expTeamW(cd.team) })).filter((x) => x.s > 0);
     scored.sort((x, y) => y.s - x.s);
-    awardCands.set(a.key, scored.slice(0, 25).map((x) => x.cd));
+    awardCands.set(a.key, scored.slice(0, a.cat === "posawards" ? 15 : 25).map((x) => x.cd));
   }
   const leadCands = new Map<LeadKey, Cand[]>();
   for (const l of LEADS) {
@@ -276,20 +331,20 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
   }
   const candList = [...new Map([...awardCands.values(), ...leadCands.values()].flat().map((cd) => [cd.id, cd])).values()];
   const cPos = new Map(candList.map((cd, i) => [cd.id, i]));
-  const coyTeams = teams.map((t, i) => ({ t, i })).filter((x) => x.t.user);
-  const passOf = (x: S) => x.py * 0.04 + x.ptd * 4 - x.pint * 2;
-  const offOf = (x: S) => offScore(x, 0);
-  const comp = candList.map((cd) => ({
-    pass: [passOf(cd.cur), passOf(cd.rest)], off: [offOf(cd.cur), offOf(cd.rest)], def: [defScore(cd.cur), defScore(cd.rest)],
-  }));
+  // Madden's Coach of the Year can go to any coach, CPU ones too
+  const coyTeams = teams.map((t, i) => ({ t, i }));
+  // per award: each contender's score so far, rest-of-season part (scaled by form) and fixed part
+  const awardComp = new Map(defs.map((a) => [a.key, awardCands.get(a.key)!.map((cd) => {
+    const m = mult(a, cd);
+    return { k: cPos.get(cd.id)!, id: cd.id, cur: a.lin(cd.cur) * m + baseOf(a, cd), rest: a.lin(cd.rest) * m, winW: a.winW || 0, ti: idx.get(cd.team) };
+  })]));
   // form spread: wide early (small samples), tighter as games pile up
   const formSd = candList.map((cd) => { const ti = idx.get(cd.team); const tp = ti == null ? 0 : played[ti]; return 0.2 + 0.5 / (1 + tp / 3); });
-  const awardIdx = new Map(AWARDS.map((a) => [a.key, awardCands.get(a.key)!.map((cd) => cPos.get(cd.id)!)]));
   const leadIdx = new Map(LEADS.map((l) => [l.key, leadCands.get(l.key)!.map((cd) => cPos.get(cd.id)!)]));
 
   // counters
   const cnt = { po: new Float64Array(N), div: new Float64Array(N), seed1: new Float64Array(N), conf: new Float64Array(N), sb: new Float64Array(N), wins: new Float64Array(N), over: new Float64Array(N) };
-  const awardCnt = Object.fromEntries(AWARDS.map((a) => [a.key, new Map<number, number>()])) as Record<AwardKey, Map<number, number>>;
+  const awardCnt = Object.fromEntries(defs.map((a) => [a.key, new Map<number, number>()])) as Record<string, Map<number, number>>;
   const leadCnt = Object.fromEntries(LEADS.map((l) => [l.key, new Map<number, number>()])) as Record<LeadKey, Map<number, number>>;
   const coyCnt = new Map<number, number>();
   const inc = (m: Map<number, number>, k: number) => m.set(k, (m.get(k) || 0) + 1);
@@ -300,7 +355,6 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
   const form = new Float64Array(candList.length);
   const tb = new Float64Array(N);
   const ratingArr = teams.map((t) => R.get(t.id) || 0);
-  const seasonOver = regDone;
 
   const playGame = (week: number, hi: number, ai: number, neutral: boolean) => {
     const h = teams[hi].id, a = teams[ai].id;
@@ -346,19 +400,13 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
     // players: every score is linear in the stats, so each candidate's
     // components are precomputed (so far + rest of season) and scaled by form.
     for (let k = 0; k < candList.length; k++) form[k] = Math.max(0, 1 + formSd[k] * gauss());
-    for (const a of AWARDS) {
+    for (const a of defs) {
       let best = -1, bestS = -Infinity;
-      for (const k of awardIdx.get(a.key)!) {
-        const cp = comp[k], f = form[k], cd = candList[k];
-        const pass = cp.pass[0] + cp.pass[1] * f, off = cp.off[0] + cp.off[1] * f, def = cp.def[0] + cp.def[1] * f;
-        const ti = idx.get(cd.team);
-        let sc: number;
-        if (a.key === "mvp") sc = (pass + off) * (cd.pos === "QB" ? QB_MVP : 1) + (ti == null ? 0 : W[ti]) * 8;
-        else if (a.key === "opoy") sc = pass * 0.7 + off;
-        else if (a.key === "oroy") sc = pass * 0.8 + off;
-        else sc = def;
-        if (!seasonOver) sc *= 1 + 0.06 * gauss();
-        if (sc > bestS) { bestS = sc; best = cd.id; }
+      for (const c of awardComp.get(a.key)!) {
+        let sc = c.cur + c.rest * form[c.k] + (c.ti == null ? 0 : W[c.ti]) * c.winW;
+        // Madden's vote stays uncertain until it's announced, even after the last game
+        sc *= 1 + 0.06 * gauss();
+        if (sc > bestS) { bestS = sc; best = c.id; }
       }
       if (best >= 0) inc(awardCnt[a.key], best);
     }
@@ -374,9 +422,8 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
     if (coyTeams.length) {
       let best = -1, bestS = -Infinity;
       for (const { t, i } of coyTeams) {
-        let sc = W[i] - (expWins.get(t.id) || 0);
-        if (!seasonOver) sc += 0.8 * gauss();
-        else sc += ratingArr[i] * 1e-4;
+        // wins above the preseason line, with voter noise (Madden's vote isn't in the export)
+        const sc = W[i] - (expWins.get(t.id) || 0) + 0.8 * gauss() + ratingArr[i] * 1e-4;
         if (sc > bestS) { bestS = sc; best = t.id; }
       }
       inc(coyCnt, best);
@@ -395,7 +442,7 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
   }
   return {
     team,
-    awards: Object.fromEntries(AWARDS.map((a) => [a.key, norm(awardCnt[a.key])])) as Snap["awards"],
+    awards: Object.fromEntries(defs.map((a) => [a.key, norm(awardCnt[a.key])])) as Snap["awards"],
     leads: Object.fromEntries(LEADS.map((l) => [l.key, norm(leadCnt[l.key])])) as Snap["leads"],
     coy: norm(coyCnt),
     games,
@@ -410,7 +457,7 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
 const cache = new Map<string, MarketBook>();
 
 export function marketBook(d: LeagueData): MarketBook {
-  const key = `${d.builtAt}|${d.pulledAt}|${d.players.length}|${d.games.length}|${d.teams.map((t) => t.id).join(",")}`;
+  const key = `${d.builtAt}|${d.pulledAt}|${d.players.length}|${d.games.length}|${d.teams.map((t) => t.id).join(",")}|${JSON.stringify(d.awardResults || {})}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const book = buildBook(d);
@@ -429,7 +476,6 @@ function buildBook(d: LeagueData): MarketBook {
   const exp0 = preseasonWins(d);
   const lines = new Map([...exp0].map(([id, w]) => [id, half(w)]));
   const snaps = cps.map((cp, i) => snapshot(d, cp.c, i === cps.length - 1 ? SIMS_NOW : SIMS_HISTORY, lines, exp0, cp.c === CP_NOW || i === cps.length - 1));
-  const now = snaps[snaps.length - 1];
   const prevIdx = snaps.length - 2;
   const teamsById = new Map(d.teams.map((t) => [t.id, t]));
   const players = new Map(d.players.map((p) => [p.id, p]));
@@ -600,27 +646,44 @@ function buildBook(d: LeagueData): MarketBook {
     const stat = t ? keys.filter(([k]) => t[k]).map(([k, l]) => `${t[k]} ${l}`).join(" · ") : "";
     return [`${p.pos}${team ? ` · ${team.abbr}` : ""}`, stat].filter(Boolean).join(" · ");
   };
-  for (const a of AWARDS) {
-    const keys: [keyof Totals, string][] = a.def ? [["tk", "tkl"], ["sk", "sk"], ["int", "INT"]] : [["py", "pass yds"], ["ptd", "pass TD"], ["ry", "rush yds"], ["rcy", "rec yds"], ["rtd", "rush TD"], ["rctd", "rec TD"]];
+  // Settled only on Madden's own winner, entered by a commissioner (d.awardResults, from
+  // leagues.settings.awards). Betting stops when the regular season ends.
+  const results = d.awardResults || {};
+  const awardRule = (what: string) => `Settles on Madden's in-game ${what}, which a commissioner enters on the Admin page once Madden hands it out (EA's export doesn't include awards). Betting closes when the last regular-season game is final.`;
+  const extraPlayer = (id: string, len: number): Outcome | null => {
+    const p = players.get(Number(id));
+    if (!p) return null;
+    const t = teamsById.get(p.team);
+    return { id, label: pname(p), sub: `${p.pos}${t ? ` · ${t.abbr}` : ""}`, team: p.team || undefined, player: p.id, p: 0, prev: null, history: Array(len).fill(null), state: "open" };
+  };
+  const finishAward = (m: Market, winner: string | undefined, make: (id: string, len: number) => Outcome | null) => {
+    if (winner) {
+      if (!m.outcomes.some((o) => o.id === winner)) { const o = make(winner, snaps.length); if (o) m.outcomes.push(o); }
+      settle(m, new Set([winner]));
+      m.status = "Settled: Madden's winner";
+    } else if (regDone) { m.closed = true; m.status = "Closed: waiting for Madden's winner"; }
+  };
+  for (const a of awardDefs(d)) {
     const m: Market = {
-      key: `award-${a.key}`, cat: "awards", title: `${a.title} (${a.short})`, subtitle: a.rookie ? "Rookies only" : a.def ? "Defensive players" : "Regular-season production" + (a.key === "mvp" ? " + team wins" : ""),
-      kind: "exclusive", settled: false, status: regDone ? "Settled" : "Closes after Week 18",
-      rules: `Madden's own awards aren't in EA's export, so this settles on the CFM Manager award formula at the end of the regular season: ${a.def ? "tackles + 8 per sack + 10 per INT + 6 per forced fumble + 4 per recovery + 2.5 per pass defended + 12 per TD + 6 per safety" : `0.04 per passing yard${a.key === "opoy" ? " (×0.7)" : a.key === "oroy" ? " (×0.8)" : ""}, 4 per passing TD, −2 per INT, 0.1 per rushing/receiving yard, 6 per rushing/receiving TD, 0.5 per catch, −2 per fumble${a.key === "mvp" ? "; QBs ×1.3, plus 8 per team win" : ""}`}. Regular season only. ${modelRule}`,
-      outcomes: playerOutcomes((s) => s.awards[a.key], (p) => subFor(p, keys)),
+      key: a.key, cat: a.cat, title: a.fullTitle,
+      subtitle: [a.conf ? `${a.conf.toUpperCase()} players` : "Whole league", a.cat === "posawards" ? posText(a) : `${a.pos === DEF_POS ? "defense" : "offense"}${a.rookie ? ", rookies only" : ""}`].join(" · "),
+      kind: "exclusive", settled: false, status: regDone ? "Closed" : "Closes after Week 18",
+      rules: `${awardRule(`${a.fullTitle} winner`)} Any ${a.rookie ? "rookie " : ""}${posText(a)}${a.conf ? ` on an ${a.conf.toUpperCase()} team` : ""} can be bet on. Starting prices come from CFM Manager's simulation scoring regular-season stats: ${a.formula}. ${modelRule}`,
+      outcomes: playerOutcomes((s) => s.awards[a.key] || new Map(), (p) => subFor(p, a.cols)),
     };
-    if (regDone) { const top = m.outcomes.reduce<Outcome | null>((b, o) => (!b || o.p > b.p ? o : b), null); settle(m, new Set(top ? [top.id] : [])); }
+    finishAward(m, results[a.key], extraPlayer);
     if (m.outcomes.length) markets.push(m);
   }
-  if (now.coy.size || d.teams.some((t) => t.user)) {
+  {
     const ids = new Set<number>();
     for (const s of snaps) for (const [id, v] of s.coy) if (v > 0) ids.add(id);
     const m: Market = {
-      key: "award-coy", cat: "awards", title: "Coach of the Year", subtitle: "Most wins above the preseason line (users only)", kind: "exclusive",
-      settled: false, status: regDone ? "Settled" : "Closes after Week 18",
-      rules: `Settles on the user-run team that beats its preseason win total line by the most at the end of the regular season (ties: better team rating). ${modelRule}`,
-      outcomes: [...ids].map((id) => { const t = teamsById.get(id)!; return mk(String(id), t.user || tname(t), series((s) => s.coy.get(id) ?? 0), { team: id, sub: `${tname(t)} · line ${lines.get(id)}` }); }),
+      key: "award-coy", cat: "awards", title: "Coach of the Year", subtitle: "Whole league · any team's coach", kind: "exclusive",
+      settled: false, status: regDone ? "Closed" : "Closes after Week 18",
+      rules: `${awardRule("Coach of the Year")} Bet on a team: it wins if that team's coach takes the award. Starting prices favour teams beating their preseason win total line by the most. ${modelRule}`,
+      outcomes: [...ids].map((id) => { const t = teamsById.get(id)!; return mk(String(id), t.user || tname(t), series((s) => s.coy.get(id) ?? 0), { team: id, sub: `${t.user ? tname(t) : "CPU"} · line ${lines.get(id)}` }); }),
     };
-    if (regDone) { const top = m.outcomes.reduce<Outcome | null>((b, o) => (!b || o.p > b.p ? o : b), null); settle(m, new Set(top ? [top.id] : [])); }
+    finishAward(m, results["award-coy"], (id, len) => { const t = teamsById.get(Number(id)); return t ? { id, label: t.user || tname(t), sub: tname(t), team: t.id, p: 0, prev: null, history: Array(len).fill(null), state: "open" } : null; });
     if (m.outcomes.length) markets.push(m);
   }
   for (const l of LEADS) {
@@ -663,17 +726,71 @@ function labelLong(cp: Checkpoint) {
 // who isn't listed is added as his own outcome at a small starting chance (AWARD_EXTRA_P) the
 // first time someone looks him up or bets on him; once bet on, his pool keeps him in the market.
 export const AWARD_EXTRA_P = 0.002;
-const OFF_POS = new Set(["QB", "HB", "FB", "WR", "TE"]);
-const DEF_POS = new Set(["LE", "RE", "DT", "LOLB", "MLB", "ROLB", "CB", "FS", "SS"]);
-export const isAwardMarket = (key: string) => /^award-(mvp|opoy|dpoy|oroy|droy)$/.test(key);
+/** A player award (any player can be bet on); Coach of the Year is on teams. */
+export const isAwardMarket = (key: string) => /^award-[a-z]+(-[a-z]+)?$/.test(key) && key !== "award-coy";
+export const awardDef = (d: Pick<LeagueData, "teams">, key: string) => awardDefs(d).find((a) => a.key === key);
 
-/** Can this player win the award? On a team, right side of the ball, a rookie for the ROY awards. */
-export function awardEligible(marketKey: string, p: Player | undefined): boolean {
-  const a = AWARDS.find((x) => `award-${x.key}` === marketKey);
-  if (!a || !p || p.team === 0 || (p as Player & { gone?: boolean }).gone) return false;
+/** Can this player win the award? On a team in the award's conference, at its position(s), a rookie for the ROY awards. */
+export function awardEligible(d: LeagueData, marketKey: string, p: Player | undefined): boolean {
+  const a = awardDef(d, marketKey);
+  if (!a || !p || p.team === 0 || p.gone) return false;
   if (a.rookie && p.yearsPro !== 0) return false;
-  return a.def ? DEF_POS.has(p.pos) : OFF_POS.has(p.pos);
+  if (a.conf && d.teams.find((t) => t.id === p.team)?.conference !== a.conf) return false;
+  return a.pos.has(p.pos);
 }
+
+/** Who can win it, in words: "a rookie QB/HB/FB/WR/TE on an AFC team". */
+export function awardWho(d: Pick<LeagueData, "teams">, key: string) {
+  const a = awardDef(d, key);
+  return a ? `${a.rookie ? "a rookie " : "a "}${posText(a)}${a.conf ? ` on an ${a.conf.toUpperCase()} team` : " on a team"}` : "an eligible player";
+}
+
+/** Who a commissioner can pick as an award's winner (Admin page). Looser than betting: by the time
+ *  Madden hands awards out the league may be in the offseason, where rookies already count a year
+ *  and players have moved or retired, so the conference comes from the team he played for this
+ *  season and last year's rookies count. Most likely winners first. */
+export function awardChoices(d: LeagueData, book: MarketBook, key: string, limit = 80): { id: string; label: string }[] {
+  const teams = new Map(d.teams.map((t) => [t.id, t]));
+  const m = book.markets.find((x) => x.key === key);
+  const chance = new Map((m?.outcomes || []).map((o) => [o.id, o.p]));
+  if (key === "award-coy") {
+    return d.teams.map((t) => ({ id: String(t.id), label: `${tname(t)}${t.user ? ` (${t.user})` : " (CPU)"}`, p: chance.get(String(t.id)) ?? -1 }))
+      .sort((a, b) => b.p - a.p || a.label.localeCompare(b.label)).map(({ id, label }) => ({ id, label }));
+  }
+  const a = awardDef(d, key);
+  if (!a) return [];
+  const played = seasonTotals(d);
+  const off = d.season.stage === 2;
+  const out: { id: string; label: string; s: number }[] = [];
+  for (const p of d.players) {
+    if (!a.pos.has(p.pos)) continue;
+    if (a.rookie && !(p.yearsPro === 0 || (off && p.yearsPro === 1 && played.has(p.id)))) continue;
+    const team = teams.get(played.get(p.id)?.team || p.team);
+    if (a.conf && team?.conference !== a.conf) continue;
+    const c = chance.get(String(p.id));
+    out.push({ id: String(p.id), label: `${pname(p)} · ${p.pos}${team ? ` · ${team.abbr}` : ""}`, s: (c ?? -1) * 1000 + (played.has(p.id) ? 100 : 0) + p.ovr });
+  }
+  return out.sort((x, y) => y.s - x.s).slice(0, limit).map(({ id, label }) => ({ id, label }));
+}
+
+/** Old league-wide OPOY/DPOY/OROY/DROY bets: an outcome wins if he won it in either conference
+ *  (null until both conferences' winners are in). */
+export function legacyAwardResult(book: MarketBook, key: string, outcome: string): "won" | "lost" | null {
+  const lm = LEGACY_AWARD.exec(key);
+  if (!lm) return null;
+  const ms = book.markets.filter((m) => m.key.startsWith(`award-${lm[1]}-`));
+  if (!ms.length || !ms.every((m) => m.settled)) return null;
+  return ms.some((m) => m.outcomes.some((o) => o.id === outcome && o.state === "won")) ? "won" : "lost";
+}
+/** The winners of an old league-wide award key, once both conferences' winners are entered. */
+export function legacyAwardWinners(d: LeagueData, key: string): Set<string> | null {
+  const lm = LEGACY_AWARD.exec(key);
+  if (!lm) return null;
+  const keys = awardDefs(d).filter((a) => a.id === lm[1]).map((a) => a.key);
+  const w = keys.map((k) => d.awardResults?.[k]);
+  return keys.length && w.every(Boolean) ? new Set(w as string[]) : null;
+}
+export const LEGACY_AWARD_KEYS = ["award-opoy", "award-dpoy", "award-oroy", "award-droy"];
 
 /** Eligible players for an award whose name matches the search (best matches first, at most `limit`). */
 export function searchAwardPlayers(d: LeagueData, marketKey: string, query: string, limit = 10): Player[] {
@@ -682,7 +799,7 @@ export function searchAwardPlayers(d: LeagueData, marketKey: string, query: stri
   const words = q.split(/\s+/);
   const scored: { p: Player; s: number }[] = [];
   for (const p of d.players) {
-    if (!awardEligible(marketKey, p)) continue;
+    if (!awardEligible(d, marketKey, p)) continue;
     const name = `${p.first} ${p.last}`.toLowerCase().replace(/[^a-z0-9 ]/g, "");
     if (!words.every((w) => name.includes(w))) continue;
     scored.push({ p, s: (name === q ? 100 : 0) + (p.last.toLowerCase() === q ? 50 : 0) + p.ovr / 10 });
@@ -707,7 +824,7 @@ export function withAwardPlayers(book: MarketBook, d: LeagueData, want: Iterable
       const extra: Outcome[] = [];
       for (const id of ids) {
         const p = players.get(id);
-        if (have.has(id) || !awardEligible(m.key, p)) continue;
+        if (have.has(id) || !awardEligible(d, m.key, p)) continue;
         const pp = m.settled ? 0 : AWARD_EXTRA_P;
         extra.push({
           id, label: pname(p), sub: `${p!.pos}${teams.get(p!.team) ? ` · ${teams.get(p!.team)!.abbr}` : ""} · not in the simulation's top contenders`,

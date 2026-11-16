@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getLeagueData } from "@/lib/league/load";
-import { marketBook } from "@/lib/league/markets";
-import { isCommissioner, memberNames, setCloseTime, verifyKickoff, viewer } from "@/lib/marketStore";
-import { ticketsConfig } from "@/lib/tickets";
-import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "@/lib/discord/marketChannels";
+import { forgetLeagueData, getLeagueData } from "@/lib/league/load";
+import { awardDef, LEGACY_AWARD_KEYS, legacyAwardWinners, marketBook } from "@/lib/league/markets";
+import { correctAwardBets, isCommissioner, memberNames, setCloseTime, settleFinished, verifyKickoff, viewer } from "@/lib/marketStore";
+import { bookKey, ticketsConfig } from "@/lib/tickets";
+import { postPayoutsNow, rebuildMarketChannels, refreshForMarket, refreshGame, syncMarketChannels } from "@/lib/discord/marketChannels";
 import { removeGameChannels, syncGameChannels } from "@/lib/discord/gameChannels";
 
 // The site's admin panel (/l/<slug>/admin, Nick 2026-11-14): everything the Discord admin commands do,
@@ -61,6 +61,51 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       q = b.action === "apply" ? q.is("applied_at", null) : q.not("applied_at", "is", null);
       const { error } = await q;
       return error ? fail(error.message, 500) : ok(b.action === "apply" ? "Marked applied." : "Marked not applied.");
+    }
+    case "award": {
+      // Madden's award winner (Nick, 2026-11-16: the formula's winners didn't match the game's)
+      const d0 = await getLeagueData(slug);
+      if (!d0) return fail("No league data yet.");
+      const key = String(b.market || "");
+      const winner = b.winner == null || b.winner === "" ? null : String(b.winner);
+      const title = key === "award-coy" ? "Coach of the Year" : awardDef(d0, key)?.fullTitle;
+      if (!title) return fail("Pick an award.");
+      if (winner && (key === "award-coy" ? !d0.teams.some((t) => String(t.id) === winner) : !d0.players.some((p) => String(p.id) === winner))) return fail(`Pick the ${key === "award-coy" ? "team" : "player"} who won it.`);
+      const year = String(d0.season.year);
+      const { data: row } = await db.from("leagues").select("settings").eq("id", v.leagueId).single();
+      const settings = { ...((row?.settings as Record<string, unknown>) || {}) };
+      const awards = { ...((settings.awards as Record<string, Record<string, string>>) || {}) };
+      const season = { ...(awards[year] || {}) };
+      if (winner) season[key] = winner; else delete season[key];
+      awards[year] = season;
+      settings.awards = awards;
+      const { error } = await db.from("leagues").update({ settings }).eq("id", v.leagueId);
+      if (error) return fail(error.message, 500);
+      forgetLeagueData(slug);
+      if (!winner) return ok(`${title}: winner cleared. Bets that already settled stay as they were; pick the right winner to correct them.`);
+
+      const d = await getLeagueData(slug);
+      if (!d) return ok(`${title} saved.`);
+      const tickets = Boolean(await ticketsConfig(slug).catch(() => null));
+      const bk = bookKey(d.season.year, tickets);
+      const by = `${me} (site)`;
+      // bets that already settled on a different winner (the old formula, or an earlier pick)
+      const fix = await correctAwardBets({ leagueId: v.leagueId, book: bk, market: key, winners: new Set([winner]), tickets, title, by });
+      // league-wide OPOY/DPOY/OROY/DROY bets from before the conference split
+      for (const lk of LEGACY_AWARD_KEYS) {
+        if (!key.startsWith(`${lk}-`)) continue;
+        const w = legacyAwardWinners(d, lk);
+        if (!w) continue;
+        const f2 = await correctAwardBets({ leagueId: v.leagueId, book: bk, market: lk, winners: w, tickets, title: `${title.replace(/^[A-Z]+ /, "")} (league-wide bet)`, by });
+        fix.fixed += f2.fixed; fix.stuck += f2.stuck; f2.users.forEach((u) => fix.users.add(u));
+      }
+      const settled = await settleFinished(v.leagueId, bk, d, marketBook(d), tickets);
+      await refreshForMarket(slug, key).catch(() => {});
+      const parts = [`${title} saved: the market settles on Madden's winner.`];
+      if (settled) parts.push(`${settled} open bet${settled === 1 ? "" : "s"} settled.`);
+      if (fix.fixed) parts.push(`${fix.fixed} bet${fix.fixed === 1 ? "" : "s"} that had settled on a different winner ${fix.fixed === 1 ? "was" : "were"} corrected (${fix.users.size} member${fix.users.size === 1 ? "" : "s"})${tickets ? "; the corrections go in the next payouts report" : ""}.`);
+      if (fix.stuck) parts.push(`⚠️ ${fix.stuck} bet${fix.stuck === 1 ? " was" : "s were"} already corrected once and need${fix.stuck === 1 ? "s" : ""} fixing by hand.`);
+      return ok(parts.join(" "));
     }
     case "payouts": return ok(await postPayoutsNow(slug));
     case "marketchannels": return ok(await rebuildMarketChannels(slug));

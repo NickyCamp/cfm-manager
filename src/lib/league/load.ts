@@ -5,7 +5,7 @@
 import { cache } from "react";
 import { gunzipSync } from "node:zlib";
 import fs from "node:fs";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseAdmin, supabaseUser } from "@/lib/supabase/server";
 import type { LeagueData } from "./types";
 import { findAbility } from "./abilities";
 import { KNOWN_LEAGUE_CAPS } from "./cap";
@@ -91,6 +91,8 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       attachRestructures(data, hist);
       const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > (data.season.capYear ?? data.season.year)));
       if (Object.keys(known).length) data.knownCaps = known;
+      const awards = await awardResults(slug, data.season.year);
+      if (awards) data.awardResults = awards;
     }
     memo.set(slug, { at: Date.now(), data });
     return data;
@@ -99,6 +101,25 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
     return hit?.data ?? null;
   }
 });
+
+/** Drops the cached data file so the next load picks up a change (e.g. an award winner entered). */
+export function forgetLeagueData(slug: string) {
+  memo.delete(slug);
+}
+
+/** Madden's award winners a commissioner entered for this season (leagues.settings.awards[year]). */
+async function awardResults(slug: string, year: number): Promise<Record<string, string> | null> {
+  if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  try {
+    const { data } = await supabaseAdmin().from("leagues").select("settings").eq("slug", slug).maybeSingle();
+    const all = (data?.settings as { awards?: Record<string, Record<string, string>> } | null)?.awards;
+    const r = all?.[String(year)];
+    return r && Object.keys(r).length ? r : null;
+  } catch (e) {
+    console.error("award results load failed", slug, (e as Error).message);
+    return null;
+  }
+}
 
 /** EA's rank on an X-Factor ability isn't reliable (Escape Artist came through as
  *  Bronze), so an ability counts as X-Factor when it sits in the X-Factor slot

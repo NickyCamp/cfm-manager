@@ -14,6 +14,8 @@ export type AdminData = {
   finals: { id: number; name: string; kickoffText: string }[];
   discord: { linked: boolean; markets: boolean; games: boolean };
   seasonTitle: string;
+  awards: { key: string; title: string; pos: boolean; winner: string | null; choices: { id: string; label: string }[] }[];
+  awardsOpen: boolean;    // regular season still being played
 };
 
 function useAction(slug: string) {
@@ -53,6 +55,19 @@ export function AdminPanel({ data }: { data: AdminData }) {
   const [vAt, setVAt] = useState("");
   const [gcWeek, setGcWeek] = useState("");
   const iso = (local: string) => (local ? new Date(local).toISOString() : "");
+  const [aw, setAw] = useState<Record<string, string>>(Object.fromEntries(data.awards.map((a) => [a.key, a.winner ?? ""])));
+  const awardRow = (a: AdminData["awards"][number]) => (
+    <form key={a.key} className="admin-row" onSubmit={(e) => { e.preventDefault(); run(`aw${a.key}`, { action: "award", market: a.key, winner: aw[a.key] }); }}>
+      <strong className="admin-game">{a.title}</strong>
+      <select value={aw[a.key] ?? ""} onChange={(e) => setAw((x) => ({ ...x, [a.key]: e.target.value }))} aria-label={`${a.title} winner`}>
+        <option value="">{a.winner ? "Clear the winner" : "Not announced yet"}</option>
+        {a.choices.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </select>
+      <button className="btn ghost" disabled={busy === `aw${a.key}` || (aw[a.key] ?? "") === (a.winner ?? "")}>Save</button>
+      {a.winner && <span className="muted small">✔ entered</span>}
+      {note(`aw${a.key}`)}
+    </form>
+  );
 
   return (
     <div className="admin-panel">
@@ -108,6 +123,16 @@ export function AdminPanel({ data }: { data: AdminData }) {
           {note("payouts")}
         </section>
       )}
+
+      <section className="panel mk-setup">
+        <h3>Madden&apos;s award winners</h3>
+        <p className="muted small">EA&apos;s export doesn&apos;t include Madden&apos;s awards, so award markets settle on the winners you enter here ({data.seasonTitle.split(" ")[0]} season). Betting on them closes when the regular season ends{data.awardsOpen ? "" : " (it has)"}. Saving a winner settles the market; bets that already settled on someone else (the old formula, or an earlier pick) are corrected once, {data.tickets ? "into the next payouts report" : "straight into wallets"}. Players are listed most likely first.</p>
+        {data.awards.filter((a) => !a.pos).map(awardRow)}
+        <details className="mk-how">
+          <summary>Position awards ({data.awards.filter((a) => a.pos).length}): {data.awards.filter((a) => a.pos && a.winner).length} entered</summary>
+          {data.awards.filter((a) => a.pos).map(awardRow)}
+        </details>
+      </section>
 
       <section className="panel mk-setup">
         <h3>Kickoffs this week <span className="muted small">(/kickoff)</span></h3>

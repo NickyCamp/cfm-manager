@@ -124,7 +124,9 @@ export function gameEmbed(slug: string, d: LeagueData, g: Game, markets: Market[
 // per conference (select menus, 16 teams each). Divisions: a button per team. Player awards: a
 // picker with the top contenders plus "Any other player…", which asks for a name, since any
 // eligible player can be bet on (src/lib/league/markets.ts withAwardPlayers).
-const FUTURE_AWARDS = ["award-mvp", "award-opoy", "award-dpoy", "award-oroy", "award-droy"];
+// MVP, then each conference's OPOY/DPOY/OROY/DROY (Madden splits them by conference). The 34
+// position awards (QB of the Year…) are on the site only, so #futures stays readable.
+const FUTURE_AWARD = /^award-(mvp|(opoy|dpoy|oroy|droy)-[a-z]+)$/;
 const pctOf = (p: number) => `${p > 0 && p < 0.01 ? "<1" : Math.round(p * 100)}%`;
 
 export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolean): EntryMsg[] {
@@ -153,9 +155,9 @@ export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolea
       components: os.length ? [{ type: 1, components: os.slice(0, 5).map((o, i) => btn(`${abbr.get(o.team ?? 0) ?? o.label} ${pctOf(o.p)}`, i === 0 ? GREEN : GREY, `mk|${m.key}|${o.id}|yes|${o.label.split(" ").pop()}`.slice(0, 100), shut(m))) }] : [],
     });
   }
-  for (const key of FUTURE_AWARDS) {
-    const m = markets.find((x) => x.key === key);
-    if (!m) continue;
+  const order = ["mvp", "opoy", "dpoy", "oroy", "droy"];
+  const rank = (k: string) => order.findIndex((x) => k.startsWith(`award-${x}`));
+  for (const m of markets.filter((x) => FUTURE_AWARD.test(x.key)).sort((x, y) => rank(x.key) - rank(y.key) || x.key.localeCompare(y.key))) {
     const os = open(m);
     const top = os.slice(0, 5).map((o) => `${o.label} ${pctOf(o.p)}`).join(" · ");
     out.push({
@@ -167,6 +169,9 @@ export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolea
       ],
     });
   }
+  if (markets.some((m) => m.cat === "posawards")) {
+    out.push({ key: "posawards", content: `**Position awards**: every position's Player of the Year in each conference (QB, HB, WR, TE, each OL spot, LE, RE, DT, LB, CB, S, K, P). Bet on them on the site: Markets tab → Position awards.`, components: [] });
+  }
   out.push({ key: "mybets", content: "**Your bets**: tap to see your open bets, privately, with a button to cancel or cash out each one.", components: [MY_BETS_ROW] });
   return out;
 }
@@ -176,7 +181,16 @@ async function fillFutures(d: LeagueData, markets: Market[], tickets: boolean, s
   if (!state.futuresChannelId) return 0;
   state.futures ||= {};
   let n = 0;
-  for (const e of futuresEntries(d, markets, tickets)) {
+  const entries = futuresEntries(d, markets, tickets);
+  // markets that went away (e.g. the league-wide OPOY before the conference split): drop their messages
+  const keep = new Set(entries.map((e) => e.key));
+  for (const [k, have] of Object.entries(state.futures)) {
+    if (keep.has(k)) continue;
+    await dc("DELETE", `/channels/${state.futuresChannelId}/messages/${have.messageId}`);
+    delete state.futures[k];
+    n++;
+  }
+  for (const e of entries) {
     const sig = sigOf(e);
     const have = state.futures[e.key];
     if (have?.sig === sig) continue;

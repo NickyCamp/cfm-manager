@@ -11,7 +11,7 @@ import type { Interaction } from "./handlers";
 import type { Embed } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getLeagueData } from "@/lib/league/load";
-import { marketBook, searchAwardPlayers, withAwardPlayers } from "@/lib/league/markets";
+import { awardWho, marketBook, searchAwardPlayers, withAwardPlayers } from "@/lib/league/markets";
 import { betCaps, betThisWeek, closeTimes, economyOf, fmtET, liveQuote, ticketsAvailable, weekStartedAt } from "@/lib/marketStore";
 import { discordOfUser } from "@/lib/tickets";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
@@ -154,7 +154,7 @@ export async function placeAnyPlayer(i: ComponentInteraction): Promise<string | 
   const d = await getLeagueData(lg.slug);
   if (!d) return "No league data yet.";
   const found = searchAwardPlayers(d, market, name, 6);
-  if (!found.length) return `No eligible player matches "${name}" for this award (it needs ${/roy$/.test(market) ? "a rookie " : ""}${/dpoy|droy/.test(market) ? "defensive player" : "QB, HB, FB, WR or TE"} on a team).`;
+  if (!found.length) return `No eligible player matches "${name}" for this award (it needs ${awardWho(d, market)}).`;
   const full = (p: (typeof found)[number]) => `${p.first} ${p.last}`.toLowerCase();
   const exact = found.filter((p) => full(p) === name.toLowerCase());
   const pick = exact.length === 1 ? exact[0] : found.length === 1 ? found[0] : null;

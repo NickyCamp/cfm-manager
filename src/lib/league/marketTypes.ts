@@ -1,6 +1,6 @@
 // Shared by the market engine (server) and the market pages' client components.
 
-export type MarketCat = "games" | "props" | "champion" | "conference" | "division" | "playoffs" | "awards" | "leaders" | "wins";
+export type MarketCat = "games" | "props" | "champion" | "conference" | "division" | "playoffs" | "awards" | "posawards" | "leaders" | "wins";
 export const CATS: { key: MarketCat; label: string }[] = [
   { key: "games", label: "Games" },
   { key: "props", label: "Player props" },
@@ -9,6 +9,7 @@ export const CATS: { key: MarketCat; label: string }[] = [
   { key: "division", label: "Divisions" },
   { key: "playoffs", label: "Playoffs" },
   { key: "awards", label: "Awards" },
+  { key: "posawards", label: "Position awards" },
   { key: "leaders", label: "Stat leaders" },
   { key: "wins", label: "Win totals" },
 ];

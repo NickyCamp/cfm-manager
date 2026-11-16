@@ -7,7 +7,7 @@ import { DEFAULT_ECONOMY, ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP
 import { after } from "next/server";
 import { bookKey, discordOfUser, moveTickets, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 import { propResult } from "@/lib/league/props";
-import { isAwardMarket, withAwardPlayers } from "@/lib/league/markets";
+import { isAwardMarket, legacyAwardResult, withAwardPlayers } from "@/lib/league/markets";
 import type { LeagueData } from "@/lib/league/types";
 
 export const START_CASH = 1000;
@@ -119,6 +119,8 @@ export function outcomeResult(d: LeagueData, book: MarketBook, marketKey: string
   const pm = /^props-(\d+)-/.exec(marketKey);
   if (pm) return propResult(d, Number(pm[1]), outcomeId);
   const mk = book.markets.find((m) => m.key === marketKey);
+  // league-wide OPOY/DPOY/OROY/DROY bets from before the awards were split by conference
+  if (!mk) return legacyAwardResult(book, marketKey, outcomeId);
   const o = mk?.outcomes.find((x) => x.id === outcomeId);
   // a player bet on for an award who wasn't among the listed contenders loses when the award settles
   if (!o && mk?.settled && isAwardMarket(marketKey)) return "lost";
@@ -147,6 +149,58 @@ export async function settleFinished(leagueId: string, book: number, d: LeagueDa
     if (error) console.error("market settle", m, o, error.message); else n++;
   }
   return n;
+}
+
+// ---------------------------------------------------------------- award corrections (Nick, 2026-11-16)
+/** Re-pays bets on an award market that already settled against a different winner (the old
+ *  formula, or a winner a commissioner since changed). Each settle row gets one correction: a
+ *  market_trade_voids row (the trade log shows it) plus, in Tickets leagues, a ledger line for the
+ *  payouts report; play money goes straight to the wallet. A bet already corrected once that would
+ *  need a second change is counted in `stuck` (fix it by hand). */
+export async function correctAwardBets(a: { leagueId: string; book: number; market: string; winners: Set<string>; tickets: boolean; title: string; by: string }) {
+  const admin = supabaseAdmin();
+  const unit = a.tickets ? TICKETS_PER_CONTRACT : 1;
+  const eco = await economyOf(a.leagueId).catch(() => DEFAULT_ECONOMY);
+  const settles = await allRows<{ id: number; user_id: string; outcome_id: string; side: string; qty: number; amount: number }>((f, t) =>
+    admin.from("market_trades").select("id, user_id, outcome_id, side, qty, amount").eq("league_id", a.leagueId).eq("season", a.book).eq("market_key", a.market).eq("kind", "settle").order("id").range(f, t));
+  const out = { fixed: 0, stuck: 0, users: new Set<string>() };
+  if (!settles.length) return out;
+  const ids = settles.map((t) => Number(t.id));
+  const { data: vs } = await admin.from("market_trade_voids").select("trade_id, delta").in("trade_id", ids);
+  const done = new Map((vs || []).map((v) => [Number(v.trade_id), Number(v.delta)]));
+  // what each position cost (for the house cut on a corrected win)
+  const cost = new Map<string, number>();
+  const ck = (u: string, o: string, side: string) => `${u}|${o}|${side}`;
+  if (a.tickets) {
+    const { data: led } = await admin.from("market_ledger").select("user_id, outcome_id, side, cost").eq("league_id", a.leagueId).eq("book", a.book).eq("market_key", a.market).eq("kind", "result");
+    for (const r of led || []) cost.set(ck(r.user_id, r.outcome_id, r.side), Number(r.cost) || 0);
+  } else {
+    const trades = await allRows<{ user_id: string; outcome_id: string; side: string; kind: string; amount: number }>((f, t) =>
+      admin.from("market_trades").select("user_id, outcome_id, side, kind, amount").eq("league_id", a.leagueId).eq("season", a.book).eq("market_key", a.market).in("kind", ["buy", "sell"]).order("id").range(f, t));
+    for (const r of trades) { const k = ck(r.user_id, r.outcome_id, r.side); cost.set(k, Math.max(0, (cost.get(k) || 0) + (r.kind === "buy" ? 1 : -1) * Number(r.amount))); }
+  }
+  const cut = Math.max(0, Math.min(eco.cut, 0.5));
+  for (const t of settles) {
+    const won = a.winners.has(t.outcome_id) ? "yes" : "no";
+    const c = cost.get(ck(t.user_id, t.outcome_id, t.side)) || 0;
+    let pay = t.side === won ? Number(t.qty) * unit : 0;
+    if (pay > c) pay -= Math.round((pay - c) * cut * 100) / 100;
+    const had = Number(t.amount) + (done.get(Number(t.id)) || 0);
+    const delta = Math.round((pay - had) * 100) / 100;
+    if (Math.abs(delta) < 0.01) continue;
+    if (done.has(Number(t.id))) { out.stuck++; continue; }
+    const reason = `Award correction: ${a.title} went to Madden's winner (${pay > 0 ? "now won" : "now lost"})`.slice(0, 200);
+    const { error } = await admin.from("market_trade_voids").insert({ trade_id: t.id, league_id: a.leagueId, delta, reason, voided_by: a.by.slice(0, 64) });
+    if (error) { out.stuck++; continue; }
+    if (a.tickets) {
+      await admin.from("market_ledger").insert({ league_id: a.leagueId, book: a.book, user_id: t.user_id, kind: "void", market_key: a.market, outcome_id: t.outcome_id, side: t.side, qty: t.qty, cost: c, payout: pay, amount: delta, note: reason, trade_id: t.id });
+    } else {
+      const { data: w } = await admin.from("market_wallets").select("cash").eq("league_id", a.leagueId).eq("season", a.book).eq("user_id", t.user_id).maybeSingle();
+      if (w) await admin.from("market_wallets").update({ cash: Number(w.cash) + delta }).eq("league_id", a.leagueId).eq("season", a.book).eq("user_id", t.user_id);
+    }
+    out.fixed++; out.users.add(t.user_id);
+  }
+  return out;
 }
 
 export type SharedFill = { at: number; m: string; o: string; side: "yes" | "no"; qty: number; price: number; kind: "buy" | "sell" | "settle"; amount: number };

@@ -107,7 +107,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
           </>}
         </div>}
 
-        {award && !m.settled && (
+        {award && !m.settled && !m.closed && (
           <div className="panel mk-anyplayer">
             <h3>Bet on any player</h3>
             <p className="muted small">Any eligible player can win this, not just the ones listed. Players outside the simulation&apos;s top contenders start at a long-shot price.</p>

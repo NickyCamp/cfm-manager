@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { weekTitle } from "@/lib/league/derive";
+import { awardChoices, awardDefs, marketBook } from "@/lib/league/markets";
 import { leagueBySlug, discordOf } from "@/lib/discord/links";
 import { betCaps, closeTimes, economyOf, fmtET, isCommissioner, ledgerRows, viewer } from "@/lib/marketStore";
 import { discordOfUser, ticketsConfig, type TicketsSetting } from "@/lib/tickets";
@@ -47,7 +48,22 @@ export default async function AdminPage({ params }: Props) {
   const mc = lg.settings?.marketChannels as { categoryId?: string } | undefined;
   const gc = lg.settings?.gameChannels as { categoryId?: string } | undefined;
 
+  // Madden's award winners (entered here; EA's export doesn't include them)
+  const book = marketBook(d);
+  const awardList = [...awardDefs(d).map((a) => ({ key: a.key, title: a.fullTitle, pos: a.cat === "posawards" })), { key: "award-coy", title: "Coach of the Year", pos: false }]
+    .sort((a, b) => Number(a.pos) - Number(b.pos) || (a.key === "award-mvp" ? -1 : b.key === "award-mvp" ? 1 : 0) || (a.key === "award-coy" ? -1 : b.key === "award-coy" ? 1 : 0));
+  const awards = awardList.map((a) => {
+    const choices = awardChoices(d, book, a.key);
+    const winner = d.awardResults?.[a.key] ?? null;
+    if (winner && !choices.some((c) => c.id === winner)) {
+      const p = d.players.find((x) => String(x.id) === winner), t = d.teams.find((x) => String(x.id) === winner);
+      choices.unshift({ id: winner, label: a.key === "award-coy" ? (t ? `${t.city} ${t.name}` : winner) : p ? `${p.first} ${p.last} · ${p.pos}` : winner });
+    }
+    return { ...a, winner, choices };
+  });
+
   const data: AdminData = {
+    awards, awardsOpen: d.games.some((g) => g.stage === 1 && g.week <= 17 && g.home && g.away && !g.final),
     slug, tickets, field: cfg?.field ?? own?.field ?? "cash",
     caps, eco,
     owed: owed.filter((u) => u.net !== 0 || u.ids.length).sort((a, b) => a.name.localeCompare(b.name)),

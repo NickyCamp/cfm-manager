@@ -132,6 +132,9 @@ export type LeagueData = {
   admins?: { user: string; team: string; level: "owner" | "admin" }[];
   /** Coming seasons' league caps Madden has already set (added on load, see KNOWN_LEAGUE_CAPS). */
   knownCaps?: Record<number, number>;
+  /** Madden's award winners for this season, entered by a commissioner (Admin page): market key →
+   *  player id (team id for award-coy). Added on load from leagues.settings.awards[year]. */
+  awardResults?: Record<string, string>;
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;
