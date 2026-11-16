@@ -23,6 +23,7 @@ const TOOLS = [
   ["dev", "Dev tracker"],
   ["abilities", "Abilities"],
   ["contracts", "Contract tool"],
+  ["trades", "Trade Tool"],
 ] as const;
 
 function useActive(slug: string) {
