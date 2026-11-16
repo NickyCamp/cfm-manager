@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getLeagueData } from "@/lib/league/load";
-import { capSeason } from "@/lib/league/derive";
+import { capSeason, committedByTeam } from "@/lib/league/derive";
 import { isCapSet, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { NoData } from "@/components/league/bits";
@@ -34,18 +34,9 @@ export default async function ContractsPage({ params, searchParams }: Props) {
   });
 
   // Every team's committed cap by year from current contracts (practice squad left out).
-  const committed = new Map<number, number[]>(d.teams.map((t) => [t.id, years.map(() => 0)]));
-  for (const p of d.players) {
-    if (p.gone || !p.team || p.ps) continue;
-    const pr = proj.get(p.id);
-    const hits = pr?.hits || {}, dead = pr?.dead || {};
-    const row = committed.get(p.team);
-    if (!row) continue;
-    years.forEach((y, i) => { if (i > 0) row[i] += (hits[y] || 0) + (dead[y] || 0); });
-  }
+  const committed = committedByTeam(d, years, proj);
   const teams: ToolTeam[] = [...d.teams].sort((a, b) => a.city.localeCompare(b.city)).map((t) => {
     const row = committed.get(t.id)!;
-    row[0] = t.cap.spent;
     return {
       id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary,
       committed: row, cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),

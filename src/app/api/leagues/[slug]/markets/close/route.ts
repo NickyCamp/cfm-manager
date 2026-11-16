@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLeagueData } from "@/lib/league/load";
-import { closeTimes, fmtET, isCommissioner, kickoffPermission, marketsShared, memberNames, setCloseTime, teamOfUser, viewer } from "@/lib/marketStore";
+import { closeTimes, fmtET, isCommissioner, kickoffPermission, marketsShared, memberNames, setCloseTime, teamsOfUser, viewer } from "@/lib/marketStore";
 import { kickoffProblem } from "@/lib/kickoff";
 import { refreshGame } from "@/lib/discord/marketChannels";
 import { after } from "next/server";
@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const check = kickoffProblem(d, g);
   if (check) return NextResponse.json({ error: check }, { status: 409 });
   const teams = new Map(d.teams.map((t) => [t.id, t.abbr]));
-  const [admin, userTeam, current] = await Promise.all([isCommissioner(v.leagueId, v.userId), teamOfUser(v.leagueId, v.userId), closeTimes(v.leagueId, d.season.year).then((m) => m.get(g!.id))]);
+  const [admin, userTeam, current] = await Promise.all([isCommissioner(v.leagueId, v.userId), teamsOfUser(v.leagueId, v.userId).catch(() => [] as string[]), closeTimes(v.leagueId, d.season.year).then((m) => m.get(g!.id))]);
   const denied = kickoffPermission({ admin, userTeam, homeAbbr: teams.get(g!.home) || "", awayAbbr: teams.get(g!.away) || "", current });
   if (denied) return NextResponse.json({ error: denied }, { status: 403 });
   const when = parseWhenIso(body?.closeAt);

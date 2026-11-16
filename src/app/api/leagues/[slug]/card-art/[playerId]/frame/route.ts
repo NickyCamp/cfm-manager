@@ -39,7 +39,12 @@ export async function POST(req: Request, ctx: Ctx) {
   if (error) return NextResponse.json({ error: "Couldn't save the border. Try again." }, { status: 502 });
   const inset = Number(form?.get("inset"));
   const cur = (await cardLayout(g.slug, g.id)) ?? DEFAULT_LAYOUT;
-  await saveCardLayout(g.slug, g.id, { ...cur, customFrame: true, frame: true, frameInset: Number.isFinite(inset) ? inset : cur.frameInset });
+  try {
+    await saveCardLayout(g.slug, g.id, { ...cur, customFrame: true, frame: true, frameInset: Number.isFinite(inset) ? inset : cur.frameInset });
+  } catch (e) {
+    console.error("save card layout", g.slug, g.id, e);
+    return NextResponse.json({ error: "The border was uploaded but the card couldn't be updated. Try again." }, { status: 502 });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -48,6 +53,11 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if ("error" in g) return g.error;
   await supabaseAdmin().storage.from(CARD_ART_BUCKET).remove([cardFramePath(g.slug, g.id)]);
   const cur = await cardLayout(g.slug, g.id);
-  if (cur) await saveCardLayout(g.slug, g.id, { ...cur, customFrame: false });
+  try {
+    if (cur) await saveCardLayout(g.slug, g.id, { ...cur, customFrame: false });
+  } catch (e) {
+    console.error("save card layout", g.slug, g.id, e);
+    return NextResponse.json({ error: "Couldn't update the card. Try again." }, { status: 502 });
+  }
   return NextResponse.json({ ok: true });
 }

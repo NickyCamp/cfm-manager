@@ -16,6 +16,7 @@ import { discordOf, leagueBySlug } from "@/lib/discord/links";
 
 export const TICKETS_PER_CONTRACT = 100;
 const UB = "https://unbelievaboat.com/api/v1";
+const UB_TIMEOUT_MS = 10_000;
 
 export type TicketsConfig = { guildId: string; field: "cash" | "bank" };
 
@@ -47,6 +48,8 @@ async function ub(path: string, init?: RequestInit) {
     ...init,
     headers: { Authorization: process.env.UNBELIEVABOAT_TOKEN || "", "content-type": "application/json", ...(init?.headers || {}) },
     cache: "no-store",
+    // never hang until the function is killed: that would leave a Ticket move stuck on "sending"
+    signal: AbortSignal.timeout(UB_TIMEOUT_MS),
   });
   const text = await res.text();
   let j: Record<string, unknown> = {};
@@ -63,8 +66,9 @@ export async function ticketBalance(cfg: TicketsConfig, discordId: string): Prom
  *  Used only for bet stakes (taken when a bet is placed) and cancels / cash-outs (given back straight away),
  *  since 2026-11-14 (Nick: "prevent it"). Winnings still go through the payouts report.
  *  A clear refusal marks the move failed; anything ambiguous (timeout, 5xx) is marked failed with
- *  "check UnbelievaBoat", never retried blindly. Returns true only if UnbelievaBoat confirmed it. */
-export async function moveTickets(a: { cfg: TicketsConfig; leagueId: string; book: number; userId: string; discordId: string; amount: number; kind: "bet" | "refund"; reason: string }): Promise<{ ok: boolean; id: number | null; error?: string }> {
+ *  "check UnbelievaBoat", never retried blindly. Returns true only if UnbelievaBoat confirmed it.
+ *  balance = the member's balance after the move, as UnbelievaBoat reported it (when it did). */
+export async function moveTickets(a: { cfg: TicketsConfig; leagueId: string; book: number; userId: string; discordId: string; amount: number; kind: "bet" | "refund"; reason: string }): Promise<{ ok: boolean; id: number | null; error?: string; balance?: number }> {
   const db = supabaseAdmin();
   const amount = Math.round(a.amount);
   if (!amount) return { ok: true, id: null };
@@ -72,9 +76,10 @@ export async function moveTickets(a: { cfg: TicketsConfig; leagueId: string; boo
   if (le || !row) return { ok: false, id: null, error: `Couldn't log the Ticket move: ${le?.message ?? "no row"}` };
   const id = Number(row.id);
   try {
-    await ub(`/guilds/${a.cfg.guildId}/users/${a.discordId}`, { method: "PATCH", body: JSON.stringify({ [a.cfg.field]: amount, reason: `${a.reason} [move ${id}]`.slice(0, 200) }) });
+    const j = await ub(`/guilds/${a.cfg.guildId}/users/${a.discordId}`, { method: "PATCH", body: JSON.stringify({ [a.cfg.field]: amount, reason: `${a.reason} [move ${id}]`.slice(0, 200) }) });
     await db.from("market_ticket_moves").update({ status: "done", done_at: new Date().toISOString() }).eq("id", id);
-    return { ok: true, id };
+    const after = typeof j[a.cfg.field] === "number" ? (j[a.cfg.field] as number) : undefined;
+    return { ok: true, id, balance: after };
   } catch (e) {
     const msg = (e as Error).message;
     const clear = /UnbelievaBoat 4\d\d/.test(msg);
@@ -148,7 +153,9 @@ const byDiscord = new Map<string, { at: number; userId: string | null }>();
 /** The site user linked to a Discord account (via /connect), cached 5 minutes. */
 export async function userForDiscord(discordId: string): Promise<string | null> {
   const hit = byDiscord.get(discordId);
-  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.userId;
+  // "not linked" is only trusted for 30 seconds: someone who just ran /connect may be answered by another
+  // server instance than the one that saved the link, and shouldn't be told to /connect again for 5 minutes
+  if (hit && Date.now() - hit.at < (hit.userId ? 5 * 60_000 : 30_000)) return hit.userId;
   let found: string | null = null;
   for (const u of await allUsers()) {
     const id = u.app_metadata.discord_id;

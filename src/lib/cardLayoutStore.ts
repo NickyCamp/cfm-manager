@@ -37,10 +37,25 @@ export async function cardLayout(slug: string, playerId: number): Promise<CardLa
   return (await leagueCardLayouts(slug)).get(playerId);
 }
 
+/** The league's layouts for saving: throws when the file exists but can't be read, so a storage hiccup
+ *  can't make the save below write a file holding only the one card being changed. */
+async function layoutsForSave(slug: string): Promise<Map<number, CardLayout>> {
+  const store = supabaseAdmin().storage.from(BUCKET);
+  const { data: files, error: le } = await store.list("", { search: `${slug}.json`, limit: 100 });
+  if (le) throw new Error(le.message);
+  const out = new Map<number, CardLayout>();
+  if (!(files || []).some((f) => f.name === `${slug}.json`)) return out;
+  const { data, error } = await store.download(`${slug}.json`);
+  if (error || !data) throw new Error(error?.message || "Couldn't read the league's card layouts.");
+  const raw = JSON.parse(await data.text()) as Record<string, unknown>;
+  for (const [id, l] of Object.entries(raw || {})) if (Number(id) > 0) out.set(Number(id), normalizeLayout(l));
+  return out;
+}
+
 /** Save one card's layout (null or all-on removes it). Read-modify-write of the league file. */
 export async function saveCardLayout(slug: string, playerId: number, layout: CardLayout | null) {
   await ensureBucket();
-  const all = await leagueCardLayouts(slug);
+  const all = await layoutsForSave(slug);
   const l = layout ? normalizeLayout(layout) : null;
   if (!l || isDefaultLayout(l)) all.delete(playerId);
   else all.set(playerId, l);

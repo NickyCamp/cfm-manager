@@ -20,8 +20,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ slug: 
   const { data: lg } = await admin.from("leagues").select("id, owner_id, settings").eq("slug", slug).maybeSingle();
   if (!lg) return NextResponse.json({ error: "No such league." }, { status: 404 });
 
-  const { error } = await admin.from("league_members").delete().eq("league_id", lg.id).eq("user_id", user.id);
+  const { data: removed, error } = await admin.from("league_members").delete().eq("league_id", lg.id).eq("user_id", user.id).select("user_id");
   if (error) return NextResponse.json({ error: `Couldn't remove it: ${error.message}` }, { status: 500 });
+  // Someone who was never in this league changes nothing: without this, any signed-in account could
+  // start the 30-day delete clock on a league that has no member rows.
+  if (!removed?.length && lg.owner_id !== user.id) return NextResponse.json({ ok: true, orphaned: false });
 
   const { data: heir } = await admin
     .from("league_members").select("user_id")
