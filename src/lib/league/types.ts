@@ -109,6 +109,7 @@ export type LeagueData = {
   version: number;
   builtAt: string;
   pulledAt: string;
+  /** stage: 0 preseason, 1 regular season + playoffs, 2 offseason (see league/phase.ts) */
   season: { year: number; stage: number; week: number; title: string; secsSinceAdvance: number | null };
   weeks: Week[];
   teams: Team[];

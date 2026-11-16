@@ -8,6 +8,7 @@ import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { decryptJson, encryptJson } from "@/lib/crypto";
 import { blazeLogin, leagueHub, refreshToken, type EaToken } from "@/lib/ea/client";
+import { eaPhase } from "@/lib/league/phase";
 
 export type LiveWeek = {
   at: number;
@@ -57,9 +58,9 @@ export async function liveWeek(slug: string, { fresh = false } = {}): Promise<Li
 /** EA has moved past the week our data shows (an advance happened since the last sync). */
 export function weekMoved(live: LiveWeek, data: { stage: number; week: number }) {
   if (!live.week) return false;
-  // EA weekType: 0 preseason, 1 regular season, 2+ playoffs (data stage 1 covers both)
-  const liveStage = live.week.type === 0 ? 0 : 1;
-  return liveStage !== data.stage || live.week.week !== data.week;
+  // EA weekType: 0 preseason, 1 regular season, 2-6 playoffs (data stage 1 covers both), then offseason (stage 2)
+  const ph = eaPhase({ seasonWeekType: live.week.type, seasonWeek: live.week.week });
+  return ph.stage !== data.stage || ph.week !== data.week;
 }
 
 /** Whatever is cached (possibly stale or null), without calling EA. */

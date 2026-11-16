@@ -8,6 +8,7 @@
 // - winLossStreak arrives as an unsigned byte (255 = -1).
 // - Playoff games not set yet come back as several TBD-vs-TBD rows per round.
 
+import { eaPhase } from "./phase";
 import { RATING_KEYS } from "./ratings";
 import { DATA_VERSION, type Game, type LeagueData, type Player, type StatLine, type Team, type TeamGame, type Week } from "./types";
 
@@ -35,6 +36,8 @@ export function buildLeagueData(files: Raw): LeagueData {
   const meta = files["meta.json"] as Any;
   const hub = files["league-hub.json"] as Any;
   const si = meta.seasonInfo;
+  // Offseason = stage 2 with no games; rebuilds of older pulls are corrected too (title from the hub, not meta).
+  const phase = eaPhase(si, meta.weeks || []);
 
   // ---------- weeks ----------
   const weeks: Week[] = (meta.weeks || [])
@@ -56,7 +59,7 @@ export function buildLeagueData(files: Raw): LeagueData {
         if (seenTbd.has(k)) continue;
         seenTbd.add(k);
       }
-      const isCurrent = g.stageIndex === Math.min(si.seasonWeekType, 1) && g.weekIndex === si.seasonWeek;
+      const isCurrent = g.stageIndex === phase.stage && g.weekIndex === phase.week;
       const simmed = isCurrent ? simmedByMatchup.get(`${g.homeTeamId}:${g.awayTeamId}`) : undefined;
       games.push({
         id: g.scheduleId, stage: g.stageIndex, week: g.weekIndex, home: g.homeTeamId || 0, away: g.awayTeamId || 0,
@@ -178,14 +181,13 @@ export function buildLeagueData(files: Raw): LeagueData {
     });
   }
 
-  const stage = Math.min(si.seasonWeekType, 1);
   return {
     version: DATA_VERSION,
     builtAt: new Date().toISOString(),
     pulledAt: meta.pulledAt,
     season: {
-      year: si.calendarYear, stage, week: si.seasonWeek,
-      title: meta.currentWeekTitle || `Week ${si.seasonWeek + 1}`,
+      year: si.calendarYear, stage: phase.stage, week: phase.week,
+      title: phase.title,
       secsSinceAdvance: typeof hub?.secsSinceLastAdvancedTime === "number" ? hub.secsSinceLastAdvancedTime : null,
     },
     weeks,

@@ -4,6 +4,7 @@
 import {
   type BlazeSession, type EaToken, exportCall, leagueHub, refreshToken,
 } from "../src/lib/ea/client";
+import { eaPhase } from "../src/lib/league/phase";
 
 const STATS: [string, string][] = [
   ["passing", "CareerMode_GetWeeklyPassingStatsExport"],
@@ -26,11 +27,11 @@ export function leagueKey(hub: Hub) {
   const weeks = hub.availableWeekInfoList || [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const played = weeks.reduce((a: number, w: any) => a + (w.gamesPlayedCount || 0), 0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cur = weeks.find((w: any) => w.weekIndex === si.seasonWeek && w.stageIndex === Math.min(si.seasonWeekType, 1)) || {};
+  const ph = eaPhase(si, weeks);
   return {
     key: `${si.calendarYear}|${si.seasonWeekType}|${si.seasonWeek}|${played}`,
-    label: `${si.calendarYear}, ${cur.weekTitle || `week index ${si.seasonWeek}`} (${played} games played)`,
+    // EA's raw type/week are in the label so new offseason steps can be named later.
+    label: `${si.calendarYear}, ${ph.title} (${played} games played; EA type ${si.seasonWeekType}, week ${si.seasonWeek})`,
   };
 }
 
@@ -79,11 +80,10 @@ export async function fullPull(
   }
 
   const si = hub.careerHubInfo.seasonInfo;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cur = (hub.availableWeekInfoList || []).find((w: any) => w.weekIndex === si.seasonWeek && w.stageIndex === Math.min(si.seasonWeekType, 1)) || {};
+  const ph = eaPhase(si, hub.availableWeekInfoList || []);
   files["meta.json"] = {
-    leagueId, key: leagueKey(hub).key, seasonInfo: si, currentWeekTitle: cur.weekTitle || "",
-    currentStage: Math.min(si.seasonWeekType, 1), weeks: hub.availableWeekInfoList || [], pulledAt: new Date().toISOString(),
+    leagueId, key: leagueKey(hub).key, seasonInfo: si, currentWeekTitle: ph.title,
+    currentStage: ph.stage, weeks: hub.availableWeekInfoList || [], pulledAt: new Date().toISOString(),
   };
   log(`- Pulled teams, standings, ${teams.length} rosters + free agents, and ${weekCalls} schedule/stat pages.`);
   return { files, fails, token: tok };

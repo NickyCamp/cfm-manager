@@ -24,6 +24,7 @@ export function parseWeekKey(k: string | undefined): { stage: number; week: numb
 }
 
 export function weekTitle(d: LeagueData, stage: number, week: number) {
+  if (stage === d.season.stage && week === d.season.week && stage >= 2) return d.season.title; // offseason
   return d.weeks.find((w) => w.stage === stage && w.week === week)?.title || (stage === 0 ? `Preseason Week ${week + 1}` : `Week ${week + 1}`);
 }
 
