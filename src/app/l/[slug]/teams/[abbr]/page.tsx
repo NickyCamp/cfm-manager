@@ -22,7 +22,7 @@ import { priceIndex } from "@/lib/league/marketTypes";
 import { marketsForPage, teamBets } from "@/lib/marketStore";
 import { TeamBets } from "@/components/league/markets/TeamBets";
 
-type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string }> };
+type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string; sort?: string; dir?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"], ["markets", "Markets"]] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TeamPage({ params, searchParams }: Props) {
   const { slug, abbr } = await params;
-  const { tab = "roster", view, unit } = await searchParams;
+  const { tab = "roster", view, unit, sort, dir } = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
   const { byAbbr } = indexes(d);
@@ -67,7 +67,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
             <Link key={k} href={k === "roster" ? base : `${base}?tab=${k}`} aria-current={tab === k ? "page" : undefined}>{label}</Link>
           ))}
         </nav>
-        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" ? "details" : "years"} base={base} />
+        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" ? "details" : "years"} base={base} sort={sort} dir={dir} />
           : tab === "schedule" ? <ScheduleTab d={d} team={team} slug={slug} />
           : tab === "stats" ? <StatsTab d={d} team={team} slug={slug} />
           : tab === "markets" ? <MarketsTab d={d} team={team} slug={slug} />
@@ -207,9 +207,46 @@ const UNITS: { key: string; label: string; match: (p: Player) => boolean }[] = [
   { key: "ps", label: "Practice squad", match: (p) => p.ps },
 ];
 
-function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details"; base: string }) {
-  const active = roster.filter((p) => !p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
-  const ps = roster.filter((p) => p.ps).sort((a, b) => b.contract.capHit - a.contract.capHit);
+// Contract details sorting (?sort=<key>&dir=asc|desc). Numbers default high-to-low, text A-Z.
+const CONTRACT_SORTS = {
+  cap: { label: "Cap hit", text: false, val: (p: Player) => p.contract.capHit },
+  yrs: { label: "Years left", text: false, val: (p: Player) => p.contract.yearsLeft },
+  len: { label: "Length", text: false, val: (p: Player) => p.contract.length },
+  total: { label: "Total", text: false, val: (p: Player) => p.contract.salary + p.contract.bonus },
+  bonus: { label: "Bonus", text: false, val: (p: Player) => p.contract.bonus },
+  saves: { label: "Cut saves", text: false, val: (p: Player) => p.contract.releaseSavings },
+  dead: { label: "Dead if cut", text: false, val: (p: Player) => p.contract.releasePenalty },
+  name: { label: "Name", text: true, val: (p: Player) => `${p.last} ${p.first}` },
+  pos: { label: "Position", text: true, val: (p: Player) => p.pos },
+} as const;
+type ContractSort = keyof typeof CONTRACT_SORTS;
+const isContractSort = (s?: string): s is ContractSort => !!s && s in CONTRACT_SORTS;
+
+function sortContracts(list: Player[], key: ContractSort, dir: 1 | -1) {
+  const { val } = CONTRACT_SORTS[key];
+  return [...list].sort((a, b) => {
+    const x = val(a), y = val(b);
+    const c = typeof x === "string" ? x.localeCompare(y as string) : x - (y as number);
+    return c * dir || b.contract.capHit - a.contract.capHit || a.last.localeCompare(b.last);
+  });
+}
+
+function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirParam }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details"; base: string; sort?: string; dir?: string }) {
+  const sort: ContractSort = isContractSort(sortParam) ? sortParam : "cap";
+  const dir: 1 | -1 = dirParam === "asc" ? 1 : dirParam === "desc" ? -1 : CONTRACT_SORTS[sort].text ? 1 : -1;
+  const sortHref = (k: ContractSort) => {
+    const def = CONTRACT_SORTS[k].text ? 1 : -1;
+    const next = k === sort ? -dir : def; // tap the active sort again to flip it
+    return `${base}?tab=cap&view=details&sort=${k}&dir=${next === 1 ? "asc" : "desc"}`;
+  };
+  const arrow = (k: ContractSort) => (k === sort ? (dir === 1 ? " ▲" : " ▼") : "");
+  const th = (k: ContractSort, label: string, cls = "", title?: string) => (
+    <th className={`${cls} th-sort${k === sort ? " sorted" : ""}`} title={title} aria-sort={k === sort ? (dir === 1 ? "ascending" : "descending") : undefined}>
+      <Link href={sortHref(k)} scroll={false}>{label}<span className="sort-arrow" aria-hidden>{arrow(k)}</span></Link>
+    </th>
+  );
+  const active = sortContracts(roster.filter((p) => !p.ps), sort, dir);
+  const ps = sortContracts(roster.filter((p) => p.ps), sort, dir);
   const dead = inferredDeadCap(team, roster);
   const expiring = active.filter((p) => p.contract.yearsLeft <= 1);
   const capRows = (list: Player[]) => list.map((p) => (
@@ -238,11 +275,17 @@ function CapTab({ d, team, roster, slug, view, base }: { d: LeagueData; team: Te
       </div>
       {view === "years" ? <CapByYear d={d} team={team} slug={slug} /> : (
         <>
+        <nav className="week-chips sort-chips" aria-label="Sort contracts">
+          <span className="sort-label">Sort</span>
+          {(Object.keys(CONTRACT_SORTS) as ContractSort[]).map((k) => (
+            <Link key={k} href={sortHref(k)} scroll={false} aria-current={k === sort ? "page" : undefined}>{CONTRACT_SORTS[k].label}{arrow(k)}</Link>
+          ))}
+        </nav>
         <div className="panel tbl-wrap">
           <table className="tbl">
-            <caption>Contracts <span className="muted">highest cap hit first</span></caption>
+            <caption>Contracts <span className="muted">by {CONTRACT_SORTS[sort].label.toLowerCase()}, {CONTRACT_SORTS[sort].text ? (dir === 1 ? "A–Z" : "Z–A") : (dir === -1 ? "highest first" : "lowest first")}</span></caption>
             <thead>
-              <tr><th>Player</th><th className="num">Cap hit</th><th className="num" title="Years left / length">Yrs</th><th className="num hide-sm">Total</th><th className="num hide-sm">Bonus</th><th className="num">Cut saves</th><th className="num">Dead if cut</th></tr>
+              <tr>{th("name", "Player")}{th("cap", "Cap hit", "num")}{th("yrs", "Yrs", "num", "Years left / length")}{th("total", "Total", "num hide-sm")}{th("bonus", "Bonus", "num hide-sm")}{th("saves", "Cut saves", "num")}{th("dead", "Dead if cut", "num")}</tr>
             </thead>
             <tbody>{capRows(active)}</tbody>
           </table>
