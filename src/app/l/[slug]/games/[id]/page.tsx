@@ -25,7 +25,7 @@ export default async function BoxScore({ params }: Props) {
   return (
     <main className="page league-page">
       <div className="wrap">
-        <Link className="back" href={`/l/${slug}/scores?week=${weekKey(g.stage, g.week)}`}>{weekTitle(d, g.stage, g.week)} scores</Link>
+        <Link className="back" href={`/l/${slug}/scores?week=${weekKey(g.stage, g.week)}#past`}>{weekTitle(d, g.stage, g.week)} scores</Link>
         <div className="box-head">
           <Side team={away} score={g.as} won={g.final && g.as > g.hs} slug={slug} />
           <div className="box-mid">{g.final ? "Final" : "Not played"}{g.simmed === true ? <div className="tag">Simmed</div> : null}</div>

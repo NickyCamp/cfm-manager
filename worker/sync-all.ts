@@ -27,6 +27,7 @@ import { signWorkerCall } from "../src/lib/workerSig";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
 import { appendEvents, diffLeague, seedHistory, type LeagueHistory } from "../src/lib/league/history";
+import { archiveSeason, type SeasonArchive } from "../src/lib/league/seasons";
 import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
@@ -194,6 +195,7 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
     if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return null; }
     log(`- Built league data: ${data.teams.length} teams, ${data.players.length} players, ${data.games.length} games, ${data.lines.length} stat lines (${(gz.length / 1024).toFixed(0)} KB).${data.season.capYear ? ` Contracts are on ${data.season.capYear}.` : ""}`);
     await updateHistory(slug, prev, data, log);
+    await updateSeasons(slug, data, log);
     return { prev, data };
   } catch (e) {
     log(`- **Couldn't build the league data:** ${(e as Error).message}`);
@@ -204,6 +206,21 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
 /** Copies of what was published, for the run's artifact (checking builds without storage access). */
 function keepCopy(name: string, buf: Buffer) {
   try { fs.mkdirSync("out", { recursive: true }); fs.writeFileSync(`out/${name}`, buf); } catch { /* best effort */ }
+}
+
+/** Keeps every season's scores in league-data/<slug>/seasons.json.gz (EA only returns this season's). */
+async function updateSeasons(slug: string, data: LeagueData, log: (s: string) => void) {
+  try {
+    const buf = await download(`${slug}/seasons.json.gz`);
+    let arc: SeasonArchive | null = null;
+    try { arc = buf ? JSON.parse(gunzipSync(buf).toString("utf8")) : null; } catch { arc = null; }
+    arc = archiveSeason(arc, data);
+    const gz = gzipSync(Buffer.from(JSON.stringify(arc)));
+    const up = await db.storage.from("league-data").upload(`${slug}/seasons.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
+    if (up.error) log(`- Couldn't save past seasons: ${up.error.message}`);
+  } catch (e) {
+    log(`- Past seasons update failed: ${(e as Error).message}`);
+  }
 }
 
 /** Appends this sync's moves to league-data/<slug>/history.json.gz (the Transactions tab). Never fails the sync. */

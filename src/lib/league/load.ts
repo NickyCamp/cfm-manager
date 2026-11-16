@@ -10,6 +10,7 @@ import type { LeagueData } from "./types";
 import { findAbility } from "./abilities";
 import { KNOWN_LEAGUE_CAPS } from "./cap";
 import { attachRestructures, type LeagueHistory } from "./history";
+import type { SeasonArchive } from "./seasons";
 
 export type LeagueRow = {
   id: string; slug: string; name: string; console: string;
@@ -47,6 +48,22 @@ async function fetchJson<T>(slug: string, file: string): Promise<T | null> {
   const text = buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf).toString("utf8") : buf.toString("utf8");
   return JSON.parse(text) as T;
 }
+
+const seasonsMemo = new Map<string, { at: number; data: SeasonArchive | null }>();
+
+/** Every season's scores the worker has kept (league-data/<slug>/seasons.json.gz). */
+export const getLeagueSeasons = cache(async (slug: string): Promise<SeasonArchive | null> => {
+  const hit = seasonsMemo.get(slug);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
+  try {
+    const data = await fetchJson<SeasonArchive>(slug, "seasons");
+    seasonsMemo.set(slug, { at: Date.now(), data });
+    return data;
+  } catch (e) {
+    console.error("league seasons load failed", slug, e);
+    return hit?.data ?? null;
+  }
+});
 
 const histMemo = new Map<string, { at: number; data: LeagueHistory | null }>();
 

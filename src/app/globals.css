@@ -1550,3 +1550,10 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   .tx-time { width: 100%; }
   .tx-team-form select { min-width: 0; flex: 1; }
 }
+
+/* ---------- Scores: past scores table (2026-11-16) ---------- */
+.past-scores { margin-top: 32px; }
+.past-scores h3 { margin: 0 0 6px; }
+.past-scores .week-chips { padding-bottom: 8px; }
+.scores-tbl td { vertical-align: middle; }
+.scores-tbl .team-badge { vertical-align: middle; margin-right: 4px; }
