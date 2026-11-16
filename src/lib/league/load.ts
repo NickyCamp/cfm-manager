@@ -8,6 +8,7 @@ import fs from "node:fs";
 import { supabaseUser } from "@/lib/supabase/server";
 import type { LeagueData } from "./types";
 import { findAbility } from "./abilities";
+import { KNOWN_LEAGUE_CAPS } from "./cap";
 
 export type LeagueRow = {
   id: string; slug: string; name: string; console: string;
@@ -51,7 +52,11 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
   if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
   try {
     const data = await fetchData(slug);
-    if (data) markXFactorAbilities(data);
+    if (data) {
+      markXFactorAbilities(data);
+      const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > data.season.year));
+      if (Object.keys(known).length) data.knownCaps = known;
+    }
     memo.set(slug, { at: Date.now(), data });
     return data;
   } catch (e) {

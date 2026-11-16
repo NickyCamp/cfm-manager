@@ -43,8 +43,33 @@ export const MAX_BONUS_PRORATION_YEARS = 5;
 /** Baseline league cap growth per season (Nick, 2026-10-27). */
 export const CAP_GROWTH_PER_YEAR = 15_000_000;
 
-export function projectedLeagueCap(currentCap: number, currentYear: number, year: number) {
-  return currentCap + CAP_GROWTH_PER_YEAR * Math.max(0, year - currentYear);
+/**
+ * League caps Madden has already set for a coming season, by league slug and
+ * season. Madden shows next season's cap during the offseason, before EA's
+ * export reaches that season; once it does, the teams' own cap takes over.
+ */
+export const KNOWN_LEAGUE_CAPS: Record<string, Record<number, number>> = {
+  ncl: { 2028: 350_000_000 }, // Nick, 2026-11-16: Madden's actual 2028 cap
+};
+
+/**
+ * League cap for a season: this season's from Madden, a known cap when Madden
+ * has set one, otherwise the latest known cap grown by the baseline each year.
+ */
+export function projectedLeagueCap(currentCap: number, currentYear: number, year: number, known: Record<number, number> = {}) {
+  if (year <= currentYear) return currentCap;
+  if (known[year] != null) return known[year];
+  let fromYear = currentYear, fromCap = currentCap;
+  for (const [y, cap] of Object.entries(known)) {
+    const ky = Number(y);
+    if (ky > fromYear && ky < year) { fromYear = ky; fromCap = cap; }
+  }
+  return fromCap + CAP_GROWTH_PER_YEAR * (year - fromYear);
+}
+
+/** True when a season's league cap is a real number rather than a projection. */
+export function isCapSet(currentYear: number, year: number, known: Record<number, number> = {}) {
+  return year <= currentYear || known[year] != null;
 }
 
 // Yearly raise of a new Madden deal by length: raise = a * avgSalary + c.

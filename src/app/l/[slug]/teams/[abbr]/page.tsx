@@ -97,7 +97,7 @@ function CapOutlook({ d, team, base }: { d: LeagueData; team: Team; base: string
       <div className="outlook-cards">
         {totals.map((t, i) => (
           <div className="outlook-card" key={t.year}>
-            <div className="oc-year">{t.year}{i === 0 ? <span className="muted"> now</span> : <span className="proj-inline">proj.</span>}</div>
+            <div className="oc-year">{t.year}{i === 0 ? <span className="muted"> now</span> : t.capSet ? null : <span className="proj-inline">proj.</span>}</div>
             <div className={`oc-space ${t.space < 0 ? "neg" : ""}`}><CountUp value={t.space} /></div>
             <div className="oc-label">cap space</div>
             <div className="oc-row"><span>{t.players}</span> signed</div>
@@ -272,7 +272,7 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
           <tbody>
             {totals.map((t, i) => (
               <tr key={t.year}>
-                <td className="nw">{t.year}{i === 0 ? <span className="muted small"> now</span> : <span className="proj">proj.</span>}</td>
+                <td className="nw">{t.year}{i === 0 ? <span className="muted small"> now</span> : t.capSet ? null : <span className="proj">proj.</span>}</td>
                 <td className="num strong">{t.players}</td>
                 <td className="num">{money(t.committed)}</td>
                 <td className="num muted hide-sm">{money(t.cap)}</td>
@@ -284,11 +284,11 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
       </div>
       <div className="panel tbl-wrap">
         <table className="tbl years-tbl">
-          <caption>By player <span className="muted">{years[0]} is Madden&apos;s; later years are projected</span></caption>
+          <caption>By player <span className="muted">{years[0]} is Madden&apos;s; later cap hits are worked out from each deal</span></caption>
           <thead>
             <tr>
               <th>Player</th>
-              {years.map((y, i) => <th key={y} className="num">{y}{i > 0 && <span className="proj">proj.</span>}</th>)}
+              {years.map((y, i) => <th key={y} className="num">{y}{i > 0 && !totals[i].capSet && <span className="proj">proj.</span>}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -316,7 +316,7 @@ function CapByYear({ d, team, slug }: { d: LeagueData; team: Team; slug: string 
         {years[0]} uses Madden&apos;s own numbers, dead money included. Later years project each current contract year by year
         the way Madden does: players still on the real NFL contract the franchise started with follow that contract year by year
         (OverTheCap data via nflverse), and other deals rise by an even amount each year with the bonus spread over up to 5 years.
-        Checked against Madden&apos;s own cap screens, most future years land within 2%; extensions and restructures can miss by more. The league cap is assumed to grow {money(CAP_GROWTH_PER_YEAR)} a year.
+        Checked against Madden&apos;s own cap screens, most future years land within 2%; extensions and restructures can miss by more. {totals.filter((t, i) => i > 0 && t.capSet).map((t) => `The ${t.year} league cap is Madden's actual ${money(t.cap)}. `).join("")}After that the league cap is assumed to grow {money(CAP_GROWTH_PER_YEAR)} a year.
         Void years (leftover bonus from real contracts that still counts after the deal ends) are included and marked; other
         future dead money, new signings and re-signings aren&apos;t. Practice squad deals are left out.
       </p>

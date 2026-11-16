@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getLeagueData } from "@/lib/league/load";
-import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
+import { isCapSet, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { NoData } from "@/components/league/bits";
 import { ContractTool, type ToolPlayer, type ToolTeam } from "./ContractTool";
@@ -47,7 +47,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
     row[0] = t.cap.spent;
     return {
       id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary,
-      committed: row, cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y))),
+      committed: row, cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),
     };
   });
 
@@ -56,7 +56,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
       <div className="wrap">
         <h2>Contract tool</h2>
         <p className="muted" style={{ maxWidth: "68ch" }}>Look up any player&apos;s deal year by year, build an offer, and see what it does to a team&apos;s cap.</p>
-        <ContractTool slug={slug} year={year} years={years} leagueCaps={years.map((y) => projectedLeagueCap(baseCap, year, y))} players={players} teams={teams} initialPlayer={player ? Number(player) : null} />
+        <ContractTool slug={slug} year={year} years={years} leagueCaps={years.map((y) => projectedLeagueCap(baseCap, year, y, d.knownCaps))} capSet={years.map((y) => isCapSet(year, y, d.knownCaps))} players={players} teams={teams} initialPlayer={player ? Number(player) : null} />
       </div>
     </main>
   );

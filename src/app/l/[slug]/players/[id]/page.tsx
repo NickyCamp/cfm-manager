@@ -7,7 +7,7 @@ import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
 import { DEV_LABEL, type LeagueData, type Player, type StatLine } from "@/lib/league/types";
 import { ratingGroups } from "@/lib/league/ratingGroups";
-import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
+import { isCapSet, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { eligibleAbilities, findAbility } from "@/lib/league/abilities";
 import { AbilityMechanics, EligibleRow, TierPill } from "@/components/league/AbilityInfo";
@@ -267,10 +267,10 @@ function ContractTab({ d, p, slug }: { d: LeagueData; p: Player; slug: string })
             <thead><tr><th>Season</th><th className="num">Cap hit</th><th className="num">Share of the cap</th></tr></thead>
             <tbody>
               {ys.map((y, i) => {
-                const cap = projectedLeagueCap(leagueCap(d.teams), d.season.year, y);
+                const cap = projectedLeagueCap(leagueCap(d.teams), d.season.year, y, d.knownCaps);
                 return (
                   <tr key={y}>
-                    <td className="nw">{y}{i > 0 && <span className="muted small"> proj.</span>}</td>
+                    <td className="nw">{y}{i > 0 && !isCapSet(d.season.year, y, d.knownCaps) && <span className="muted small"> proj.</span>}</td>
                     <td className={`num ${i === 0 ? "strong" : ""}`}>{money(pr.hits[y])}</td>
                     <td className="num muted">{pct(pr.hits[y], cap)}%</td>
                   </tr>

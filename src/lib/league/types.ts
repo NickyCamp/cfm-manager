@@ -119,6 +119,8 @@ export type LeagueData = {
   teamGames: TeamGame[];
   /** Madden's own commissioners (EA league hub: owner and admins), refreshed on every sync. */
   admins?: { user: string; team: string; level: "owner" | "admin" }[];
+  /** Coming seasons' league caps Madden has already set (added on load, see KNOWN_LEAGUE_CAPS). */
+  knownCaps?: Record<number, number>;
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;

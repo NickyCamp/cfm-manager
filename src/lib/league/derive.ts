@@ -2,7 +2,7 @@
 // scores, season totals and leaders. Pure functions; safe to call per request.
 
 import type { Game, LeagueData, Player, StatLine, Team, Week } from "./types";
-import { leagueCap, projectedLeagueCap } from "./cap";
+import { isCapSet, leagueCap, projectedLeagueCap } from "./cap";
 import { projectPlayer } from "./projection";
 
 
@@ -212,10 +212,10 @@ export function teamCapProjection(d: LeagueData, team: Team) {
     .map((p) => { const pr = projectPlayer(p, d.season.year); return { p, hits: pr.hits, dead: pr.dead }; })
     .sort((a, b) => b.p.contract.capHit - a.p.contract.capHit);
   const totals = years.map((y, i) => {
-    if (i === 0) return { year: y, cap: team.cap.room, committed: team.cap.spent, space: team.cap.available, players: rows.filter((r) => r.hits[y] != null).length };
+    if (i === 0) return { year: y, cap: team.cap.room, capSet: true, committed: team.cap.spent, space: team.cap.available, players: rows.filter((r) => r.hits[y] != null).length };
     const committed = rows.reduce((a, r) => a + (r.hits[y] || 0) + (r.dead[y] || 0), 0);
-    const cap = projectedLeagueCap(baseCap, d.season.year, y);
-    return { year: y, cap, committed, space: cap - committed, players: rows.filter((r) => r.hits[y] != null).length };
+    const cap = projectedLeagueCap(baseCap, d.season.year, y, d.knownCaps);
+    return { year: y, cap, capSet: isCapSet(d.season.year, y, d.knownCaps), committed, space: cap - committed, players: rows.filter((r) => r.hits[y] != null).length };
   });
   return { years, rows, totals, baseCap };
 }

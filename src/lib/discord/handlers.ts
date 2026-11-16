@@ -660,7 +660,7 @@ function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, year = d
   const now = focus.year === d.season.year;
   const over = focus.space < 0;
   const years = pr.totals.map((y, i) => {
-    const row = `${y.year}${i ? " proj." : ""}: **${money(y.space)}** space (${money(y.committed)} of ${money(y.cap)}, ${y.players} signed)`;
+    const row = `${y.year}${i && !y.capSet ? " proj." : ""}: **${money(y.space)}** space (${money(y.committed)} of ${money(y.cap)}, ${y.players} signed)`;
     return y.year === focus.year ? `▶ ${row}` : row;
   });
   // The biggest cap hits in the season shown.
@@ -671,20 +671,27 @@ function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, year = d
   const expiring = now
     ? roster.filter((p) => !p.ps && p.contract.yearsLeft <= 1).sort((a, b) => b.contract.capHit - a.contract.capHit)
     : pr.rows.filter((r) => r.hits[focus.year] != null && r.hits[focus.year + 1] == null).map((r) => r.p);
-  const label = `${focus.year}${now ? "" : " (projected)"}`;
+  const label = `${focus.year}${focus.capSet ? "" : " (projected)"}`;
   const embed: Embed = {
     title: `${teamLabel(t)}: ${label} cap`, url: url(`/teams/${t.abbr.toLowerCase()}?tab=cap`), color: over ? 0xff4d63 : hexColor(t.primary), footer,
     description: over
       ? `🚨 **${money(focus.space)}** in ${label}. That's ${money(-focus.space)} over a ${money(focus.cap)} cap with ${focus.players} players signed.`
       : `**${money(focus.space)}** in space for ${label} (${money(focus.committed)} of ${money(focus.cap)}, ${focus.players} players signed).`,
     fields: [
-      { name: "Cap space by year", value: years.join("\n") + (now ? "" : "\n-# Future years are projected from current contracts against a cap $15M higher each season.") },
+      { name: "Cap space by year", value: years.join("\n") + (now ? "" : `\n-# ${capNote(pr.totals)}`) },
       { name: `Biggest cap hits, ${focus.year}`, value: hits.join("\n") || "—", inline: true },
       { name: `Expiring after ${focus.year} (${expiring.length})`, value: expiring.slice(0, 5).map((p) => `${fullName(p)}${now ? ` ${money(p.contract.capHit)}` : ""}`).join("\n") || "None", inline: true },
       ...(now ? [{ name: "Dead money", value: money(inferredDeadCap(t, roster)), inline: true }] : []),
     ],
   };
   return { embed, over };
+}
+
+/** Footnote on how future seasons' cap space is worked out. */
+function capNote(totals: { year: number; cap: number; capSet: boolean }[]): string {
+  const set = totals.slice(1).filter((t) => t.capSet);
+  const known = set.map((t) => `${t.year} uses Madden's actual ${money(t.cap)} cap. `).join("");
+  return `From current contracts. ${known}${set.length ? "Later seasons assume" : "Assumes"} the cap grows $15M a season.`;
 }
 
 function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer, year = d.season.year): Embed {
@@ -694,12 +701,12 @@ function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer, year = d.season
     const line = (r: (typeof rows)[number]) => `\`${r.t.abbr.padEnd(3)}\` ${money(r.y.space)} · ${r.y.players} signed`;
     const over = rows.filter((r) => r.y.space < 0);
     return {
-      title: `${year} cap space (projected)`, url: url(`/cap?year=${year}`), color: BRAND, footer,
+      title: `${year} cap space${rows[0]?.y.capSet ? "" : " (projected)"}`, url: url(`/cap?year=${year}`), color: BRAND, footer,
       fields: [
         { name: "Most room", value: rows.slice(0, 8).map(line).join("\n") },
         { name: "Least room", value: rows.slice(-8).map(line).join("\n") },
         ...(over.length ? [{ name: `Over the cap in ${year}`, value: over.map((r) => `${teamLabel(r.t)} (${money(r.y.space)})`).join("\n") }] : []),
-        { name: "\u200b", value: "-# Projected from current contracts against a cap $15M higher each season." },
+        { name: "\u200b", value: `-# ${capNote(teamCapProjection(d, d.teams[0]).totals)}` },
       ],
     };
   }

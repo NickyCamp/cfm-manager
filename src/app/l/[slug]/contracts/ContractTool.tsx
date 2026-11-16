@@ -18,8 +18,8 @@ export type ToolTeam = { id: number; abbr: string; name: string; primary: string
 const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
 const contractOf = (p: ToolPlayer) => ({ length: p.c[0], yearsLeft: p.c[1], salary: p.c[2], bonus: p.c[3], capHit: p.c[4] });
 
-export function ContractTool({ slug, year, years, leagueCaps, players, teams, initialPlayer }: {
-  slug: string; year: number; years: number[]; leagueCaps: number[]; players: ToolPlayer[]; teams: ToolTeam[]; initialPlayer: number | null;
+export function ContractTool({ slug, year, years, leagueCaps, capSet, players, teams, initialPlayer }: {
+  slug: string; year: number; years: number[]; leagueCaps: number[]; capSet: boolean[]; players: ToolPlayer[]; teams: ToolTeam[]; initialPlayer: number | null;
 }) {
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const [selected, setSelected] = useState<ToolPlayer | null>(() => players.find((p) => p.id === initialPlayer) || null);
@@ -65,14 +65,14 @@ export function ContractTool({ slug, year, years, leagueCaps, players, teams, in
           )}
         </div>
       </div>
-      {selected ? <Detail key={selected.id} slug={slug} p={selected} year={year} years={years} leagueCaps={leagueCaps} players={players} teams={teams} teamById={teamById} />
+      {selected ? <Detail key={selected.id} slug={slug} p={selected} year={year} years={years} leagueCaps={leagueCaps} capSet={capSet} players={players} teams={teams} teamById={teamById} />
         : <p className="muted">Search for anyone in the league, including free agents.</p>}
     </>
   );
 }
 
-function Detail({ slug, p, year, years, leagueCaps, players, teams, teamById }: {
-  slug: string; p: ToolPlayer; year: number; years: number[]; leagueCaps: number[]; players: ToolPlayer[]; teams: ToolTeam[]; teamById: Map<number, ToolTeam>;
+function Detail({ slug, p, year, years, leagueCaps, capSet, players, teams, teamById }: {
+  slug: string; p: ToolPlayer; year: number; years: number[]; leagueCaps: number[]; capSet: boolean[]; players: ToolPlayer[]; teams: ToolTeam[]; teamById: Map<number, ToolTeam>;
 }) {
   const c = contractOf(p);
   const team = teamById.get(p.t);
@@ -124,7 +124,7 @@ function Detail({ slug, p, year, years, leagueCaps, players, teams, teamById }: 
           {currentYears.length > 0 ? (
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr>{currentYears.map((y, i) => <th key={y} className="num">{y}{i > 0 && <span className="proj">proj.</span>}</th>)}</tr></thead>
+                <thead><tr>{currentYears.map((y, i) => <th key={y} className="num">{y}{i > 0 && !capSet[years.indexOf(y)] && <span className="proj">proj.</span>}</th>)}</tr></thead>
                 <tbody><tr>{currentYears.map((y, i) => <td key={y} className={`num ${i === 0 ? "strong" : ""}`}>{money(current[y])}</td>)}</tr></tbody>
               </table>
             </div>
@@ -188,7 +188,7 @@ function Detail({ slug, p, year, years, leagueCaps, players, teams, teamById }: 
                     const after = effTeam.cap[i] - effTeam.committed[i] - r.capHit;
                     return (
                       <tr key={r.year}>
-                        <td>{r.year}{i > 0 && <span className="proj">proj.</span>}</td>
+                        <td>{r.year}{i > 0 && !capSet[i] && <span className="proj">proj.</span>}</td>
                         <td className="num">{money(effTeam.committed[i])}</td>
                         <td className="num">+{money(r.capHit)}</td>
                         <td className="num muted">{money(effTeam.cap[i])}</td>
