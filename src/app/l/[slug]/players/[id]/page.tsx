@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueData } from "@/lib/league/load";
-import { indexes, passerRating, seasonTotals, weekTitle } from "@/lib/league/derive";
+import { capSeason, indexes, passerRating, seasonTotals, weekTitle } from "@/lib/league/derive";
 import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
 import { DEV_LABEL, type LeagueData, type Player, type StatLine } from "@/lib/league/types";
@@ -245,7 +245,7 @@ function ContractTab({ d, p, slug }: { d: LeagueData; p: Player; slug: string })
   const c = p.contract;
   if (p.gone) return <p className="muted">No longer in the league.</p>;
   const total = c.salary + c.bonus;
-  const pr = projectPlayer(p, d.season.year);
+  const pr = projectPlayer(p, capSeason(d));
   const ys = Object.keys(pr.hits).map(Number).sort((a, b) => a - b);
   const deadYs = Object.keys(pr.dead).map(Number).filter((y) => !ys.includes(y)).sort((a, b) => a - b);
   const signed = p.team && c.length > 0;
@@ -263,14 +263,14 @@ function ContractTab({ d, p, slug }: { d: LeagueData; p: Player; slug: string })
       {signed && ys.length > 0 && (
         <div className="panel tbl-wrap">
           <table className="tbl">
-            <caption>Cap hit by year <span className="muted">{pr.source === "formula" ? "later years projected from his deal" : "follows his real NFL contract"}</span></caption>
+            <caption>Cap hit by year <span className="muted">{pr.source === "formula" ? "later years projected from his deal" : pr.source === "restructured" ? "includes his restructure: the converted salary comes back as bonus in later years" : "follows his real NFL contract"}</span></caption>
             <thead><tr><th>Season</th><th className="num">Cap hit</th><th className="num">Share of the cap</th></tr></thead>
             <tbody>
               {ys.map((y, i) => {
-                const cap = projectedLeagueCap(leagueCap(d.teams), d.season.year, y, d.knownCaps);
+                const cap = projectedLeagueCap(leagueCap(d.teams), capSeason(d), y, d.knownCaps);
                 return (
                   <tr key={y}>
-                    <td className="nw">{y}{i > 0 && !isCapSet(d.season.year, y, d.knownCaps) && <span className="muted small"> proj.</span>}</td>
+                    <td className="nw">{y}{i > 0 && !isCapSet(capSeason(d), y, d.knownCaps) && <span className="muted small"> proj.</span>}</td>
                     <td className={`num ${i === 0 ? "strong" : ""}`}>{money(pr.hits[y])}</td>
                     <td className="num muted">{pct(pr.hits[y], cap)}%</td>
                   </tr>

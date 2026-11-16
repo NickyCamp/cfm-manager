@@ -26,6 +26,8 @@ import { decryptJson, encryptJson } from "../src/lib/crypto";
 import { signWorkerCall } from "../src/lib/workerSig";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
+import { appendEvents, diffLeague, seedHistory, type LeagueHistory } from "../src/lib/league/history";
+import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
@@ -187,13 +189,50 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
     const data = mergeHistory(prev, buildLeagueData(files));
     await resolvePortraits(prev, data, log);
     const gz = gzipSync(Buffer.from(JSON.stringify(data)));
+    keepCopy(`${slug}.json.gz`, gz);
     const up = await db.storage.from("league-data").upload(`${slug}/data.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
     if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return null; }
-    log(`- Built league data: ${data.teams.length} teams, ${data.players.length} players, ${data.games.length} games, ${data.lines.length} stat lines (${(gz.length / 1024).toFixed(0)} KB).`);
+    log(`- Built league data: ${data.teams.length} teams, ${data.players.length} players, ${data.games.length} games, ${data.lines.length} stat lines (${(gz.length / 1024).toFixed(0)} KB).${data.season.capYear ? ` Contracts are on ${data.season.capYear}.` : ""}`);
+    await updateHistory(slug, prev, data, log);
     return { prev, data };
   } catch (e) {
     log(`- **Couldn't build the league data:** ${(e as Error).message}`);
     return null;
+  }
+}
+
+/** Copies of what was published, for the run's artifact (checking builds without storage access). */
+function keepCopy(name: string, buf: Buffer) {
+  try { fs.mkdirSync("out", { recursive: true }); fs.writeFileSync(`out/${name}`, buf); } catch { /* best effort */ }
+}
+
+/** Appends this sync's moves to league-data/<slug>/history.json.gz (the Transactions tab). Never fails the sync. */
+async function updateHistory(slug: string, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+  try {
+    const buf = await download(`${slug}/history.json.gz`);
+    let hist: LeagueHistory | null = null;
+    try { hist = buf ? JSON.parse(gunzipSync(buf).toString("utf8")) : null; } catch { hist = null; }
+    if (!hist) {
+      // A league with an imported log (NCL: the old NCL site's) starts from it.
+      const seedFile = `scripts/history/seed-${slug}.json`;
+      if (fs.existsSync(seedFile)) {
+        hist = seedHistory(JSON.parse(fs.readFileSync(seedFile, "utf8")), data);
+        log(`- Transaction log started from ${seedFile}: ${hist.events.length} moves, ${hist.events.filter((e) => !e.p && e.kind !== "trade").length} players not matched.`);
+      } else hist = { version: 1, trackedSince: new Date().toISOString(), events: [] };
+    }
+    const events = diffLeague(prev, data, data.pulledAt || new Date().toISOString());
+    hist = appendEvents(hist, events);
+    if (events.length) {
+      const n: Record<string, number> = {};
+      for (const e of events) n[e.kind] = (n[e.kind] || 0) + 1;
+      log(`- Transactions: ${Object.entries(n).map(([k, v]) => `${v} ${k}`).join(", ")}.`);
+    }
+    const gz = gzipSync(Buffer.from(JSON.stringify(hist)));
+    keepCopy(`${slug}.history.json.gz`, gz);
+    const up = await db.storage.from("league-data").upload(`${slug}/history.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
+    if (up.error) log(`- Couldn't save the transaction log: ${up.error.message}`);
+  } catch (e) {
+    log(`- Transaction log update failed: ${(e as Error).message}`);
   }
 }
 

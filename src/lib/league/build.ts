@@ -8,7 +8,7 @@
 // - winLossStreak arrives as an unsigned byte (255 = -1).
 // - Playoff games not set yet come back as several TBD-vs-TBD rows per round.
 
-import { eaPhase } from "./phase";
+import { eaPhase, OFFSEASON_STAGE } from "./phase";
 import { RATING_KEYS } from "./ratings";
 import { DATA_VERSION, type Game, type LeagueData, type Player, type StatLine, type Team, type TeamGame, type Week } from "./types";
 
@@ -219,6 +219,8 @@ function maddenAdmins(hub: Any, teams: Team[]): NonNullable<LeagueData["admins"]
  * previous build had for the same season, with this pull winning on conflicts.
  */
 export function mergeHistory(prev: LeagueData | null, next: LeagueData): LeagueData {
+  const capYear = detectCapYear(prev, next);
+  if (capYear !== next.season.year) next = { ...next, season: { ...next.season, capYear } };
   if (!prev || prev.season.year !== next.season.year) return next;
   const lineKey = (l: StatLine) => `${l.g}:${l.p}`;
   const lines = new Map(prev.lines.map((l) => [lineKey(l), l]));
@@ -241,4 +243,32 @@ export function mergeHistory(prev: LeagueData | null, next: LeagueData): LeagueD
     lines: [...lines.values()],
     teamGames: [...teamGames.values()],
   };
+}
+
+/**
+ * Which season EA's contracts describe (see LeagueData.season.capYear). Early in the
+ * offseason Madden ticks every contract down a year and switches team caps to next
+ * season's while calendarYear stays the same (NCL, 2026-11-16: years left all dropped
+ * by one and every team's cap became $349.51M, the 2028 cap).
+ */
+export function detectCapYear(prev: LeagueData | null, next: LeagueData): number {
+  const year = next.season.year;
+  if (next.season.stage !== OFFSEASON_STAGE) return year;
+  if (prev && prev.season.year === year && (prev.season.capYear ?? year) > year) return prev.season.capYear!;
+  if (prev && prev.season.year === year) {
+    // Most contracts a year shorter than last sync (or expired) = rolled over.
+    const before = new Map(prev.players.map((p) => [p.id, p]));
+    let both = 0, ticked = 0;
+    for (const p of next.players) {
+      const o = before.get(p.id);
+      if (!o || o.gone || !o.team || o.contract.yearsLeft < 1) continue;
+      both++;
+      if (p.contract.length === o.contract.length && p.contract.yearsLeft === o.contract.yearsLeft - 1) ticked++;
+    }
+    if (both >= 100 && ticked / both > 0.5) return year + 1;
+  }
+  // No usable last sync: before the rollover last year's rookies still show 0 years pro;
+  // after it nobody does until the new draft class arrives (by then capYear is stored).
+  const signed = next.players.filter((p) => p.team && !p.gone);
+  return signed.length > 100 && !signed.some((p) => p.yearsPro === 0) ? year + 1 : year;
 }

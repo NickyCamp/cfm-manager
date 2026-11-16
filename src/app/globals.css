@@ -1518,3 +1518,35 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 /* "Add CFM Manager to Discord" */
 .btn.discord-btn { background: #5865f2; color: #fff; border-color: #5865f2; }
 .btn.discord-btn:hover { background: #4752c4; border-color: #4752c4; }
+
+/* ---------- Transactions (2026-11-16) ---------- */
+.tx-team-form { display: flex; gap: 8px; align-items: center; }
+.tx-team-form select { min-height: 44px; min-width: 220px; }
+.tx-week { margin: 0 0 8px; font: 700 1.15rem var(--display); }
+.tx-list { list-style: none; margin: 0; padding: 0; }
+.tx-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.tx-list > .tx-row:first-child { border-top: 0; }
+.tx-row.compact { padding: 5px 0; align-items: center; }
+.tx-badge { flex: none; min-width: 92px; text-align: center; font: 700 0.75rem var(--text); text-transform: uppercase; letter-spacing: .4px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--rail); color: var(--ink-soft); }
+.tx-badge.k-extended { color: #7ec8ff; border-color: currentColor; }
+.tx-badge.k-restructured { color: #ffcf5a; border-color: currentColor; }
+.tx-badge.k-trade { color: #c49bff; border-color: currentColor; }
+.tx-badge.k-signed { color: var(--ok); border-color: currentColor; }
+.tx-badge.k-released, .tx-badge.k-down { color: var(--danger); border-color: currentColor; }
+.tx-badge.k-up { color: var(--ok); border-color: currentColor; min-width: 56px; }
+.tx-badge.k-down { min-width: 56px; }
+.tx-teams { flex: none; display: inline-flex; align-items: center; gap: 4px; min-width: 48px; }
+.tx-body { flex: 1; min-width: 0; line-height: 1.45; }
+.tx-who { margin-right: 6px; }
+.tx-time { flex: none; white-space: nowrap; }
+.tx-side { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px 0; }
+.tx-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+.tx-col h4 { margin: 4px 0 6px; }
+.tx-ovr { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) {
+  .tx-cols { grid-template-columns: 1fr; }
+  .tx-row { flex-wrap: wrap; }
+  .tx-badge { min-width: 0; }
+  .tx-time { width: 100%; }
+  .tx-team-form select { min-width: 0; flex: 1; }
+}

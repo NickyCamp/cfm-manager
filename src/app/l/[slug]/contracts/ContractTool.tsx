@@ -10,6 +10,7 @@ export type ToolPlayer = {
   c: [length: number, yearsLeft: number, salary: number, bonus: number, capHit: number];
   h: number[];     // cap hit by year from this season, current deal
   real: boolean;   // projected from his real NFL contract
+  rs?: boolean;    // includes a restructure from the transaction log
   yp: number;      // years pro (spots rookie-scale deals)
   d: [length: number, salary: number, bonus: number] | null; // Madden's in-game ask
 };
@@ -130,6 +131,7 @@ function Detail({ slug, p, year, years, leagueCaps, capSet, players, teams, team
             </div>
           ) : <p className="muted">No contract on file.</p>}
           {p.real && currentYears.length > 1 && <p className="hint">Later years follow his real NFL contract, which Madden copied into the franchise.</p>}
+          {p.rs && currentYears.length > 1 && <p className="hint">Includes his restructure: the salary turned into bonus comes back spread over the next seasons of his bonus window.</p>}
         </section>
 
         {rec && <RecPanel slug={slug} p={p} rec={rec} startYear={startYear} years={years} leagueCaps={leagueCaps} teamById={teamById} onLoad={() => loadRec(rec)} />}

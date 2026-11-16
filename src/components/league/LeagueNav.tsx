@@ -12,6 +12,7 @@ const TABS = [
   ["players", "Players"],
   ["cap", "Cap"],
   ["contracts", "Contract tool"],
+  ["transactions", "Transactions"],
   ["draft", "Draft"],
   ["dev", "Dev tracker"],
   ["abilities", "Abilities"],

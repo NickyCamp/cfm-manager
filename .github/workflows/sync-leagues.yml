@@ -41,3 +41,11 @@ jobs:
           LEAGUE: ${{ inputs.league }}
           MODE: ${{ inputs.mode || 'auto' }}
         run: npx tsx worker/sync-all.ts
+      - name: Keep the built files for 3 days
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: league-data
+          path: out/
+          retention-days: 3
+          if-no-files-found: ignore

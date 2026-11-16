@@ -193,8 +193,11 @@ export const fullName = (p: Player | undefined) => (p ? (p.nick ? `${p.first} "$
 
 export const PROJECTION_YEARS = 4;
 
+/** The season EA's contracts and team caps describe (next season once Madden rolls contracts over in the offseason). */
+export const capSeason = (d: LeagueData) => d.season.capYear ?? d.season.year;
+
 export function capYears(d: LeagueData) {
-  return Array.from({ length: PROJECTION_YEARS + 1 }, (_, i) => d.season.year + i);
+  return Array.from({ length: PROJECTION_YEARS + 1 }, (_, i) => capSeason(d) + i);
 }
 
 /**
@@ -209,13 +212,13 @@ export function teamCapProjection(d: LeagueData, team: Team) {
   const baseCap = leagueCap(d.teams);
   const roster = teamPlayers(d, team.id).filter((p) => !p.ps);
   const rows = roster
-    .map((p) => { const pr = projectPlayer(p, d.season.year); return { p, hits: pr.hits, dead: pr.dead }; })
+    .map((p) => { const pr = projectPlayer(p, capSeason(d)); return { p, hits: pr.hits, dead: pr.dead }; })
     .sort((a, b) => b.p.contract.capHit - a.p.contract.capHit);
   const totals = years.map((y, i) => {
     if (i === 0) return { year: y, cap: team.cap.room, capSet: true, committed: team.cap.spent, space: team.cap.available, players: rows.filter((r) => r.hits[y] != null).length };
     const committed = rows.reduce((a, r) => a + (r.hits[y] || 0) + (r.dead[y] || 0), 0);
-    const cap = projectedLeagueCap(baseCap, d.season.year, y, d.knownCaps);
-    return { year: y, cap, capSet: isCapSet(d.season.year, y, d.knownCaps), committed, space: cap - committed, players: rows.filter((r) => r.hits[y] != null).length };
+    const cap = projectedLeagueCap(baseCap, capSeason(d), y, d.knownCaps);
+    return { year: y, cap, capSet: isCapSet(capSeason(d), y, d.knownCaps), committed, space: cap - committed, players: rows.filter((r) => r.hits[y] != null).length };
   });
   return { years, rows, totals, baseCap };
 }

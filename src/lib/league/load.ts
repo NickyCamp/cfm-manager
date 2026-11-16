@@ -9,6 +9,7 @@ import { supabaseUser } from "@/lib/supabase/server";
 import type { LeagueData } from "./types";
 import { findAbility } from "./abilities";
 import { KNOWN_LEAGUE_CAPS } from "./cap";
+import { attachRestructures, type LeagueHistory } from "./history";
 
 export type LeagueRow = {
   id: string; slug: string; name: string; console: string;
@@ -31,30 +32,47 @@ export const getLeagueRow = cache(async (slug: string): Promise<LeagueRow | null
 const memo = new Map<string, { at: number; data: LeagueData | null }>();
 const TTL_MS = 60_000;
 
-async function fetchData(slug: string): Promise<LeagueData | null> {
-  // Local development: LOCAL_LEAGUE_DATA=/path/to/dir with <slug>.json files.
+async function fetchJson<T>(slug: string, file: string): Promise<T | null> {
+  // Local development: LOCAL_LEAGUE_DATA=/path/to/dir with <slug>.json (and <slug>.history.json) files.
   const local = process.env.LOCAL_LEAGUE_DATA;
   if (local) {
-    const f = `${local}/${slug}.json`;
+    const f = `${local}/${slug}${file === "data" ? "" : `.${file}`}.json`;
     return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null;
   }
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/league-data/${encodeURIComponent(slug)}/data.json.gz`;
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/league-data/${encodeURIComponent(slug)}/${file}.json.gz`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;
   const buf = Buffer.from(await res.arrayBuffer());
   // Storage may already have undone the gzip on the way out; handle both.
   const text = buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf).toString("utf8") : buf.toString("utf8");
-  return JSON.parse(text) as LeagueData;
+  return JSON.parse(text) as T;
 }
+
+const histMemo = new Map<string, { at: number; data: LeagueHistory | null }>();
+
+/** The league's transaction log (league-data/<slug>/history.json.gz), cached a minute like the data. */
+export const getLeagueHistory = cache(async (slug: string): Promise<LeagueHistory | null> => {
+  const hit = histMemo.get(slug);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
+  try {
+    const data = await fetchJson<LeagueHistory>(slug, "history");
+    histMemo.set(slug, { at: Date.now(), data });
+    return data;
+  } catch (e) {
+    console.error("league history load failed", slug, e);
+    return hit?.data ?? null;
+  }
+});
 
 export const getLeagueData = cache(async (slug: string): Promise<LeagueData | null> => {
   const hit = memo.get(slug);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
   try {
-    const data = await fetchData(slug);
+    const [data, hist] = await Promise.all([fetchJson<LeagueData>(slug, "data"), getLeagueHistory(slug)]);
     if (data) {
       markXFactorAbilities(data);
-      const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > data.season.year));
+      attachRestructures(data, hist);
+      const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > (data.season.capYear ?? data.season.year)));
       if (Object.keys(known).length) data.knownCaps = known;
     }
     memo.set(slug, { at: Date.now(), data });

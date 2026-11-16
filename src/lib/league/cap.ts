@@ -49,7 +49,8 @@ export const CAP_GROWTH_PER_YEAR = 15_000_000;
  * export reaches that season; once it does, the teams' own cap takes over.
  */
 export const KNOWN_LEAGUE_CAPS: Record<string, Record<number, number>> = {
-  ncl: { 2028: 350_000_000 }, // Nick, 2026-11-16: Madden's actual 2028 cap
+  // e.g. ncl: { 2028: 350_000_000 }. NCL's 2028 cap ($349.51M) came straight from EA once
+  // contracts rolled over (season.capYear), so it no longer needs an entry here.
 };
 
 /**

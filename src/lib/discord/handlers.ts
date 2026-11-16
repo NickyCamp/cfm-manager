@@ -4,6 +4,7 @@ import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
 import {
+  capSeason,
   capYears, fullName, gamesForWeek, inferredDeadCap, record, seasonTotals, standings, streakText,
   teamCapProjection, teamPlayers, weekTitle, defaultScoresWeek,
 } from "@/lib/league/derive";
@@ -597,11 +598,11 @@ function statLine(d: LeagueData, p: Player): string | null {
 
 function capByYear(d: LeagueData, p: Player): string {
   if (!p.contract.length || !p.team) return "";
-  const pr = projectPlayer(p, d.season.year);
+  const pr = projectPlayer(p, capSeason(d));
   const ys = capYears(d).filter((y) => pr.hits[y] != null || pr.dead[y]);
   if (!ys.length) return "";
   const rows = ys.map((y) => `${y}: **${money(pr.hits[y] ?? 0)}**${pr.dead[y] ? ` (+${money(pr.dead[y])} void)` : ""}`);
-  const how = pr.source === "formula" ? "Future years are projected from his deal." : "Future years follow his real NFL contract.";
+  const how = pr.source === "formula" ? "Future years are projected from his deal." : pr.source === "restructured" ? "Future years include his restructure." : "Future years follow his real NFL contract.";
   return `${rows.join("\n")}\n-# ${how}`;
 }
 
@@ -612,7 +613,7 @@ function playerEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed 
   const fields: Embed["fields"] = [];
   if (c.length && p.team) {
     fields.push({ name: "Contract", value: `${c.length} yrs, ${money(c.salary + c.bonus)} (${money(c.bonus)} bonus)\n${c.yearsLeft} year${c.yearsLeft === 1 ? "" : "s"} left`, inline: true });
-    fields.push({ name: `${d.season.year} cap hit`, value: `**${money(c.capHit)}**\nCut: saves ${money(c.releaseSavings)}, ${money(c.releasePenalty)} dead`, inline: true });
+    fields.push({ name: `${capSeason(d)} cap hit`, value: `**${money(c.capHit)}**\nCut: saves ${money(c.releaseSavings)}, ${money(c.releasePenalty)} dead`, inline: true });
     const cy = capByYear(d, p);
     if (cy) fields.push({ name: "Cap hit by year", value: cy });
   } else if (p.desired?.salary) {
@@ -653,11 +654,11 @@ function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embe
 }
 
 /** A team's cap, focused on one season (this season by default). over: negative space that season. */
-function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, year = d.season.year): { embed: Embed; over: boolean } {
+function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, year = capSeason(d)): { embed: Embed; over: boolean } {
   const pr = teamCapProjection(d, t);
   const roster = teamPlayers(d, t.id);
   const focus = pr.totals.find((y) => y.year === year) || pr.totals[0];
-  const now = focus.year === d.season.year;
+  const now = focus.year === capSeason(d);
   const over = focus.space < 0;
   const years = pr.totals.map((y, i) => {
     const row = `${y.year}${i && !y.capSet ? " proj." : ""}: **${money(y.space)}** space (${money(y.committed)} of ${money(y.cap)}, ${y.players} signed)`;
@@ -694,8 +695,8 @@ function capNote(totals: { year: number; cap: number; capSet: boolean }[]): stri
   return `From current contracts. ${known}${set.length ? "Later seasons assume" : "Assumes"} the cap grows $15M a season.`;
 }
 
-function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer, year = d.season.year): Embed {
-  if (year !== d.season.year) {
+function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer, year = capSeason(d)): Embed {
+  if (year !== capSeason(d)) {
     // One future season: every team's projected space, most room first.
     const rows = d.teams.map((t) => ({ t, y: teamCapProjection(d, t).totals.find((x) => x.year === year)! })).sort((a, b) => b.y.space - a.y.space);
     const line = (r: (typeof rows)[number]) => `\`${r.t.abbr.padEnd(3)}\` ${money(r.y.space)} · ${r.y.players} signed`;

@@ -3,7 +3,7 @@
 // enough data, builds its sentence, and gets a weight; /funfact picks one at random by weight,
 // so running it again usually gives a different fact. Regular season unless a fact says otherwise.
 import { randomInt } from "node:crypto";
-import { REG_SEASON_LAST_WEEK, inferredDeadCap, seasonTotals, weekTitle, type Totals } from "../league/derive";
+import { REG_SEASON_LAST_WEEK, capSeason, inferredDeadCap, seasonTotals, weekTitle, type Totals } from "../league/derive";
 import { projectPlayer } from "../league/projection";
 import { teamStats, PAIRS } from "./matchup";
 import type { Game, LeagueData, Player, StatLine, Team } from "../league/types";
@@ -305,12 +305,12 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
   // producing, isn't very good, or is getting old); for a healthy star it's just how deals work.
   const c2 = p.contract;
   if (p.team && c2.releasePenalty >= 8e6 && c2.releasePenalty > c2.releaseSavings * 2 && (overpaid || p.ovr < 82 || p.age >= 31)) {
-    const ends = d.season.year + Math.max(0, c2.yearsLeft - 1);
+    const ends = capSeason(d) + Math.max(0, c2.yearsLeft - 1);
     add(ROAST - 1, `Cutting ${who} would leave **${money(c2.releasePenalty)} of dead money** and save only ${money(c2.releaseSavings)}, so ${team} are stuck with him through ${ends}.`);
   }
   // Old and signed for years.
   if (p.team && p.age >= 31 && c2.yearsLeft >= 3) {
-    const pr = projectPlayer(p, d.season.year);
+    const pr = projectPlayer(p, capSeason(d));
     const lastYear = Math.max(...Object.keys(pr.hits).map(Number));
     const lastHit = pr.hits[lastYear];
     add(ROAST - 0.5, `${who} is **${p.age}** and signed for **${c2.yearsLeft} more seasons**. He'll be ${p.age + c2.yearsLeft - 1} when the deal ends${lastHit ? `, still costing about ${money(lastHit)} that year` : ""}.`);

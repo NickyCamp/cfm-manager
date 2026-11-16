@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CountUp } from "@/components/league/CountUp";
 import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
-import { capYears, inferredDeadCap, teamCapProjection, teamPlayers } from "@/lib/league/derive";
+import { capSeason, capYears, inferredDeadCap, teamCapProjection, teamPlayers } from "@/lib/league/derive";
 import { money } from "@/lib/league/format";
 import { NoData, TeamBadge } from "@/components/league/bits";
 
@@ -40,7 +40,7 @@ export default async function LeagueCap({ params, searchParams }: Props) {
         <div className="panel tbl-wrap">
           <table className="tbl cap-table">
             <thead>
-              <tr><th>Team</th><th className="num">Space</th><th className="bar-col"><span className="sr-only">Space bar</span></th><th className="num hide-sm">Spent</th><th className="num">{d.season.year + 1} space {!rows[0]?.next.capSet && <span className="proj">proj.</span>}</th><th className="num hide-sm">Dead</th><th className="num hide-sm">Expiring</th><th className="hide-sm">Biggest cap hit</th></tr>
+              <tr><th>Team</th><th className="num">Space</th><th className="bar-col"><span className="sr-only">Space bar</span></th><th className="num hide-sm">Spent</th><th className="num">{capSeason(d) + 1} space {!rows[0]?.next.capSet && <span className="proj">proj.</span>}</th><th className="num hide-sm">Dead</th><th className="num hide-sm">Expiring</th><th className="hide-sm">Biggest cap hit</th></tr>
             </thead>
             <tbody>
               {rows.map(({ t, dead, top, expiring, next }) => (
@@ -59,7 +59,7 @@ export default async function LeagueCap({ params, searchParams }: Props) {
           </table>
         </div>
         <p className="hint">Dead money is the part of a team&apos;s cap spending not tied to anyone on its current roster. Expiring is this season&apos;s cap hit of deals with one year or less left. {rows[0]?.next.capSet
-          ? <>Next year&apos;s space is current contracts against Madden&apos;s actual {d.season.year + 1} cap of {money(rows[0].next.cap)}; each team&apos;s Cap tab shows the full breakdown.</>
+          ? <>Next year&apos;s space is current contracts against Madden&apos;s actual {capSeason(d) + 1} cap of {money(rows[0].next.cap)}; each team&apos;s Cap tab shows the full breakdown.</>
           : <>Next year&apos;s space is projected from current contracts against a cap $15M higher; each team&apos;s Cap tab shows the full breakdown.</>}</p>
       </div>
     </main>

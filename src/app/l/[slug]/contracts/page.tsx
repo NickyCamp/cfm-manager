@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getLeagueData } from "@/lib/league/load";
+import { capSeason } from "@/lib/league/derive";
 import { isCapSet, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { NoData } from "@/components/league/bits";
@@ -16,7 +17,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
 
-  const year = d.season.year;
+  const year = capSeason(d);
   const baseCap = leagueCap(d.teams);
   const years = Array.from({ length: YEARS_AHEAD + 1 }, (_, i) => year + i);
 
@@ -27,7 +28,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
       id: p.id, n: `${p.first} ${p.last}`, pos: p.pos, t: p.team, age: p.age, ovr: p.ovr, dev: p.dev, ps: p.ps,
       c: [p.contract.length, p.contract.yearsLeft, p.contract.salary, p.contract.bonus, p.contract.capHit],
       h: years.slice(0, Math.max(0, p.contract.yearsLeft)).map((y) => Math.round(pr.hits[y] || 0)),
-      real: pr.source !== "formula", yp: p.yearsPro,
+      real: pr.source !== "formula" && pr.source !== "restructured", rs: pr.source === "restructured", yp: p.yearsPro,
       d: p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0 ? [p.desired.length, p.desired.salary, p.desired.bonus] : null,
     };
   });

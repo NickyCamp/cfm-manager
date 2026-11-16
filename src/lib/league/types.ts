@@ -72,7 +72,12 @@ export type Player = {
   // picture (27 for real players; generated draft-class faces only exist under 26). Set by the worker.
   portrait?: { id: number; game?: number };
   nick?: string;         // nickname set by the team's manager; not in data.json, applied at read time (nicknameStore.ts)
+  /** A restructure seen in the transaction log for his current deal; set at load time (history.ts). */
+  restructure?: Restructure;
 };
+
+/** A restructure: the deal before (as of capYear `fromYear`), and the season it took effect. */
+export type Restructure = { before: Contract; fromYear: number; year: number };
 
 export type Game = {
   id: number;            // scheduleId
@@ -110,7 +115,13 @@ export type LeagueData = {
   builtAt: string;
   pulledAt: string;
   /** stage: 0 preseason, 1 regular season + playoffs, 2 offseason (see league/phase.ts) */
-  season: { year: number; stage: number; week: number; title: string; secsSinceAdvance: number | null };
+  season: {
+    year: number; stage: number; week: number; title: string; secsSinceAdvance: number | null;
+    /** The season EA's contracts and team caps describe. Madden rolls contracts over to next
+     *  season early in the offseason (years left drop, cap hits become next season's) while
+     *  the calendar year stays put; then this is year + 1. Missing = year. (2026-11-16) */
+    capYear?: number;
+  };
   weeks: Week[];
   teams: Team[];
   players: Player[];
