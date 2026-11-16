@@ -171,7 +171,7 @@ const defScore = (s: S) => s.tk + s.sk * 8 + s.int * 10 + s.ff * 6 + s.fr * 4 + 
 // market settles on that. The formulas below only set the starting prices.
 const OFF_POS = new Set(["QB", "HB", "FB", "WR", "TE"]);
 const LB_POS = ["LOLB", "MLB", "ROLB", "LB", "SAM", "MIKE", "WILL"];
-const DEF_POS = new Set(["LE", "RE", "DT", "EDGE", ...LB_POS, "CB", "FS", "SS"]);
+const DEF_POS = new Set(["LE", "RE", "LEDG", "REDG", "DT", "EDGE", ...LB_POS, "CB", "FS", "SS"]);  // Madden 27 spells the ends LEDG/REDG
 const OL_POS = new Set(["LT", "LG", "C", "RG", "RT"]);
 type StatCol = [keyof Totals, string];
 const OFF_COLS: StatCol[] = [["py", "pass yds"], ["ptd", "pass TD"], ["ry", "rush yds"], ["rcy", "rec yds"], ["rtd", "rush TD"], ["rctd", "rec TD"]];
@@ -183,11 +183,12 @@ type AwardBase = {
   winW?: number;             // + team wins × this
   qbMult?: boolean;          // MVP voters lean QB
   formula: string; cols: StatCol[];
+  posLabel?: string;         // who can win it, in words
 };
 const OFF_F = "0.04 per passing yard, 4 per passing TD, −2 per INT, 0.1 per rushing/receiving yard, 6 per rushing/receiving TD, 0.5 per catch, −2 per fumble";
 const DEF_F = "tackles + 8 per sack + 10 per INT + 6 per forced fumble + 4 per recovery + 2.5 per pass defended + 12 per TD + 6 per safety";
 const pos1 = (id: string, title: string, pos: string[], f: Partial<AwardBase> & Pick<AwardBase, "lin" | "formula" | "cols">): AwardBase =>
-  ({ id, title: `${title} of the Year`, short: `${title} of the Year`, pos: new Set(pos), perConf: true, cat: "posawards", ...f });
+  ({ id, title: `${title} of the Year`, short: `${title} of the Year`, pos: new Set(pos), perConf: true, cat: "posawards", posLabel: title === "Safety" ? "FS/SS" : title === "Kicker" ? "K" : title === "Punter" ? "P" : title, ...f });
 const offPos = { lin: scrimOf, formula: "0.1 per rushing/receiving yard, 6 per rushing/receiving TD, 0.5 per catch, −2 per fumble", cols: OFF_COLS.slice(2) };
 const defPos = { lin: defScore, formula: DEF_F, cols: DEF_COLS };
 const olPos = { lin: () => 0, ovrW: 1, winW: 0.5, formula: "overall rating + half a point per team win (EA's export has no blocking stats)", cols: [] as StatCol[] };
@@ -202,7 +203,7 @@ const AWARD_BASES: AwardBase[] = [
   pos1("wr", "WR", ["WR"], offPos),
   pos1("te", "TE", ["TE"], offPos),
   pos1("lt", "LT", ["LT"], olPos), pos1("lg", "LG", ["LG"], olPos), pos1("c", "C", ["C"], olPos), pos1("rg", "RG", ["RG"], olPos), pos1("rt", "RT", ["RT"], olPos),
-  pos1("le", "LE", ["LE"], defPos), pos1("re", "RE", ["RE"], defPos), pos1("dt", "DT", ["DT"], defPos),
+  pos1("le", "LEDG", ["LEDG", "LE"], defPos), pos1("re", "REDG", ["REDG", "RE"], defPos), pos1("dt", "DT", ["DT"], defPos),
   pos1("lb", "LB", LB_POS, defPos),
   pos1("cb", "CB", ["CB"], defPos),
   pos1("s", "Safety", ["FS", "SS"], defPos),
@@ -221,7 +222,7 @@ export function awardDefs(d: Pick<LeagueData, "teams">): AwardDef[] {
   }
   return out;
 }
-const posText = (a: Pick<AwardBase, "pos">) => [...a.pos].filter((x) => !["LB", "SAM", "MIKE", "WILL", "EDGE"].includes(x)).join("/");
+const posText = (a: Pick<AwardBase, "pos" | "posLabel">) => a.posLabel ?? (a.pos === DEF_POS ? "defensive player" : [...a.pos].join("/"));
 /** League-wide award keys from before 2026-11-16 (OPOY…DROY weren't split by conference). */
 const LEGACY_AWARD = /^award-(opoy|dpoy|oroy|droy)$/;
 
@@ -314,12 +315,14 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
   const expected = (cd: Cand) => { const s = {} as S; for (const k of STAT_KEYS) s[k] = cd.cur[k] + cd.rest[k]; return s; };
   const expTeamW = (team: number) => { const i = idx.get(team); return i == null ? 0 : baseW[i] + remaining[i] / 2; };
   const defs = awardDefs(d);
+  // in the offseason Madden has already counted this season's rookies a year
+  const rookieYears = d.season.stage === 2 ? 1 : 0;
   const confOf = (team: number) => { const i = idx.get(team); return i == null ? "" : teams[i].conference; };
   const mult = (a: AwardDef, cd: Cand) => (a.qbMult && cd.pos === "QB" ? QB_MVP : 1);
   const baseOf = (a: AwardDef, cd: Cand) => (a.ovrW ? (players.get(cd.id)?.ovr || 0) * a.ovrW : 0);
   const awardCands = new Map<string, Cand[]>();
   for (const a of defs) {
-    const pool = cands.filter((cd) => a.pos.has(cd.pos) && (!a.rookie || players.get(cd.id)?.yearsPro === 0) && (!a.conf || confOf(cd.team) === a.conf));
+    const pool = cands.filter((cd) => a.pos.has(cd.pos) && (!a.rookie || players.get(cd.id)?.yearsPro === rookieYears) && (!a.conf || confOf(cd.team) === a.conf));
     const scored = pool.map((cd) => ({ cd, s: a.lin(expected(cd)) * mult(a, cd) + baseOf(a, cd) + (a.winW || 0) * expTeamW(cd.team) })).filter((x) => x.s > 0);
     scored.sort((x, y) => y.s - x.s);
     awardCands.set(a.key, scored.slice(0, a.cat === "posawards" ? 15 : 25).map((x) => x.cd));
