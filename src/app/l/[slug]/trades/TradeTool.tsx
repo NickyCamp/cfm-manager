@@ -19,8 +19,8 @@ type Side = { team: number | null; players: number[]; picks: Pick[] };
 const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
 const ROUND = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
 
-export function TradeTool({ slug, year, years, capSet, players, teams, initial }: {
-  slug: string; year: number; years: number[]; capSet: boolean[]; players: TradePlayer[]; teams: TradeTeam[];
+export function TradeTool({ slug, year, draftYears, years, capSet, players, teams, initial }: {
+  slug: string; year: number; draftYears: number[]; years: number[]; capSet: boolean[]; players: TradePlayer[]; teams: TradeTeam[];
   initial: { a: number | null; b: number | null; pa: number[]; pb: number[]; ka: Pick[]; kb: Pick[] };
 }) {
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
@@ -51,11 +51,11 @@ export function TradeTool({ slug, year, years, capSet, players, teams, initial }
   return (
     <>
       <div className="trade-sides">
-        <SidePicker label="Team 1" side={a} setSide={setA} other={b.team} teams={teams} players={players} playerById={playerById} year={year} />
+        <SidePicker label="Team 1" side={a} setSide={setA} other={b.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} />
         <div className="trade-swap">
           <button type="button" className="btn btn-quiet trade-swap-btn" onClick={swap} aria-label="Swap sides" title="Swap sides">⇄</button>
         </div>
-        <SidePicker label="Team 2" side={b} setSide={setB} other={a.team} teams={teams} players={players} playerById={playerById} year={year} />
+        <SidePicker label="Team 2" side={b} setSide={setB} other={a.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} />
       </div>
 
       {!ready ? (
@@ -84,9 +84,9 @@ export function TradeTool({ slug, year, years, capSet, players, teams, initial }
   );
 }
 
-function SidePicker({ label, side, setSide, other, teams, players, playerById, year }: {
+function SidePicker({ label, side, setSide, other, teams, players, playerById, draftYears }: {
   label: string; side: Side; setSide: (s: Side) => void; other: number | null; teams: TradeTeam[];
-  players: TradePlayer[]; playerById: Map<number, TradePlayer>; year: number;
+  players: TradePlayer[]; playerById: Map<number, TradePlayer>; draftYears: number[];
 }) {
   const [q, setQ] = useState("");
   const team = teams.find((t) => t.id === side.team);
@@ -99,7 +99,7 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, y
   }, [players, side.team, q]);
   const toggle = (id: number) =>
     setSide({ ...side, players: side.players.includes(id) ? side.players.filter((x) => x !== id) : [...side.players, id] });
-  const [pickYear, setPickYear] = useState(year + 1);
+  const [pickYear, setPickYear] = useState(draftYears[0]);
   const [pickRound, setPickRound] = useState(1);
   const addPick = () => {
     if (side.picks.some((k) => k.y === pickYear && k.r === pickRound)) return;
@@ -163,7 +163,7 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, y
           <div className="trade-pick-add">
             <span className="small muted">Draft pick</span>
             <select value={pickYear} onChange={(e) => setPickYear(Number(e.target.value))} aria-label="Pick year">
-              {[year + 1, year + 2, year + 3].map((y) => <option key={y} value={y}>{y}</option>)}
+              {draftYears.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             <select value={pickRound} onChange={(e) => setPickRound(Number(e.target.value))} aria-label="Pick round">
               {[1, 2, 3, 4, 5, 6, 7].map((r) => <option key={r} value={r}>{ROUND[r]} round</option>)}

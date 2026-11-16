@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getLeagueData } from "@/lib/league/load";
-import { capSeason, PROJECTION_YEARS } from "@/lib/league/derive";
+import { capSeason, nextDraftYear, PROJECTION_YEARS } from "@/lib/league/derive";
 import { isCapSet, leagueCap, MAX_BONUS_PRORATION_YEARS, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
 import { NoData } from "@/components/league/bits";
@@ -79,7 +79,7 @@ export default async function TradesPage({ params, searchParams }: Props) {
       <div className="wrap">
         <h2>Trade Tool</h2>
         <p className="muted" style={{ maxWidth: "68ch" }}>Pick two teams and what each one sends. Below, see what the trade does to each team&apos;s cap, year by year, dead money included.</p>
-        <TradeTool slug={slug} year={year} years={years} capSet={years.map((y) => isCapSet(year, y, d.knownCaps))} players={players} teams={teams} initial={initial} />
+        <TradeTool slug={slug} year={year} draftYears={[0, 1, 2].map((k) => nextDraftYear(d) + k)} years={years} capSet={years.map((y) => isCapSet(year, y, d.knownCaps))} players={players} teams={teams} initial={initial} />
       </div>
     </main>
   );

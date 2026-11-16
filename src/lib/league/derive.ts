@@ -196,6 +196,19 @@ export const PROJECTION_YEARS = 4;
 /** The season EA's contracts and team caps describe (next season once Madden rolls contracts over in the offseason). */
 export const capSeason = (d: LeagueData) => d.season.capYear ?? d.season.year;
 
+/**
+ * The next draft: the one after this season (season year + 1), until that draft
+ * has happened in the offseason. Then it's the one after. The draft class has
+ * arrived once contracts have rolled over (capYear moved on) and signed players
+ * with 0 years pro show up again.
+ */
+export function nextDraftYear(d: LeagueData) {
+  const y = d.season.year;
+  const rolled = (d.season.capYear ?? y) > y;
+  const drafted = rolled && d.players.some((p) => p.team && !p.gone && p.yearsPro === 0);
+  return y + (drafted ? 2 : 1);
+}
+
 export function capYears(d: LeagueData) {
   return Array.from({ length: PROJECTION_YEARS + 1 }, (_, i) => capSeason(d) + i);
 }
