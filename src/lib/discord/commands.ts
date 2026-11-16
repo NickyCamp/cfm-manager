@@ -21,7 +21,7 @@ const team = (required: boolean) => ({ type: STRING, name: "team", description: 
 // /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
 export const LEAGUE_MORE: [string, string][] = [
   ["standings", "Standings"], ["playoffs", "Playoff picture"], ["scores", "Scores (week box)"], ["cap", "League cap space (year box)"],
-  ["rookie", "Top rookies (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
+  ["rookie", "Top rookies (team box)"], ["expiring", "Expiring contracts (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
   ["packs", "Pack leaderboard"], ["info", "League info and links"],
 ];
 
@@ -73,6 +73,7 @@ const PLAIN = [
     options: [team(false), { type: INTEGER, name: "year", description: "Season, e.g. 2028 (this season and the next 4)", required: false, min_value: 2000, max_value: 2100 }],
   },
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
+  { name: "expiring", description: "A team's top 10 expiring contracts by overall, with each player's projected ask", ...ANYWHERE, options: [team(true)] },
   { name: "rookie", description: "Top 10 rookies by overall; pick a team for just its rookies", ...ANYWHERE, options: [team(false)] },
   {
     name: "tws",
@@ -126,7 +127,7 @@ export const COMMANDS = [
       { type: STRING, name: "team", description: "A team's page (start typing a team)", required: false, autocomplete: true },
       { type: STRING, name: "cap", description: "A team's cap space by year (add the year box to focus a season)", required: false, autocomplete: true },
       { type: STRING, name: "contract", description: "What a player will likely ask for on his next deal", required: false, autocomplete: true },
-      { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
+      { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, expiring deals, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028", required: false, min_value: 2000, max_value: 2100 },
     ],

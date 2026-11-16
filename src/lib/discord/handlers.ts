@@ -106,11 +106,11 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 
 // ---------- /league: the same commands for any league you're in ----------
 
-const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "info"]);
+const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "info"]);
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -279,6 +279,13 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         if (!t) return reply("No team by that name.");
       }
       return { embeds: [rookiesEmbed(d, t, url, footer)] };
+    }
+    case "expiring": {
+      const v = opt(i, "team");
+      if (v == null || v === "") return reply("Pick a team: /expiring team:Eagles (or /league … more:Expiring contracts with the team box).");
+      const t = findTeam(d, v);
+      if (!t) return reply("No team by that name.");
+      return { embeds: [expiringEmbed(d, t, url, footer)] };
     }
     case "tws": {
       const t = findTeam(d, opt(i, "team"));
@@ -632,10 +639,7 @@ function playerEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed 
 }
 
 function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed {
-  const market: MarketPlayer[] = d.players.filter((x) => !x.gone).map((x) => ({
-    id: x.id, n: fullName(x), pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
-    c: [x.contract.length, x.contract.yearsLeft, x.contract.salary, x.contract.bonus, x.contract.capHit],
-  }));
+  const market = marketOf(d);
   const me = market.find((m) => m.id === p.id)!;
   const r = recommend(me, market);
   const t = teamOf(d, p.team);
@@ -742,6 +746,40 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
 }
 
 /** Top 10 rookies (yearsPro 0) by overall, league-wide (rostered players only) or one team's. */
+const marketOf = (d: LeagueData): MarketPlayer[] => d.players.filter((x) => !x.gone).map((x) => ({
+  id: x.id, n: fullName(x), pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
+  c: [x.contract.length, x.contract.yearsLeft, x.contract.salary, x.contract.bonus, x.contract.capHit],
+}));
+
+/** /expiring team: the team's 10 best players (by OVR) in the last year of their deal, with the projected ask
+ *  (same market recommendation as /contract and the Contract tool) and Madden's in-game ask when exported. */
+function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
+  const all = d.players.filter((p) => p.team === t.id && !p.gone && !p.ps && p.contract.yearsLeft <= 1);
+  const top = [...all].sort((a, b) => b.ovr - a.ovr || b.contract.capHit - a.contract.capHit).slice(0, 10);
+  const market = marketOf(d);
+  const byId = new Map(market.map((m) => [m.id, m]));
+  const lines = top.map((p, k) => {
+    const r = recommend(byId.get(p.id)!, market);
+    const head = `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}** · age ${p.age}${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · now ${money(p.contract.capHit)}`;
+    const ask = r
+      ? `Ask: **${money(r.apy)}/yr** · ${r.length} yr${r.length === 1 ? "" : "s"}, ${money(r.total)} (${money(r.bonus)} bonus)`
+      : "Ask: not enough similar signed players to price a deal";
+    const ds = p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0
+      ? ` · Madden: ${money((p.desired.salary + p.desired.bonus) / p.desired.length)}/yr, ${p.desired.length} yrs` : "";
+    return `${head}\n-# ${ask}${ds}`;
+  });
+  const freed = all.reduce((a, p) => a + p.contract.capHit, 0);
+  const more = all.length > top.length ? `\n\n+${all.length - top.length} more on the [team page](${url(`/teams/${t.abbr.toLowerCase()}?tab=cap&view=expiring`)}).` : "";
+  return {
+    title: `${teamLabel(t)}: expiring contracts`,
+    url: url(`/teams/${t.abbr.toLowerCase()}?tab=cap&view=expiring`),
+    color: hexColor(t.primary), footer,
+    description: top.length
+      ? `${all.length} player${all.length === 1 ? "" : "s"} in the last year of his deal, ${money(freed)} of cap this season. Top 10 by overall:\n\n${lines.join("\n")}${more}`
+      : `Nobody on the ${teamLabel(t)} is in the last year of his deal.`,
+  };
+}
+
 function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Footer): Embed {
   const rookies = d.players
     .filter((p) => p.yearsPro === 0 && !p.gone && (t ? p.team === t.id : p.team > 0))
