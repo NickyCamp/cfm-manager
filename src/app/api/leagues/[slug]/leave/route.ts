@@ -9,6 +9,7 @@
 // 30 days unless someone adds it again (Nick, 2026-11-14).
 import { NextResponse } from "next/server";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 
 export const runtime = "nodejs";
 
@@ -35,18 +36,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ slug: 
   }
 
   // Their Discord /myleague pick goes too, and with nobody left the 30-day clock starts.
-  const settings = { ...((lg.settings as Record<string, unknown>) || {}) };
   const discordId = (user.app_metadata as { discord_id?: string } | undefined)?.discord_id;
-  let changed = false;
-  if (discordId && Array.isArray(settings.discordUsers)) {
-    const users = (settings.discordUsers as string[]).filter((u) => u !== String(discordId));
-    if (users.length !== settings.discordUsers.length) {
-      if (users.length) settings.discordUsers = users; else delete settings.discordUsers;
-      changed = true;
+  await updateLeagueSettings(lg.id, (settings) => {
+    let changed = false;
+    if (discordId && Array.isArray(settings.discordUsers)) {
+      const users = (settings.discordUsers as string[]).filter((u) => u !== String(discordId));
+      if (users.length !== settings.discordUsers.length) {
+        if (users.length) settings.discordUsers = users; else delete settings.discordUsers;
+        changed = true;
+      }
     }
-  }
-  if (!heir && !settings.orphanedAt) { settings.orphanedAt = new Date().toISOString(); changed = true; }
-  if (changed) await admin.from("leagues").update({ settings }).eq("id", lg.id);
+    if (!heir && !settings.orphanedAt) { settings.orphanedAt = new Date().toISOString(); changed = true; }
+    return changed ? settings : null;
+  });
 
   return NextResponse.json({ ok: true, orphaned: !heir });
 }

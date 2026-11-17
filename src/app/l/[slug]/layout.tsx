@@ -25,13 +25,13 @@ export default async function LeagueLayout({ children, params }: { children: Rea
   if (canDispatch) after(() => requestSync(slug, { minGapMs: VISIT_STALE_MS, mode: "auto", by: "visit" }).catch((e) => console.error("visit sync", slug, e)));
   let member = false, commish = false;
   const user = await currentUser().catch(() => null);
-  if (user) {
+  if (user && row.id !== "local") {
+    // the league row is already loaded (row.id), and the two checks don't depend on each other
     const admin = supabaseAdmin();
-    const { data: lg } = await admin.from("leagues").select("id").eq("slug", slug).maybeSingle();
-    if (lg) {
-      member = canDispatch && Boolean((await admin.from("league_members").select("user_id").eq("league_id", lg.id).eq("user_id", user.id).maybeSingle()).data);
-      commish = await isCommissioner(lg.id, user.id).catch(() => false);
-    }
+    [member, commish] = await Promise.all([
+      canDispatch ? admin.from("league_members").select("user_id").eq("league_id", row.id).eq("user_id", user.id).maybeSingle().then((r) => Boolean(r.data), () => false) : false,
+      isCommissioner(row.id, user.id).catch(() => false),
+    ]);
   }
 
   // NFL logos replace team abbreviations only for signed-in visitors (same rule as card art).

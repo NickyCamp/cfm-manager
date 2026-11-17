@@ -2,6 +2,7 @@
 //   { guildId, channelId?, linkedBy, linkedAt }
 // One league per server and one server per league; linking a server moves it.
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 import type { AlertEvent, AlertVideo } from "./api";
 
 export type DiscordSettings = { guildId: string; channelId?: string | null; linkedBy?: string; linkedAt?: string; videos?: Partial<Record<AlertEvent, AlertVideo>> };
@@ -24,24 +25,22 @@ export async function leagueBySlug(slug: string): Promise<LinkedLeague | null> {
 
 /** Writes (or with null, removes) a league's Discord settings, keeping every other setting. */
 export async function setDiscord(leagueId: string, discord: DiscordSettings | null) {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  if (discord) settings.discord = discord;
-  else delete settings.discord;
-  const { error } = await db.from("leagues").update({ settings }).eq("id", leagueId);
-  if (error) throw new Error(error.message);
+  const r = await updateLeagueSettings(leagueId, (settings) => {
+    if (discord) settings.discord = discord;
+    else delete settings.discord;
+    return settings;
+  });
+  if (!r.ok) throw new Error(r.error);
 }
 
 /** Drops the saved Markets category/channels (the league moved to another server). */
 export async function clearMarketChannels(leagueId: string) {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  if (!settings.marketChannels && !settings.gameChannels) return;
-  delete settings.marketChannels;
-  delete settings.gameChannels; // the weekly game channels belong to the old server too
-  await db.from("leagues").update({ settings }).eq("id", leagueId);
+  await updateLeagueSettings(leagueId, (settings) => {
+    if (!settings.marketChannels && !settings.gameChannels) return null;
+    delete settings.marketChannels;
+    delete settings.gameChannels; // the weekly game channels belong to the old server too
+    return settings;
+  });
 }
 
 export const discordOf = (lg: LinkedLeague) => (lg.settings?.discord || null) as DiscordSettings | null;
@@ -66,14 +65,14 @@ export async function setUserLeague(userId: string, leagueId: string | null) {
   const ids = new Set((rows || []).map((r) => r.id as string));
   if (leagueId) ids.add(leagueId);
   for (const id of ids) {
-    const { data } = await db.from("leagues").select("settings").eq("id", id).single();
-    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-    const users = new Set(((settings.discordUsers as string[]) || []).filter((u) => u !== userId));
-    if (id === leagueId) users.add(userId);
-    if (users.size) settings.discordUsers = [...users];
-    else delete settings.discordUsers;
-    const { error } = await db.from("leagues").update({ settings }).eq("id", id);
-    if (error) throw new Error(error.message);
+    const r = await updateLeagueSettings(id, (settings) => {
+      const users = new Set(((settings.discordUsers as string[]) || []).filter((u) => u !== userId));
+      if (id === leagueId) users.add(userId);
+      if (users.size) settings.discordUsers = [...users];
+      else delete settings.discordUsers;
+      return settings;
+    });
+    if (!r.ok) throw new Error(r.error);
   }
 }
 

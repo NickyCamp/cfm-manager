@@ -8,6 +8,7 @@
 // a conditional update so a burst of visitors starts one run, not many.
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { dispatchConfigured, triggerSync } from "@/lib/dispatch";
+import { leagueSettingsRev, updateLeagueSettings } from "@/lib/leagueSettings";
 
 export const VISIT_STALE_MS = 2 * 3600_000;
 export const MANUAL_COOLDOWN_MS = 15 * 60_000;
@@ -26,7 +27,21 @@ export async function requestSync(slug: string, opts: { minGapMs: number; mode: 
   const now = Date.now();
   if (now - last < opts.minGapMs) return { started: false, reason: "recent", nextAt: last + opts.minGapMs };
 
-  // Claim the request: only succeeds if nobody else updated it since we read it.
+  // Claim the request: only one of a burst of visitors gets it.
+  if (await leagueSettingsRev()) {
+    const lastRun = run?.started_at ? Date.parse(run.started_at) : 0;
+    const r = await updateLeagueSettings(lg.id as string, (s) => {
+      const asked = typeof s.syncRequestedAt === "string" ? Date.parse(s.syncRequestedAt) : 0;
+      if (now - Math.max(asked, lastRun) < opts.minGapMs) return null; // someone else just claimed it
+      s.syncRequestedAt = new Date(now).toISOString();
+      s.syncRequestedBy = opts.by;
+      return s;
+    });
+    if (!r.ok || !r.changed) return { started: false, reason: "recent", nextAt: now + opts.minGapMs };
+    const ok = await triggerSync(slug, opts.mode);
+    return ok ? { started: true } : { started: false, reason: "failed" };
+  }
+  // Before migration 0011 (no settings_rev): the older claim, conditional on the request time alone.
   let claim = admin.from("leagues").update({ settings: { ...settings, syncRequestedAt: new Date(now).toISOString(), syncRequestedBy: opts.by } }).eq("id", lg.id);
   claim = prev ? claim.filter("settings->>syncRequestedAt", "eq", prev) : claim.is("settings->>syncRequestedAt", null);
   const { data: claimed } = await claim.select("id");

@@ -16,6 +16,7 @@ import { betCaps, betThisWeek, closeTimes, economyOf, fmtET, liveQuote, ticketsA
 import { discordOfUser } from "@/lib/tickets";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { payoutButton } from "./payouts";
+import { dataBehind, liveWeek } from "@/lib/eaLive";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 
 export type ComponentInteraction = Interaction & {
@@ -211,6 +212,10 @@ export async function quoteReply(i: ComponentInteraction): Promise<{ content: st
     const close = (await closeTimes(lg.id, d.season.year)).get(m.gameId);
     if (g?.final) return { content: "That game has been played, so betting is closed. The channel has been refreshed." };
     if (close && Date.parse(close.closeAt) <= Date.now()) return { content: `Betting on this game closed at kickoff (${fmtET(close.closeAt)}). The channel has been refreshed.` };
+  } else {
+    // season-long markets pause while EA has a result the last sync doesn't (the bet itself checks again, fresh)
+    const live = await liveWeek(lg.slug).catch(() => null);
+    if (live && dataBehind(lg.slug, live, d)) return { content: "⏸️ A game has been played since the last sync, so season-long bets are paused while the prices update. Try again in a few minutes." };
   }
   const caps = await betCaps(lg.id, tickets);
   const cap = caps.perBet ?? (tickets ? 10000 : 100);

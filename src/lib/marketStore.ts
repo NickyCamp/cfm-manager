@@ -2,13 +2,15 @@
 // Server only: everything goes through the service role after checking who the user is.
 import { currentUser, supabaseAdmin, supabaseConfigured } from "@/lib/supabase/server";
 import { getLeagueData, getLeagueRow } from "@/lib/league/load";
-import { liveWeekCached, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
+import { dataBehind, liveWeekCached, PAUSED_STATUS, refreshLiveWeek, weekMoved } from "@/lib/eaLive";
+import { requestSync } from "@/lib/sync";
 import { DEFAULT_ECONOMY, ladderGroup, MAX_BET_DOLLARS, MAX_BET_TICKETS, pricedP, pricerFor, quoteBuyFloored, quoteBuyP, quoteSellP, type Economy, type Market, type MarketBook, type PriceIndex } from "@/lib/league/marketTypes";
 import { after } from "next/server";
 import { bookKey, discordOfUser, moveTickets, ticketBalance, ticketsConfig, TICKETS_PER_CONTRACT, type TicketsConfig } from "@/lib/tickets";
 import { propResult } from "@/lib/league/props";
 import { isAwardMarket, legacyAwardResult, withAwardPlayers } from "@/lib/league/markets";
 import type { LeagueData } from "@/lib/league/types";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 
 export const START_CASH = 1000;
 const poolKey = (m: string, o: string) => `${m}|${o}`;
@@ -147,6 +149,35 @@ export async function settleFinished(leagueId: string, book: number, d: LeagueDa
       ...(eco.cut > 0 ? { p_cut: eco.cut } : {}),
     });
     if (error) console.error("market settle", m, o, error.message); else n++;
+  }
+  n += await voidPastSeasons(leagueId, book, tickets).catch((e) => { console.error("void past seasons", (e as Error).message); return 0; });
+  return n;
+}
+
+/** Bets still open in an earlier season's book once the league is in a new season (Fable review, 2026-11-16).
+ *  Settlement only reads the current season's data, so anything not settled before the year changed (an
+ *  award whose winner was never entered, a market nobody opened after the last sync) could never settle and
+ *  its stake stayed locked. The old season's results aren't in the data any more, so those bets are voided:
+ *  every stake comes back (Tickets: as a line in the next payouts report; play money: to the wallet). */
+async function voidPastSeasons(leagueId: string, book: number, tickets: boolean) {
+  const admin = supabaseAdmin();
+  const yearOf = (b: number) => (b > 9999 ? Math.floor(b / 10) : b);
+  const isTicketsBook = (b: number) => b > 9999;
+  const { data, error } = await admin.from("market_positions").select("season, market_key, outcome_id").eq("league_id", leagueId).neq("season", book);
+  if (error || !data?.length) return 0;
+  const old = new Map<string, { b: number; m: string; o: string }>();
+  for (const r of data) {
+    const b = Number(r.season);
+    if (isTicketsBook(b) !== tickets || yearOf(b) >= yearOf(book)) continue; // the other currency's book, or not an earlier season
+    old.set(`${b}|${r.market_key}|${r.outcome_id}`, { b, m: r.market_key, o: r.outcome_id });
+  }
+  let n = 0;
+  for (const { b, m, o } of old.values()) {
+    const { error: e } = await admin.rpc("market_settle2", {
+      p_league: leagueId, p_book: b, p_market: m, p_outcome: o, p_winner: "void",
+      p_per_contract: tickets ? TICKETS_PER_CONTRACT : 1, p_tickets: tickets, p_note: `${yearOf(b)} season ended before this bet settled`,
+    });
+    if (e) console.error("void past season", b, m, o, e.message); else n++;
   }
   return n;
 }
@@ -351,15 +382,16 @@ export async function economyOf(leagueId: string): Promise<Economy> {
 /** When the league's current Madden week started, as first seen by the site (leagues.settings.marketWeek).
  *  The first look after an advance records it, so the week's count starts within minutes of the advance. */
 export async function weekStartedAt(leagueId: string, weekKey: string): Promise<string> {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  const w = settings.marketWeek as { key?: string; startedAt?: string } | undefined;
-  if (w?.key === weekKey && w.startedAt) return w.startedAt;
   const startedAt = new Date().toISOString();
-  settings.marketWeek = { key: weekKey, startedAt };
-  await db.from("leagues").update({ settings }).eq("id", leagueId);
-  return startedAt;
+  // first one to look after an advance records the start; everyone else reads that same time
+  const r = await updateLeagueSettings(leagueId, (settings) => {
+    const w = settings.marketWeek as { key?: string; startedAt?: string } | undefined;
+    if (w?.key === weekKey && w.startedAt) return null;
+    settings.marketWeek = { key: weekKey, startedAt };
+    return settings;
+  });
+  const w = r.settings?.marketWeek as { key?: string; startedAt?: string } | undefined;
+  return w?.key === weekKey && w.startedAt ? w.startedAt : startedAt;
 }
 /** What a member has bet since the week started: stakes placed minus what cancels / cash-outs gave back. */
 export async function betThisWeek(leagueId: string, userId: string, since: string) {
@@ -367,6 +399,9 @@ export async function betThisWeek(leagueId: string, userId: string, since: strin
     .eq("league_id", leagueId).eq("user_id", userId).in("kind", ["buy", "sell"]).gte("created_at", since).order("id").range(f, t));
   return Math.max(0, rows.reduce((a, r) => a + (r.kind === "buy" ? 1 : -1) * Number(r.amount), 0));
 }
+
+/** Does market_trade2 take the weekly cap (migration 0010)? null = not known yet on this server instance. */
+let weekCapInDb: boolean | null = null;
 
 /** Futures (season-long markets) cash out at the market price; game and prop bets cancel (Nick, 2026-11-14). */
 export const isFutures = (marketKey: string) => !/^(game|props)-/.test(marketKey);
@@ -397,6 +432,8 @@ export async function placeTrade(args: {
   /** The market again with these outcome ids included (award markets: players others have bet on). */
   extend?: (outcomeIds: string[]) => Market | undefined;
   economy?: Economy;
+  /** The league's weekly cap per member and when its Madden week started: checked again inside the trade. */
+  weekCap?: { cap: number; since: string } | null;
 }): Promise<{ ok: true; qty: number; amount: number; before: number; after: number; cashout: boolean } | { ok: false; error: string }> {
   const cashout = args.kind === "sell" && isFutures(args.market);
   const admin = supabaseAdmin();
@@ -449,7 +486,7 @@ export async function placeTrade(args: {
       const value = cashout ? q.amount * (1 - eco.cashoutFee) : q.amount;
       // whole Tickets: a stake rounds up, a cancel's market value rounds down
       const amount = T ? (args.kind === "buy" ? Math.ceil(q.amount * unit - 1e-6) : Math.floor(value * unit + 1e-6)) : (args.kind === "buy" ? q.amount : Math.floor(value * 100) / 100);
-      const { data, error } = await admin.rpc("market_trade2", {
+      const params = {
         p_league: args.leagueId, p_book: args.book, p_user: args.userId, p_market: args.market, p_outcome: args.outcome,
         p_side: args.side, p_kind: args.kind, p_qty: q.qty, p_amount: amount,
         p_expected: Object.fromEntries(nets), p_new_net: q.newNet,
@@ -457,11 +494,25 @@ export async function placeTrade(args: {
         p_tickets: T, p_balance: 0, p_conflicts: args.kind === "buy" ? conflictsFor(priced, args.outcome, args.side) : null,
         ...(cashout ? { p_cashout: true } : {}),
         ...(debited ? { p_prepaid: Math.min(debited, amount) } : {}),
-      });
+      };
+      // the weekly cap is enforced in the database (migration 0010), under the same lock as the trade
+      const week = args.kind === "buy" && args.weekCap && weekCapInDb !== false ? { p_week_cap: args.weekCap.cap, p_week_since: args.weekCap.since } : null;
+      let { data, error } = await admin.rpc("market_trade2", { ...params, ...(week || {}) });
+      if (error && week && (error.code === "PGRST202" || /could not find the function/i.test(error.message))) {
+        // migration 0010 hasn't been run yet: the older function (the cap was already checked by the caller)
+        weekCapInDb = false;
+        console.warn("market_trade2 has no weekly-cap check yet: run supabase/migrations/0010_weekly_cap_in_trade.sql");
+        ({ data, error } = await admin.rpc("market_trade2", params));
+      } else if (!error && week) weekCapInDb = true;
       if (error) return { ok: false, error: error.message };
       const r = data as { r: string; amount?: number; credit?: number };
       if (r.r === "ok") return { ok: true, qty: q.qty, amount: Number(r.amount ?? amount), before: q.before, after: q.after, cashout, credit: Number(r.credit ?? 0) };
       if (r.r === "cash") return { ok: false, error: T ? `You have ${Math.max(0, Number(r.amount || 0)).toLocaleString("en-US")} Tickets free to bet; that bet costs ${amount.toLocaleString("en-US")}.` : "Not enough cash." };
+      if (r.r === "weekcap") {
+        const fmtCap = (n: number) => (T ? `${Math.round(n).toLocaleString("en-US")} Tickets` : `$${n.toLocaleString("en-US")}`);
+        const used = Number(r.amount || 0), cap = args.weekCap?.cap ?? 0;
+        return { ok: false, error: `The most anyone can bet in one week is ${fmtCap(cap)}. You've bet ${fmtCap(used)} this week, so you can bet up to ${fmtCap(Math.max(0, cap - used))} more until the league advances.` };
+      }
       if (r.r === "qty") return { ok: false, error: "You don't hold that many contracts." };
       if (r.r === "conflict") return { ok: false, error: "You already have a bet on the other side of this. Cancel it first if you've changed your mind." };
       if (r.r !== "stale") return { ok: false, error: "Trade refused." };
@@ -573,7 +624,9 @@ export async function marketsForPage(slug: string, book: MarketBook, season: num
     const live = liveWeekCached(slug);
     refreshLiveWeek(slug);
     const closes = await closeTimes(v.leagueId, season);
-    const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && dataWeek && weekMoved(live, dataWeek)));
+    const behind = Boolean(live && d && dataBehind(slug, live, d));
+    if (behind) after(() => requestSync(slug, { minGapMs: 10 * 60_000, mode: "auto", by: "market-pause" }).then(() => {}, () => {}));
+    const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && dataWeek && weekMoved(live, dataWeek)), Date.now(), behind);
     const pools = await loadPools(v.leagueId, key);
     const crowd = withCrowd(d ? withAwardPlayers(closed, d, [...poolPairs(pools), ...want]) : closed, pools);
     const shared = await sharedState(v.leagueId, key, v.userId, v.member, index(crowd), tickets);
@@ -679,10 +732,12 @@ export function kickoffPermission(o: { admin: boolean; userTeam: string | string
 export const fmtET = (iso: string | Date) => new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET";
 
 /** Marks game/prop markets closed once their kickoff has passed or EA says the game was played. */
-export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, played: Set<number> | null, weekMovedOn: boolean, now = Date.now()): MarketBook {
+export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, played: Set<number> | null, weekMovedOn: boolean, now = Date.now(), behind = false): MarketBook {
   return {
     ...book,
     markets: book.markets.map((m) => {
+      // season-long markets pause while EA has results the data file doesn't (see eaLive.ts dataBehind)
+      if (!m.gameId && behind && !m.settled && !m.closed) return { ...m, closed: true, status: PAUSED_STATUS };
       if (!m.gameId || m.settled) return m;
       const c = closes.get(m.gameId);
       if (weekMovedOn || played?.has(m.gameId)) return { ...m, closed: true, status: "Closed: game played, settles at the next sync" };
@@ -799,7 +854,8 @@ export async function marketsForDiscord(slug: string, book: MarketBook, season: 
   const key = bookKey(season, Boolean(tickets));
   const live = liveWeekCached(slug);
   const closes = await closeTimes(row.id, season);
-  const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && weekMoved(live, dataWeek)));
+  refreshLiveWeek(slug); // keep EA's live view warm for the Discord posts too
+  const closed = applyCloses(book, closes, live?.played ?? null, Boolean(live && weekMoved(live, dataWeek)), Date.now(), Boolean(live && d && dataBehind(slug, live, d)));
   const pools = await loadPools(row.id, key);
   const crowd = withCrowd(d ? withAwardPlayers(closed, d, poolPairs(pools)) : closed, pools);
   await recordPrices(row.id, key, crowd).catch(() => {});

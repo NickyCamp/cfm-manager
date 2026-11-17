@@ -4,7 +4,7 @@
 // because Discord allows only 3 seconds for the first answer and the league
 // data may need loading.
 import { after, NextResponse } from "next/server";
-import { editOriginal, verifyDiscordRequest } from "@/lib/discord/api";
+import { editOriginal, followUpPrivate, verifyDiscordRequest, type Message } from "@/lib/discord/api";
 import { autocomplete, myBets, runCommand, type Interaction } from "@/lib/discord/handlers";
 import { loadAlertVideo } from "@/lib/discord/links";
 import { anyPlayerModal, type BetReply, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
@@ -87,7 +87,19 @@ export async function POST(req: Request) {
 
   // #previous-week-payouts: Applied / Undo (admins)
   if (i.type === COMPONENT && (cid.startsWith("mpa|") || cid.startsWith("mpu|"))) {
-    return NextResponse.json(await payoutFromButton(i as ComponentInteraction));
+    // Answer at once and do the work after: the admin-role lookup and the save can take longer than the
+    // 3 seconds Discord allows, which showed "This interaction failed" even though the save went through.
+    after(async () => {
+      try {
+        const r = await payoutFromButton(i as ComponentInteraction);
+        if (r.type === 7) await editOriginal(i.application_id, i.token, r.data as Message);
+        else await followUpPrivate(i.application_id, i.token, String((r.data as { content?: string }).content || "Couldn't do that."));
+      } catch (e) {
+        console.error("discord payout button failed", e);
+        await followUpPrivate(i.application_id, i.token, "Something went wrong saving that. Try again in a minute.");
+      }
+    });
+    return NextResponse.json({ type: 6 });
   }
   if (i.type === MODAL_SUBMIT && String((i as ComponentInteraction).data?.custom_id || "").startsWith("mkb|")) {
     after(async () => {

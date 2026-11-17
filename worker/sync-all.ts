@@ -5,8 +5,8 @@
 //   2. Check the league hub. In auto mode, stop if nothing moved and the last
 //      pull is under 20 hours old (trades and signings don't move the key).
 //   3. Pull everything and upload it as one gzipped bundle:
-//        league-data/<slug>/raw.json.gz   { "<file>.json": data, ... }
-//        league-data/<slug>/status.json   small summary the app can read
+//        league-raw/<slug>/raw.json.gz    { "<file>.json": data, ... }   (PRIVATE bucket: the raw pull
+//        league-raw/<slug>/status.json    carries members' EA account details; only this worker reads it)
 //   4. Build the data file the league pages read, carrying over past stat lines:
 //        league-data/<slug>/data.json.gz
 //   5. Record the run in sync_runs and update the league row.
@@ -24,6 +24,7 @@ import { createClient } from "@supabase/supabase-js";
 import { blazeLogin, refreshToken, type EaToken } from "../src/lib/ea/client";
 import { decryptJson, encryptJson } from "../src/lib/crypto";
 import { signWorkerCall } from "../src/lib/workerSig";
+import { updateSettings } from "../src/lib/leagueSettingsCore";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
 import { appendEvents, diffLeague, seedHistory, type LeagueHistory } from "../src/lib/league/history";
@@ -160,10 +161,12 @@ async function syncLeague(lg: League): Promise<string> {
   }
 
   const bundle = gzipSync(Buffer.from(JSON.stringify(files)));
-  const up = await db.storage.from("league-data").upload(`${lg.slug}/raw.json.gz`, bundle, { contentType: "application/gzip", upsert: true });
+  await ensureRawBucket();
+  const up = await db.storage.from(RAW_BUCKET).upload(`${lg.slug}/raw.json.gz`, bundle, { contentType: "application/gzip", upsert: true });
   if (up.error) { log(`- **Couldn't save the pull:** ${up.error.message}`); return finish("failed"); }
+  await dropPublicRaw(lg.slug, log);
   const meta = files["meta.json"] as { seasonInfo: unknown; currentWeekTitle: string; pulledAt: string };
-  await db.storage.from("league-data").upload(
+  await db.storage.from(RAW_BUCKET).upload(
     `${lg.slug}/status.json`,
     Buffer.from(JSON.stringify({ key: syncKey, label, pulledAt: meta.pulledAt, seasonInfo: meta.seasonInfo, files: Object.keys(files).length })),
     { contentType: "application/json", upsert: true },
@@ -176,10 +179,53 @@ async function syncLeague(lg: League): Promise<string> {
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);
 }
 
-async function download(path: string): Promise<Buffer | null> {
-  const { data, error } = await db.storage.from("league-data").download(path);
+async function download(path: string, bucket = "league-data"): Promise<Buffer | null> {
+  const { data, error } = await db.storage.from(bucket).download(path);
   if (error || !data) return null;
   return Buffer.from(await data.arrayBuffer());
+}
+
+// ---------- the raw EA pull lives in a private bucket (Fable review, 2026-11-16) ----------
+// It used to sit next to the public data file (league-data/<slug>/raw.json.gz), where anyone who knew
+// a league's web address could download it, including the league hub's member list with EA account
+// details. Only this worker needs it (MODE=rebuild), so it's kept in league-raw, which has no public
+// access. The bucket is made by supabase/migrations/0009_private_raw_pulls.sql; the worker also makes
+// it if it's missing, so the order of deploying and running the migration doesn't matter.
+const RAW_BUCKET = "league-raw";
+let rawBucketReady = false;
+async function ensureRawBucket() {
+  if (rawBucketReady) return;
+  const { data } = await db.storage.getBucket(RAW_BUCKET);
+  if (data) {
+    if (data.public) await db.storage.updateBucket(RAW_BUCKET, { public: false });
+  } else {
+    const { error } = await db.storage.createBucket(RAW_BUCKET, { public: false });
+    if (error && !/already exists/i.test(error.message)) throw new Error(`Couldn't create the private ${RAW_BUCKET} bucket: ${error.message}`);
+  }
+  rawBucketReady = true;
+}
+/** Removes the old public copies of a league's raw pull. */
+async function dropPublicRaw(slug: string, log: (s: string) => void) {
+  const { data, error } = await db.storage.from("league-data").remove([`${slug}/raw.json.gz`, `${slug}/status.json`]);
+  if (error) log(`- Couldn't remove the old public copy of the raw pull: ${error.message}`);
+  else if (data?.length) log(`- Removed the old public copy of the raw pull (${data.length} file${data.length === 1 ? "" : "s"}); it's kept privately now.`);
+}
+/** A league synced before the move: copy its raw pull to the private bucket, then delete the public one.
+ *  Runs for every league on every worker run until there's nothing public left. Never fails the run. */
+async function moveRawToPrivate(slug: string, log: (s: string) => void) {
+  try {
+    const old = await download(`${slug}/raw.json.gz`);
+    const oldStatus = old ? null : await download(`${slug}/status.json`);
+    if (!old && !oldStatus) return;
+    await ensureRawBucket();
+    if (old && !(await download(`${slug}/raw.json.gz`, RAW_BUCKET))) {
+      const up = await db.storage.from(RAW_BUCKET).upload(`${slug}/raw.json.gz`, old, { contentType: "application/gzip", upsert: false });
+      if (up.error && !/already exists|duplicate/i.test(up.error.message)) { log(`- Couldn't move the raw pull to private storage (left where it was): ${up.error.message}`); return; }
+    }
+    await dropPublicRaw(slug, log);
+  } catch (e) {
+    log(`- Moving the raw pull to private storage failed: ${(e as Error).message}`);
+  }
 }
 
 async function buildAndSave(slug: string, files: Record<string, unknown>, log: (s: string) => void): Promise<{ prev: LeagueData | null; data: LeagueData } | null> {
@@ -255,7 +301,7 @@ async function updateHistory(slug: string, prev: LeagueData | null, data: League
 
 async function rebuildLeague(lg: League): Promise<string> {
   const log = (s: string) => console.log(`[${lg.slug}] ${s}`);
-  const raw = await download(`${lg.slug}/raw.json.gz`);
+  const raw = await download(`${lg.slug}/raw.json.gz`, RAW_BUCKET);
   if (!raw) { log("- No saved pull yet."); return "skipped"; }
   const ok = await buildAndSave(lg.slug, JSON.parse(gunzipSync(raw).toString("utf8")), log);
   return ok ? "rebuilt" : "failed";
@@ -288,10 +334,8 @@ async function handleOrphan(lg: League): Promise<string | null> {
   const { count } = await db.from("league_members").select("user_id", { count: "exact", head: true }).eq("league_id", lg.id);
   if (count) {
     // Someone is a member again: the clock stops.
-    const settings = { ...(lg.settings as Record<string, unknown>) };
-    delete settings.orphanedAt;
-    await db.from("leagues").update({ settings }).eq("id", lg.id);
-    lg.settings = settings as League["settings"];
+    const r = await updateSettings(db, lg.id, (s) => { if (!s.orphanedAt) return null; delete s.orphanedAt; return s; });
+    if (r.settings) lg.settings = r.settings as League["settings"];
     return null;
   }
   const due = new Date(new Date(at).getTime() + ORPHAN_DAYS * 86_400_000);
@@ -299,12 +343,13 @@ async function handleOrphan(lg: League): Promise<string | null> {
   const files = [
     ...(await filesUnder("league-data", lg.slug)).map((p) => ["league-data", p] as const),
     ...(await filesUnder("card-art", lg.slug)).map((p) => ["card-art", p] as const),
+    ...(await filesUnder(RAW_BUCKET, lg.slug)).map((p) => [RAW_BUCKET, p] as const),
     ["player-nicknames", `${lg.slug}.json`] as const,
     ["card-layouts", `${lg.slug}.json`] as const,
   ];
   const { error } = await db.from("leagues").delete().eq("id", lg.id); // members, sync runs, markets cascade
   if (error) return `orphan delete failed: ${error.message}`;
-  for (const bucket of ["league-data", "card-art", "player-nicknames", "card-layouts"]) {
+  for (const bucket of ["league-data", "card-art", RAW_BUCKET, "player-nicknames", "card-layouts"]) {
     const paths = files.filter(([b]) => b === bucket).map(([, p]) => p);
     for (let i = 0; i < paths.length; i += 100) await db.storage.from(bucket).remove(paths.slice(i, i + 100));
   }
@@ -322,6 +367,7 @@ async function handleOrphan(lg: League): Promise<string | null> {
   for (const lg of leagues as League[]) {
     try {
       const orphan = await handleOrphan(lg);
+      await moveRawToPrivate(lg.slug, (s) => console.log(`[${lg.slug}] ${s}`)); // also for orphaned leagues: nothing raw stays public
       if (orphan) { console.log(`[${lg.slug}] ${orphan}`); results.push(`${lg.slug}: ${orphan}`); continue; }
       results.push(`${lg.slug}: ${MODE === "rebuild" ? await rebuildLeague(lg) : await syncLeague(lg)}`);
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { forgetLeagueData, getLeagueData } from "@/lib/league/load";
 import { awardDef, LEGACY_AWARD_KEYS, legacyAwardWinners, marketBook } from "@/lib/league/markets";
 import { correctAwardBets, isCommissioner, memberNames, setCloseTime, settleFinished, verifyKickoff, viewer } from "@/lib/marketStore";
@@ -25,11 +26,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const num = (x: unknown) => (x === "" || x == null ? undefined : Number(x));
 
   const saveSetting = async (key: string, patch: Record<string, unknown>) => {
-    const { data } = await db.from("leagues").select("settings").eq("id", v.leagueId!).single();
-    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-    settings[key] = { ...((settings[key] as Record<string, unknown>) || {}), ...patch };
-    const { error } = await db.from("leagues").update({ settings }).eq("id", v.leagueId!);
-    return error?.message;
+    const r = await updateLeagueSettings(v.leagueId!, (settings) => {
+      settings[key] = { ...((settings[key] as Record<string, unknown>) || {}), ...patch };
+      return settings;
+    });
+    return r.ok ? undefined : r.error;
   };
 
   switch (b.action) {
@@ -72,15 +73,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       if (!title) return fail("Pick an award.");
       if (winner && (key === "award-coy" ? !d0.teams.some((t) => String(t.id) === winner) : !d0.players.some((p) => String(p.id) === winner))) return fail(`Pick the ${key === "award-coy" ? "team" : "player"} who won it.`);
       const year = String(d0.season.year);
-      const { data: row } = await db.from("leagues").select("settings").eq("id", v.leagueId).single();
-      const settings = { ...((row?.settings as Record<string, unknown>) || {}) };
-      const awards = { ...((settings.awards as Record<string, Record<string, string>>) || {}) };
-      const season = { ...(awards[year] || {}) };
-      if (winner) season[key] = winner; else delete season[key];
-      awards[year] = season;
-      settings.awards = awards;
-      const { error } = await db.from("leagues").update({ settings }).eq("id", v.leagueId);
-      if (error) return fail(error.message, 500);
+      const saved = await updateLeagueSettings(v.leagueId, (settings) => {
+        const awards = { ...((settings.awards as Record<string, Record<string, string>>) || {}) };
+        const season = { ...(awards[year] || {}) };
+        if (winner) season[key] = winner; else delete season[key];
+        awards[year] = season;
+        settings.awards = awards;
+        return settings;
+      });
+      if (!saved.ok) return fail(saved.error || "Couldn't save that.", 500);
       forgetLeagueData(slug);
       if (!winner) return ok(`${title}: winner cleared. Bets that already settled stay as they were; pick the right winner to correct them.`);
 

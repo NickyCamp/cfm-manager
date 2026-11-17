@@ -87,6 +87,15 @@ export async function editOriginal(appId: string, token: string, msg: Message, f
   if (!res.ok) console.error("discord edit failed", res.status, await res.text().catch(() => ""));
 }
 
+/** A private follow-up to an interaction that was already answered or deferred (only the person who tapped sees it). */
+export async function followUpPrivate(appId: string, token: string, content: string) {
+  const res = await fetch(`${API}/webhooks/${appId}/${token}`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ content: clip(content, 2000), flags: EPHEMERAL, allowed_mentions: { parse: [] } }),
+  });
+  if (!res.ok) console.error("discord follow-up failed", res.status, await res.text().catch(() => ""));
+}
+
 /** Posts a message as the bot in a channel, optionally with a file (e.g. a video) attached.
  *  Needs DISCORD_BOT_TOKEN. Returns Discord's error text on failure. */
 export async function postToChannel(botToken: string, channelId: string, msg: Message, file?: FileUpload): Promise<string | null> {

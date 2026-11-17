@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { setLeagueSetting } from "@/lib/leagueSettings";
 import { isCommissioner, viewer } from "@/lib/marketStore";
 
 // POST { tickets: boolean, field: "cash" | "bank" } — the league's commissioner turns betting in
@@ -12,10 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (typeof body?.tickets !== "boolean") return NextResponse.json({ error: "Bad request." }, { status: 400 });
   const field = body.field === "bank" ? "bank" : "cash";
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", v.leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}), tickets: { enabled: body.tickets, field } };
-  const { error } = await db.from("leagues").update({ settings }).eq("id", v.leagueId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const r = await setLeagueSetting(v.leagueId, "tickets", { enabled: body.tickets, field });
+  if (!r.ok) return NextResponse.json({ error: r.error }, { status: 500 });
   return NextResponse.json({ ok: true, text: body.tickets ? `Tickets betting is on (members' UnbelievaBoat ${field} balance).` : "Tickets betting is off: the markets use play money." });
 }
