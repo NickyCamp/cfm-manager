@@ -11,6 +11,7 @@ import { anyPlayerModal, type BetReply, cancelFromButton, otherAmountModal, payo
 import { refreshForMarket } from "@/lib/discord/marketChannels";
 import { leagueForGuild } from "@/lib/discord/links";
 import { tradeVote } from "@/lib/discord/tradeChannels";
+import { findPlayerModal, tradeBuilderTap } from "@/lib/discord/tradeBuilder";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
@@ -86,6 +87,22 @@ export async function POST(req: Request) {
     return NextResponse.json(onConfirmation ? { type: 6 } : { type: 5, data: { flags: 1 << 6 } });
   }
 
+  // /trade builder (private message): "Find player" opens a name box at once; every other tap and the
+  // name box answer "deferred update", then edit the builder.
+  if (i.type === COMPONENT && cid === "tb|find") return NextResponse.json(findPlayerModal());
+  if ((i.type === COMPONENT || i.type === MODAL_SUBMIT) && cid.startsWith("tb|")) {
+    after(async () => {
+      try {
+        const r = await tradeBuilderTap(i as ComponentInteraction);
+        if (r.message) await editOriginal(i.application_id, i.token, r.message);
+        if (r.reply) await followUpPrivate(i.application_id, i.token, r.reply);
+      } catch (e) {
+        console.error("discord trade builder failed", e);
+        await followUpPrivate(i.application_id, i.token, "Something went wrong with the trade builder. Try /trade again.");
+      }
+    });
+    return NextResponse.json({ type: 6 });
+  }
   // #trade-proposals: Approve / Reject (admins). Answer at once, then save the vote and edit the post.
   if (i.type === COMPONENT && cid.startsWith("tv|")) {
     after(async () => {
@@ -127,7 +144,7 @@ export async function POST(req: Request) {
   if (i.type === COMMAND) {
     const base = new URL(req.url).origin;
     // Settings changes reply only to the person who ran them; everything else is public.
-    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "balance", "bets", "payouts"].includes(i.data?.name || "");
+    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "");
     after(async () => {
       try {
         const msg = await runCommand(i, base);

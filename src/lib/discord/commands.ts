@@ -146,6 +146,7 @@ export const COMMANDS = [
       { type: STRING, name: "action", description: "Leave empty to build/refresh; Remove deletes the game channels", required: false, choices: [{ name: "Remove", value: "remove" }] },
     ],
   },
+  { name: "trade", description: "Build a trade step by step (teams, players, picks), see its score and submit it", ...SERVER_ONLY },
   {
     name: "tradechannels",
     description: "Admins: make the Trades category: proposals (admins vote), approvals, transactions",

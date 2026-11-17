@@ -101,7 +101,7 @@ export function buildTradeData(d: LeagueData) {
 
   const { slots: draftSlots, final: orderFinal } = teamDraftSlots(d, firstDraft);
   const teams: TradeTeam[] = [...d.teams].sort((a, b) => a.city.localeCompare(b.city)).map((t) => ({
-    id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary, active: active.get(t.id) || 0,
+    id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary, conf: t.conference, active: active.get(t.id) || 0,
     committed: committed.get(t.id)!, slot: draftSlots.get(t.id)?.[1] ?? 16, slots: draftSlots.get(t.id) ?? Array(8).fill(16),
     cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),
   }));

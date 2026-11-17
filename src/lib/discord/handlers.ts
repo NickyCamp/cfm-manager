@@ -31,6 +31,7 @@ import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { tradeChannelsCmd } from "./tradeChannels";
+import { tradeBuilderStart } from "./tradeBuilder";
 import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, leaguesForDiscordUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
@@ -315,6 +316,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       if (opt(i, "action") === "remove") return reply(await removeGameChannels(lg.slug));
       return reply(await syncGameChannels(lg.slug, { year: Number(opt(i, "year")) || undefined, week: Number(opt(i, "week")) || undefined }));
+    }
+    case "trade": {
+      if (via !== "server") return reply("Run /trade in the league's own Discord server (linked with `/link`).");
+      return { ...(await tradeBuilderStart(lg)), flags: EPHEMERAL };
     }
     case "tradechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");

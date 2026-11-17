@@ -189,7 +189,7 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
   const tag = (t: typeof ta) => (roles.get(t.id) ? `<@&${roles.get(t.id)}>` : `**${t.name}**`);
   const byId = new Map(td.players.map((p) => [p.id, p]));
   const ownerOf = new Map(td.teams.map((t) => [t.id, t]));
-  const pickText = (k: Pick, from: number) => `${k.y} ${ROUND[k.r]} round pick (${pickSpotText(k, ownerOf.get(from) || { slot: 16 }, td.firstDraft, td.orderFinal)})`;
+  const pickText = (k: Pick, from: number) => `${k.y} ${ROUND[k.r]} round pick · ${pickSpotText(k, ownerOf.get(from) || { slot: 16 }, td.firstDraft, td.orderFinal)}`;
   const list = (ids: number[], picks: Pick[], from: number) =>
     [...ids.map((id) => { const p = byId.get(id)!; return `${p.pos} ${p.n} (${p.ovr} OVR, ${p.ur} UR, ${money(p.hits[0])})`; }), ...picks.map((k) => pickText(k, from))].join("\n") || "Nothing";
   const link = `${APP_URL}/l/${slug}/trades?${new URLSearchParams(Object.entries(query).filter(([, v]) => v)).toString()}`;

@@ -25,7 +25,7 @@ export type TradePlayer = {
   spd: number; acc: number; h: number; w: number; // speed, acceleration, height (in), weight
 };
 export type TradeTeam = {
-  id: number; abbr: string; name: string; primary: string; active: number; committed: number[]; cap: number[];
+  id: number; abbr: string; name: string; primary: string; conf?: string; active: number; committed: number[]; cap: number[];
   slot: number;      // 1st-round spot in the next draft (1 = first pick)
   slots: number[];   // spot in each round (index = round 1-7): teams tied on record rotate between rounds
 };
