@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { getLeagueData } from "@/lib/league/load";
 import { marketBook } from "@/lib/league/markets";
 import { chanceText, prices, type Market } from "@/lib/league/marketTypes";
-import { supabaseAdmin } from "@/lib/supabase/server";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { fmtET, marketsForDiscord, settleFinished } from "@/lib/marketStore";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { postPayoutReport, type PayoutState } from "./payouts";
@@ -49,11 +49,10 @@ export type MarketChannels = {
 };
 
 async function saveState(leagueId: string, state: MarketChannels | null) {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  if (state) settings.marketChannels = state; else delete settings.marketChannels;
-  await db.from("leagues").update({ settings }).eq("id", leagueId);
+  await updateLeagueSettings(leagueId, (settings) => {
+    if (state) settings.marketChannels = state; else delete settings.marketChannels;
+    return settings;
+  });
 }
 
 const weekKeyOf = (d: LeagueData) => `${d.season.year}:${d.season.stage}:${d.season.week}`;
@@ -141,7 +140,8 @@ export function futuresEntries(d: LeagueData, markets: Market[], tickets: boolea
   const shut = (m: Market) => m.settled || Boolean(m.closed);
   const pays = tickets ? "100 Tickets" : "$1";
   const open = (m: Market) => m.outcomes.filter((o) => o.state === "open").sort((a, b) => b.p - a.p);
-  const head = (m: Market) => (m.settled ? `**${m.title}** · settled: ${m.outcomes.find((o) => o.state === "won")?.label ?? "—"}` : `**${m.title}**`);
+  // a market that's closed but not settled says why (paused while prices update, or waiting for Madden's award winner)
+  const head = (m: Market) => (m.settled ? `**${m.title}** · settled: ${m.outcomes.find((o) => o.state === "won")?.label ?? "—"}` : m.closed ? `**${m.title}**\n-# ⏸️ ${m.status}` : `**${m.title}**`);
 
   const sb = markets.find((m) => m.key === "sb");
   if (sb) {
@@ -475,16 +475,19 @@ export async function postPayoutsNow(slug: string): Promise<string> {
   const book = marketBook(d);
   await settleFinished(lg.id, bookKey(d.season.year, true), d, book, true);
   const r = await postPayoutReport({ slug, leagueId: lg.id, guildId, categoryId: state.categoryId, d, book, tickets: cfg, prev: state.payouts, title: `${d.season.title} (so far)` });
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  const st = settings.marketChannels as MarketChannels | undefined;
-  if (st) {
+  // lock the new channel first (Discord calls), then save in one short step
+  const scratch: MarketChannels = { ...state, payouts: r.state };
+  await lockMarketChannels(guildId, scratch, [r.state.channelId]).catch(() => "");
+  const saved = await updateLeagueSettings(lg.id, (settings) => {
+    const st = settings.marketChannels as MarketChannels | undefined;
+    if (!st) return null;
     st.payouts = r.state;
-    await lockMarketChannels(guildId, st, [r.state.channelId]).catch(() => "");
-    await db.from("leagues").update({ settings }).eq("id", lg.id);
-    await orderMarketChannels(guildId, st).catch(() => {});
-  }
+    st.locked = [...new Set([...(st.locked || []), ...(scratch.locked || [])])];
+    st.lockError = scratch.lockError;
+    return settings;
+  });
+  const st = saved.settings?.marketChannels as MarketChannels | undefined;
+  if (st) await orderMarketChannels(guildId, st).catch(() => {});
   return r.text;
 }
 
@@ -621,22 +624,20 @@ export async function refreshForMarket(slug: string, marketKey: string) {
 
 /** Saves one game's message ids/signatures without clobbering the rest of the state. */
 async function saveEntrySigs(leagueId: string, gameId: number, gc: GameChannel) {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  const st = settings.marketChannels as MarketChannels | undefined;
-  if (!st?.games[String(gameId)]) return;
-  st.games[String(gameId)] = gc;
-  await db.from("leagues").update({ settings }).eq("id", leagueId);
+  await updateLeagueSettings(leagueId, (settings) => {
+    const st = settings.marketChannels as MarketChannels | undefined;
+    if (!st?.games[String(gameId)]) return null;
+    st.games[String(gameId)] = gc;
+    return settings;
+  });
 }
 
 /** Saves the #futures message ids/signatures without clobbering the rest of the state. */
 async function saveFutures(leagueId: string, st: MarketChannels) {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  const cur = settings.marketChannels as MarketChannels | undefined;
-  if (!cur || cur.futuresChannelId !== st.futuresChannelId) return;
-  cur.futures = st.futures;
-  await db.from("leagues").update({ settings }).eq("id", leagueId);
+  await updateLeagueSettings(leagueId, (settings) => {
+    const cur = settings.marketChannels as MarketChannels | undefined;
+    if (!cur || cur.futuresChannelId !== st.futuresChannelId) return null;
+    cur.futures = st.futures;
+    return settings;
+  });
 }

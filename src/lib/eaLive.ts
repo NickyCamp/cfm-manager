@@ -63,6 +63,34 @@ export function weekMoved(live: LiveWeek, data: { stage: number; week: number })
   return ph.stage !== data.stage || ph.week !== data.week;
 }
 
+// When each played-but-not-yet-synced game was first noticed (per server instance).
+const firstSeenPlayed = new Map<string, number>();
+
+/**
+ * EA has results our data file doesn't: the league advanced, or a game EA says was played isn't
+ * final in the data yet. Season-long markets are priced from the data file, so until the next sync
+ * rebuilds it their prices are out of date and trading them is paused (Nick, 2026-11-16: nobody
+ * trades a market whose outcome has moved because of a game that's already been played).
+ * A sync that pulled after we first saw the game played but still doesn't show it final means EA's
+ * two answers disagree; that game is then ignored so the markets can't stay paused for good.
+ */
+export function dataBehind(slug: string, live: LiveWeek, d: { season: { stage: number; week: number }; pulledAt: string; games: { id: number; final: boolean }[] }) {
+  if (weekMoved(live, d.season)) return true;
+  if (!live.played.size) return false;
+  const pulled = Date.parse(d.pulledAt) || 0;
+  const final = new Map(d.games.map((g) => [g.id, g.final]));
+  let behind = false;
+  for (const id of live.played) {
+    const key = `${slug}:${id}`;
+    if (final.get(id) !== false) { firstSeenPlayed.delete(key); continue; } // final in the data (or not a game we carry)
+    if (!firstSeenPlayed.has(key)) firstSeenPlayed.set(key, Date.now());
+    if (pulled > firstSeenPlayed.get(key)! + 60_000) continue;
+    behind = true;
+  }
+  return behind;
+}
+export const PAUSED_STATUS = "Paused: a game has been played, prices are updating (a few minutes)";
+
 /** Whatever is cached (possibly stale or null), without calling EA. */
 export function liveWeekCached(slug: string): LiveWeek | null {
   const hit = memo.get(slug);

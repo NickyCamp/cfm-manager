@@ -124,7 +124,7 @@ export default async function MarketPage({ params, searchParams }: Props) {
           </div>
         )}
 
-        <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} closed={m.closed} kickoff={kickoff} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} shared={shared} />
+        <MarketTrade slug={slug} mkey={m.key} title={m.title} settled={m.settled} closed={m.closed} status={m.status} kickoff={kickoff} outcomes={outcomes} hidden={hidden} teams={teams} index={priceIndex(book)} initialO={sp.o} initialSide={sp.side} shared={shared} />
 
         {shared && (
           <section className="panel mk-audit-panel">

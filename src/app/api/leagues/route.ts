@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 import { RESERVED_SLUGS, SLUG_RE } from "@/lib/slug";
 import { triggerSync } from "@/lib/dispatch";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { decryptJson, encryptJson } from "@/lib/crypto";
 import { EaError, listLeagues, refreshToken, type EaToken } from "@/lib/ea/client";
 
@@ -68,11 +69,9 @@ export async function POST(req: Request) {
   if (existing) {
     // Everyone had removed it (30-day delete clock running): whoever adds it back owns it, syncs it with
     // their EA connection, and the clock stops.
-    const settings = { ...((existing.settings as Record<string, unknown>) || {}) };
-    const orphaned = Boolean(settings.orphanedAt);
+    const orphaned = Boolean((existing.settings as Record<string, unknown> | null)?.orphanedAt);
     if (orphaned) {
-      delete settings.orphanedAt;
-      await admin.from("leagues").update({ settings, owner_id: user.id, ea_connection_id: conn.id }).eq("id", existing.id);
+      await updateLeagueSettings(existing.id, (settings) => { delete settings.orphanedAt; return settings; }, { owner_id: user.id, ea_connection_id: conn.id });
     }
     const owner = orphaned || existing.owner_id === user.id;
     await admin.from("league_members").upsert({ league_id: existing.id, user_id: user.id, role: owner ? "commissioner" : "member" }, { onConflict: "league_id,user_id", ignoreDuplicates: true });

@@ -6,7 +6,7 @@ import { awardWho, isAwardMarket, marketBook, withAwardPlayers } from "@/lib/lea
 import { betCaps, closeTimes, economyOf, teamsOfUser, fmtET, isMember, marketsShared, memberNames, placeTrade, recordAfterTrade, betThisWeek, weekStartedAt } from "@/lib/marketStore";
 import { postBet } from "@/lib/discord/marketChannels";
 import { bookKey, ticketsConfig } from "@/lib/tickets";
-import { liveWeek, weekMoved } from "@/lib/eaLive";
+import { dataBehind, liveWeek, weekMoved } from "@/lib/eaLive";
 import { requestSync } from "@/lib/sync";
 
 export type TradeArgs = {
@@ -46,6 +46,19 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
     }
   }
 
+  // Season-long markets (Super Bowl, divisions, playoff spots, win totals, awards, leaders): their prices
+  // come from the last sync. If EA already has a result the data doesn't (a game played, or an advance),
+  // those prices are stale and someone who knows the result could buy or cash out against them. Trading
+  // them is paused until the sync that records the result has rebuilt the prices; asked of EA fresh on every trade.
+  if (!m.gameId) {
+    const live = await liveWeek(a.slug, { fresh: true });
+    if (!live) return { ok: false, status: 503, error: "Couldn't check with EA that no games have been played since the last sync, so season-long bets are paused for the moment. Try again in a minute." };
+    if (dataBehind(a.slug, live, d)) {
+      after(() => requestSync(a.slug, { minGapMs: 10 * 60_000, mode: "auto", by: "market-pause" }).then(() => {}, () => {}));
+      return { ok: false, status: 409, error: "A game has been played since the last sync, so season-long bets are paused while the prices update. Try again in a few minutes." };
+    }
+  }
+
   const tickets = await ticketsConfig(a.slug).catch(() => null);
   if (a.kind === "buy") {
     // Integrity (Nick, 2026-11-14): managers can't bet on their own game at all (either team or its props),
@@ -63,19 +76,21 @@ export async function executeTrade(a: TradeArgs): Promise<TradeResult> {
     }
   }
   // the league's caps (/betcap): per bet, and per member per Madden week
+  let weekCap: { cap: number; since: string } | null = null;
   if (a.kind === "buy") {
     const caps = await betCaps(a.leagueId, Boolean(tickets));
     const fmt = (n: number) => (tickets ? `${Math.round(n).toLocaleString("en-US")} Tickets` : `$${n.toLocaleString("en-US")}`);
     if (caps.perBet != null && amount > caps.perBet) return { ok: false, status: 400, error: `The most one bet can be is ${fmt(caps.perBet)}.` };
     if (caps.perUserWeek != null) {
       const since = await weekStartedAt(a.leagueId, `${d.season.year}:${d.season.stage}:${d.season.week}`);
+      weekCap = { cap: caps.perUserWeek, since }; // checked again inside the trade, where two bets at once can't both pass
       const used = await betThisWeek(a.leagueId, a.userId, since);
       if (used + amount > caps.perUserWeek) return { ok: false, status: 400, error: `The most anyone can bet in one week is ${fmt(caps.perUserWeek)}. You've bet ${fmt(used)} this week, so you can bet up to ${fmt(Math.max(0, caps.perUserWeek - used))} more until the league advances.` };
     }
   }
   const extend = isAwardMarket(a.market) ? (ids: string[]) => withAwardPlayers(marketBook(d), d, ids.map((id) => [a.market, id] as [string, string])).markets.find((x) => x.key === a.market) : undefined;
   const economy = await economyOf(a.leagueId).catch(() => undefined);
-  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets, extend, economy });
+  const r = await placeTrade({ leagueId: a.leagueId, book: bookKey(d.season.year, Boolean(tickets)), userId: a.userId, market: a.market, outcome: a.outcome, side: a.side, kind: a.kind, priced: m, amount, qty, tickets, extend, economy, weekCap });
   if (!r.ok) return { ok: false, status: 409, error: r.error };
 
   // Post it in the league's Discord Markets channels (if set up) and refresh the prices there.

@@ -76,6 +76,7 @@ export function propMarkets(d: LeagueData, games: Game[], label: string): Market
     const perGame = (team: number, k: Key) => (allowed.get(team)?.get(k) || 0) / Math.max(1, gamesFor.get(team) || 0);
     const leagueAvg = (k: Key) => { const ids = [...gamesFor.keys()]; return ids.reduce((s, t) => s + perGame(t, k), 0) / Math.max(1, ids.length); };
 
+    const statsIn = d.lines.some((l) => l.g === g.id); // a final game's props only settle once its box score is in
     const sideMarkets: Record<"pass" | "run" | "td", Outcome[]> = { pass: [], run: [], td: [] };
     for (const [team, opp] of [[a, h], [h, a]] as const) {
       const teamGames = priorGames.filter((x) => x.home === team.id || x.away === team.id).sort((x, y) => y.week - x.week);
@@ -125,7 +126,7 @@ export function propMarkets(d: LeagueData, games: Game[], label: string): Market
               sub: `${team.abbr} ${p.pos} · ${(Math.round(mean * 10) / 10).toString()} ${lad.unit}/game${gamesFor.get(opp.id) && avg > 0 ? ` · ${opp.abbr} ${factor > 1.03 ? "allows more" : factor < 0.97 ? "allows less" : "about average"}` : ""}`,
               p: pr, prev: null, history: [pr], state: "open",
             };
-            if (g.final) {
+            if (g.final && statsIn) {
               const got = inGame ? val(inGame, lad.key) : 0;
               o.state = inGame && got >= k ? "won" : "lost";
               o.p = o.state === "won" ? 1 : 0;
@@ -142,7 +143,8 @@ export function propMarkets(d: LeagueData, games: Game[], label: string): Market
       if (!outs.length) continue;
       out.push({
         key: `props-${g.id}-${grp}`, gameId: g.id, cat: "props", title: `${a.name} at ${h.name}: ${titles[grp]}`, subtitle: `${label} · player props, each line its own yes/no`,
-        kind: "independent", settled: g.final, status: g.final ? "Settled" : "Open until kickoff",
+        kind: "independent", settled: g.final && statsIn, status: g.final ? (statsIn ? "Settled" : "Final: waiting for the box score to settle") : "Open until kickoff",
+        ...(g.final && !statsIn ? { closed: true } : {}),
         rules: `Each line settles on the player's stats in this game's box score (${a.city} ${a.name} at ${h.city} ${h.name}). If he has no stat line in the game, Yes loses. Trading stops at the kickoff time set for the game, or as soon as EA reports it played (checked live on every trade). Chances come from his per-game averages in earlier games this season, nudged toward what the opponent allows; yards, attempts and catches use his own game-to-game spread, TDs, INTs and sacks a Poisson count. Prices then move with members' bets.`,
         outcomes: outs,
       });
@@ -151,11 +153,17 @@ export function propMarkets(d: LeagueData, games: Game[], label: string): Market
   return out;
 }
 
+/** Has this game's box score arrived? (Any player stat line at all for it.) */
+export const hasBoxScore = (d: LeagueData, gameId: number) => d.lines.some((l) => l.g === gameId);
+
 /** How a prop line finished, straight from the box score (outcome id "<player>:<stat>:<line>").
  *  Used to settle bets even after the league has moved on to the next week. null = not final yet. */
 export function propResult(d: LeagueData, gameId: number, outcomeId: string): "won" | "lost" | null {
   const g = d.games.find((x) => x.id === gameId);
   if (!g?.final) return null;
+  // Final, but the box score isn't in the data yet: wait for it. Settling now would mark every line
+  // "No" (and pay the No side) on stats that simply haven't arrived.
+  if (!hasBoxScore(d, gameId)) return null;
   const [pid, key, k] = outcomeId.split(":");
   const line = d.lines.find((l) => l.g === gameId && l.p === Number(pid));
   if (!line || !key || !(Number(k) > 0)) return "lost";

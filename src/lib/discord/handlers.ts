@@ -28,6 +28,7 @@ import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZ
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
 import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "./marketChannels";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, leaguesForDiscordUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
@@ -1065,15 +1066,14 @@ async function betCapCmd(i: Interaction, lg: LinkedLeague): Promise<string> {
   const perBet = opt(i, "per_bet"), perUser = opt(i, "per_user");
   const fmt = (n: number | null) => (n == null ? "no cap" : tickets ? `${n.toLocaleString("en-US")} Tickets` : `$${n.toLocaleString("en-US")}`);
   if (perBet != null || perUser != null) {
-    const db = admin2();
-    const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
-    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-    const cur = { ...((settings.betCaps as Record<string, unknown>) || {}) };
-    if (perBet != null) cur.perBet = Number(perBet) || null;          // 0 → no cap
-    if (perUser != null) cur.perUserWeek = Number(perUser) || null;
-    settings.betCaps = cur;
-    const { error } = await db.from("leagues").update({ settings }).eq("id", lg.id);
-    if (error) return `Couldn't save that: ${error.message}`;
+    const r = await updateLeagueSettings(lg.id, (settings) => {
+      const cur = { ...((settings.betCaps as Record<string, unknown>) || {}) };
+      if (perBet != null) cur.perBet = Number(perBet) || null;          // 0 → no cap
+      if (perUser != null) cur.perUserWeek = Number(perUser) || null;
+      settings.betCaps = cur;
+      return settings;
+    });
+    if (!r.ok) return `Couldn't save that: ${r.error}`;
   }
   const c = await betCaps(lg.id, tickets);
   const who = i.member?.user.global_name || i.member?.user.username || "An admin";
@@ -1085,16 +1085,15 @@ async function economyCmd(i: Interaction, lg: LinkedLeague): Promise<string> {
   const cut = opt(i, "cut"), floor = opt(i, "floor"), fee = opt(i, "cashout_fee");
   const changed = cut != null || floor != null || fee != null;
   if (changed) {
-    const db = admin2();
-    const { data } = await db.from("leagues").select("settings").eq("id", lg.id).single();
-    const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-    const cur = { ...((settings.economy as Record<string, unknown>) || {}) };
-    if (cut != null) cur.cut = Number(cut) / 100;
-    if (floor != null) cur.floor = Number(floor) / 100;
-    if (fee != null) cur.cashoutFee = Number(fee) / 100;
-    settings.economy = cur;
-    const { error } = await db.from("leagues").update({ settings }).eq("id", lg.id);
-    if (error) return `Couldn't save that: ${error.message}`;
+    const r = await updateLeagueSettings(lg.id, (settings) => {
+      const cur = { ...((settings.economy as Record<string, unknown>) || {}) };
+      if (cut != null) cur.cut = Number(cut) / 100;
+      if (floor != null) cur.floor = Number(floor) / 100;
+      if (fee != null) cur.cashoutFee = Number(fee) / 100;
+      settings.economy = cur;
+      return settings;
+    });
+    if (!r.ok) return `Couldn't save that: ${r.error}`;
   }
   const e = await economyOf(lg.id);
   const pct = (x: number) => `${Math.round(x * 1000) / 10}%`;

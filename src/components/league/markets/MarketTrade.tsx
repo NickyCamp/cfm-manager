@@ -11,8 +11,8 @@ import { money, sellValue, usePortfolio, type Side, isFutures } from "./usePortf
 
 export type TradeOutcome = BoardOutcome & { player?: number; color?: string; model?: number; net?: number };
 
-export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidden, teams, index, initialO, initialSide, shared, kickoff }: {
-  slug: string; mkey: string; title: string; settled: boolean; closed?: boolean; kickoff?: React.ReactNode; outcomes: TradeOutcome[]; hidden: number;
+export function MarketTrade({ slug, mkey, title, settled, closed, status, outcomes, hidden, teams, index, initialO, initialSide, shared, kickoff }: {
+  slug: string; mkey: string; title: string; settled: boolean; closed?: boolean; status?: string; kickoff?: React.ReactNode; outcomes: TradeOutcome[]; hidden: number;
   teams: TeamLite[]; index: PriceIndex; initialO?: string; initialSide?: string; shared?: SharedState | null;
 }) {
   const port = usePortfolio(slug, index, shared);
@@ -100,7 +100,8 @@ export function MarketTrade({ slug, mkey, title, settled, closed, outcomes, hidd
 
       <div className="mk-side-col">
         {kickoff}
-        {closed && !settled && <div className="panel mk-ticket"><p className="mk-msg err">Betting on this game is closed. Positions pay out when the result syncs.</p></div>}
+        {closed && !settled && !/^(game|props)-/.test(mkey) && <div className="panel mk-ticket"><p className="mk-msg err">{status || "Betting on this market is closed for now."}</p></div>}
+        {closed && !settled && /^(game|props)-/.test(mkey) && <div className="panel mk-ticket"><p className="mk-msg err">Betting on this game is closed. Positions pay out when the result syncs.</p></div>}
         {!settled && !closed && o && pr && (
           <div className="panel mk-ticket" aria-label="Order ticket">
             <div className="mk-ticket-head">

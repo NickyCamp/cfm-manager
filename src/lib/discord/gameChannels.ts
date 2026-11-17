@@ -11,6 +11,7 @@
 import { getLeagueData } from "@/lib/league/load";
 import { weekTitle } from "@/lib/league/derive";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { closeTimes, fmtET } from "@/lib/marketStore";
 import { discordOfUser } from "@/lib/tickets";
 import { discordOf, leagueBySlug } from "./links";
@@ -37,11 +38,10 @@ const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
 const record = (t: Team) => `${t.rec.w}-${t.rec.l}${t.rec.t ? `-${t.rec.t}` : ""}`;
 
 async function saveState(leagueId: string, state: GameChannels | null) {
-  const db = supabaseAdmin();
-  const { data } = await db.from("leagues").select("settings").eq("id", leagueId).single();
-  const settings = { ...((data?.settings as Record<string, unknown>) || {}) };
-  if (state) settings.gameChannels = state; else delete settings.gameChannels;
-  await db.from("leagues").update({ settings }).eq("id", leagueId);
+  await updateLeagueSettings(leagueId, (settings) => {
+    if (state) settings.gameChannels = state; else delete settings.gameChannels;
+    return settings;
+  });
 }
 
 /** Team id → the server role for that team, matched by name: "Eagles", "Philadelphia Eagles" or "PHI" (any case). */
