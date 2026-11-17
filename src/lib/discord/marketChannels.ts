@@ -322,6 +322,13 @@ async function syncMarketChannelsNow(slug: string): Promise<string> {
     const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "market-feed", type: 0, parent_id: state.categoryId, topic: `Season markets and every bet on them · ${APP_URL}/l/${slug}/markets` });
     if (ch.ok) { state.feedChannelId = String(ch.data.id); state.feedMessageId = null; }
   }
+  // every sync starts #market-feed over (Nick, 2026-11-17: new posts were piling up on old ones):
+  // clear it, then the odds message and this sync's charts
+  let cleared = 0;
+  if (state.feedChannelId) {
+    cleared = await clearChannel(state.feedChannelId);
+    if (cleared >= 0) state.feedMessageId = null;
+  }
   if (state.feedChannelId) {
     const embed = feedEmbed(slug, markets, tickets);
     const ed = state.feedMessageId ? await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [embed], components: [MY_BETS_ROW] }) : null;
@@ -340,10 +347,11 @@ async function syncMarketChannelsNow(slug: string): Promise<string> {
   }
   const futuresEdits = await fillFutures(d, markets, tickets, state);
 
-  // weekly odds charts in #market-feed (once per week, after the advance)
+  // odds charts in #market-feed: reposted with every sync now that the channel is cleared first
+  // (if clearing failed, only once per week as before, so they don't pile up)
   const key = weekKeyOf(d);
   let charts = 0;
-  if (state.feedChannelId && state.chartsWeek !== key) {
+  if (state.feedChannelId && (cleared >= 0 || state.chartsWeek !== key)) {
     charts = await postOddsCharts(slug, d, markets, state.feedChannelId, key);
     if (charts) state.chartsWeek = key;
   }
@@ -492,6 +500,30 @@ export async function postPayoutsNow(slug: string): Promise<string> {
 }
 
 /** The week's odds charts: Super Bowl + conferences (+ #1 seeds), then the 8 divisions. Returns charts posted. */
+/** Deletes every message in a channel (newest 1,000). Bulk-deletes what's under 14 days old when the
+ *  bot has Manage Messages, else one by one (the bot's own posts don't need it). -1 if it couldn't read the channel. */
+async function clearChannel(channel: string): Promise<number> {
+  let n = 0, bulk = true;
+  for (let page = 0; page < 10; page++) {
+    const r = await dc("GET", `/channels/${channel}/messages?limit=100`);
+    if (!r.ok) return page ? n : -1;
+    const ids = (r.data as unknown as { id: string }[]).map((m) => String(m.id));
+    if (!ids.length) break;
+    const cutoff = Date.now() - 13.5 * 864e5;
+    const recent = ids.filter((id) => Number(BigInt(id) >> BigInt(22)) + 1420070400000 > cutoff);
+    let left = ids;
+    if (bulk && recent.length >= 2) {
+      const b = await dc("POST", `/channels/${channel}/messages/bulk-delete`, { messages: recent });
+      if (b.ok) { n += recent.length; left = ids.filter((id) => !recent.includes(id)); } else bulk = false;
+    }
+    let gone = 0;
+    for (const id of left) { const d = await dc("DELETE", `/channels/${channel}/messages/${id}`); if (d.ok || d.status === 404) { n++; gone++; } }
+    if (left.length && !gone && left.length === ids.length) break; // can't delete these (someone else's post, no Manage Messages)
+    if (ids.length < 100) break;
+  }
+  return n;
+}
+
 async function postOddsCharts(slug: string, d: LeagueData, markets: Market[], channel: string, week: string): Promise<number> {
   const embedOf = (m: Market): Embed => {
     const top = m.outcomes.filter((o) => o.state !== "lost").sort((a, b) => b.p - a.p).slice(0, 4);
@@ -505,7 +537,7 @@ async function postOddsCharts(slug: string, d: LeagueData, markets: Market[], ch
   };
   const pick = (keys: string[]) => keys.map((k) => markets.find((m) => m.key === k)).filter((m): m is Market => Boolean(m));
   const groups = [
-    { head: `📈 **Odds after the advance: ${d.season.title}**\nThe title races, from the market price (moves with every bet).`, list: pick(["sb", "conf-afc", "conf-nfc", "seed1-afc", "seed1-nfc"]) },
+    { head: `📈 **Odds as of this sync: ${d.season.title}**\nThe title races, from the market price (moves with every bet).`, list: pick(["sb", "conf-afc", "conf-nfc", "seed1-afc", "seed1-nfc"]) },
     { head: "📈 **Division races**", list: markets.filter((m) => m.cat === "division") },
   ];
   let n = 0;

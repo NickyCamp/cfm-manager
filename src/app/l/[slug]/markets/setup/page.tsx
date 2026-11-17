@@ -66,7 +66,7 @@ export default async function MarketsSetup({ params }: Props) {
           <h3>3. Create the Markets channels</h3>
           <p>An admin runs <code>/marketchannels</code>. The bot makes a <strong>Markets</strong> category, in this order:</p>
           <ul>
-            <li><code>#market-feed</code>: the season-long markets at a glance, every bet on them, and weekly odds charts.</li>
+            <li><code>#market-feed</code>: the season-long markets at a glance, bets on them, and odds charts; cleared and reposted with every sync.</li>
             <li><code>#futures</code>: bet the Super Bowl (pick a team), each division (a button per team) and the player awards. For awards, pick a contender or tap <em>Any other player</em> and type a name: any eligible player can be bet on.</li>
             <li><code>#previous-week-payouts</code> (UnbelievaBoat leagues, after the first advance).</li>
             <li>One channel per game this week, where every bet line has Yes/No buttons.</li>
