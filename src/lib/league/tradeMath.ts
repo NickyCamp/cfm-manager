@@ -141,13 +141,24 @@ export function pickSlot(k: Pick, owner: PickOwner, firstDraft: number): { slot:
 }
 export const overallPick = (r: number, slot: number) => (r - 1) * 32 + slot;
 
-/** Draft pick value by overall pick number: 45 for #1, ~18 for #32, ~7 for #64, under 1 by the late rounds;
- *  ×0.85 for each year out. */
+/**
+ * Draft pick value by overall pick number (Nick, 2026-11-17: picks were undervalued; a mid-1st should
+ * be worth a good starter, ~80 UR). Straight lines between these points: #1 90, #16 65 (≈ an 80-UR
+ * WR), #32 45, #48 25, #64 16, #96 8, #128 4, #160 2.5, #224 1. ×0.85 for each year out.
+ */
+const PICK_CURVE: [number, number][] = [[1, 90], [16, 65], [32, 45], [48, 25], [64, 16], [96, 8], [128, 4], [160, 2.5], [224, 1]];
+export function pickPoints(n: number) {
+  if (n <= 1) return PICK_CURVE[0][1];
+  for (let i = 1; i < PICK_CURVE.length; i++) {
+    const [x1, y1] = PICK_CURVE[i];
+    if (n <= x1) { const [x0, y0] = PICK_CURVE[i - 1]; return y0 + ((y1 - y0) * (n - x0)) / (x1 - x0); }
+  }
+  return 1;
+}
 export function pickValue(k: Pick, owner: PickOwner, firstYear: number) {
   const { slot } = pickSlot(k, owner, firstYear);
-  const n = overallPick(k.r, slot);
   const later = Math.max(0, k.y - firstYear);
-  return (45 * Math.exp(-0.03 * (n - 1)) + 0.5) * Math.pow(0.85, later);
+  return pickPoints(overallPick(k.r, slot)) * Math.pow(0.85, later);
 }
 
 const ordinalNum = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
