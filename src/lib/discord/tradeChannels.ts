@@ -12,7 +12,7 @@
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { getLeagueData } from "@/lib/league/load";
 import { buildTradeData, parseTrade } from "@/lib/league/tradeData";
-import { ROUND, scoreTrade } from "@/lib/league/tradeMath";
+import { pickSpotText, ROUND, scoreTrade, type Pick } from "@/lib/league/tradeMath";
 import { money } from "@/lib/league/format";
 import { discordOf, leagueBySlug, leagueForGuild, type LinkedLeague } from "./links";
 import { hexColor, type Embed } from "./api";
@@ -33,6 +33,7 @@ export type TradeProposal = {
   a: string; b: string;                       // team abbreviations
   pa: number[]; pb: number[];                 // players each side sends
   by: string;                                 // submitter: Discord id, or a name
+  picks?: { a: string[]; b: string[] };       // picks each side sends, with their spot ("2028 1st round pick (#23, 23rd overall …)")
   messageId: string | null;
   yes: string[]; no: string[];                // Discord ids of the admins who voted
   status: "open" | "approved" | "rejected";
@@ -169,11 +170,11 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
   const { a, b } = parseTrade(td, query);
   if (!a.team || !b.team || a.team === b.team) throw new Error("Pick two different teams.");
   if (!a.players.length && !a.picks.length && !b.players.length && !b.picks.length) throw new Error("Add what each team sends first.");
-  const s = scoreTrade({ players: td.players, teams: td.teams, years: td.years, firstDraft: td.firstDraft, a, b });
+  const s = scoreTrade({ players: td.players, teams: td.teams, years: td.years, firstDraft: td.firstDraft, a, b, orderFinal: td.orderFinal });
   if (!s) throw new Error("Couldn't score that trade.");
 
   // The same trade twice within 10 minutes is a double tap.
-  const key = [query.a, query.b, a.players.join(","), b.players.join(","), a.picks.map((k) => `${k.y}-${k.r}`).join(","), b.picks.map((k) => `${k.y}-${k.r}`).join(",")].join("|");
+  const key = [query.a, query.b, a.players.join(","), b.players.join(","), a.picks.map((k) => `${k.y}-${k.r}-${k.s ?? ""}`).join(","), b.picks.map((k) => `${k.y}-${k.r}-${k.s ?? ""}`).join(",")].join("|");
   const prev = stateOf(lg)?.recent?.[key];
   if (prev && Date.now() - Date.parse(prev) < 10 * 60_000) throw new Error("This exact trade was just posted.");
 
@@ -187,20 +188,22 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
   const roles = await teamRoles(discordOf(lg)!.guildId, d.teams).catch(() => new Map<number, string>());
   const tag = (t: typeof ta) => (roles.get(t.id) ? `<@&${roles.get(t.id)}>` : `**${t.name}**`);
   const byId = new Map(td.players.map((p) => [p.id, p]));
-  const list = (ids: number[], picks: { y: number; r: number }[]) =>
-    [...ids.map((id) => { const p = byId.get(id)!; return `${p.pos} ${p.n} (${p.ovr} OVR, ${p.ur} UR, ${money(p.hits[0])})`; }), ...picks.map((k) => `${k.y} ${ROUND[k.r]} round pick`)].join("\n") || "Nothing";
+  const slotOf = new Map(td.teams.map((t) => [t.id, t.slot]));
+  const pickText = (k: Pick, from: number) => `${k.y} ${ROUND[k.r]} round pick (${pickSpotText(k, slotOf.get(from) || 16, td.firstDraft, td.orderFinal)})`;
+  const list = (ids: number[], picks: Pick[], from: number) =>
+    [...ids.map((id) => { const p = byId.get(id)!; return `${p.pos} ${p.n} (${p.ovr} OVR, ${p.ur} UR, ${money(p.hits[0])})`; }), ...picks.map((k) => pickText(k, from))].join("\n") || "Nothing";
   const link = `${APP_URL}/l/${slug}/trades?${new URLSearchParams(Object.entries(query).filter(([, v]) => v)).toString()}`;
   const proposal: TradeProposal = {
     id: Date.now().toString(36), at: new Date().toISOString(), query, a: ta.abbr, b: tb.abbr, pa: a.players, pb: b.players,
-    by: by.discordId || by.name, messageId: null, yes: [], no: [], status: "open",
+    by: by.discordId || by.name, picks: { a: a.picks.map((k) => pickText(k, a.team!)), b: b.picks.map((k) => pickText(k, b.team!)) }, messageId: null, yes: [], no: [], status: "open",
   };
   const embed: Embed = {
     title: `${ta.abbr} ⇄ ${tb.abbr}: ${s.verdict} (${ta.abbr} ${s.score} · ${100 - s.score} ${tb.abbr})`,
     url: link,
     color: hexColor(s.favored?.primary || ta.primary),
     fields: [
-      { name: `${ta.name} get (grade ${s.a.grade})`, value: list(b.players, b.picks).slice(0, 1024), inline: true },
-      { name: `${tb.name} get (grade ${s.b.grade})`, value: list(a.players, a.picks).slice(0, 1024), inline: true },
+      { name: `${ta.name} get (grade ${s.a.grade})`, value: list(b.players, b.picks, b.team).slice(0, 1024), inline: true },
+      { name: `${tb.name} get (grade ${s.b.grade})`, value: list(a.players, a.picks, a.team).slice(0, 1024), inline: true },
       voteField(proposal),
     ],
     image: { url: "attachment://trade.png" },

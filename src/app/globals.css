@@ -1637,3 +1637,6 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .ts-submit .btn { min-height: 44px; }
 @media (max-width: 720px) { .ts-sides { grid-template-columns: minmax(0, 1fr); } }
 .ts-list li.ts-label { display: block; border-bottom: 0; padding: 8px 0 0; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.trade-chips li.trade-pick-chip { flex-wrap: wrap; border-radius: var(--radius-control); }
+.trade-pick-slot { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.trade-pick-slot input { width: 58px; min-height: 32px; padding: 2px 6px; border: 1.5px solid var(--line); border-radius: var(--radius-control); background: var(--rail); color: var(--ink); font: inherit; }

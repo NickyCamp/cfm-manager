@@ -32,7 +32,7 @@ export default async function TradesPage({ params, searchParams }: Props) {
           Pick two teams and what each one sends. Below, see what the trade does to each team&apos;s cap, year by year, dead money included,
           and a trade score built for a user league. Once both sides agree, submit it to post the proposal in the league&apos;s Discord.
         </p>
-        <TradeTool slug={slug} year={td.year} firstDraft={td.firstDraft} draftYears={td.draftYears} years={td.years} capSet={td.capSet} players={td.players} teams={td.teams} initial={initial} />
+        <TradeTool slug={slug} year={td.year} firstDraft={td.firstDraft} orderFinal={td.orderFinal} draftYears={td.draftYears} years={td.years} capSet={td.capSet} players={td.players} teams={td.teams} initial={initial} />
       </div>
     </main>
   );

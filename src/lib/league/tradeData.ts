@@ -98,23 +98,51 @@ export function buildTradeData(d: LeagueData) {
     });
   }
 
-  // Projected 1st-round slot: worst record picks first (win %, then points for/against).
-  const order = [...d.teams].sort((x, y) => x.rec.pct - y.rec.pct || (x.rec.pf - x.rec.pa) - (y.rec.pf - y.rec.pa));
-  const slot = new Map(order.map((t, i) => [t.id, i + 1]));
+  const { slot, final: orderFinal } = draftOrder(d, firstDraft);
   const teams: TradeTeam[] = [...d.teams].sort((a, b) => a.city.localeCompare(b.city)).map((t) => ({
     id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary, active: active.get(t.id) || 0,
     committed: committed.get(t.id)!, slot: slot.get(t.id) || 16,
     cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),
   }));
 
-  return { year, years, firstDraft, draftYears, capSet: years.map((y) => isCapSet(year, y, d.knownCaps)), players, teams };
+  return { year, years, firstDraft, orderFinal, draftYears, capSet: years.map((y) => isCapSet(year, y, d.knownCaps)), players, teams };
 }
 export type TradeData = ReturnType<typeof buildTradeData>;
+
+/**
+ * Each team's spot in the next draft's order (1 = first pick). Madden's order: teams that missed the
+ * playoffs, worst record first; then playoff teams by the round they went out (Wild Card, Divisional,
+ * Conference), worst record first within each; the Super Bowl loser 31st and the winner 32nd. Ties:
+ * worse point differential first. Before the season is over it's a projection from the current
+ * records (final = false). Once the draft has happened, the next order isn't known yet: records reset,
+ * so everyone sits mid-round until games are played.
+ */
+export function draftOrder(d: LeagueData, firstDraft: number): { slot: Map<number, number>; final: boolean } {
+  const byRecord = (a: (typeof d.teams)[number], b: (typeof d.teams)[number]) => a.rec.pct - b.rec.pct || (a.rec.pf - a.rec.pa) - (b.rec.pf - b.rec.pa);
+  const played = d.teams.some((t) => t.rec.w + t.rec.l + t.rec.t > 0);
+  if (firstDraft > d.season.year + 1 && !played) return { slot: new Map(d.teams.map((t) => [t.id, 16])), final: false };
+  // Playoff games: stage 1, week index 18+ (Wild Card 18, Divisional 19, Conference 20, Super Bowl 22).
+  const po = d.games.filter((g) => g.stage === 1 && g.week >= 18 && g.home && g.away);
+  const out = new Map<number, number>(); // team → the round it lost in (18..22)
+  let champ = 0;
+  for (const g of po) {
+    if (!g.final) continue;
+    const loser = g.hs > g.as ? g.away : g.home;
+    out.set(loser, g.week);
+    if (g.week === 22) champ = loser === g.home ? g.away : g.home;
+  }
+  const inPlayoffs = new Set(po.flatMap((g) => [g.home, g.away]));
+  const final = Boolean(champ) && firstDraft === d.season.year + 1;
+  const tier = (id: number) => (!inPlayoffs.has(id) ? 0 : id === champ ? 6 : out.has(id) ? out.get(id)! - 17 : 5);
+  const order = [...d.teams].sort((a, b) => tier(a.id) - tier(b.id) || byRecord(a, b));
+  return { slot: new Map(order.map((t, i) => [t.id, i + 1])), final };
+}
 
 /** Parses the Trade Tool's query (?a=NYJ&b=PIT&pa=1,2&pb=3&ka=2028-1&kb=...) into sides. */
 export function parseTrade(td: Pick<TradeData, "teams" | "players">, q: Record<string, string | undefined>) {
   const ids = (s?: string) => (s || "").split(",").map(Number).filter((n) => n > 0);
-  const picks = (s?: string) => (s || "").split(",").map((x) => x.split("-").map(Number)).filter(([y, r]) => y > 2000 && r >= 1 && r <= 7).map(([y, r]) => ({ y, r }));
+  const picks = (s?: string) => (s || "").split(",").map((x) => x.split("-").map(Number)).filter(([y, r]) => y > 2000 && r >= 1 && r <= 7)
+    .map(([y, r, n]) => (n >= 1 && n <= 32 ? { y, r, s: n } : { y, r }));
   const a = td.teams.find((t) => t.abbr === q.a)?.id ?? null, b = td.teams.find((t) => t.abbr === q.b)?.id ?? null;
   const team = new Map(td.players.map((p) => [p.id, p.t]));
   return {

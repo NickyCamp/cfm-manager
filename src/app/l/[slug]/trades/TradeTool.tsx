@@ -2,12 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { money, onColor } from "@/lib/league/format";
-import { capRows, DEV, GROUP_NAME, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
+import { capRows, DEV, GROUP_NAME, pickSlot, pickSpotText, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
 
 export type { TradePlayer, TradeTeam };
 
-export function TradeTool({ slug, year, firstDraft, draftYears, years, capSet, players, teams, initial }: {
-  slug: string; year: number; firstDraft: number; draftYears: number[]; years: number[]; capSet: boolean[]; players: TradePlayer[]; teams: TradeTeam[];
+export function TradeTool({ slug, year, firstDraft, orderFinal, draftYears, years, capSet, players, teams, initial }: {
+  slug: string; year: number; firstDraft: number; orderFinal: boolean; draftYears: number[]; years: number[]; capSet: boolean[]; players: TradePlayer[]; teams: TradeTeam[];
   initial: { a: number | null; b: number | null; pa: number[]; pb: number[]; ka: Pick[]; kb: Pick[] };
 }) {
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
@@ -24,8 +24,8 @@ export function TradeTool({ slug, year, firstDraft, draftYears, years, capSet, p
     if (tb) q.set("b", tb.abbr);
     if (a.players.length) q.set("pa", a.players.join(","));
     if (b.players.length) q.set("pb", b.players.join(","));
-    if (a.picks.length) q.set("ka", a.picks.map((k) => `${k.y}-${k.r}`).join(","));
-    if (b.picks.length) q.set("kb", b.picks.map((k) => `${k.y}-${k.r}`).join(","));
+    if (a.picks.length) q.set("ka", a.picks.map(pickParam).join(","));
+    if (b.picks.length) q.set("kb", b.picks.map(pickParam).join(","));
     const s = q.toString();
     window.history.replaceState(null, "", `/l/${slug}/trades${s ? `?${s}` : ""}`);
   }, [a, b, slug, teamById]);
@@ -33,17 +33,17 @@ export function TradeTool({ slug, year, firstDraft, draftYears, years, capSet, p
   const ready = a.team && b.team && a.team !== b.team;
   const anything = a.players.length + b.players.length + a.picks.length + b.picks.length > 0;
   const swap = () => { setA(b); setB(a); };
-  const score = useMemo(() => (ready && anything ? scoreTrade({ players, teams, years, firstDraft, a, b }) : null), [ready, anything, players, teams, years, firstDraft, a, b]);
+  const score = useMemo(() => (ready && anything ? scoreTrade({ players, teams, years, firstDraft, a, b, orderFinal }) : null), [ready, anything, players, teams, years, firstDraft, a, b, orderFinal]);
   const reset = () => { setA({ team: a.team, players: [], picks: [] }); setB({ team: b.team, players: [], picks: [] }); };
 
   return (
     <>
       <div className="trade-sides">
-        <SidePicker label="Team 1" side={a} setSide={setA} other={b.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} />
+        <SidePicker label="Team 1" side={a} setSide={setA} other={b.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} firstDraft={firstDraft} orderFinal={orderFinal} />
         <div className="trade-swap">
           <button type="button" className="btn btn-quiet trade-swap-btn" onClick={swap} aria-label="Swap sides" title="Swap sides">⇄</button>
         </div>
-        <SidePicker label="Team 2" side={b} setSide={setB} other={a.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} />
+        <SidePicker label="Team 2" side={b} setSide={setB} other={a.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} firstDraft={firstDraft} orderFinal={orderFinal} />
       </div>
 
       {!ready ? (
@@ -73,9 +73,9 @@ export function TradeTool({ slug, year, firstDraft, draftYears, years, capSet, p
   );
 }
 
-function SidePicker({ label, side, setSide, other, teams, players, playerById, draftYears }: {
+function SidePicker({ label, side, setSide, other, teams, players, playerById, draftYears, firstDraft, orderFinal }: {
   label: string; side: Side; setSide: (s: Side) => void; other: number | null; teams: TradeTeam[];
-  players: TradePlayer[]; playerById: Map<number, TradePlayer>; draftYears: number[];
+  players: TradePlayer[]; playerById: Map<number, TradePlayer>; draftYears: number[]; firstDraft: number; orderFinal: boolean;
 }) {
   const [q, setQ] = useState("");
   const team = teams.find((t) => t.id === side.team);
@@ -119,12 +119,27 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
                   </li>
                 );
               })}
-              {side.picks.map((k) => (
-                <li key={`${k.y}-${k.r}`}>
-                  <span><strong>{k.y} {ROUND[k.r]} round pick</strong></span>
-                  <button type="button" aria-label="Remove pick" onClick={() => setSide({ ...side, picks: side.picks.filter((x) => x !== k) })}>×</button>
-                </li>
-              ))}
+              {side.picks.map((k) => {
+                const auto = pickSlot({ y: k.y, r: k.r }, team.slot, firstDraft).slot;
+                const setSlot = (v: string) => {
+                  const n = Math.round(Number(v));
+                  setSide({ ...side, picks: side.picks.map((x) => (x === k ? (n >= 1 && n <= 32 && n !== auto ? { y: k.y, r: k.r, s: n } : { y: k.y, r: k.r }) : x)) });
+                };
+                return (
+                  <li key={`${k.y}-${k.r}`} className="trade-pick-chip">
+                    <span>
+                      <strong>{k.y} {ROUND[k.r]} round pick</strong>
+                      <span className="muted small"> {pickSpotText(k, team.slot, firstDraft, orderFinal)}</span>
+                    </span>
+                    <label className="trade-pick-slot small" title="Pick number within the round. Leave it on the automatic number unless the real pick is different (e.g. a pick this team got from someone else).">
+                      #
+                      <input type="number" min={1} max={32} inputMode="numeric" value={k.s ?? auto} onChange={(e) => setSlot(e.target.value)} aria-label={`${k.y} ${ROUND[k.r]} round pick number in the round`} />
+                      {k.s ? <button type="button" className="btn-link small" onClick={() => setSlot("")}>auto</button> : null}
+                    </label>
+                    <button type="button" aria-label="Remove pick" onClick={() => setSide({ ...side, picks: side.picks.filter((x) => x !== k) })}>×</button>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -280,6 +295,8 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
 }
 
 
+const pickParam = (k: Pick) => `${k.y}-${k.r}${k.s ? `-${k.s}` : ""}`;
+
 function describe(ps: TradePlayer[], picks: Pick[]) {
   const parts = [...ps.map((p) => p.n), ...picks.map((k) => `${k.y} ${ROUND[k.r]}`)];
   return parts.length ? parts.join(", ") : "nothing";
@@ -342,8 +359,9 @@ function ScorePanel({ s, slug, a, b, teamById }: { s: NonNullable<ReturnType<typ
           (about half the weight at skill positions). Value grows steeply with UR, then adjusts for position (QB, WR, CB and edge count most),
           age, dev trait, years of control and how his cap hit compares with what that value is worth. A team gets full value for a player
           who upgrades a starting spot, extra if that spot is a weak one, and about half for one who&apos;d sit behind better players. Losing a
-          starter costs more when nobody good is behind him. Cap space gained counts a little; picks are valued by round, with this
-          year&apos;s 1st by the sending team&apos;s record. Grades compare what each team gets with what it gives, so both teams can come out ahead.
+          starter costs more when nobody good is behind him. Cap space gained counts a little; picks are valued by their spot in the draft (round and
+          pick number). Each pick starts at its team&apos;s spot in the next draft order (final once the playoffs are over, projected
+          from records before that; later drafts are estimates), and you can type the real number if it&apos;s different. Grades compare what each team gets with what it gives, so both teams can come out ahead.
         </p>
       </details>
     </section>

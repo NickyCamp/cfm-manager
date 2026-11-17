@@ -40,8 +40,10 @@ export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData,
     });
     const picks = (abbr: string) => {
       if (!match) return [];
-      const k = match.a === abbr ? match.query.kb : match.query.ka; // what this team received
-      return (k || "").split(",").filter(Boolean).map((x) => { const [y, r] = x.split("-").map(Number); return `${y} ${ROUND[r] || r} round pick`; });
+      // what this team received = what the other side sent
+      if (match.picks) return match.a === abbr ? match.picks.b : match.picks.a;
+      const k = match.a === abbr ? match.query.kb : match.query.ka;
+      return (k || "").split(",").filter(Boolean).map((x) => { const [y, r, n] = x.split("-").map(Number); return `${y} ${ROUND[r] || r} round pick${n ? ` (#${n})` : ""}`; });
     };
     const got = (t: typeof ta, ps: Player[]) => ([...ps.sort((x, y) => y.ovr - x.ovr).map(line), ...picks(t.abbr)].join("\n") || "Nothing (picks aren't in EA's export)").slice(0, 1024);
     const proposalLink = match?.messageId && guildId ? `https://discord.com/channels/${guildId}/${st.channelId}/${match.messageId}` : null;

@@ -28,7 +28,8 @@ export type TradeTeam = {
   id: number; abbr: string; name: string; primary: string; active: number; committed: number[]; cap: number[];
   slot: number;      // projected 1st-round slot from the standings (1 = worst record)
 };
-export type Pick = { y: number; r: number };
+/** A draft pick: year, round, and (optional) its slot in the round, set by hand when the automatic one is wrong. */
+export type Pick = { y: number; r: number; s?: number };
 export type Side = { team: number | null; players: number[]; picks: Pick[] };
 
 export const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
@@ -119,13 +120,39 @@ export function playerValue(p: { g: string; ur: number; age: number; dev: number
   return base * age * dev * control * contract;
 }
 
-/** Draft pick value. slot = projected 1st-round slot of the team sending it (1 = worst record).
- *  firstYear = the next draft. Later drafts are worth less and their slot is unknown. */
-export function pickValue(k: Pick, slot: number, firstYear: number) {
+/**
+ * Which pick in the round a team's pick is (Nick, 2026-11-17: picks should know their real spot, with a
+ * manual override). EA's export has no pick list, so the automatic slot is the team's own: the next
+ * draft's order from the standings (final once the season is over: non-playoff teams worst first, then
+ * playoff teams by the round they went out, Super Bowl winner last). A set slot (k.s) always wins.
+ * The draft after next is half-way to the middle of the round; later ones are the middle.
+ */
+export function pickSlot(k: Pick, ownerSlot: number, firstDraft: number): { slot: number; how: "set" | "order" | "projected" | "estimate" } {
+  if (k.s && k.s >= 1 && k.s <= 32) return { slot: k.s, how: "set" };
+  const later = k.y - firstDraft;
+  if (later <= 0) return { slot: ownerSlot, how: "order" };
+  if (later === 1) return { slot: Math.round((ownerSlot + 16.5) / 2), how: "estimate" };
+  return { slot: 16, how: "estimate" };
+}
+export const overallPick = (r: number, slot: number) => (r - 1) * 32 + slot;
+
+/** Draft pick value by overall pick number: 45 for #1, ~18 for #32, ~7 for #64, under 1 by the late rounds;
+ *  ×0.85 for each year out. */
+export function pickValue(k: Pick, ownerSlot: number, firstYear: number) {
+  const { slot } = pickSlot(k, ownerSlot, firstYear);
+  const n = overallPick(k.r, slot);
   const later = Math.max(0, k.y - firstYear);
-  const r1 = later === 0 ? 45 - (20 * (Math.min(32, Math.max(1, slot)) - 1)) / 31 : 35;
-  const v = [0, r1, 15, 8, 4, 2.5, 1.5, 1][k.r] ?? 0;
-  return v * Math.pow(0.85, later);
+  return (45 * Math.exp(-0.03 * (n - 1)) + 0.5) * Math.pow(0.85, later);
+}
+
+const ordinalNum = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
+/** "#23, 23rd overall" / "~#20 (estimate)" for showing a pick's spot. */
+export function pickSpotText(k: Pick, ownerSlot: number, firstDraft: number, orderFinal: boolean) {
+  const { slot, how } = pickSlot(k, ownerSlot, firstDraft);
+  const n = overallPick(k.r, slot);
+  if (how === "estimate") return `~#${slot} in the round (estimate)`;
+  const tag = how === "set" ? "set by hand" : orderFinal ? "draft order" : "projected";
+  return `#${slot}, ${ordinalNum(n)} overall (${tag})`;
 }
 
 // ---------------------------------------------------------------- trade score
@@ -169,9 +196,10 @@ function needLevel(start: number[], leagueAvg: number) {
 const ordinal = (k: number, g: string) => (STARTERS[g] > 1 ? `${GROUP_NAME[g] || g}${k + 1}` : `starting ${GROUP_NAME[g] || g}`);
 
 export function scoreTrade(args: {
-  players: TradePlayer[]; teams: TradeTeam[]; years: number[]; firstDraft: number; a: Side; b: Side;
+  players: TradePlayer[]; teams: TradeTeam[]; years: number[]; firstDraft: number; a: Side; b: Side; orderFinal?: boolean;
 }): TradeScore | null {
   const { players, years, firstDraft } = args;
+  const orderFinal = Boolean(args.orderFinal);
   const byId = new Map(players.map((p) => [p.id, p]));
   const teamOf = new Map(args.teams.map((t) => [t.id, t]));
   if (!args.a.team || !args.b.team) return null;
@@ -206,7 +234,7 @@ export function scoreTrade(args: {
         : `Backup behind ${spot} better ${GROUP_NAME[p.g] || p.g}${spot === 1 ? "" : "s"}`;
       return { kind: "player", id: String(p.id), label: p.n, sub: `${p.pos} · ${p.ovr} OVR · ${p.ur} UR`, value: p.v, fit, worth: p.v * fit, note };
     });
-    getsA.push(...gets.picks.map((k) => pickAsset(k, teamOf.get(gets.team!)!, firstDraft)));
+    getsA.push(...gets.picks.map((k) => pickAsset(k, teamOf.get(gets.team!)!, firstDraft, orderFinal)));
 
     // Players going out: cost = how much the lineup drops without him, before anyone arrives (the
     // players coming in already get credit above for filling the spot, so it isn't counted twice).
@@ -219,7 +247,7 @@ export function scoreTrade(args: {
       const note = drop > 0 ? `Starter lost${hole >= 0.6 ? `; leaves a hole at ${GROUP_NAME[p.g] || p.g}` : ""}` : "Depth piece; starters unchanged";
       return { kind: "player", id: String(p.id), label: p.n, sub: `${p.pos} · ${p.ovr} OVR · ${p.ur} UR`, value: p.v, fit, worth: p.v * fit, note };
     });
-    givesA.push(...sends.picks.map((k) => pickAsset(k, team, firstDraft)));
+    givesA.push(...sends.picks.map((k) => pickAsset(k, team, firstDraft, orderFinal)));
 
     const rows = capRows(team, out, inc, years);
     // Cap room has value: each $1M of space gained this season (or next, at 60%) ≈ 0.3 points,
@@ -245,8 +273,7 @@ export function scoreTrade(args: {
   return { a: A, b: B, score, verdict, favored };
 }
 
-function pickAsset(k: Pick, owner: TradeTeam, firstDraft: number): AssetScore {
+function pickAsset(k: Pick, owner: TradeTeam, firstDraft: number, orderFinal: boolean): AssetScore {
   const v = pickValue(k, owner.slot, firstDraft);
-  const sub = k.r === 1 && k.y === firstDraft ? `projected #${owner.slot}` : k.y > firstDraft ? "future pick" : "draft pick";
-  return { kind: "pick", id: `${k.y}-${k.r}`, label: `${k.y} ${ROUND[k.r]} (${owner.abbr})`, sub, value: v, fit: 1, worth: v, note: "" };
+  return { kind: "pick", id: `${k.y}-${k.r}`, label: `${k.y} ${ROUND[k.r]} (${owner.abbr})`, sub: pickSpotText(k, owner.slot, firstDraft, orderFinal), value: v, fit: 1, worth: v, note: "" };
 }
