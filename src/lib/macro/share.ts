@@ -63,6 +63,17 @@ export function encodeState(st: MacroState): string {
   return toB64Url(JSON.stringify(slim));
 }
 
+/** Dragged positions from a shared link: only [x, y] number pairs are kept (a hand-made link with
+ *  anything else here used to break the page for whoever opened it). */
+function cleanMoves(raw: unknown): Record<string, [number, number]> {
+  const out: Record<string, [number, number]> = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>).slice(0, 60)) {
+    if (Array.isArray(v) && v.length === 2 && Number.isFinite(v[0]) && Number.isFinite(v[1]) && typeof v[0] === "number" && typeof v[1] === "number") out[k.slice(0, 40)] = [v[0], v[1]];
+  }
+  return out;
+}
+
 export function decodeState(hash: string): MacroState | null {
   const m = hash.match(/[#&]m=([A-Za-z0-9_-]+)/);
   if (!m) return null;
@@ -78,7 +89,7 @@ export function decodeState(hash: string): MacroState | null {
       os: typeof raw.os === "string" ? raw.os : undefined,
       fl: raw.fl ? 1 : undefined,
       st: Array.isArray(raw.st) ? raw.st.filter((x: Step) => x && typeof x.p === "string" && typeof x.k === "string").slice(0, 200) : [],
-      mv: raw.mv && typeof raw.mv === "object" ? raw.mv : {},
+      mv: cleanMoves(raw.mv),
       t: typeof raw.t === "string" ? raw.t.slice(0, 80) : undefined,
       n: typeof raw.n === "string" ? raw.n.slice(0, 600) : undefined,
       mo: raw.mo ? 1 : undefined,

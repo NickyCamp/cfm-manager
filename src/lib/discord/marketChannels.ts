@@ -19,7 +19,12 @@ import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { postPayoutReport, type PayoutState } from "./payouts";
 import { discordOf, leagueBySlug } from "./links";
 import { BRAND, clip, hexColor, type Embed } from "./api";
-import { dc, sleep } from "./rest";
+import { channelGone, dc, isGone, sleep } from "./rest";
+import { withLeagueLock } from "./lock";
+
+/** True only when Discord says the channel is gone. If Discord can't say (rate limit, outage), assume it's
+ *  still there: recreating on a hiccup is what leaves duplicate channels behind. */
+const surelyGone = (id: string) => channelGone(id).catch(() => false);
 import type { Game, LeagueData, Team } from "@/lib/league/types";
 import { weekTitle } from "@/lib/league/derive";
 
@@ -197,6 +202,7 @@ async function fillFutures(d: LeagueData, markets: Market[], tickets: boolean, s
     const body = { content: stamped(e), components: e.components, allowed_mentions: { parse: [] } };
     const r = have ? await dc("PATCH", `/channels/${state.futuresChannelId}/messages/${have.messageId}`, body) : null;
     if (r?.ok) { have!.sig = sig; n++; continue; }
+    if (r && !isGone(r)) continue; // Discord is busy: leave the message and try next time, rather than post a second copy
     const p = await dc("POST", `/channels/${state.futuresChannelId}/messages`, body);
     if (p.ok) { state.futures[e.key] = { messageId: String(p.data.id), sig }; n++; }
     await sleep(200);
@@ -283,6 +289,13 @@ async function loadAll(slug: string) {
 /** Creates/refreshes the Markets category: rolls game channels on an advance, updates every odds message. */
 export async function syncMarketChannels(slug: string): Promise<string> {
   const lg = await leagueBySlug(slug);
+  if (!lg) return "This league isn't linked to a Discord server (/link).";
+  return withLeagueLock(lg.id, "marketChannels", BUSY, () => syncMarketChannelsNow(slug).catch((e) => `Stopped: ${(e as Error).message}`));
+}
+const BUSY = "The Markets channels are already being updated (a sync, or someone else's command). Give it a minute, then try again.";
+
+async function syncMarketChannelsNow(slug: string): Promise<string> {
+  const lg = await leagueBySlug(slug);
   const guildId = lg ? discordOf(lg)?.guildId : null;
   if (!lg || !guildId) return "This league isn't linked to a Discord server (/link).";
   const all = await loadAll(slug);
@@ -293,8 +306,7 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   // category (if it's gone, start a new one but keep the payouts channel and its Applied buttons)
   let keepPayouts: PayoutState | undefined;
   if (state?.categoryId) {
-    const c = await dc("GET", `/channels/${state.categoryId}`);
-    if (!c.ok) { keepPayouts = state.payouts; state = null; }
+    if (await channelGone(state.categoryId)) { keepPayouts = state.payouts; state = null; }
   } else if (state) { keepPayouts = state.payouts; state = null; }
   if (!state) {
     const cat = await dc("POST", `/guilds/${guildId}/channels`, { name: "Markets", type: 4 });
@@ -305,7 +317,7 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   }
 
   // the feed channel for season-long markets
-  if (state.feedChannelId && !(await dc("GET", `/channels/${state.feedChannelId}`)).ok) { state.feedChannelId = undefined; state.feedMessageId = null; }
+  if (state.feedChannelId && (await surelyGone(state.feedChannelId))) { state.feedChannelId = undefined; state.feedMessageId = null; }
   if (!state.feedChannelId) {
     const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "market-feed", type: 0, parent_id: state.categoryId, topic: `Season markets and every bet on them · ${APP_URL}/l/${slug}/markets` });
     if (ch.ok) { state.feedChannelId = String(ch.data.id); state.feedMessageId = null; }
@@ -313,11 +325,11 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   if (state.feedChannelId) {
     const embed = feedEmbed(slug, markets, tickets);
     const ed = state.feedMessageId ? await dc("PATCH", `/channels/${state.feedChannelId}/messages/${state.feedMessageId}`, { embeds: [embed], components: [MY_BETS_ROW] }) : null;
-    if (!ed?.ok) { const m = await dc("POST", `/channels/${state.feedChannelId}/messages`, { embeds: [embed], components: [MY_BETS_ROW], allowed_mentions: { parse: [] } }); state.feedMessageId = m.ok ? String(m.data.id) : null; }
+    if (!ed || (!ed.ok && isGone(ed))) { const m = await dc("POST", `/channels/${state.feedChannelId}/messages`, { embeds: [embed], components: [MY_BETS_ROW], allowed_mentions: { parse: [] } }); state.feedMessageId = m.ok ? String(m.data.id) : null; }
   }
 
   // #futures right under the feed
-  if (state.futuresChannelId && !(await dc("GET", `/channels/${state.futuresChannelId}`)).ok) { state.futuresChannelId = undefined; state.futures = {}; }
+  if (state.futuresChannelId && (await surelyGone(state.futuresChannelId))) { state.futuresChannelId = undefined; state.futures = {}; }
   if (!state.futuresChannelId) {
     const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "futures", type: 0, parent_id: state.categoryId, topic: `Super Bowl, division and award bets: pick and bet · ${APP_URL}/l/${slug}/markets` });
     if (ch.ok) {
@@ -349,7 +361,7 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   }
 
   // #previous-week-payouts always exists in Tickets leagues (Nick, 2026-11-14), with a placeholder until the first report
-  if (cfg && state.payouts?.channelId && !(await dc("GET", `/channels/${state.payouts.channelId}`)).ok) state.payouts = { since: state.payouts.since };
+  if (cfg && state.payouts?.channelId && (await surelyGone(state.payouts.channelId))) state.payouts = { since: state.payouts.since };
   if (cfg && !state.payouts?.channelId) {
     const ch = await dc("POST", `/guilds/${guildId}/channels`, { name: "previous-week-payouts", type: 0, parent_id: state.categoryId,
       topic: `Market results to add/remove in UnbelievaBoat, then tap Applied · ${APP_URL}/l/${slug}/markets/activity` });
@@ -372,7 +384,7 @@ export async function syncMarketChannels(slug: string): Promise<string> {
   // create missing channels one at a time (Discord limits channel creation), then fill them in parallel
   for (const g of games) {
     let gc = state.games[String(g.id)];
-    if (gc && !(await dc("GET", `/channels/${gc.channelId}`)).ok) gc = undefined as unknown as GameChannel;
+    if (gc && (await surelyGone(gc.channelId))) gc = undefined as unknown as GameChannel;
     if (!gc) {
       const a = teams.get(g.away), h = teams.get(g.home);
       const ch = await dc("POST", `/guilds/${guildId}/channels`, {
@@ -386,7 +398,7 @@ export async function syncMarketChannels(slug: string): Promise<string> {
     }
   }
   // #transactions at the bottom: every bet and cancel, a fresh channel each week
-  if (state.txChannelId && (state.txWeek !== key || !(await dc("GET", `/channels/${state.txChannelId}`)).ok)) {
+  if (state.txChannelId && (state.txWeek !== key || (await surelyGone(state.txChannelId)))) {
     if (state.txWeek !== key) await dc("DELETE", `/channels/${state.txChannelId}`);
     state.txChannelId = undefined;
   }
@@ -414,6 +426,12 @@ export async function syncMarketChannels(slug: string): Promise<string> {
  *  lose Applied buttons they haven't tapped; anything not applied still carries into the next report. */
 export async function rebuildMarketChannels(slug: string): Promise<string> {
   const lg = await leagueBySlug(slug);
+  if (!lg) return "This league isn't linked to a Discord server (/link).";
+  return withLeagueLock(lg.id, "marketChannels", BUSY, () => rebuildMarketChannelsNow(slug).catch((e) => `Stopped: ${(e as Error).message}`));
+}
+
+async function rebuildMarketChannelsNow(slug: string): Promise<string> {
+  const lg = await leagueBySlug(slug);
   const guildId = lg ? discordOf(lg)?.guildId : null;
   if (!lg || !guildId) return "This league isn't linked to a Discord server (/link).";
   const old = lg.settings?.marketChannels as MarketChannels | undefined;
@@ -433,7 +451,7 @@ export async function rebuildMarketChannels(slug: string): Promise<string> {
   }
   // keep only what must survive: the payouts report (and the week, so no report is posted early)
   await saveState(lg.id, old ? { categoryId: "", weekKey: "", games: {}, payouts: old.payouts } : null);
-  const text = await syncMarketChannels(slug);
+  const text = await syncMarketChannelsNow(slug);
   return `${old?.categoryId ? `Deleted the old Markets category (${removed} channel${removed === 1 ? "" : "s"}${old.payouts?.channelId ? "; #previous-week-payouts kept" : ""}) and rebuilt it. ` : ""}${text}`;
 }
 
@@ -501,7 +519,7 @@ async function fillGameChannel(slug: string, d: LeagueData, g: Game, markets: Ma
   let n = 0;
   const embed = gameEmbed(slug, d, g, markets, tickets);
   const ed = gc.messageId ? await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed], components: [MY_BETS_ROW] }) : null;
-  if (!ed?.ok) { const m = await dc("POST", `/channels/${gc.channelId}/messages`, { embeds: [embed], components: [MY_BETS_ROW], allowed_mentions: { parse: [] } }); gc.messageId = m.ok ? String(m.data.id) : null; n++; }
+  if (!ed || (!ed.ok && isGone(ed))) { const m = await dc("POST", `/channels/${gc.channelId}/messages`, { embeds: [embed], components: [MY_BETS_ROW], allowed_mentions: { parse: [] } }); gc.messageId = m.ok ? String(m.data.id) : null; n++; }
   gc.entries ||= {};
   const main = markets.find((m) => m.key === `game-${g.id}`);
   for (const e of gameEntries(g, markets, Boolean(main?.closed))) {
@@ -511,6 +529,7 @@ async function fillGameChannel(slug: string, d: LeagueData, g: Game, markets: Ma
     const body = { content: stamped(e), components: e.components, allowed_mentions: { parse: [] } };
     const r = have ? await dc("PATCH", `/channels/${gc.channelId}/messages/${have.messageId}`, body) : null;
     if (r?.ok) { have!.sig = sig; n++; continue; }
+    if (r && !isGone(r)) continue; // Discord is busy: leave the line and try next time, rather than post a second copy
     const p = await dc("POST", `/channels/${gc.channelId}/messages`, body);
     if (p.ok) { gc.entries[e.key] = { messageId: String(p.data.id), sig }; n++; }
   }

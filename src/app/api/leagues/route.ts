@@ -6,8 +6,11 @@ import { NextResponse } from "next/server";
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 import { RESERVED_SLUGS, SLUG_RE } from "@/lib/slug";
 import { triggerSync } from "@/lib/dispatch";
+import { decryptJson, encryptJson } from "@/lib/crypto";
+import { EaError, listLeagues, refreshToken, type EaToken } from "@/lib/ea/client";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // one sign-in to the Madden servers to confirm the league
 
 export async function POST(req: Request) {
   const user = await currentUser();
@@ -27,10 +30,30 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { data: conn } = await admin
     .from("ea_connections")
-    .select("id, user_id, console")
+    .select("id, user_id, console, token_ciphertext")
     .eq("id", body.connectionId)
     .single();
   if (!conn || conn.user_id !== user.id) return NextResponse.json({ error: "That EA connection isn't yours. Connect EA again." }, { status: 403 });
+
+  // The league has to be one this EA profile is really in. The league id comes from the browser, and
+  // without this check any signed-in account could send another league's id and be added to it as a
+  // member (members can bet in its Markets, start syncs and link it to a Discord server), or take over
+  // an orphaned one as its owner.
+  const eaLeagueId = Number(body.eaLeagueId);
+  try {
+    const stored = decryptJson<EaToken>(conn.token_ciphertext as string);
+    const tok = await refreshToken(stored);
+    if (tok.accessToken !== stored.accessToken) {
+      await admin.from("ea_connections").update({ token_ciphertext: encryptJson(tok), updated_at: new Date().toISOString() }).eq("id", conn.id);
+    }
+    const mine = await listLeagues(tok);
+    if (!mine.some((l) => l.leagueId === eaLeagueId)) {
+      return NextResponse.json({ error: "EA doesn't list that league for this EA profile. Connect EA again and pick it from the list." }, { status: 403 });
+    }
+  } catch (e) {
+    console.error("add league: EA check failed", e instanceof EaError ? e.detail : e);
+    return NextResponse.json({ error: "Couldn't check with EA that you're in that league. Connect EA again, or try in a minute." }, { status: 502 });
+  }
 
   // Already on CFM Manager? Join it. Matched on the EA league id alone, whatever the
   // console: cross-play leagues have one id on every platform, and keying on the
@@ -38,7 +61,7 @@ export async function POST(req: Request) {
   const { data: existing } = await admin
     .from("leagues")
     .select("id, slug, owner_id, settings")
-    .eq("ea_league_id", body.eaLeagueId)
+    .eq("ea_league_id", eaLeagueId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -63,7 +86,7 @@ export async function POST(req: Request) {
   const { data: league, error } = await admin
     .from("leagues")
     .insert({
-      slug, name, ea_league_id: body.eaLeagueId, console: conn.console,
+      slug, name, ea_league_id: eaLeagueId, console: conn.console,
       owner_id: user.id, ea_connection_id: conn.id, last_sync_status: "pending",
     })
     .select("id, slug")

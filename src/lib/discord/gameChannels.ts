@@ -17,7 +17,12 @@ import { discordOf, leagueBySlug } from "./links";
 import { BRAND, hexColor, type Embed } from "./api";
 import { matchupImageUrl } from "./cardLink";
 import { weekIndex } from "./matchup";
-import { dc, sleep } from "./rest";
+import { channelGone, dc, sleep } from "./rest";
+import { withLeagueLock } from "./lock";
+
+/** True only when Discord says the channel is gone. If Discord can't say (rate limit, outage), assume it's
+ *  still there: recreating on a hiccup is what leaves duplicate channels behind. */
+const surelyGone = (id: string) => channelGone(id).catch(() => false);
 import type { Game, LeagueData, Team } from "@/lib/league/types";
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -55,12 +60,21 @@ async function teamRoles(guildId: string, teams: Team[]): Promise<Map<number, st
 }
 
 /** Team abbr (lowercase) → the Discord id of the member who runs it (linked with /connect). */
-async function managersByTeam(leagueId: string): Promise<Map<string, string>> {
-  const { data } = await supabaseAdmin().from("league_members").select("user_id, team_abbr").eq("league_id", leagueId);
+async function managersByTeam(leagueId: string, teams: Team[]): Promise<Map<string, string>> {
+  const db = supabaseAdmin();
+  const { data } = await db.from("league_members").select("user_id, team_abbr").eq("league_id", leagueId);
+  const members = (data || []).map((r) => ({ user: r.user_id as string, abbr: (r.team_abbr as string | null) || "" }));
+  // Nothing in the app sets team_abbr, so the team usually comes from EA: the team whose in-game user
+  // is one of the member's connected EA names (the same match as card art and the own-game betting rule).
+  const { data: conns } = members.length ? await db.from("ea_connections").select("user_id, persona_name").in("user_id", members.map((m) => m.user)) : { data: [] };
+  const byName = new Map((conns || []).map((c) => [String(c.persona_name || "").trim().toLowerCase(), c.user_id as string]));
+  const userOfTeam = new Map<string, string>();
+  for (const t of teams) { const u = t.user ? byName.get(t.user.trim().toLowerCase()) : undefined; if (u) userOfTeam.set(t.abbr.toLowerCase(), u); }
+  for (const m of members) if (m.abbr) userOfTeam.set(m.abbr.toLowerCase(), m.user);
   const out = new Map<string, string>();
-  await Promise.all((data || []).filter((r) => r.team_abbr).map(async (r) => {
-    const dsc = await discordOfUser(r.user_id).catch(() => null);
-    if (dsc) out.set(String(r.team_abbr).toLowerCase(), dsc.id);
+  await Promise.all([...userOfTeam].map(async ([abbr, user]) => {
+    const dsc = await discordOfUser(user).catch(() => null);
+    if (dsc) out.set(abbr, dsc.id);
   }));
   return out;
 }
@@ -97,6 +111,13 @@ function gameEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: Team, ids: 
  */
 export async function syncGameChannels(slug: string, pick?: { year?: number; week?: number }): Promise<string> {
   const lg = await leagueBySlug(slug);
+  if (!lg) return "This league isn't linked to a Discord server (/link).";
+  return withLeagueLock(lg.id, "gameChannels", BUSY, () => syncGameChannelsNow(slug, pick).catch((e) => `Stopped: ${(e as Error).message}`));
+}
+const BUSY = "The game channels are already being updated (a sync, or someone else's command). Give it a minute, then try again.";
+
+async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: number }): Promise<string> {
+  const lg = await leagueBySlug(slug);
   const guildId = lg ? discordOf(lg)?.guildId : null;
   if (!lg || !guildId) return "This league isn't linked to a Discord server (/link).";
   const d = await getLeagueData(slug);
@@ -120,7 +141,7 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
   // category (renamed for the new week)
   if (state?.categoryId) {
     const c = await dc("GET", `/channels/${state.categoryId}`);
-    if (!c.ok) state = null;
+    if (!c.ok) { if (await channelGone(state.categoryId)) state = null; } // throws if Discord can't say, so a hiccup doesn't start a second category
     else if (c.data.name !== catName) await dc("PATCH", `/channels/${state.categoryId}`, { name: catName });
   }
   if (!state) {
@@ -137,7 +158,7 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
     state.weekKey = key;
   }
 
-  const ids = await managersByTeam(lg.id);
+  const ids = await managersByTeam(lg.id, d.teams);
   const roles = await teamRoles(guildId, d.teams);
   const closes = await closeTimes(lg.id, d.season.year).catch(() => new Map<number, { closeAt: string }>());
 
@@ -145,7 +166,7 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
   for (const g of games) {
     const a = teams.get(g.away)!, h = teams.get(g.home)!;
     let gc = state.games[String(g.id)];
-    if (gc && !(await dc("GET", `/channels/${gc.channelId}`)).ok) gc = undefined as unknown as GameChannel;
+    if (gc && (await surelyGone(gc.channelId))) gc = undefined as unknown as GameChannel;
     const c = closes.get(g.id);
     const embed = gameEmbed(slug, d, g, a, h, ids, c ? fmtET(c.closeAt) : undefined);
     if (!gc) {
@@ -184,6 +205,12 @@ export async function syncGameChannels(slug: string, pick?: { year?: number; wee
 
 /** /gamechannels off: deletes the category and its channels and stops the weekly rollover. */
 export async function removeGameChannels(slug: string): Promise<string> {
+  const lg = await leagueBySlug(slug);
+  if (!lg) return "Game channels aren't set up here.";
+  return withLeagueLock(lg.id, "gameChannels", BUSY, () => removeGameChannelsNow(slug).catch((e) => `Stopped: ${(e as Error).message}`));
+}
+
+async function removeGameChannelsNow(slug: string): Promise<string> {
   const lg = await leagueBySlug(slug);
   const state = lg?.settings?.gameChannels as GameChannels | undefined;
   if (!lg || !state) return "Game channels aren't set up here.";
