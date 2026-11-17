@@ -148,7 +148,7 @@ export const COMMANDS = [
   },
   {
     name: "tradechannels",
-    description: "Admins: make the Trades category with #trade-proposals, where the Trade Tool posts trades",
+    description: "Admins: make the Trades category: proposals (admins vote), approvals, transactions",
     ...SERVER_ONLY,
     options: [
       { type: STRING, name: "action", description: "Leave empty to make it; Remove deletes the Trades category", required: false, choices: [{ name: "Remove", value: "remove" }] },

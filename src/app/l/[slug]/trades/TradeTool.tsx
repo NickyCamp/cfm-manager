@@ -331,7 +331,7 @@ function ScorePanel({ s, slug, a, b, teamById }: { s: NonNullable<ReturnType<typ
         <button type="button" className="btn btn-primary" disabled={state.busy || state.ok} onClick={submit}>
           {state.busy ? "Posting…" : state.ok ? "Posted ✓" : "Submit to Discord"}
         </button>
-        <span className="small muted">Both managers agreed? This posts the trade, with a chart of who gets what and the score, in the league&apos;s #trade-proposals channel.</span>
+        <span className="small muted">Both managers agreed? This posts the trade, with a chart of who gets what and the score, in the league&apos;s #trade-proposals channel, where the admins vote on it.</span>
       </div>
       {state.msg && <p className={`notice ${state.ok ? "ok" : "error"}`} style={{ margin: "10px 0 0" }}>{state.msg}</p>}
       <details className="trade-detail">

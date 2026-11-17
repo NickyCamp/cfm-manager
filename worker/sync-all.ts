@@ -33,6 +33,8 @@ import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
+import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
+import type { TradeChannels } from "../src/lib/discord/tradeChannels";
 import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -47,7 +49,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown } | null;
+  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -77,6 +79,23 @@ async function postDiscordUpdates(lg: League, prev: LeagueData | null, data: Lea
     if (msgs.length) log(`- Posted ${msgs.length} update${msgs.length === 1 ? "" : "s"} to Discord.`);
   } catch (e) {
     log(`- Discord post failed: ${(e as Error).message}`);
+  }
+}
+
+/** #trade-transactions: each trade seen in this sync, linked to the approved proposal it matches. Never fails the sync. */
+async function postTradeTransactions(lg: League, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+  const st = lg.settings?.tradeChannels;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!st?.transactionsId || !token) return;
+  try {
+    const msgs = tradeTransactionPosts(prev, data, st, lg.settings?.discord?.guildId, APP_URL, lg.slug);
+    for (const m of msgs) {
+      const err = await postToChannel(token, st.transactionsId, m);
+      if (err) { log(`- Discord #trade-transactions: ${err}`); return; }
+    }
+    if (msgs.length) log(`- Posted ${msgs.length} trade${msgs.length === 1 ? "" : "s"} to #trade-transactions.`);
+  } catch (e) {
+    log(`- Discord #trade-transactions failed: ${(e as Error).message}`);
   }
 }
 
@@ -174,6 +193,7 @@ async function syncLeague(lg: League): Promise<string> {
   log(`- Saved ${Object.keys(files).length} files (${(bundle.length / 1024).toFixed(0)} KB compressed).`);
   const built = await buildAndSave(lg.slug, files, log);
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
+  if (built) await postTradeTransactions(lg, built.prev, built.data, log);
   if (built) await refreshMarketChannels(lg, log);
   if (built) await refreshGameChannels(lg, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);

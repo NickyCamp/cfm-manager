@@ -10,6 +10,7 @@ import { loadAlertVideo } from "@/lib/discord/links";
 import { anyPlayerModal, type BetReply, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
 import { refreshForMarket } from "@/lib/discord/marketChannels";
 import { leagueForGuild } from "@/lib/discord/links";
+import { tradeVote } from "@/lib/discord/tradeChannels";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
@@ -85,6 +86,20 @@ export async function POST(req: Request) {
     return NextResponse.json(onConfirmation ? { type: 6 } : { type: 5, data: { flags: 1 << 6 } });
   }
 
+  // #trade-proposals: Approve / Reject (admins). Answer at once, then save the vote and edit the post.
+  if (i.type === COMPONENT && cid.startsWith("tv|")) {
+    after(async () => {
+      try {
+        const r = await tradeVote(i as ComponentInteraction);
+        if (r.message) await editOriginal(i.application_id, i.token, r.message as Message);
+        if (r.reply) await followUpPrivate(i.application_id, i.token, r.reply);
+      } catch (e) {
+        console.error("discord trade vote failed", e);
+        await followUpPrivate(i.application_id, i.token, "Something went wrong saving your vote. Try again in a minute.");
+      }
+    });
+    return NextResponse.json({ type: 6 });
+  }
   // #previous-week-payouts: Applied / Undo (admins)
   if (i.type === COMPONENT && (cid.startsWith("mpa|") || cid.startsWith("mpu|"))) {
     // Answer at once and do the work after: the admin-role lookup and the save can take longer than the
