@@ -45,7 +45,7 @@ async function saveState(leagueId: string, state: GameChannels | null) {
 }
 
 /** Team id → the server role for that team, matched by name: "Eagles", "Philadelphia Eagles" or "PHI" (any case). */
-async function teamRoles(guildId: string, teams: Team[]): Promise<Map<number, string>> {
+export async function teamRoles(guildId: string, teams: Team[]): Promise<Map<number, string>> {
   const out = new Map<number, string>();
   const r = await dc("GET", `/guilds/${guildId}/roles`);
   if (!r.ok || !Array.isArray(r.data)) return out;

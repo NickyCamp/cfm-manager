@@ -1617,3 +1617,23 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .tile-link .tile { height: 100%; }
 .tile-link:hover .tile { border-color: var(--field); }
 .ask-years { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 8px; max-width: 220px; margin-left: auto; }
+
+/* ---- Trade score ---- */
+.trade-score .ts-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.ts-grades { display: flex; gap: 8px; }
+.ts-grade { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 4px 8px; border: 2px solid var(--line); border-radius: var(--radius-control); background: var(--rail); }
+.ts-grade b { font-size: 1.5rem; line-height: 1.1; }
+.ts-bar { display: flex; height: 30px; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); margin-bottom: 14px; font-weight: 800; font-size: 0.9rem; }
+.ts-bar span { display: flex; align-items: center; padding: 0 12px; white-space: nowrap; min-width: 0; overflow: hidden; }
+.ts-bar span + span { justify-content: flex-end; }
+.ts-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ts-side h4 { margin: 8px 0 6px; }
+.ts-list { list-style: none; margin: 0; padding: 0; }
+.ts-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.ts-name { display: flex; flex-direction: column; }
+.ts-note { color: var(--ink-soft); }
+.ts-worth { font-weight: 800; }
+.ts-submit { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.ts-submit .btn { min-height: 44px; }
+@media (max-width: 720px) { .ts-sides { grid-template-columns: minmax(0, 1fr); } }
+.ts-list li.ts-label { display: block; border-bottom: 0; padding: 8px 0 0; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }

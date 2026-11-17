@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     "/api/discord/pack": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
     "/api/discord/stats": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
     "/api/discord/matchup": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
+    "/api/leagues/[slug]/trade-proposal": ["./assets/fonts/**", "./public/abilities/**", "./public/frames/**", "./public/ovr/**"],
   },
 };
 

@@ -146,6 +146,14 @@ export const COMMANDS = [
       { type: STRING, name: "action", description: "Leave empty to build/refresh; Remove deletes the game channels", required: false, choices: [{ name: "Remove", value: "remove" }] },
     ],
   },
+  {
+    name: "tradechannels",
+    description: "Admins: make the Trades category with #trade-proposals, where the Trade Tool posts trades",
+    ...SERVER_ONLY,
+    options: [
+      { type: STRING, name: "action", description: "Leave empty to make it; Remove deletes the Trades category", required: false, choices: [{ name: "Remove", value: "remove" }] },
+    ],
+  },
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
   { name: "balance", description: "Your Tickets free to bet: UnbelievaBoat balance, open bets and results not added yet", ...SERVER_ONLY },
   { name: "bets", description: "Your open bets, with buttons to cancel", ...SERVER_ONLY },

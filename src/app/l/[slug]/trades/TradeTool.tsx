@@ -2,25 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { money, onColor } from "@/lib/league/format";
+import { capRows, DEV, GROUP_NAME, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
 
-/** Everything by season from this one (index 0) on. */
-export type TradePlayer = {
-  id: number; n: string; pos: string; t: number; age: number; ovr: number; dev: number; ps: boolean;
-  yl: number;        // years left
-  hits: number[];    // cap hit by season
-  bonus: number[];   // the bonus part of each season's cap hit (stays with the old team)
-  dead: number[];    // void-year bonus still counting after his deal ends
-  pen: number;       // dead money if he leaves now (Madden's own number)
-};
-export type TradeTeam = { id: number; abbr: string; name: string; primary: string; active: number; committed: number[]; cap: number[] };
-type Pick = { y: number; r: number };
-type Side = { team: number | null; players: number[]; picks: Pick[] };
+export type { TradePlayer, TradeTeam };
 
-const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
-const ROUND = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
-
-export function TradeTool({ slug, year, draftYears, years, capSet, players, teams, initial }: {
-  slug: string; year: number; draftYears: number[]; years: number[]; capSet: boolean[]; players: TradePlayer[]; teams: TradeTeam[];
+export function TradeTool({ slug, year, firstDraft, draftYears, years, capSet, players, teams, initial }: {
+  slug: string; year: number; firstDraft: number; draftYears: number[]; years: number[]; capSet: boolean[]; players: TradePlayer[]; teams: TradeTeam[];
   initial: { a: number | null; b: number | null; pa: number[]; pb: number[]; ka: Pick[]; kb: Pick[] };
 }) {
   const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
@@ -46,6 +33,7 @@ export function TradeTool({ slug, year, draftYears, years, capSet, players, team
   const ready = a.team && b.team && a.team !== b.team;
   const anything = a.players.length + b.players.length + a.picks.length + b.picks.length > 0;
   const swap = () => { setA(b); setB(a); };
+  const score = useMemo(() => (ready && anything ? scoreTrade({ players, teams, years, firstDraft, a, b }) : null), [ready, anything, players, teams, years, firstDraft, a, b]);
   const reset = () => { setA({ team: a.team, players: [], picks: [] }); setB({ team: b.team, players: [], picks: [] }); };
 
   return (
@@ -68,6 +56,7 @@ export function TradeTool({ slug, year, draftYears, years, capSet, players, team
             <h3>What the trade does to each cap</h3>
             <button type="button" className="btn-link" onClick={reset}>Clear assets</button>
           </div>
+          {score && <ScorePanel s={score} slug={slug} a={a} b={b} teamById={teamById} />}
           <div className="trade-results">
             <Impact team={teamById.get(a.team!)!} other={teamById.get(b.team!)!} sends={a} gets={b} playerById={playerById} years={years} capSet={capSet} slug={slug} />
             <Impact team={teamById.get(b.team!)!} other={teamById.get(a.team!)!} sends={b} gets={a} playerById={playerById} years={years} capSet={capSet} slug={slug} />
@@ -149,7 +138,7 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
                   <input type="checkbox" checked={on} onChange={() => toggle(p.id)} />
                   <span className="tr-name">
                     {p.n}
-                    <span className="muted small"> {p.pos}, {p.ovr} OVR, age {p.age}{p.dev ? `, ${DEV[p.dev]}` : ""}{p.ps ? ", PS" : ""}</span>
+                    <span className="muted small"> {p.pos}, {p.ovr} OVR · <span title="User rating: his percentile at his position on speed, size and the skills that win user games">{p.ur} UR</span>, age {p.age}{p.dev ? `, ${DEV[p.dev]}` : ""}{p.ps ? ", PS" : ""}</span>
                   </span>
                   <span className="tr-money num">
                     {money(p.hits[0])}
@@ -181,16 +170,7 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
 }) {
   const out = sends.players.map((id) => playerById.get(id)!).filter(Boolean);
   const inc = gets.players.map((id) => playerById.get(id)!).filter(Boolean);
-  const rows = years.map((y, i) => {
-    // Leaving: this season his whole cap hit comes off (then the penalty goes on);
-    // later seasons, his cap hit and any void-year bonus (practice squad deals aren't counted there).
-    const leaving = out.reduce((s, p) => s + (i === 0 ? p.hits[0] : p.ps ? 0 : p.hits[i] + p.dead[i]), 0);
-    const dead = i === 0 ? out.reduce((s, p) => s + p.pen, 0) : 0;
-    const arriving = inc.reduce((s, p) => s + Math.max(0, p.hits[i] - p.bonus[i]), 0);
-    const before = team.cap[i] - team.committed[i];
-    const change = leaving - dead - arriving;
-    return { y: years[i], i, before, leaving, dead, arriving, change, after: before + change };
-  });
+  const rows = capRows(team, out, inc, years);
   const now = rows[0];
   const activeOut = out.filter((p) => !p.ps).length;
   const rosterAfter = team.active - activeOut + inc.length;
@@ -304,3 +284,99 @@ function describe(ps: TradePlayer[], picks: Pick[]) {
   const parts = [...ps.map((p) => p.n), ...picks.map((k) => `${k.y} ${ROUND[k.r]}`)];
   return parts.length ? parts.join(", ") : "nothing";
 }
+
+/** The trade score: who wins, each team's grade, what each asset is worth to the team getting it,
+ *  and the button that posts the proposal to the league's Discord. */
+function ScorePanel({ s, slug, a, b, teamById }: { s: NonNullable<ReturnType<typeof scoreTrade>>; slug: string; a: Side; b: Side; teamById: Map<number, TradeTeam> }) {
+  const [state, setState] = useState<{ busy: boolean; msg?: string; ok?: boolean }>({ busy: false });
+  const key = JSON.stringify([a, b]);
+  useEffect(() => setState({ busy: false }), [key]); // a changed trade can be submitted again
+  const ta = teamById.get(a.team!)!, tb = teamById.get(b.team!)!;
+  const over = [s.a, s.b].filter((t) => t.capNow.after < 0);
+
+  const submit = async () => {
+    setState({ busy: true });
+    const q = new URLSearchParams(window.location.search);
+    try {
+      const r = await fetch(`/api/leagues/${slug}/trade-proposal`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: q.toString() }) });
+      const j = (await r.json().catch(() => ({}))) as { error?: string; message?: string };
+      setState({ busy: false, ok: r.ok, msg: r.ok ? j.message || "Posted to Discord." : j.error || `Couldn't submit (${r.status}).` });
+    } catch {
+      setState({ busy: false, ok: false, msg: "Couldn't reach the site. Try again." });
+    }
+  };
+
+  return (
+    <section className="panel trade-score">
+      <div className="ts-head">
+        <div>
+          <span className="small muted">Trade score</span>
+          <h3 style={{ margin: 0 }}>{s.verdict}</h3>
+        </div>
+        <div className="ts-grades">
+          <span className="ts-grade" style={{ borderColor: ta.primary }}><b>{s.a.grade}</b><span className="small muted">{ta.abbr}</span></span>
+          <span className="ts-grade" style={{ borderColor: tb.primary }}><b>{s.b.grade}</b><span className="small muted">{tb.abbr}</span></span>
+        </div>
+      </div>
+      <div className="ts-bar" role="img" aria-label={`${ta.abbr} ${s.score}, ${tb.abbr} ${100 - s.score}`}>
+        <span style={{ width: `${s.score}%`, background: ta.primary, color: onColor(ta.primary) }}>{ta.abbr} {s.score}</span>
+        <span style={{ width: `${100 - s.score}%`, background: tb.primary, color: onColor(tb.primary) }}>{100 - s.score} {tb.abbr}</span>
+      </div>
+      <div className="ts-sides">
+        <ScoreSide t={s.a} />
+        <ScoreSide t={s.b} />
+      </div>
+      {over.length > 0 && <p className="notice error">{over.map((t) => t.team.abbr).join(" and ")} would be over the {s.a.capNow.y} cap, so Madden won&apos;t accept this yet. You can still post it.</p>}
+      <div className="ts-submit">
+        <button type="button" className="btn btn-primary" disabled={state.busy || state.ok} onClick={submit}>
+          {state.busy ? "Posting…" : state.ok ? "Posted ✓" : "Submit to Discord"}
+        </button>
+        <span className="small muted">Both managers agreed? This posts the trade, with a chart of who gets what and the score, in the league&apos;s #trade-proposals channel.</span>
+      </div>
+      {state.msg && <p className={`notice ${state.ok ? "ok" : "error"}`} style={{ margin: "10px 0 0" }}>{state.msg}</p>}
+      <details className="trade-detail">
+        <summary>How the score works</summary>
+        <p className="hint">
+          OVR isn&apos;t the yardstick. Each player gets a <b>UR</b> (user rating, 1–99): his percentile among the league&apos;s players at his
+          position on the traits that win user games, with speed, acceleration, agility, height and strength weighted far more than Madden does
+          (about half the weight at skill positions). Value grows steeply with UR, then adjusts for position (QB, WR, CB and edge count most),
+          age, dev trait, years of control and how his cap hit compares with what that value is worth. A team gets full value for a player
+          who upgrades a starting spot, extra if that spot is a weak one, and about half for one who&apos;d sit behind better players. Losing a
+          starter costs more when nobody good is behind him. Cap space gained counts a little; picks are valued by round, with this
+          year&apos;s 1st by the sending team&apos;s record. Grades compare what each team gets with what it gives, so both teams can come out ahead.
+        </p>
+      </details>
+    </section>
+  );
+}
+
+function ScoreSide({ t }: { t: TeamScore }) {
+  const row = (x: AssetScore, gets: boolean) => (
+    <li key={`${gets ? "g" : "s"}${x.id}`}>
+      <span className="ts-name"><b>{x.label}</b> <span className="muted small">{x.sub}</span>{x.note && <span className="small ts-note">{x.note}</span>}</span>
+      <span className="num ts-worth">{gets ? "+" : "−"}{x.worth.toFixed(0)}</span>
+    </li>
+  );
+  return (
+    <div className="ts-side" style={{ borderTop: `3px solid ${t.team.primary}` }}>
+      <h4>{t.team.name} <span className="muted small">net {t.net >= 0 ? "+" : ""}{t.net.toFixed(0)}</span></h4>
+      <ul className="ts-list">
+        <li className="ts-label small muted">Gets</li>
+        {t.gets.map((x) => row(x, true))}
+        {t.gets.length === 0 && <li className="small muted">Nothing</li>}
+        <li className="ts-label small muted">Gives</li>
+        {t.gives.map((x) => row(x, false))}
+        {t.gives.length === 0 && <li className="small muted">Nothing</li>}
+        {Math.abs(t.capPts) >= 0.5 && (
+          <li><span className="ts-name"><b>Cap space</b> <span className="muted small">{money(t.capNow.change, { sign: true })} this season</span></span><span className="num ts-worth">{t.capPts >= 0 ? "+" : "−"}{Math.abs(t.capPts).toFixed(0)}</span></li>
+        )}
+      </ul>
+      {t.needs.length > 0 && (
+        <p className="small muted" style={{ margin: "6px 0 0" }}>
+          Starters: {t.needs.map((n) => `${GROUP_NAME[n.g] || n.g} ${n.before} → ${n.after}`).join(" · ")} (avg UR)
+        </p>
+      )}
+    </div>
+  );
+}
+
