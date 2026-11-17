@@ -64,7 +64,7 @@ async function botUserId() {
   return botId;
 }
 /** Read-only for everyone (no messages, no threads); the bot can post. */
-async function botOnly(guildId: string) {
+export async function botOnly(guildId: string) {
   const me = await botUserId();
   return [
     { id: guildId, type: 0, deny: String(SEND | PUB_THREADS | PRIV_THREADS | THREAD_SEND), allow: "0" },

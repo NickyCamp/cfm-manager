@@ -106,6 +106,15 @@ export function buildLeagueData(files: Raw): LeagueData {
   const TIER: Record<string, string> = { ABILITY_BRONZE: "Bronze", ABILITY_SILVER: "Silver", ABILITY_GOLD: "Gold", ABILITY_INVALID: "X-Factor" };
   const players: Player[] = [];
   const seen = new Set<number>();
+  // Player traits (clutchTrait, qBStyleTrait, …; added 2026-11-17 for the Discord Transactions
+  // channels). Taken by name from EA's roster rows, whatever traits EA sends, so nothing is guessed.
+  const traitKeys: string[] = [];
+  for (const name of Object.keys(files).filter((n) => n.startsWith("rosters/"))) {
+    const first = list(files, name)[0];
+    if (!first) continue;
+    for (const k of Object.keys(first).sort()) if (/Trait$/.test(k) && k !== "devTrait" && !traitKeys.includes(k)) traitKeys.push(k);
+  }
+  const traitVal = (x: unknown) => (typeof x === "boolean" ? Number(x) : num(x));
   for (const name of Object.keys(files).filter((n) => n.startsWith("rosters/"))) {
     for (const p of list(files, name)) {
       if (seen.has(p.rosterId)) continue;
@@ -131,6 +140,7 @@ export function buildLeagueData(files: Raw): LeagueData {
           .filter((s: Any) => !s.isEmpty && s.signatureAbility?.signatureTitle)
           .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: num(s.ovrThreshold) === 0 ? "X-Factor" : TIER[s.signatureAbility.rank] || "" })),
         ratings: RATING_KEYS.map((k) => num(p[k])),
+        traits: traitKeys.length ? traitKeys.map((k) => traitVal(p[k])) : undefined,
         slots: (p.signatureSlotList || []).map((s: Any) => ({
           ovr: num(s.ovrThreshold), locked: Boolean(s.locked),
           title: (!s.isEmpty && s.signatureAbility?.signatureTitle) || "", tier: TIER[s.signatureAbility?.rank] || "",
@@ -197,6 +207,7 @@ export function buildLeagueData(files: Raw): LeagueData {
     lines: [...lines.values()],
     teamGames,
     admins: maddenAdmins(hub, teams),
+    traitKeys: traitKeys.length ? traitKeys : undefined,
   };
 }
 

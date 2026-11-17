@@ -36,9 +36,10 @@ export async function setDiscord(leagueId: string, discord: DiscordSettings | nu
 /** Drops the saved Markets category/channels (the league moved to another server). */
 export async function clearMarketChannels(leagueId: string) {
   await updateLeagueSettings(leagueId, (settings) => {
-    if (!settings.marketChannels && !settings.gameChannels) return null;
+    if (!settings.marketChannels && !settings.gameChannels && !settings.txChannels) return null;
     delete settings.marketChannels;
     delete settings.gameChannels; // the weekly game channels belong to the old server too
+    delete settings.txChannels;   // so do the Transactions channels
     return settings;
   });
 }

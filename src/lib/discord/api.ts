@@ -100,8 +100,16 @@ export async function followUpPrivate(appId: string, token: string, content: str
 /** Posts a message as the bot in a channel, optionally with a file (e.g. a video) attached.
  *  Needs DISCORD_BOT_TOKEN. Returns Discord's error text on failure. */
 export async function postToChannel(botToken: string, channelId: string, msg: Message, file?: FileUpload): Promise<string | null> {
-  const { body, headers } = messageBody(tidy(msg), file);
-  const res = await fetch(`${API}/channels/${channelId}/messages`, { method: "POST", headers: { ...headers, authorization: `Bot ${botToken}` }, body });
+  let res: Response | null = null;
+  for (let i = 0; i < 4; i++) {
+    const { body, headers } = messageBody(tidy(msg), file);
+    res = await fetch(`${API}/channels/${channelId}/messages`, { method: "POST", headers: { ...headers, authorization: `Bot ${botToken}` }, body });
+    if (res.status !== 429) break;
+    // Rate limited (many posts in a row after a sync): wait as long as Discord asks, then try again.
+    const j = (await res.json().catch(() => ({}))) as { retry_after?: number };
+    await new Promise((r) => setTimeout(r, Math.ceil(Number(j.retry_after || 1) * 1000) + 100));
+  }
+  if (!res) return "No response from Discord.";
   if (res.ok) return null;
   const text = await res.text().catch(() => "");
   if (res.status === 403) return "The bot can't post in that channel. Give the CFM Manager role View Channel and Send Messages there.";

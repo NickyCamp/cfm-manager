@@ -35,6 +35,7 @@ import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
 import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
+import { TX_CHANNELS, transactionPosts, type TxChannelsState } from "../src/lib/discord/txPosts";
 import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -49,7 +50,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels } | null;
+  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels; txChannels?: TxChannelsState } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -96,6 +97,28 @@ async function postTradeTransactions(lg: League, prev: LeagueData | null, data: 
     if (msgs.length) log(`- Posted ${msgs.length} trade${msgs.length === 1 ? "" : "s"} to #trade-transactions.`);
   } catch (e) {
     log(`- Discord #trade-transactions failed: ${(e as Error).message}`);
+  }
+}
+
+/** Transactions category (/transactionchannels): what this sync newly recorded, one bot-only channel per kind. Never fails the sync. */
+async function postTransactionChannels(lg: League, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+  const st = lg.settings?.txChannels;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!st?.channels || !token) return;
+  try {
+    const byKey = transactionPosts(prev, data, { appUrl: APP_URL, slug: lg.slug, leagueName: lg.name, trade: lg.settings?.tradeChannels || null, guildId: lg.settings?.discord?.guildId });
+    const done: string[] = [];
+    for (const c of TX_CHANNELS) {
+      const msgs = byKey[c.key], channel = st.channels[c.key];
+      if (!msgs?.length || !channel) continue;
+      let err: string | null = null;
+      for (const m of msgs) if ((err = await postToChannel(token, channel, m))) break;
+      if (err) log(`- Discord #${c.name}: ${err}`);
+      else done.push(`#${c.name} ${msgs.length}`);
+    }
+    if (done.length) log(`- Transactions channels: ${done.join(", ")}.`);
+  } catch (e) {
+    log(`- Discord Transactions channels failed: ${(e as Error).message}`);
   }
 }
 
@@ -194,6 +217,7 @@ async function syncLeague(lg: League): Promise<string> {
   const built = await buildAndSave(lg.slug, files, log);
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
   if (built) await postTradeTransactions(lg, built.prev, built.data, log);
+  if (built) await postTransactionChannels(lg, built.prev, built.data, log);
   if (built) await refreshMarketChannels(lg, log);
   if (built) await refreshGameChannels(lg, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);

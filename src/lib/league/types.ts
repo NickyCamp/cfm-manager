@@ -64,6 +64,7 @@ export type Player = {
   abilities: { title: string; tier: string }[];
   // Added 2026-10-28 (older builds lack them until the next sync / rebuild):
   ratings?: number[];    // in RATING_KEYS order (ratings.ts)
+  traits?: number[];     // in LeagueData.traitKeys order; true/false as 1/0 (added 2026-11-17)
   slots?: { ovr: number; locked: boolean; title: string; tier: string }[]; // ability slots; ovr 0 = X-Factor slot
   desired?: { salary: number; bonus: number; length: number }; // Madden's in-game ask (added 2026-10-28)
   gone?: boolean;        // no longer in the league (kept so old stat lines keep a name)
@@ -135,6 +136,8 @@ export type LeagueData = {
   /** Madden's award winners for this season, entered by a commissioner (Admin page): market key →
    *  player id (team id for award-coy). Added on load from leagues.settings.awards[year]. */
   awardResults?: Record<string, string>;
+  /** EA's player trait fields (clutchTrait, qBStyleTrait, …) in the order Player.traits stores them. */
+  traitKeys?: string[];
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;

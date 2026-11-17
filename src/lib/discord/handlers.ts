@@ -31,6 +31,7 @@ import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { tradeChannelsCmd } from "./tradeChannels";
+import { txChannelsCmd } from "./txChannels";
 import { tradeBuilderStart } from "./tradeBuilder";
 import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
@@ -325,6 +326,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       return reply(await tradeChannelsCmd(lg.slug, opt(i, "action") === "remove"));
+    }
+    case "transactionchannels": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await txChannelsCmd(lg.slug, opt(i, "action") === "remove"));
     }
     case "kickoff": {
       if (via !== "server") return reply("Kickoff times can only be set in the league's own Discord server (linked with `/link`).");
