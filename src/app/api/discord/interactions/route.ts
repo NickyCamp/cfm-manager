@@ -107,6 +107,9 @@ export async function POST(req: Request) {
         // e.g. /cap showing a team under water plays the league's over-the-cap video.
         const file = msg.video ? await loadAlertVideo(msg.video).catch(() => undefined) : undefined;
         await editOriginal(i.application_id, i.token, msg, file);
+        // e.g. /sync: wait for the run to finish, then update the same reply.
+        const next = msg.followUp ? await msg.followUp().catch(() => null) : null;
+        if (next) await editOriginal(i.application_id, i.token, next);
       } catch (e) {
         console.error("discord command failed", i.data?.name, e);
         await editOriginal(i.application_id, i.token, { content: "Something went wrong answering that. Try again in a minute." });

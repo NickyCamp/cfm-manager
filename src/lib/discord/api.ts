@@ -30,6 +30,7 @@ export type Message = {
   components?: unknown[];
   event?: AlertEvent;  // our tag: which kind of update post this is (alert videos)
   video?: AlertVideo;  // our tag: an alert video to attach to a command reply
+  followUp?: () => Promise<Message | null>; // our tag: run after the reply is shown, then edit it again (/sync)
 };
 
 /** League events a server can attach a video to (/alertvideo). */
@@ -53,8 +54,8 @@ export const clip = (s: string, max: number) => (s.length <= max ? s : s.slice(0
 
 /** Keeps every embed within Discord's limits (fields ≤1024, description ≤4096, 25 fields). */
 export function tidy(msg: Message): Message {
-  const { event: _event, video: _video, ...m } = msg; // our own tags, not Discord's
-  void _event; void _video;
+  const { event: _event, video: _video, followUp: _followUp, ...m } = msg; // our own tags, not Discord's
+  void _event; void _video; void _followUp;
   return {
     ...m,
     allowed_mentions: { parse: [] },
