@@ -118,7 +118,7 @@ export function playerValue(p: { g: string; ur: number; age: number; dev: number
   // Contract: a fair cap share for this value is ~0.12% of the cap per point (100 points ≈ 12%).
   const fair = 0.0012 * base;
   const contract = 1 + Math.max(-0.35, Math.min(0.2, (fair - capShare) * 4));
-  return base * age * dev * control * contract;
+  return base * age * dev * control * contract * FS_PER_POINT;
 }
 
 /**
@@ -142,19 +142,23 @@ export function pickSlot(k: Pick, owner: PickOwner, firstDraft: number): { slot:
 export const overallPick = (r: number, slot: number) => (r - 1) * 32 + slot;
 
 /**
- * Draft pick value by overall pick number (Nick, 2026-11-17: picks were undervalued; a mid-1st should
- * be worth a good starter, ~80 UR). Straight lines between these points: #1 90, #16 65 (≈ an 80-UR
- * WR), #32 45, #48 25, #64 16, #96 8, #128 4, #160 2.5, #224 1. ×0.85 for each year out.
+ * Trade values are in Fitzgerald-Spielberger points (Nick, 2026-11-17: "Fitzgerald-Spielberger point
+ * system is what I'd like to heavily use"). Picks use the F-S chart itself (Over The Cap: #1 = 3000,
+ * built from the second contracts drafted players earned), one row per round of Madden's 7 × 32 draft
+ * (no compensatory picks, so Madden's pick n = F-S pick n). Players are put on the same scale with
+ * Nick's calibration, a mid-1st (#16, 1595 pts) ≈ a good ~80 UR starter: player value × FS_PER_POINT.
  */
-const PICK_CURVE: [number, number][] = [[1, 90], [16, 65], [32, 45], [48, 25], [64, 16], [96, 8], [128, 4], [160, 2.5], [224, 1]];
-export function pickPoints(n: number) {
-  if (n <= 1) return PICK_CURVE[0][1];
-  for (let i = 1; i < PICK_CURVE.length; i++) {
-    const [x1, y1] = PICK_CURVE[i];
-    if (n <= x1) { const [x0, y0] = PICK_CURVE[i - 1]; return y0 + ((y1 - y0) * (n - x0)) / (x1 - x0); }
-  }
-  return 1;
-}
+export const FS_PER_POINT = 24;
+export const FS_CHART: number[] = [
+  3000,2649,2443,2297,2184,2092,2014,1946,1887,1833,1785,1741,1700,1663,1628,1595,1564,1535,1508,1482,1457,1434,1411,1389,1369,1349,1330,1311,1294,1276,1260,1244,
+  1228,1213,1198,1184,1170,1157,1143,1131,1118,1106,1094,1082,1071,1060,1049,1038,1028,1018,1007,998,988,979,969,960,951,942,934,925,917,909,900,892,
+  885,877,869,862,854,847,840,833,826,819,812,805,799,792,786,779,773,767,761,755,749,743,737,731,725,720,714,709,703,698,692,687,
+  682,676,671,666,661,656,651,646,642,637,632,627,623,618,613,609,604,600,595,591,587,582,578,574,570,565,561,557,553,549,545,541,
+  537,533,529,526,522,518,514,510,507,503,499,496,492,489,485,481,478,474,471,468,464,461,457,454,451,447,444,441,438,434,431,428,
+  425,422,419,416,412,409,406,403,400,397,394,391,388,386,383,380,377,374,371,368,366,363,360,357,354,352,349,346,344,341,338,336,
+  333,330,328,325,323,320,318,315,312,310,307,305,302,300,298,295,293,290,288,285,283,281,278,276,274,271,269,267,264,262,260,258,
+];
+export const pickPoints = (n: number) => FS_CHART[Math.min(Math.max(1, Math.round(n)), FS_CHART.length) - 1];
 export function pickValue(k: Pick, owner: PickOwner, firstYear: number) {
   const { slot } = pickSlot(k, owner, firstYear);
   const later = Math.max(0, k.y - firstYear);
@@ -269,11 +273,11 @@ export function scoreTrade(args: {
     // Cap room has value: each $1M of space gained this season (or next, at 60%) ≈ 0.3 points,
     // flattening out at ±12 so a huge dead-money hit doesn't drown out the players. Going over
     // this season's cap means Madden refuses the trade; that's flagged separately.
-    const capPts = 12 * Math.tanh((((rows[0].change + 0.6 * (rows[1]?.change || 0)) / 1e6) * 0.3) / 12);
+    const capPts = FS_PER_POINT * 12 * Math.tanh((((rows[0].change + 0.6 * (rows[1]?.change || 0)) / 1e6) * 0.3) / 12);
     const getsWorth = getsA.reduce((s, x) => s + x.worth, 0);
     const givesWorth = givesA.reduce((s, x) => s + x.worth, 0);
     const net = getsWorth - givesWorth + capPts;
-    const ratio = net / Math.max(15, givesWorth);
+    const ratio = net / Math.max(15 * FS_PER_POINT, givesWorth);
     const grade = ratio >= 0.5 ? "A+" : ratio >= 0.25 ? "A" : ratio >= 0.1 ? "B+" : ratio >= -0.05 ? "B" : ratio >= -0.2 ? "C" : ratio >= -0.4 ? "D" : "F";
     const needs = groups.map((g) => ({ g, before: Math.round(avg(lineup(before, g))), after: Math.round(avg(lineup(after, g))) }))
       .filter((n) => n.before !== n.after).sort((x, y) => Math.abs(y.after - y.before) - Math.abs(x.after - x.before));
@@ -281,7 +285,7 @@ export function scoreTrade(args: {
   };
 
   const A = side(ta, args.a, args.b), B = side(tb, args.b, args.a);
-  const scale = Math.max(30, (A.getsWorth + A.givesWorth + B.getsWorth + B.givesWorth) / 2);
+  const scale = Math.max(30 * FS_PER_POINT, (A.getsWorth + A.givesWorth + B.getsWorth + B.givesWorth) / 2);
   const score = Math.round(50 + 50 * Math.tanh((A.net - B.net) / scale)); // Team 1's share, 50 = even
   const gap = Math.abs(score - 50);
   const favored = gap < 6 ? null : score > 50 ? ta : tb;

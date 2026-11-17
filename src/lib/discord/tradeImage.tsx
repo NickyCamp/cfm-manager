@@ -97,7 +97,7 @@ function Column({ t, team, logo, byId }: { t: TeamScore; team: Team; logo?: stri
           </div>
         ))}
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 19, fontWeight: 800, padding: "6px 0 0", marginTop: 4, borderTop: `1px solid ${LINE}` }}>
-          <span style={{ color: SOFT }}>{`Gets ${t.getsWorth.toFixed(0)} · gives ${t.givesWorth.toFixed(0)}${Math.abs(t.capPts) >= 0.5 ? ` · cap ${t.capPts >= 0 ? "+" : "−"}${Math.abs(t.capPts).toFixed(0)}` : ""}`}</span>
+          <span style={{ color: SOFT }}>{`Gets ${t.getsWorth.toFixed(0)} · gives ${t.givesWorth.toFixed(0)}${Math.abs(t.capPts) >= 10 ? ` · cap ${t.capPts >= 0 ? "+" : "−"}${Math.abs(t.capPts).toFixed(0)}` : ""}`}</span>
           <span style={{ color: t.net >= 0 ? GOOD : BAD }}>{`net ${t.net >= 0 ? "+" : ""}${t.net.toFixed(0)}`}</span>
         </div>
       </div>
@@ -146,7 +146,7 @@ export async function renderTrade(d: LeagueData, s: TradeScore, players: TradePl
       )}
 
       <div style={{ display: "flex", marginTop: "auto", padding: "12px 28px 0", fontSize: 17, fontWeight: 700, color: SOFT }}>
-        {"UR = percentile at his position on speed, acceleration, size and position skills (physicals weigh far more than OVR). Fit = how much he upgrades the team's starters."}
+        {"UR = percentile at his position on speed, acceleration, size and position skills (physicals weigh far more than OVR). Fit = how much he upgrades the starters. Values in Fitzgerald-Spielberger points."}
       </div>
     </div>
   );

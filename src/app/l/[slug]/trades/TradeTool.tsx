@@ -359,8 +359,9 @@ function ScorePanel({ s, slug, a, b, teamById }: { s: NonNullable<ReturnType<typ
           (about half the weight at skill positions). Value grows steeply with UR, then adjusts for position (QB, WR, CB and edge count most),
           age, dev trait, years of control and how his cap hit compares with what that value is worth. A team gets full value for a player
           who upgrades a starting spot, extra if that spot is a weak one, and about half for one who&apos;d sit behind better players. Losing a
-          starter costs more when nobody good is behind him. Cap space gained counts a little; picks are valued by their spot in the draft (round and
-          pick number). Each pick starts at its team&apos;s spot in the next draft order (final once the playoffs are over, projected
+          starter costs more when nobody good is behind him. Cap space gained counts a little; all values are in Fitzgerald-Spielberger points: picks use
+          the F-S draft chart (#1 = 3,000, #16 = 1,595, #32 = 1,244), and players are on the same scale, with a mid-1st worth about a good
+          ~80 UR starter. Each pick starts at its team&apos;s spot in the next draft order (final once the playoffs are over, projected
           from records before that; later drafts are estimates), and you can type the real number if it&apos;s different. Grades compare what each team gets with what it gives, so both teams can come out ahead.
         </p>
       </details>
@@ -385,7 +386,7 @@ function ScoreSide({ t }: { t: TeamScore }) {
         <li className="ts-label small muted">Gives</li>
         {t.gives.map((x) => row(x, false))}
         {t.gives.length === 0 && <li className="small muted">Nothing</li>}
-        {Math.abs(t.capPts) >= 0.5 && (
+        {Math.abs(t.capPts) >= 10 && (
           <li><span className="ts-name"><b>Cap space</b> <span className="muted small">{money(t.capNow.change, { sign: true })} this season</span></span><span className="num ts-worth">{t.capPts >= 0 ? "+" : "−"}{Math.abs(t.capPts).toFixed(0)}</span></li>
         )}
       </ul>
