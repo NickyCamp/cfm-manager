@@ -90,5 +90,5 @@ export async function renderOddsChart(d: LeagueData, m: Market, points: PricePoi
       </div>
     </div>
   );
-  return new ImageResponse(node, { width: W, height: H, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=600" } });
+  return new ImageResponse(node, { width: W, height: H, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=604800, stale-while-revalidate=86400" } });
 }

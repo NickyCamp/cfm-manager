@@ -524,6 +524,12 @@ async function clearChannel(channel: string): Promise<number> {
   return n;
 }
 
+/** Changes only when the chart would look different (a price moves a whole point, or the market settles),
+ *  so a repost of an unchanged chart reuses the copy Discord and Vercel's CDN already have instead of
+ *  re-running the chart function (each render was ~4–5s of CPU). */
+const chartVersion = (m: Market) =>
+  createHash("sha1").update(JSON.stringify([m.settled, m.outcomes.map((o) => [o.id, o.state, Math.round(o.p * 100)])])).digest("base64url").slice(0, 10);
+
 async function postOddsCharts(slug: string, d: LeagueData, markets: Market[], channel: string, week: string): Promise<number> {
   const embedOf = (m: Market): Embed => {
     const top = m.outcomes.filter((o) => o.state !== "lost").sort((a, b) => b.p - a.p).slice(0, 4);
@@ -532,7 +538,7 @@ async function postOddsCharts(slug: string, d: LeagueData, markets: Market[], ch
       url: `${APP_URL}/l/${slug}/markets/${m.key}`,
       color: BRAND,
       description: m.settled ? `Settled: **${m.outcomes.find((o) => o.state === "won")?.label ?? "—"}**` : top.map((o) => `${o.label} **${chanceText(o.p)}**`).join(" · "),
-      image: { url: `${APP_URL}/api/leagues/${encodeURIComponent(slug)}/markets/chart/${encodeURIComponent(m.key)}?w=${encodeURIComponent(week)}&t=${Date.now().toString(36)}` },
+      image: { url: `${APP_URL}/api/leagues/${encodeURIComponent(slug)}/markets/chart/${encodeURIComponent(m.key)}?w=${encodeURIComponent(week)}&v=${chartVersion(m)}` },
     };
   };
   const pick = (keys: string[]) => keys.map((k) => markets.find((m) => m.key === k)).filter((m): m is Market => Boolean(m));
