@@ -17,7 +17,8 @@ export const TX_CHANNELS = [
   { key: "dev", name: "dev-changes", title: "⭐ Dev trait changes", topic: "Dev trait upgrades and downgrades, posted by the bot after each sync." },
   { key: "injuries", name: "injuries", title: "🤕 Injuries", topic: "New injuries and IR moves, posted by the bot after each sync." },
   { key: "abilities", name: "ability-changes", title: "🎖️ Ability changes", topic: "Abilities gained, lost or changed tier, posted by the bot after each sync." },
-  { key: "ratings", name: "ratings-and-traits", title: "📈 Rating & trait changes", topic: "Overall, rating and trait changes, posted by the bot after each sync." },
+  { key: "ratingsUp", name: "ratings-up", title: "📈 Ratings & traits up", topic: "Overall and rating increases and traits gained, posted by the bot after each sync." },
+  { key: "ratingsDown", name: "ratings-down", title: "📉 Ratings & traits down", topic: "Overall and rating drops and traits lost, posted by the bot after each sync." },
   { key: "cuts", name: "cuts", title: "✂️ Cuts", topic: "Players released, with the dead money left behind, posted by the bot after each sync." },
   { key: "extensions", name: "extensions", title: "📝 Extensions", topic: "Extensions, new deals and restructures, posted by the bot after each sync." },
   { key: "trades", name: "trades", title: "🔁 Trades", topic: "Trades as they happened in Madden, posted by the bot after each sync." },
@@ -129,37 +130,45 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
   }
   if (ab.length) out.abilities = list("abilities", ab.sort((x, y) => y.p.ovr - x.p.ovr).map((x) => x.line), url("/abilities"));
 
-  // Ratings and traits: overall plus each rating and trait that moved, per player.
+  // Ratings and traits, split by direction (Nick, 2026-11-17): increases and traits gained in #ratings-up,
+  // drops and traits lost in #ratings-down. A player with both shows in both, each with its own side.
   const prevTraits = prev.traitKeys || [], nextTraits = next.traitKeys || [];
-  const rt: { p: Player; d: number; line: string }[] = [];
+  const up: { p: Player; d: number; line: string }[] = [], down: { p: Player; d: number; line: string }[] = [];
   for (const [a, b] of both) {
     if (!rostered(b)) continue;
-    const bits: string[] = [];
+    const rat = { up: [] as { s: string; d: number }[], down: [] as { s: string; d: number }[] };
+    const tr = { up: [] as string[], down: [] as string[] };
     if (a.ratings && b.ratings) {
-      const ch = RATING_KEYS.map((k, i) => ({ k, from: a.ratings![i], to: b.ratings![i] }))
-        .filter((r) => r.from !== r.to && r.from != null && r.to != null && !SKIP_RATINGS.has(r.k))
-        .sort((x, y) => Math.abs(y.to - y.from) - Math.abs(x.to - x.from));
-      const shown = ch.slice(0, 8).map((r) => `${SHORT[r.k] || r.k} ${r.from}→${r.to}`);
-      if (ch.length > 8) shown.push(`+${ch.length - 8} more`);
-      if (shown.length) bits.push(shown.join(", "));
+      RATING_KEYS.forEach((k, i) => {
+        const from = a.ratings![i], to = b.ratings![i];
+        if (from == null || to == null || from === to || SKIP_RATINGS.has(k)) return;
+        rat[to > from ? "up" : "down"].push({ s: `${SHORT[k] || k} ${from}→${to}`, d: Math.abs(to - from) });
+      });
     }
     if (a.traits && b.traits && prevTraits.length && nextTraits.length) {
-      const t: string[] = [];
       nextTraits.forEach((k, i) => {
         const j = prevTraits.indexOf(k);
         if (j < 0) return;
         const from = a.traits![j], to = b.traits![i];
         if (from == null || to == null || from === to) return;
-        if ((from === 0 || from === 1) && (to === 0 || to === 1)) t.push(`${to ? "➕" : "➖"} ${traitLabel(k)}`);
-        else t.push(`${traitLabel(k)} ${from}→${to}`);
+        const onOff = (from === 0 || from === 1) && (to === 0 || to === 1);
+        tr[to > from ? "up" : "down"].push(onOff ? `${to ? "➕" : "➖"} ${traitLabel(k)}` : `${traitLabel(k)} ${from}→${to}`);
       });
-      if (t.length) bits.push(`traits: ${t.join(", ")}`);
     }
-    if (a.ovr === b.ovr && !bits.length) continue;
-    const head = a.ovr !== b.ovr ? `${b.ovr > a.ovr ? "⬆️" : "⬇️"} ${who(b)} **${a.ovr}→${b.ovr} OVR**` : `↔️ ${who(b)}`;
-    rt.push({ p: b, d: Math.abs(b.ovr - a.ovr), line: `${head}${bits.length ? `\n  ${bits.join(" · ")}` : ""}` });
+    for (const side of ["up", "down"] as const) {
+      const ovrMoved = side === "up" ? b.ovr > a.ovr : b.ovr < a.ovr;
+      const r = rat[side].sort((x, y) => y.d - x.d);
+      if (!ovrMoved && !r.length && !tr[side].length) continue;
+      const bits: string[] = [];
+      if (r.length) bits.push(r.slice(0, 8).map((x) => x.s).join(", ") + (r.length > 8 ? `, +${r.length - 8} more` : ""));
+      if (tr[side].length) bits.push(`traits: ${tr[side].join(", ")}`);
+      const head = ovrMoved ? `${side === "up" ? "⬆️" : "⬇️"} ${who(b)} **${a.ovr}→${b.ovr} OVR**` : `${side === "up" ? "↗️" : "↘️"} ${who(b)}`;
+      (side === "up" ? up : down).push({ p: b, d: Math.abs(b.ovr - a.ovr), line: `${head}${bits.length ? `\n  ${bits.join(" · ")}` : ""}` });
+    }
   }
-  if (rt.length) out.ratings = list("ratings", rt.sort((x, y) => y.d - x.d || y.p.ovr - x.p.ovr).map((x) => x.line));
+  const order = (x: { p: Player; d: number }, y: { p: Player; d: number }) => y.d - x.d || y.p.ovr - x.p.ovr;
+  if (up.length) out.ratingsUp = list("ratingsUp", up.sort(order).map((x) => x.line));
+  if (down.length) out.ratingsDown = list("ratingsDown", down.sort(order).map((x) => x.line));
 
   // Position changes.
   const pos = both.filter(([a, b]) => a.pos !== b.pos && rostered(b)).sort(([, x], [, y]) => y.ovr - x.ovr)
