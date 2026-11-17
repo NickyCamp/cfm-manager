@@ -32,6 +32,7 @@ import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { tradeChannelsCmd } from "./tradeChannels";
 import { txChannelsCmd } from "./txChannels";
+import { packChannelProblem, packChannelsCmd } from "./packChannels";
 import { tradeBuilderStart } from "./tradeBuilder";
 import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
@@ -47,6 +48,8 @@ export type Interaction = {
   member?: { user: { id: string; username: string; global_name?: string | null }; permissions?: string; roles?: string[] };
   user?: { id: string; username: string; global_name?: string | null };   // set instead of member in DMs
   context?: number;                           // 0 server, 1 bot DM, 2 group DM / other DM
+  channel_id?: string;
+  channel?: { id: string; type: number; parent_id?: string | null };
   forced?: LinkedLeague;                      // set by /league: run the command for this league instead
   data?: { name: string; options?: Option[]; resolved?: { attachments?: Record<string, { url: string; filename: string; size: number; content_type?: string }> } };
 };
@@ -359,8 +362,21 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "balance": return balanceCmd(i, lg);
     case "bets": return betsCmd(i, lg, d, url);
-    case "pack": return openPackReply(i, lg, d, base, url, footer);
-    case "packs": return { embeds: [await packsLeaderboard(i, lg, d, footer)] };
+    case "packchannels": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await packChannelsCmd(lg.slug, opt(i, "action") === "remove"));
+    }
+    case "pack":
+    case "packs": {
+      // In the linked server, packs stay in the Packs category (/packchannels). The interactions route
+      // normally catches this first and answers privately; this is the backup if that check was slow.
+      if (i.guild_id) {
+        const problem = packChannelProblem(await leagueForGuild(i.guild_id), i.guild_id, i.channel);
+        if (problem) return reply(problem);
+      }
+      return name === "pack" ? openPackReply(i, lg, d, base, url, footer) : { embeds: [await packsLeaderboard(i, lg, d, footer)] };
+    }
     case "funfact": {
       const pv = opt(i, "player"), tv = opt(i, "team");
       let p = pv != null && pv !== "" ? findPlayer(d, pv) : undefined;

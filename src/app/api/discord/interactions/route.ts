@@ -10,6 +10,7 @@ import { loadAlertVideo } from "@/lib/discord/links";
 import { anyPlayerModal, type BetReply, cancelFromButton, otherAmountModal, payoutFromButton, placeAnyPlayer, placeFromModal, placeQuick, quoteReply, type ComponentInteraction } from "@/lib/discord/marketButtons";
 import { refreshForMarket } from "@/lib/discord/marketChannels";
 import { leagueForGuild } from "@/lib/discord/links";
+import { packChannelProblem } from "@/lib/discord/packChannels";
 import { tradeVote } from "@/lib/discord/tradeChannels";
 import { findPlayerModal, tradeBuilderTap } from "@/lib/discord/tradeBuilder";
 
@@ -143,8 +144,20 @@ export async function POST(req: Request) {
 
   if (i.type === COMMAND) {
     const base = new URL(req.url).origin;
+    // /pack and /packs in the league's server: only inside the Packs category (/packchannels).
+    // Checked before answering so the "go to #pack-opening" note is private and nothing posts here.
+    // If the lookup is slow, let it through; runCommand checks again.
+    const more = i.data?.name === "league" ? String(i.data.options?.find((o) => o.name === "more")?.value ?? "") : "";
+    if (i.guild_id && (i.data?.name === "pack" || i.data?.name === "packs" || more === "pack" || more === "packs")) {
+      const lg = await Promise.race([
+        leagueForGuild(i.guild_id).catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), 1500)),
+      ]);
+      const problem = packChannelProblem(lg, i.guild_id, i.channel);
+      if (problem) return NextResponse.json({ type: 4, data: { content: problem, flags: 1 << 6 } });
+    }
     // Settings changes reply only to the person who ran them; everything else is public.
-    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "transactionchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "");
+    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "transactionchannels", "packchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "");
     after(async () => {
       try {
         const msg = await runCommand(i, base);
