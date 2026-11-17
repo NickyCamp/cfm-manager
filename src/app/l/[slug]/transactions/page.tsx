@@ -3,7 +3,10 @@ import Link from "next/link";
 import { getLeagueData, getLeagueHistory } from "@/lib/league/load";
 import { indexes } from "@/lib/league/derive";
 import { money } from "@/lib/league/format";
-import { weekKey, weekOrder, type C, type TxEvent, type TxKind } from "@/lib/league/history";
+import { tradeKey, weekKey, weekOrder, type C, type TradePicks, type TxEvent, type TxKind } from "@/lib/league/history";
+import { isCommissioner, viewer } from "@/lib/marketStore";
+import { leagueBySlug } from "@/lib/discord/links";
+import { TradePicksEditor } from "@/components/league/TradePicksEditor";
 import { DEV_LABEL, type Player, type Team } from "@/lib/league/types";
 import { NoData, TeamBadge } from "@/components/league/bits";
 
@@ -29,8 +32,11 @@ const RATING_LIMIT = 40;
 export default async function Transactions({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = await searchParams;
-  const [d, hist] = await Promise.all([getLeagueData(slug), getLeagueHistory(slug)]);
+  const [d, hist, v, lg] = await Promise.all([getLeagueData(slug), getLeagueHistory(slug), viewer(slug).catch(() => null), leagueBySlug(slug).catch(() => null)]);
   if (!d) return <NoData />;
+  const commish = Boolean(v?.leagueId && v.userId && (await isCommissioner(v.leagueId, v.userId).catch(() => false)));
+  const tradePicks = ((lg?.settings?.tradePicks as TradePicks | undefined) || {});
+  const pk = { slug, commish, tradePicks, firstYear: d.season.capYear ?? d.season.year };
   const { teams } = indexes(d);
   const byAbbr = new Map(d.teams.map((t) => [t.abbr.toLowerCase(), t]));
   const team = sp.team ? byAbbr.get(sp.team.toLowerCase()) : undefined;
@@ -103,15 +109,15 @@ export default async function Transactions({ params, searchParams }: Props) {
             <h3 className="tx-week">{w.year} {w.title} <span className="muted small">{list.length}</span></h3>
             {cat[0] === "ratings" ? <RatingWeek slug={slug} list={list} players={players} teams={teams} showAll={showAll} moreHref={href({ all: true })} />
               : cat[0] === "dev" ? <DevWeek slug={slug} list={list} players={players} teams={teams} />
-              : <MoveList slug={slug} list={list} players={players} teams={teams} />}
+              : <MoveList slug={slug} list={list} players={players} teams={teams} pk={pk} />}
           </section>
         ))}
 
         <p className="hint" style={{ maxWidth: "76ch" }}>
           A restructure turns salary into signing bonus: the cap hit drops in the season it&apos;s done and the money comes back spread over the
           rest of the deal&apos;s bonus window (up to 5 seasons, and into a void year if he&apos;s in his last season). The team Cap tabs and the
-          contract tool project restructured deals that way. EA&apos;s data has no draft picks, so trades show players only, except trades imported
-          from the old NCL site&apos;s MyMadden log.
+          contract tool project restructured deals that way. EA&apos;s data has no draft picks, so a synced trade shows only its players until a
+          commissioner adds its picks (Add picks on the trade). Trades imported from the old NCL site&apos;s MyMadden log already have theirs.
         </p>
       </div>
     </main>
@@ -148,13 +154,15 @@ function Detail({ e }: { e: TxEvent }) {
   return null;
 }
 
-function MoveList({ slug, list, players, teams }: { slug: string; list: TxEvent[]; players: Map<number, Player>; teams: Map<number, Team> }) {
+type PickProps = { slug: string; commish: boolean; tradePicks: TradePicks; firstYear: number };
+
+function MoveList({ slug, list, players, teams, pk }: { slug: string; list: TxEvent[]; players: Map<number, Player>; teams: Map<number, Team>; pk: PickProps }) {
   // Players traded between the same two teams in the same sync are one trade.
   const trades = new Map<string, TxEvent[]>();
   const rows: (TxEvent | TxEvent[])[] = [];
   for (const e of list) {
     if (e.kind === "trade" && !e.deal) {
-      const k = `${e.at}:${[e.from, e.to].sort().join("-")}`;
+      const k = tradeKey(e);
       if (!trades.has(k)) { trades.set(k, []); rows.push(trades.get(k)!); }
       trades.get(k)!.push(e);
     } else rows.push(e);
@@ -163,7 +171,7 @@ function MoveList({ slug, list, players, teams }: { slug: string; list: TxEvent[
   rows.sort((x, y) => at(y).localeCompare(at(x)));
   return (
     <ul className="tx-list">
-      {rows.map((r, i) => Array.isArray(r) ? <TradeRow key={i} slug={slug} list={r} players={players} teams={teams} />
+      {rows.map((r, i) => Array.isArray(r) ? <TradeRow key={i} slug={slug} list={r} players={players} teams={teams} pk={pk} />
         : r.deal ? <SeedTrade key={r.id} e={r} teams={teams} />
         : (
           <li key={r.id} className="tx-row">
@@ -181,22 +189,28 @@ function MoveList({ slug, list, players, teams }: { slug: string; list: TxEvent[
   );
 }
 
-function TradeRow({ slug, list, players, teams }: { slug: string; list: TxEvent[]; players: Map<number, Player>; teams: Map<number, Team> }) {
+function TradeRow({ slug, list, players, teams, pk }: { slug: string; list: TxEvent[]; players: Map<number, Player>; teams: Map<number, Team>; pk: PickProps }) {
   const sides = [...new Set(list.flatMap((e) => [e.from!, e.to!]))];
+  const key = tradeKey(list[0]);
+  const picks = pk.tradePicks[key] || {};
   return (
     <li className="tx-row tx-trade">
       <span className="tx-badge k-trade">Trade</span>
       <div className="tx-body">
         {sides.map((t) => {
           const got = list.filter((e) => e.to === t);
+          const pl = picks[String(t)] || [];
           return (
             <div key={t} className="tx-side">
               <TeamBadge team={teams.get(t)} size={20} /> <span className="muted small">got</span>{" "}
-              {got.length ? got.map((e, i) => <span key={e.id}>{i ? ", " : ""}<Who slug={slug} e={e} players={players} /></span>)
-                : <span className="muted">no players (picks or other assets aren&apos;t in EA&apos;s data)</span>}
+              {got.map((e, i) => <span key={e.id}>{i ? ", " : ""}<Who slug={slug} e={e} players={players} /></span>)}
+              {pl.map((p, i) => <span key={p + i}>{got.length || i ? ", " : ""}<span className="muted">{p}</span></span>)}
+              {!got.length && !pl.length && <span className="muted">draft picks (EA&apos;s data doesn&apos;t list picks)</span>}
             </div>
           );
         })}
+        {pk.commish && <TradePicksEditor slug={pk.slug} tradeKey={key} firstYear={pk.firstYear} initial={picks}
+          teams={sides.map((t) => ({ id: t, abbr: teams.get(t)?.abbr || "?" }))} />}
       </div>
       {list[0].at && <span className="tx-time muted small">{fmtDate(list[0].at)}</span>}
     </li>

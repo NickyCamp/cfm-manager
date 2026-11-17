@@ -7,7 +7,7 @@ import { DEV_LABEL } from "../league/types";
 import { money } from "../league/format";
 import { weekTitle } from "../league/derive";
 import { RATING_KEYS } from "../league/ratings";
-import { diffLeague, weekKey, weekOrder, type C, type LeagueHistory, type TxEvent } from "../league/history";
+import { diffLeague, tradeKey, weekKey, weekOrder, type C, type LeagueHistory, type TradePicks, type TxEvent } from "../league/history";
 import { BRAND, type Message } from "./api";
 import { tradeTransactionPosts } from "./tradeTransactions";
 import type { TradeChannels } from "./tradeChannels";
@@ -63,7 +63,7 @@ const TRAIT_LABEL: Record<string, string> = {
 export const traitLabel = (k: string) =>
   TRAIT_LABEL[k] || k.replace(/Trait$/, "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()).replace(/\b([A-Z]) (?=[A-Z]\b)/g, "$1");
 
-type Opts = { appUrl: string; slug: string; leagueName: string; trade: TradeChannels | null; guildId?: string };
+type Opts = { appUrl: string; slug: string; leagueName: string; trade: TradeChannels | null; guildId?: string; tradePicks?: TradePicks };
 
 /** Everything one sync newly recorded, as messages per channel. Empty when nothing new was pulled. */
 export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: Opts): Partial<Record<TxKey, Message[]>> {
@@ -263,7 +263,7 @@ export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, n
   const groups = new Map<string, TxEvent[]>();
   for (const e of of("trade")) {
     if (e.deal) { tradeRows.push([e]); continue; }
-    const k = `${e.at}|${[e.from, e.to].sort().join("-")}`;
+    const k = tradeKey(e);
     if (!groups.has(k)) { groups.set(k, []); tradeRows.push(groups.get(k)!); }
     groups.get(k)!.push(e);
   }
@@ -278,7 +278,9 @@ export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, n
       tradeLines.push(`🔁 **${abbr(a)} ⇄ ${abbr(b)}** · ${abbr(a)} got: ${got(a)} · ${abbr(b)} got: ${got(b)}`);
     } else {
       const [a, b] = [e0.from, e0.to].sort((x, y) => (x || 0) - (y || 0));
-      const got = (t: number | undefined) => row.filter((e) => e.to === t).map((e) => `${e.pos} ${playerRef(e, url)} (${e.ovr})`).join(", ") || "players only in EA's data; no picks";
+      const added = o.tradePicks?.[tradeKey(e0)] || {};
+      const got = (t: number | undefined) => [...row.filter((e) => e.to === t).map((e) => `${e.pos} ${playerRef(e, url)} (${e.ovr})`), ...(added[String(t)] || [])].join(", ")
+        || "draft picks (EA's data doesn't list picks)";
       tradeLines.push(`🔁 **${abbr(a)} ⇄ ${abbr(b)}** · ${abbr(a)} got: ${got(a)} · ${abbr(b)} got: ${got(b)}`);
     }
   }

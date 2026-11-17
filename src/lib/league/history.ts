@@ -40,6 +40,12 @@ export type TxEvent = {
 
 export type LeagueHistory = { version: 1; trackedSince: string; events: TxEvent[] };
 
+/** One synced trade = its players' events from the same sync between the same two teams; this is its id. */
+export const tradeKey = (e: Pick<TxEvent, "at" | "from" | "to">) => `${e.at}:${[e.from || 0, e.to || 0].sort((a, b) => a - b).join("-")}`;
+/** Draft picks a commissioner added to a synced trade (EA's export has none), by tradeKey, then the
+ *  receiving team's id: leagues.settings.tradePicks (Nick, 2026-11-17). */
+export type TradePicks = Record<string, Record<string, string[]>>;
+
 const capOf = (d: LeagueData) => d.season.capYear ?? d.season.year;
 export const toC = (c: Contract): C => [c.length, c.yearsLeft, c.salary, c.bonus, c.capHit];
 export const fromC = (c: C): Contract => ({ length: c[0], yearsLeft: c[1], salary: c[2], bonus: c[3], capHit: c[4], releasePenalty: 0, releaseSavings: 0 });

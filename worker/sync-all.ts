@@ -27,7 +27,7 @@ import { signWorkerCall } from "../src/lib/workerSig";
 import { updateSettings } from "../src/lib/leagueSettingsCore";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
-import { appendEvents, diffLeague, seedHistory, type LeagueHistory } from "../src/lib/league/history";
+import { appendEvents, diffLeague, seedHistory, type LeagueHistory, type TradePicks } from "../src/lib/league/history";
 import { archiveSeason, type SeasonArchive } from "../src/lib/league/seasons";
 import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
@@ -50,7 +50,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels; txChannels?: TxChannelsState } | null;
+  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels; txChannels?: TxChannelsState; tradePicks?: TradePicks } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -106,7 +106,7 @@ async function postTransactionChannels(lg: League, prev: LeagueData | null, data
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!st?.channels || !token) return;
   try {
-    const opts = { appUrl: APP_URL, slug: lg.slug, leagueName: lg.name, trade: lg.settings?.tradeChannels || null, guildId: lg.settings?.discord?.guildId };
+    const opts = { appUrl: APP_URL, slug: lg.slug, leagueName: lg.name, trade: lg.settings?.tradeChannels || null, guildId: lg.settings?.discord?.guildId, tradePicks: lg.settings?.tradePicks };
     const byKey = transactionPosts(prev, data, opts);
     // New channels (or "Repost history"): everything the site already saved goes first, oldest first.
     let backlog: ReturnType<typeof backlogPosts> = {};
