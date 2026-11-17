@@ -26,7 +26,8 @@ export type TradePlayer = {
 };
 export type TradeTeam = {
   id: number; abbr: string; name: string; primary: string; active: number; committed: number[]; cap: number[];
-  slot: number;      // projected 1st-round slot from the standings (1 = worst record)
+  slot: number;      // 1st-round spot in the next draft (1 = first pick)
+  slots: number[];   // spot in each round (index = round 1-7): teams tied on record rotate between rounds
 };
 /** A draft pick: year, round, and (optional) its slot in the round, set by hand when the automatic one is wrong. */
 export type Pick = { y: number; r: number; s?: number };
@@ -127,19 +128,23 @@ export function playerValue(p: { g: string; ur: number; age: number; dev: number
  * playoff teams by the round they went out, Super Bowl winner last). A set slot (k.s) always wins.
  * The draft after next is half-way to the middle of the round; later ones are the middle.
  */
-export function pickSlot(k: Pick, ownerSlot: number, firstDraft: number): { slot: number; how: "set" | "order" | "projected" | "estimate" } {
+/** The team whose pick it is: its 1st-round spot, and its spot in each round when known. */
+export type PickOwner = { slot: number; slots?: number[] };
+const roundSlot = (o: PickOwner, r: number) => o.slots?.[r] || o.slot;
+
+export function pickSlot(k: Pick, owner: PickOwner, firstDraft: number): { slot: number; how: "set" | "order" | "projected" | "estimate" } {
   if (k.s && k.s >= 1 && k.s <= 32) return { slot: k.s, how: "set" };
   const later = k.y - firstDraft;
-  if (later <= 0) return { slot: ownerSlot, how: "order" };
-  if (later === 1) return { slot: Math.round((ownerSlot + 16.5) / 2), how: "estimate" };
+  if (later <= 0) return { slot: roundSlot(owner, k.r), how: "order" };
+  if (later === 1) return { slot: Math.round((owner.slot + 16.5) / 2), how: "estimate" };
   return { slot: 16, how: "estimate" };
 }
 export const overallPick = (r: number, slot: number) => (r - 1) * 32 + slot;
 
 /** Draft pick value by overall pick number: 45 for #1, ~18 for #32, ~7 for #64, under 1 by the late rounds;
  *  ×0.85 for each year out. */
-export function pickValue(k: Pick, ownerSlot: number, firstYear: number) {
-  const { slot } = pickSlot(k, ownerSlot, firstYear);
+export function pickValue(k: Pick, owner: PickOwner, firstYear: number) {
+  const { slot } = pickSlot(k, owner, firstYear);
   const n = overallPick(k.r, slot);
   const later = Math.max(0, k.y - firstYear);
   return (45 * Math.exp(-0.03 * (n - 1)) + 0.5) * Math.pow(0.85, later);
@@ -147,8 +152,8 @@ export function pickValue(k: Pick, ownerSlot: number, firstYear: number) {
 
 const ordinalNum = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
 /** "#23, 23rd overall" / "~#20 (estimate)" for showing a pick's spot. */
-export function pickSpotText(k: Pick, ownerSlot: number, firstDraft: number, orderFinal: boolean) {
-  const { slot, how } = pickSlot(k, ownerSlot, firstDraft);
+export function pickSpotText(k: Pick, owner: PickOwner, firstDraft: number, orderFinal: boolean) {
+  const { slot, how } = pickSlot(k, owner, firstDraft);
   const n = overallPick(k.r, slot);
   if (how === "estimate") return `~#${slot} in the round (estimate)`;
   const tag = how === "set" ? "set by hand" : orderFinal ? "draft order" : "projected";
@@ -274,6 +279,6 @@ export function scoreTrade(args: {
 }
 
 function pickAsset(k: Pick, owner: TradeTeam, firstDraft: number, orderFinal: boolean): AssetScore {
-  const v = pickValue(k, owner.slot, firstDraft);
-  return { kind: "pick", id: `${k.y}-${k.r}`, label: `${k.y} ${ROUND[k.r]} (${owner.abbr})`, sub: pickSpotText(k, owner.slot, firstDraft, orderFinal), value: v, fit: 1, worth: v, note: "" };
+  const v = pickValue(k, owner, firstDraft);
+  return { kind: "pick", id: `${k.y}-${k.r}`, label: `${k.y} ${ROUND[k.r]} (${owner.abbr})`, sub: pickSpotText(k, owner, firstDraft, orderFinal), value: v, fit: 1, worth: v, note: "" };
 }

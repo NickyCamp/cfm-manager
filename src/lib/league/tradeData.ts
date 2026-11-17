@@ -6,6 +6,7 @@ import { capSeason, committedByTeam, nextDraftYear, PROJECTION_YEARS } from "./d
 import { isCapSet, leagueCap, MAX_BONUS_PRORATION_YEARS, projectedLeagueCap } from "./cap";
 import { projectPlayer } from "./projection";
 import { RATING_KEYS } from "./ratings";
+import { draftOrder, roundOrder } from "./playoffs";
 import { playerValue, PHYSICAL, TRAIT_WEIGHTS, tradeGroup, type TradePlayer, type TradeTeam } from "./tradeMath";
 
 const IDX = new Map<string, number>(RATING_KEYS.map((k, i) => [k, i]));
@@ -98,10 +99,10 @@ export function buildTradeData(d: LeagueData) {
     });
   }
 
-  const { slot, final: orderFinal } = draftOrder(d, firstDraft);
+  const { slots: draftSlots, final: orderFinal } = teamDraftSlots(d, firstDraft);
   const teams: TradeTeam[] = [...d.teams].sort((a, b) => a.city.localeCompare(b.city)).map((t) => ({
     id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary, active: active.get(t.id) || 0,
-    committed: committed.get(t.id)!, slot: slot.get(t.id) || 16,
+    committed: committed.get(t.id)!, slot: draftSlots.get(t.id)?.[1] ?? 16, slots: draftSlots.get(t.id) ?? Array(8).fill(16),
     cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),
   }));
 
@@ -110,32 +111,20 @@ export function buildTradeData(d: LeagueData) {
 export type TradeData = ReturnType<typeof buildTradeData>;
 
 /**
- * Each team's spot in the next draft's order (1 = first pick). Madden's order: teams that missed the
- * playoffs, worst record first; then playoff teams by the round they went out (Wild Card, Divisional,
- * Conference), worst record first within each; the Super Bowl loser 31st and the winner 32nd. Ties:
- * worse point differential first. Before the season is over it's a projection from the current
- * records (final = false). Once the draft has happened, the next order isn't known yet: records reset,
- * so everyone sits mid-round until games are played.
+ * Each team's spot in each round of the next draft: the same order as the league's Draft page
+ * (playoffs.ts draftOrder: NFL rules, strength of schedule and tiebreakers; teams tied on record
+ * rotate from round to round). Nick, 2026-11-17: the trade tool had the Titans 9th while the Draft
+ * page (and Madden) had them 8th; it used its own simpler order before. final = the Super Bowl has been
+ * played. Once the draft has happened and no games are played yet, everyone sits mid-round.
  */
-export function draftOrder(d: LeagueData, firstDraft: number): { slot: Map<number, number>; final: boolean } {
-  const byRecord = (a: (typeof d.teams)[number], b: (typeof d.teams)[number]) => a.rec.pct - b.rec.pct || (a.rec.pf - a.rec.pa) - (b.rec.pf - b.rec.pa);
+export function teamDraftSlots(d: LeagueData, firstDraft: number): { slots: Map<number, number[]>; final: boolean } {
   const played = d.teams.some((t) => t.rec.w + t.rec.l + t.rec.t > 0);
-  if (firstDraft > d.season.year + 1 && !played) return { slot: new Map(d.teams.map((t) => [t.id, 16])), final: false };
-  // Playoff games: stage 1, week index 18+ (Wild Card 18, Divisional 19, Conference 20, Super Bowl 22).
-  const po = d.games.filter((g) => g.stage === 1 && g.week >= 18 && g.home && g.away);
-  const out = new Map<number, number>(); // team → the round it lost in (18..22)
-  let champ = 0;
-  for (const g of po) {
-    if (!g.final) continue;
-    const loser = g.hs > g.as ? g.away : g.home;
-    out.set(loser, g.week);
-    if (g.week === 22) champ = loser === g.home ? g.away : g.home;
-  }
-  const inPlayoffs = new Set(po.flatMap((g) => [g.home, g.away]));
-  const final = Boolean(champ) && firstDraft === d.season.year + 1;
-  const tier = (id: number) => (!inPlayoffs.has(id) ? 0 : id === champ ? 6 : out.has(id) ? out.get(id)! - 17 : 5);
-  const order = [...d.teams].sort((a, b) => tier(a.id) - tier(b.id) || byRecord(a, b));
-  return { slot: new Map(order.map((t, i) => [t.id, i + 1])), final };
+  if (firstDraft > d.season.year + 1 && !played) return { slots: new Map(d.teams.map((t) => [t.id, Array(8).fill(16)])), final: false };
+  const { slots: order } = draftOrder(d);
+  const out = new Map<number, number[]>(d.teams.map((t) => [t.id, Array(8).fill(16)]));
+  for (let r = 1; r <= 7; r++) roundOrder(order, r).forEach((x, i) => { const a = out.get(x.c.id); if (a) a[r] = i + 1; });
+  const sb = d.games.find((g) => g.stage === 1 && g.week === 22 && g.final);
+  return { slots: out, final: Boolean(sb) && firstDraft === d.season.year + 1 };
 }
 
 /** Parses the Trade Tool's query (?a=NYJ&b=PIT&pa=1,2&pb=3&ka=2028-1&kb=...) into sides. */

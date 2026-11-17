@@ -120,7 +120,7 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
                 );
               })}
               {side.picks.map((k) => {
-                const auto = pickSlot({ y: k.y, r: k.r }, team.slot, firstDraft).slot;
+                const auto = pickSlot({ y: k.y, r: k.r }, team, firstDraft).slot;
                 const setSlot = (v: string) => {
                   const n = Math.round(Number(v));
                   setSide({ ...side, picks: side.picks.map((x) => (x === k ? (n >= 1 && n <= 32 && n !== auto ? { y: k.y, r: k.r, s: n } : { y: k.y, r: k.r }) : x)) });
@@ -129,7 +129,7 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
                   <li key={`${k.y}-${k.r}`} className="trade-pick-chip">
                     <span>
                       <strong>{k.y} {ROUND[k.r]} round pick</strong>
-                      <span className="muted small"> {pickSpotText(k, team.slot, firstDraft, orderFinal)}</span>
+                      <span className="muted small"> {pickSpotText(k, team, firstDraft, orderFinal)}</span>
                     </span>
                     <label className="trade-pick-slot small" title="Pick number within the round. Leave it on the automatic number unless the real pick is different (e.g. a pick this team got from someone else).">
                       #
