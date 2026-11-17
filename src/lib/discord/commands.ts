@@ -22,7 +22,7 @@ const team = (required: boolean) => ({ type: STRING, name: "team", description: 
 export const LEAGUE_MORE: [string, string][] = [
   ["standings", "Standings"], ["playoffs", "Playoff picture"], ["scores", "Scores (week box)"], ["cap", "League cap space (year box)"],
   ["rookie", "Top rookies (team box)"], ["expiring", "Expiring contracts (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
-  ["packs", "Pack leaderboard"], ["info", "League info and links"],
+  ["packs", "Pack leaderboard"], ["sync", "Sync now (pull from EA)"], ["info", "League info and links"],
 ];
 
 const PLAIN = [
@@ -98,6 +98,7 @@ const PLAIN = [
       team(false),
     ],
   },
+  { name: "sync", description: "Pull the latest league data from EA now (once every 15 minutes per league)", ...ANYWHERE },
   { name: "standings", description: "Division standings", ...ANYWHERE },
   { name: "playoffs", description: "Playoff picture with NFL tiebreakers", ...ANYWHERE },
   {

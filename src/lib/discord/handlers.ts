@@ -30,6 +30,7 @@ import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels 
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
+import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, leaguesForDiscordUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
 
@@ -107,7 +108,7 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 
 // ---------- /league: the same commands for any league you're in ----------
 
-const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "info"]);
+const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "sync", "info"]);
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
@@ -230,6 +231,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     if (via !== "server") return reply("Link this server first with `/link league:<web address>`.");
     return name === "notify" ? notify(i, lg) : alertVideo(i, lg);
   }
+
+  if (name === "sync") return syncCmd(i, lg, base);
 
   const d = await getLeagueData(lg.slug);
   if (!d) return reply(`${lg.name} hasn't finished its first sync yet. Try again in a few minutes.`);
@@ -1104,4 +1107,47 @@ async function economyCmd(i: Interaction, lg: LinkedLeague): Promise<string> {
 • Futures cash-out fee: **${pct(e.cashoutFee)}**
 • Always on: nobody can bet on their own game (either team or its props), or against their own team.
 -# Change with /economy cut:… floor:… cashout_fee:… (whole percents).`;
+}
+
+// /sync (Nick, 2026-11-16): the site's "Sync now" from Discord. Same full pull and the same 15-minute
+// cooldown per league (requestSync), so it can't be spammed between the site and the bot. The reply is
+// public so the chat sees it, then edited when the run finishes (the worker usually takes 2-4 min; the
+// interactions route allows 300 s, so we wait up to ~4.5 min and otherwise leave it at "started").
+async function syncCmd(i: Interaction, lg: LinkedLeague, base: string): Promise<Message> {
+  const who = i.member?.user || i.user;
+  const name = who ? who.global_name || who.username : "someone";
+  const url = `${base}/l/${lg.slug}`;
+  const r = await requestSync(lg.slug, { minGapMs: MANUAL_COOLDOWN_MS, mode: "full", by: `discord:${who?.id || ""}` });
+  if (!r.started) {
+    if (r.reason === "recent") {
+      const mins = Math.max(1, Math.ceil(((r.nextAt || Date.now()) - Date.now()) / 60_000));
+      return reply(`**${lg.name}** synced or was asked to sync in the last 15 minutes. Try again in ${mins} min.`, false);
+    }
+    if (r.reason === "not-configured") return reply("On-demand syncing isn't set up on the site yet (GITHUB_DISPATCH_TOKEN), so the league syncs on its schedule.", false);
+    return reply("Couldn't start the sync. Try again in a few minutes.", false);
+  }
+  const startedAt = Date.now();
+  const started = `🔄 **${lg.name}** sync started by ${name}. Pulling from EA, usually 2–4 minutes…`;
+  return {
+    content: started,
+    followUp: async () => {
+      const db = admin2();
+      const deadline = startedAt + 270_000;
+      while (Date.now() < deadline) {
+        await new Promise((res) => setTimeout(res, 15_000));
+        const { data: run } = await db.from("sync_runs").select("started_at, finished_at, result")
+          .eq("league_id", lg.id).gte("started_at", new Date(startedAt - 5_000).toISOString())
+          .order("started_at", { ascending: false }).limit(1).maybeSingle();
+        if (!run?.finished_at) continue;
+        if (run.result === "failed") return { content: `⚠️ **${lg.name}** sync failed (EA may be down or the login expired). Try again later, or check the league page: ${url}` };
+        const secs = Math.round((Date.parse(run.finished_at) - Date.parse(run.started_at)) / 1000);
+        return {
+          content: run.result === "unchanged"
+            ? `✅ **${lg.name}** is up to date: nothing changed in EA since the last sync (${secs}s). ${url}`
+            : `✅ **${lg.name}** synced (${secs}s). New data shows on the site within ~2 minutes and in bot commands right after. ${url}`,
+        };
+      }
+      return { content: `${started}\nStill running; the site updates when it's done. ${url}` };
+    },
+  };
 }
