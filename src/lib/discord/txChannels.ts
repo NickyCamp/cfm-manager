@@ -6,6 +6,7 @@ import { discordOf, leagueBySlug, type LinkedLeague } from "./links";
 import { dc } from "./rest";
 import { botOnly } from "./tradeChannels";
 import { TX_CHANNELS, type TxChannelsState } from "./txPosts";
+import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 
 const stateOf = (lg: LinkedLeague) => (lg.settings?.txChannels as TxChannelsState | undefined) || null;
 
@@ -25,7 +26,7 @@ export async function ensureTxChannels(lg: LinkedLeague): Promise<TxChannelsStat
     cat = String(r.data.id);
   }
   const locked = await botOnly(guildId);
-  const state: TxChannelsState = { categoryId: cat, channels: {} };
+  const state: TxChannelsState = { categoryId: cat, channels: {}, historyPostedAt: old?.historyPostedAt };
   for (const w of TX_CHANNELS) {
     const known = old?.channels?.[w.key];
     const found = (known && chans.find((c) => c.id === known)?.id) || chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === w.name)?.id;
@@ -44,8 +45,9 @@ export async function ensureTxChannels(lg: LinkedLeague): Promise<TxChannelsStat
   return state;
 }
 
-/** /transactionchannels: make or repair the category; action Remove deletes it. */
-export async function txChannelsCmd(slug: string, remove: boolean): Promise<string> {
+/** /transactionchannels: make or repair the category; Remove deletes it; Repost history posts the saved log again. */
+export async function txChannelsCmd(slug: string, action: "remove" | "history" | null, by: string): Promise<string> {
+  const remove = action === "remove";
   const lg = await leagueBySlug(slug);
   if (!lg) return "This league isn't linked to a Discord server (/link).";
   if (remove) {
@@ -57,9 +59,21 @@ export async function txChannelsCmd(slug: string, remove: boolean): Promise<stri
   }
   const st = await ensureTxChannels(lg);
   if (typeof st === "string") return st;
+  if (action === "history" && st.historyPostedAt) {
+    await updateLeagueSettings(lg.id, (s) => { const t = s.txChannels as TxChannelsState | undefined; if (!t) return null; delete t.historyPostedAt; return s; });
+    st.historyPostedAt = undefined;
+  }
+  let when = "";
+  if (!st.historyPostedAt) {
+    // The history goes out with the next sync, so start one now.
+    const r = await requestSync(slug, { minGapMs: MANUAL_COOLDOWN_MS, mode: "full", by });
+    when = r.started
+      ? "A sync just started: when it finishes, the bot posts everything already saved on the site (oldest first), then this sync's new moves. After that, each sync posts only what's new."
+      : "The next sync posts everything already saved on the site (oldest first), then that sync's new moves. After that, each sync posts only what's new.";
+  }
   return [
-    "Transactions category ready. Only the bot can post in these; after every sync it lists what's new:",
+    "Transactions category ready. Only the bot can post in these:",
     ...TX_CHANNELS.map((c) => `• <#${st.channels[c.key]}>: ${c.title.replace(/^\S+\s/, "").toLowerCase()}`),
-    "Nothing is posted for this sync's past; the first posts come with the next sync.",
+    when || "Each sync posts what's new. (Use action: Repost history to post the saved history again.)",
   ].join("\n");
 }

@@ -7,7 +7,7 @@ import { DEV_LABEL } from "../league/types";
 import { money } from "../league/format";
 import { weekTitle } from "../league/derive";
 import { RATING_KEYS } from "../league/ratings";
-import { diffLeague, type C } from "../league/history";
+import { diffLeague, weekKey, weekOrder, type C, type LeagueHistory, type TxEvent } from "../league/history";
 import { BRAND, type Message } from "./api";
 import { tradeTransactionPosts } from "./tradeTransactions";
 import type { TradeChannels } from "./tradeChannels";
@@ -25,7 +25,12 @@ export const TX_CHANNELS = [
   { key: "positions", name: "position-changes", title: "🔀 Position changes", topic: "Players moved to a new position, posted by the bot after each sync." },
 ] as const;
 export type TxKey = (typeof TX_CHANNELS)[number]["key"];
-export type TxChannelsState = { categoryId: string; channels: Partial<Record<TxKey, string>> };
+export type TxChannelsState = {
+  categoryId: string;
+  channels: Partial<Record<TxKey, string>>;
+  /** When the saved history went out (backlogPosts). Missing: the next sync posts it first. */
+  historyPostedAt?: string;
+};
 
 /** Most messages one channel gets per sync (a progression week changes ratings for most of the league). */
 const MAX_MSGS = 10;
@@ -177,7 +182,6 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
 
   // Cuts and extensions come from the same diff as the site's Transactions tab, so they agree.
   const events = diffLeague(prev, next, next.pulledAt);
-  const deal = (c: C) => `${c[0]} yr${c[0] === 1 ? "" : "s"}, ${money(c[2] + c[3])}${c[3] ? ` (${money(c[3])} bonus)` : ""}`;
   const cuts: { ovr: number; line: string }[] = [];
   const ext: { ovr: number; line: string }[] = [];
   for (const e of events) {
@@ -186,14 +190,7 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
       const dead = old?.contract.releasePenalty || 0, saved = old ? old.contract.capHit - dead : 0;
       cuts.push({ ovr: e.ovr, line: `✂️ ${abbr(e.from)} cut [**${e.name}**](${url(`/players/${e.p}`)}) (${e.pos}, ${e.ovr}${e.dev ? ` ${DEV_LABEL[e.dev as 0 | 1 | 2 | 3]}` : ""}, age ${e.age})${old ? ` · dead money ${money(dead)} · saves ${money(saved)}` : ""}` });
     } else if (e.kind === "extended" || e.kind === "restructured") {
-      const t = abbr(e.to), name = `[**${e.name}**](${url(`/players/${e.p}`)}) (${e.pos}, ${e.ovr})`;
-      const hit = e.before && e.after ? ` · cap hit ${money(e.before[4])} → ${money(e.after[4])}` : "";
-      ext.push({
-        ovr: e.ovr,
-        line: e.kind === "restructured"
-          ? `🔧 ${t} restructured ${name}: ${money(e.before ? e.before[3] : 0)} → ${money(e.after ? e.after[3] : 0)} bonus${hit}`
-          : `📝 ${t} extended ${name}: ${e.after ? deal(e.after) : "new deal"}${e.before ? ` (was ${deal(e.before)})` : ""}${hit}`,
-      });
+      ext.push({ ovr: e.ovr, line: contractLine(e, abbr, url) });
     }
   }
   if (cuts.length) out.cuts = list("cuts", cuts.sort((x, y) => y.ovr - x.ovr).map((x) => x.line), url("/cap"));
@@ -206,8 +203,110 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
   return out;
 }
 
-/** Lines → messages: one embed each (Discord caps a message at 6,000 characters), at most MAX_MSGS. */
-function posts(title: string, lines: string[], link: string, color: number, footer: { text: string }, more: string): Message[] {
+const deal = (c: C) => `${c[0]} yr${c[0] === 1 ? "" : "s"}, ${money(c[2] + c[3])}${c[3] ? ` (${money(c[3])} bonus)` : ""}`;
+const playerRef = (e: TxEvent, url: (p?: string) => string) => (e.p ? `[**${e.name}**](${url(`/players/${e.p}`)})` : `**${e.name}**`);
+
+function contractLine(e: TxEvent, abbr: (id: number | undefined) => string, url: (p?: string) => string) {
+  const t = abbr(e.to), name = `${playerRef(e, url)} (${e.pos}, ${e.ovr})`;
+  const hit = e.before && e.after ? ` · cap hit ${money(e.before[4])} → ${money(e.after[4])}` : "";
+  return e.kind === "restructured"
+    ? `🔧 ${t} restructured ${name}: ${money(e.before ? e.before[3] : 0)} → ${money(e.after ? e.after[3] : 0)} bonus${hit}`
+    : `📝 ${t} extended ${name}: ${e.after ? deal(e.after) : "new deal"}${e.before ? ` (was ${deal(e.before)})` : ""}${hit}`;
+}
+
+/**
+ * The first posts in new Transactions channels (Nick, 2026-11-17: "pull every transaction we currently
+ * have saved … then every sync after just updates the channels with the new ones"). Everything the site
+ * already recorded before this sync, oldest first under a header per league week:
+ *  - from the transaction log (history.json.gz): dev changes, overall changes (up/down), cuts,
+ *    extensions and restructures, trades (imported NCL trades include their picks);
+ *  - from the league data: this season's final scores, and who was injured as of the last sync.
+ * Ability, position, individual rating and trait changes were never saved, so they start with the live posts.
+ * This sync's own moves are left out; the regular posts for this sync cover them.
+ */
+export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, next: LeagueData, o: Opts): Partial<Record<TxKey, Message[]>> {
+  const url = (path = "") => `${o.appUrl}/l/${o.slug}${path}`;
+  const teams = new Map(next.teams.map((t) => [t.id, t]));
+  const abbr = (id: number | undefined) => (id ? teams.get(id)?.abbr || "?" : "FA");
+  const footer = { text: `${o.leagueName} · everything recorded before ${new Date(next.pulledAt).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" })}` };
+  const meta = Object.fromEntries(TX_CHANNELS.map((c) => [c.key, c])) as Record<TxKey, (typeof TX_CHANNELS)[number]>;
+  const out: Partial<Record<TxKey, Message[]>> = {};
+  const all = (key: TxKey, lines: string[], link = url("/transactions")) => { if (lines.length) out[key] = posts(`${meta[key].title}: history`, lines, link, BRAND, footer, url("/transactions"), Infinity); };
+
+  // Oldest first, a bold header whenever the league week changes.
+  const events = (h?.events || []).filter((e) => e.at !== next.pulledAt)
+    .map((e, i) => ({ e, i })).sort((a, b) => weekOrder(a.e.wk) - weekOrder(b.e.wk) || (a.e.at || "").localeCompare(b.e.at || "") || a.i - b.i).map((x) => x.e);
+  const byWeek = (evs: TxEvent[], line: (e: TxEvent) => string | null) => {
+    const lines: string[] = [];
+    let wk = "";
+    for (const e of evs) {
+      const l = line(e);
+      if (!l) continue;
+      if (weekKey(e.wk) !== wk) { wk = weekKey(e.wk); lines.push(`__**${e.wk.year} ${e.wk.title}**__`); }
+      lines.push(l);
+    }
+    return lines;
+  };
+  const of = (...k: TxEvent["kind"][]) => events.filter((e) => k.includes(e.kind));
+  const tm = (e: TxEvent) => abbr(e.to || e.from);
+
+  all("dev", byWeek(of("dev"), (e) => e.change ? `${e.change[1] > e.change[0] ? "⬆️" : "⬇️"} ${playerRef(e, url)} (${e.pos}, ${tm(e)}): ${DEV_LABEL[e.change[0] as 0] ?? e.change[0]} → **${DEV_LABEL[e.change[1] as 0] ?? e.change[1]}**` : null), url("/dev"));
+  const ovr = (up: boolean) => byWeek(of("rating"), (e) => e.change && (e.change[1] > e.change[0]) === up ? `${up ? "⬆️" : "⬇️"} ${playerRef(e, url)} (${e.pos}, ${tm(e)}) **${e.change[0]}→${e.change[1]} OVR**` : null);
+  all("ratingsUp", ovr(true));
+  all("ratingsDown", ovr(false));
+  all("cuts", byWeek(of("released"), (e) => `✂️ ${abbr(e.from)} cut ${playerRef(e, url)} (${e.pos}, ${e.ovr}, age ${e.age})${e.before ? ` · was ${deal(e.before)}, ${e.before[1]} yr${e.before[1] === 1 ? "" : "s"} left, ${money(e.before[4])} cap hit` : ""}`), url("/cap"));
+  all("extensions", byWeek(of("extended", "restructured"), (e) => contractLine(e, abbr, url)), url("/cap"));
+
+  // Trades: an imported trade is one event with the whole deal; synced trades are one event per player,
+  // grouped by sync and team pair like the Transactions tab.
+  const tradeRows: TxEvent[][] = [];
+  const groups = new Map<string, TxEvent[]>();
+  for (const e of of("trade")) {
+    if (e.deal) { tradeRows.push([e]); continue; }
+    const k = `${e.at}|${[e.from, e.to].sort().join("-")}`;
+    if (!groups.has(k)) { groups.set(k, []); tradeRows.push(groups.get(k)!); }
+    groups.get(k)!.push(e);
+  }
+  const tradeLines: string[] = [];
+  let twk = "";
+  for (const row of tradeRows) {
+    const e0 = row[0];
+    if (weekKey(e0.wk) !== twk) { twk = weekKey(e0.wk); tradeLines.push(`__**${e0.wk.year} ${e0.wk.title}**__`); }
+    if (e0.deal) {
+      const [a, b] = e0.deal.teams;
+      const got = (t: number) => (e0.deal!.got[String(t)] || []).map((x) => x.pick || `${x.pos ? `${x.pos} ` : ""}${x.name || "?"}`).join(", ") || "nothing listed";
+      tradeLines.push(`🔁 **${abbr(a)} ⇄ ${abbr(b)}** · ${abbr(a)} got: ${got(a)} · ${abbr(b)} got: ${got(b)}`);
+    } else {
+      const [a, b] = [e0.from, e0.to].sort((x, y) => (x || 0) - (y || 0));
+      const got = (t: number | undefined) => row.filter((e) => e.to === t).map((e) => `${e.pos} ${playerRef(e, url)} (${e.ovr})`).join(", ") || "players only in EA's data; no picks";
+      tradeLines.push(`🔁 **${abbr(a)} ⇄ ${abbr(b)}** · ${abbr(a)} got: ${got(a)} · ${abbr(b)} got: ${got(b)}`);
+    }
+  }
+  all("trades", tradeLines);
+
+  // Scores: this season's games that were already final before this sync.
+  if (prev) {
+    const finals = prev.games.filter((g) => g.final && g.home && g.away && g.stage === 1 && prev.season.year === next.season.year);
+    const lines: string[] = [];
+    let wk = "";
+    for (const g of [...finals].sort((x, y) => x.week - y.week || x.id - y.id)) {
+      const t = weekTitle(next, g.stage, g.week);
+      if (t !== wk) { wk = t; lines.push(`__**${next.season.year} ${t}**__`); }
+      const a = `${abbr(g.away)} ${g.as}`, hm = `${abbr(g.home)} ${g.hs}`;
+      lines.push(`${g.as > g.hs ? `**${a}**` : a} @ ${g.hs > g.as ? `**${hm}**` : hm}${g.simmed ? " · sim" : ""} · [box score](${url(`/games/${g.id}`)})`);
+    }
+    if (lines.length) out.scores = posts(`${meta.scores.title}: ${next.season.year} season so far`, lines, url("/scores"), BRAND, footer, url("/scores"), Infinity);
+
+    // Injuries: no injury log was kept, so the list of who was hurt as of the last sync.
+    const hurt = prev.players.filter((p) => !p.gone && p.team > 0 && (p.injury > 0 || p.ir)).sort((x, y) => y.ovr - x.ovr)
+      .map((p) => `🤕 [**${p.first} ${p.last}**](${url(`/players/${p.id}`)}) (${p.pos}, ${abbr(p.team)}, ${p.ovr})${p.injury ? `: out ${p.injury} wk${p.injury === 1 ? "" : "s"}` : ""}${p.ir ? " · on IR" : ""}`);
+    if (hurt.length) out.injuries = posts(`${meta.injuries.title}: injured as of the last sync`, hurt, url("/transactions"), BRAND, footer, url("/transactions"), Infinity);
+  }
+  return out;
+}
+
+/** Lines → messages: one embed each (Discord caps a message at 6,000 characters), at most `max`. */
+function posts(title: string, lines: string[], link: string, color: number, footer: { text: string }, more: string, max = MAX_MSGS): Message[] {
   const pages: string[][] = [[]];
   let size = 0;
   for (const l of lines) {
@@ -215,9 +314,9 @@ function posts(title: string, lines: string[], link: string, color: number, foot
     pages[pages.length - 1].push(l.slice(0, DESC_MAX));
     size += l.length + 1;
   }
-  let shown = pages.slice(0, MAX_MSGS);
-  if (pages.length > MAX_MSGS) {
-    const left = pages.slice(MAX_MSGS).reduce((n, p) => n + p.length, 0);
+  let shown = pages.slice(0, max);
+  if (pages.length > max) {
+    const left = pages.slice(max).reduce((n, p) => n + p.length, 0);
     const last = [...shown[shown.length - 1]];
     while (last.join("\n").length > DESC_MAX - 120 && last.length > 1) last.pop();
     const hidden = left + (shown[shown.length - 1].length - last.length);

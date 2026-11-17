@@ -35,7 +35,7 @@ import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
 import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
-import { TX_CHANNELS, transactionPosts, type TxChannelsState } from "../src/lib/discord/txPosts";
+import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState } from "../src/lib/discord/txPosts";
 import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -106,10 +106,19 @@ async function postTransactionChannels(lg: League, prev: LeagueData | null, data
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!st?.channels || !token) return;
   try {
-    const byKey = transactionPosts(prev, data, { appUrl: APP_URL, slug: lg.slug, leagueName: lg.name, trade: lg.settings?.tradeChannels || null, guildId: lg.settings?.discord?.guildId });
+    const opts = { appUrl: APP_URL, slug: lg.slug, leagueName: lg.name, trade: lg.settings?.tradeChannels || null, guildId: lg.settings?.discord?.guildId };
+    const byKey = transactionPosts(prev, data, opts);
+    // New channels (or "Repost history"): everything the site already saved goes first, oldest first.
+    let backlog: ReturnType<typeof backlogPosts> = {};
+    if (!st.historyPostedAt) {
+      const buf = await download(`${lg.slug}/history.json.gz`);
+      let hist: LeagueHistory | null = null;
+      try { hist = buf ? JSON.parse(gunzipSync(buf).toString("utf8")) : null; } catch { hist = null; }
+      backlog = backlogPosts(hist, prev, data, opts);
+    }
     const done: string[] = [];
     for (const c of TX_CHANNELS) {
-      const msgs = byKey[c.key], channel = st.channels[c.key];
+      const msgs = [...(backlog[c.key] || []), ...(byKey[c.key] || [])], channel = st.channels[c.key];
       if (!msgs?.length || !channel) continue;
       let err: string | null = null;
       for (const m of msgs) if ((err = await postToChannel(token, channel, m))) break;
@@ -117,6 +126,12 @@ async function postTransactionChannels(lg: League, prev: LeagueData | null, data
       else done.push(`#${c.name} ${msgs.length}`);
     }
     if (done.length) log(`- Transactions channels: ${done.join(", ")}.`);
+    if (!st.historyPostedAt) {
+      // Marked even if a channel failed, so a later sync never posts the whole history twice
+      // (an admin can run /transactionchannels action: Repost history after fixing permissions).
+      await updateSettings(db, lg.id, (s) => { const t = s.txChannels as TxChannelsState | undefined; if (!t) return null; t.historyPostedAt = new Date().toISOString(); return s; });
+      log(`- Transactions channels: saved history posted (${Object.values(backlog).reduce((n, m) => n + (m?.length || 0), 0)} messages).`);
+    }
   } catch (e) {
     log(`- Discord Transactions channels failed: ${(e as Error).message}`);
   }

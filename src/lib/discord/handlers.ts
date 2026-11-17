@@ -330,7 +330,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "transactionchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
-      return reply(await txChannelsCmd(lg.slug, opt(i, "action") === "remove"));
+      const act = opt(i, "action");
+      return reply(await txChannelsCmd(lg.slug, act === "remove" ? "remove" : act === "history" ? "history" : null, `discord:${i.member?.user?.id || i.user?.id || "?"}`));
     }
     case "kickoff": {
       if (via !== "server") return reply("Kickoff times can only be set in the league's own Discord server (linked with `/link`).");

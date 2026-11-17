@@ -160,7 +160,7 @@ export const COMMANDS = [
     description: "Admins: make the bot-only Transactions category (scores, injuries, ratings, cuts, trades…)",
     ...SERVER_ONLY,
     options: [
-      { type: STRING, name: "action", description: "Leave empty to make or repair it; Remove deletes the Transactions category", required: false, choices: [{ name: "Remove", value: "remove" }] },
+      { type: STRING, name: "action", description: "Empty: make or repair it. Repost history: post all saved moves again. Remove: delete it", required: false, choices: [{ name: "Repost history", value: "history" }, { name: "Remove", value: "remove" }] },
     ],
   },
   { name: "connect", description: "Link your Discord to your CFM Manager account (for betting league Tickets)", ...ANYWHERE },
