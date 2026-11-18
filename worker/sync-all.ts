@@ -27,6 +27,7 @@ import { signWorkerCall } from "../src/lib/workerSig";
 import { updateSettings } from "../src/lib/leagueSettingsCore";
 import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
+import { healRenumberedLog, remapLeagueTeams, teamIdMap } from "../src/lib/league/teamIds";
 import { appendEvents, diffLeague, seedHistory, type LeagueHistory, type TradePicks } from "../src/lib/league/history";
 import { archiveSeason, type SeasonArchive } from "../src/lib/league/seasons";
 import fs from "node:fs";
@@ -292,7 +293,12 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
     const prevBuf = await download(`${slug}/data.json.gz`);
     let prev: LeagueData | null = null;
     try { prev = prevBuf ? JSON.parse(gunzipSync(prevBuf).toString("utf8")) : null; } catch { prev = null; }
-    const data = mergeHistory(prev, buildLeagueData(files));
+    const fresh = buildLeagueData(files);
+    // EA can renumber every team id (NCL, 2027 offseason). Move the last sync onto the new ids first, or every
+    // player looks traded and old games/posts can't find their teams.
+    const renum = teamIdMap(prev, fresh);
+    if (prev && renum.size) { prev = remapLeagueTeams(prev, renum); log(`- EA renumbered ${renum.size} team ids; the last sync's data was moved onto the new ids.`); }
+    const data = mergeHistory(prev, fresh);
     await resolvePortraits(prev, data, log);
     const gz = gzipSync(Buffer.from(JSON.stringify(data)));
     keepCopy(`${slug}.json.gz`, gz);
@@ -342,6 +348,8 @@ async function updateHistory(slug: string, prev: LeagueData | null, data: League
         log(`- Transaction log started from ${seedFile}: ${hist.events.length} moves, ${hist.events.filter((e) => !e.p && e.kind !== "trade").length} players not matched.`);
       } else hist = { version: 1, trackedSince: new Date().toISOString(), events: [] };
     }
+    const healed = healRenumberedLog(hist, data);
+    if (healed.dropped) { hist = healed.hist; log(`- Transaction log: dropped ${healed.dropped} fake trades from a team-id renumbering and moved ${healed.fixed} older moves onto the new team ids.`); }
     const events = diffLeague(prev, data, data.pulledAt || new Date().toISOString());
     hist = appendEvents(hist, events);
     if (events.length) {
