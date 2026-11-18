@@ -909,7 +909,6 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup, url: Url, footer
   };
 }
 
-/** Top 10 rookies (yearsPro 0) by overall, league-wide (rostered players only) or one team's. */
 const marketOf = (d: LeagueData): MarketPlayer[] => d.players.filter((x) => !x.gone).map((x) => ({
   id: x.id, n: fullName(x), pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
   c: [x.contract.length, x.contract.yearsLeft, x.contract.salary, x.contract.bonus, x.contract.capHit],
@@ -945,9 +944,15 @@ function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed 
   };
 }
 
+/** Top 10 rookies of the newest draft class by overall (real dev traits, which Madden hides in game), league-wide
+ *  (rostered players only) or one team's. */
 function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Footer): Embed {
+  // The newest draft class by EA's rookieYear, not "0 years pro": around the draft Madden may still show last
+  // year's rookies at 0 years pro, which would mix two classes. Players without a rookieYear fall back to yearsPro.
+  const cls = d.players.reduce((m, p) => (!p.gone && p.draft.year > m ? p.draft.year : m), 0);
+  const isRookie = (p: Player) => (cls && p.draft.year ? p.draft.year === cls : p.yearsPro === 0);
   const rookies = d.players
-    .filter((p) => p.yearsPro === 0 && !p.gone && (t ? p.team === t.id : p.team > 0))
+    .filter((p) => isRookie(p) && !p.gone && (t ? p.team === t.id : p.team > 0))
     .sort((a, b) => b.ovr - a.ovr || b.dev - a.dev || a.draft.round - b.draft.round || a.draft.pick - b.draft.pick)
     .slice(0, 10);
   const pick = (p: Player) => (p.draft.round > 0 && p.draft.round < 8 ? `Rd ${p.draft.round}, #${p.draft.pick}` : "Undrafted");
@@ -957,7 +962,7 @@ function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Foot
     return `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)})${team} · **${p.ovr}** · ${extra}`;
   });
   return {
-    title: t ? `${teamLabel(t)}: top rookies` : "Top rookies in the league",
+    title: `${t ? `${teamLabel(t)}: top` : "Top"}${cls ? ` ${cls}` : ""} rookies${t ? "" : " in the league"}`,
     url: t ? url(`/teams/${t.abbr.toLowerCase()}`) : url(),
     color: t ? hexColor(t.primary) : BRAND, footer,
     description: lines.join("\n") || (t ? `No rookies on the ${teamLabel(t)}.` : "No rookies on any roster yet."),
