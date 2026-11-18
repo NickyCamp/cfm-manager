@@ -33,8 +33,28 @@ const TAILS = [
   "Somebody turn the difficulty down for them.", "This is why nobody respects them.",
   "Genuinely sad to look at.", "Rookie mode might be more their speed.", "Hide the controller from this man.",
   "The tape should be used as evidence.", "Get this team off my screen.", "Not even the CPU wants to play them.",
+  // Nick, 2026-11-18: "don't be afraid to be even more violent with them".
+  "Call the coroner.", "Somebody call 911.", "Rest in pieces.", "Bury the film. Then bury the team.",
+  "Absolutely murdered.", "Get the body bags.", "They'll need dental records to identify the offense.",
+  "Execution-style.", "Somebody pull the plug.", "Cremate the playbook.", "Next of kin has been notified.",
+  "Crime scene tape around the end zone.", "The Geneva Convention has questions.", "Death certificate pending.",
+  "Flatlined.", "Send flowers to the family.", "Closed-casket performance.", "Pour one out.",
+  "Somebody chalk-outline the 50-yard line.", "Time of death: kickoff.", "Light a candle for this man.",
+  "The ambulance is already idling outside.", "Football was committed against them.", "Lock him up.",
+  "Straight to the shadow realm.", "Witnesses are still in therapy.", "Put the whole roster on a milk carton.",
+  "Euthanize the season.", "Hall of Shame, first ballot.", "Mercy rule should be in the CBA.",
 ];
-export const tail = (text: string, chance = 0.6) => (randomInt(1000) < chance * 1000 ? `${text} ${pick(TAILS)}` : text);
+// Openers, now and then, for the same reason.
+const HEADS = [
+  "Autopsy report:", "BREAKING:", "Police report:", "Coroner's note:", "Exhibit A:", "Witness statement:",
+  "Crime scene update:", "Obituary:", "For the record:", "Evidence #47:", "Breaking news from the morgue:",
+];
+export const tail = (text: string, chance = 0.6) => {
+  let t = text;
+  if (randomInt(1000) < 150) t = `${pick(HEADS)} ${t}`;
+  if (randomInt(1000) < chance * 1000) t = `${t} ${pick(TAILS)}`;
+  return t;
+};
 
 /** Short, stable id for a fact, for the recently-shown list. */
 export const factId = (f: Fact) => createHash("sha1").update(f.key || f.text).digest("base64url").slice(0, 7);
