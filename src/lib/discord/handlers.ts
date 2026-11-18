@@ -16,7 +16,7 @@ import { standInArt } from "@/lib/league/headshots";
 import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
-import { DISCORD_POS_GROUPS, type DiscordPosGroup } from "./posGroups";
+import { DISCORD_POS_GROUPS, groupStarters, type DiscordPosGroup } from "./posGroups";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
 import { pickFact, playerFacts, teamFacts } from "./funfacts";
 import { randomInt } from "node:crypto";
@@ -819,7 +819,27 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup, url: Url, footer
     ? `${active.length} on the active roster · avg ${avg} OVR · ${money(cap)} in cap hits this season\n\n${active.map(line).join("\n")}`
     : `No ${g.name} on the ${teamLabel(t)} active roster.`;
   if (ps.length) desc += `\n\n**Practice squad**\n${ps.map(line).join("\n")}`;
-  if (desc.length > 4000) desc = desc.slice(0, desc.lastIndexOf("\n", 3990)) + "\n…";
+  // Where this group ranks: every team's starters in the group by average OVR (Nick, 2026-11-18).
+  const board = d.teams.map((x) => ({ t: x, ...groupStarters(teamPlayers(d, x.id), g) })).sort((a, b) => b.avg - a.avg);
+  const rankOf = (k: number) => board.findIndex((r) => r.avg.toFixed(1) === board[k].avg.toFixed(1)) + 1; // ties share a rank
+  const me = board.findIndex((r) => r.t.id === t.id);
+  const starterNote = g.slots.map(([pos, n]) => `${n} ${pos.length > 1 && g.key !== "db" && g.key !== "s" ? g.name : pos.join("/")}`).join(" + ");
+  const show = new Set([0, 1, 2, 3, 4, me - 1, me, me + 1, board.length - 1].filter((k) => k >= 0 && k < board.length));
+  let prev = -1;
+  const rows: string[] = [];
+  for (const k of [...show].sort((a, b) => a - b)) {
+    if (prev >= 0 && k > prev + 1) rows.push("-# …");
+    const r = board[k], mine = k === me;
+    const text = `${rankOf(k)}. ${r.t.abbr} · ${r.avg.toFixed(1)}`;
+    rows.push(mine ? `**▶ ${text}**` : text);
+    prev = k;
+  }
+  const rankHead = `**League rank: #${rankOf(me)} of ${board.length}** (starters avg ${board[me].avg.toFixed(1)} OVR)`
+    + `\n-# Starters: ${starterNote}, best OVR on the active roster; an empty spot counts as 40.`;
+  const rankBlock = `${rankHead}\n${rows.join("\n")}`;
+  const room = 4000 - rankBlock.length - 2;
+  if (desc.length > room) desc = desc.slice(0, desc.lastIndexOf("\n", room - 10)) + "\n…";
+  desc = `${rankBlock}\n\n${desc}`;
   return {
     title: `${teamLabel(t)}: ${g.label}`,
     url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
