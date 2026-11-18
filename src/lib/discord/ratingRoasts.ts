@@ -9,6 +9,7 @@ import { pick, tail, type Fact } from "./factFormat";
 // {w} = his last name, {v} = the rating.
 const LINES: Record<string, string[]> = {
   awareRating: [
+    "{w} has **{v} Awareness**. Dan Orlovsky ran out the back of the end zone and still had more.",
     "**{v} Awareness**. {w} has been concussed since birth and nobody told him.",
     "{w} plays with **{v} Awareness**, which is the football version of a toddler loose on the highway.",
     "{w} has **{v} Awareness**. Honestly a surprise he can figure out how to get dressed for the day.",
@@ -17,6 +18,7 @@ const LINES: Record<string, string[]> = {
     "With **{v} Awareness**, {w} needs a reminder which way his team is going.",
   ],
   bCVRating: [
+    "**{v} BCV**. {w} couldn't find a hole if GTA 6 gave him a minimap.",
     "**{v} BCV**. {w} runs into the pile like he's trying to get murdered.",
     "{w} (**{v} BCV**) has the vision of a blindfolded mole in a hurricane.",
     "{w} has **{v} Ball Carrier Vision**. Someone needs to get this guy a map.",
@@ -25,6 +27,7 @@ const LINES: Record<string, string[]> = {
     "**{v} BCV**: {w} couldn't find a running lane with GPS and a flashlight.",
   ],
   catchRating: [
+    "{w} has **{v} Catching**. Like OJ's glove, the football just doesn't fit.",
     "**{v} Catching**. {w} should have his hands amputated and replaced with something useful.",
     "{w} has **{v} Catching**. The football is scared of him and honestly so are we.",
     "{w} has **{v} Catching**. He's dropped more balls than a bowling alley.",
@@ -34,11 +37,13 @@ const LINES: Record<string, string[]> = {
   cITRating: ["**{v} Catch in Traffic**. {w} hears footsteps and lets go.", "{w} has **{v} CIT**. One defender nearby and the ball is gone."],
   specCatchRating: ["{w} has **{v} Spectacular Catch**. The only highlight he's ever been on is someone else's."],
   carryRating: [
+    "**{v} Carrying**. {w} handles the ball like Plaxico handled that gun in the club.",
     "**{v} Carrying**. {w} hands the ball to the defense like it's a ransom payment.",
     "{w} has **{v} Carrying**. Holds the football like it's a newborn he didn't want.",
     "**{v} Carrying**. {w} fumbles in his sleep.",
   ],
   speedRating: [
+    "{w} has **{v} Speed**. OJ's Bronco chase hit higher top speeds.",
     "{w} has **{v} Speed**. Defenders aren't tackling him, they're euthanizing him.",
     "**{v} Speed**. {w} gets caught from behind by the guy who just checked in.",
     "{w} has **{v} Speed**. Linebackers lap him.",
@@ -51,6 +56,7 @@ const LINES: Record<string, string[]> = {
   jumpRating: ["{w} has **{v} Jumping**. Can't get over a phone book.", "**{v} Jump**. {w} has never once touched a doorframe."],
   strengthRating: ["{w} has **{v} Strength**. Loses arm wrestling to the kicker.", "**{v} Strength**. {w} needs help opening Gatorade."],
   tackleRating: [
+    "{w} has **{v} Tackle**. Mall cops bring guys down cleaner than this.",
     "**{v} Tackling**. {w} gets dragged like a body behind a getaway car.",
     "{w} has **{v} Tackle**. Running backs use him as a stepping stone and a crash mat.",
     "{w} has **{v} Tackling**. Tackles like he's giving hugs at a family reunion.",
@@ -59,12 +65,14 @@ const LINES: Record<string, string[]> = {
   hitPowerRating: ["{w} has **{v} Hit Power**. Getting hit by him feels like a high five."],
   pursuitRating: ["**{v} Pursuit**. {w} chases ball carriers like he's late for nothing."],
   playRecRating: [
+    "**{v} Play Rec**. {w} falls for fakes like a boomer falls for Facebook scams.",
     "**{v} Play Rec**. {w} gets fooled so badly he should sue for fraud.","{w} has **{v} Play Recognition**. Still trying to figure out what happened on the last snap.", "**{v} Play Rec**. {w} bites on every fake, every time."],
   blockShedRating: [
     "{w} has **{v} Block Shedding**. Linemen bury him and plant flowers on top.","{w} has **{v} Block Shedding**. A tight end can hold him all day with one arm."],
   powerMovesRating: ["**{v} Power Moves**. {w} bull rushes like a golden retriever."],
   finesseMovesRating: ["**{v} Finesse Moves**. {w} has exactly one pass rush move and it's falling down."],
   manCoverRating: [
+    "**{v} Man Coverage**. {w} leaves receivers more open than a classified document at a resort.",
     "**{v} Man Coverage**. {w} gets cooked so badly they should call the fire department.",
     "{w} (**{v} MCV**) gets roasted, toasted and buried every Sunday.","{w} has **{v} Man Coverage**. Receivers wave at him on the way by.", "**{v} Man Coverage**. {w} is covering air."],
   zoneCoverRating: [
@@ -82,9 +90,11 @@ const LINES: Record<string, string[]> = {
     "{w} has **{v} Deep Accuracy**. His deep balls should be reported as missing persons.","{w} has **{v} Deep Accuracy**. His deep ball lands in the parking lot.", "**{v} Deep Accuracy**. {w} throws it deep and hopes the defense is feeling generous."],
   throwOnRunRating: ["**{v} Throw on the Run**. Make {w} move and the ball goes anywhere but the receiver."],
   throwUnderPressureRating: [
+    "**{v} TUP**. {w} folds under pressure faster than a politician under oath.",
     "**{v} TUP**. {w} sees a pass rusher and his soul leaves his body.","{w} has **{v} Throw Under Pressure**. One defender breathes on him and he folds.", "**{v} TUP**. {w} panics when the pocket gets slightly warm."],
   playActionRating: ["**{v} Play Action**. Nobody bites on {w}'s fakes, not even his own linemen."],
-  breakSackRating: ["{w} has **{v} Break Sack**. Goes down if a linebacker sneezes near him."],
+  breakSackRating: [
+    "{w} has **{v} Break Sack**. Goes down faster than a crypto exchange.","{w} has **{v} Break Sack**. Goes down if a linebacker sneezes near him."],
   breakTackleRating: [
     "**{v} Break Tackle**. {w} goes down like he got shot from the stands.","{w} has **{v} Break Tackle**. One finger tackles him.", "**{v} Break Tackle**. Arm tackles are a death sentence for {w}."],
   truckRating: ["**{v} Trucking**. {w} runs into defenders and apologizes."],
@@ -97,6 +107,7 @@ const LINES: Record<string, string[]> = {
     "**{v} Run Block**. {w} gets driven five yards backward and buried in his own backfield.","{w} has **{v} Run Block**. Gets pushed back into his own running back.", "**{v} Run Block**. Running backs avoid {w}'s gap on purpose."],
   impactBlockRating: ["**{v} Impact Block**. {w} blocks like he's holding a door open."],
   kickAccRating: [
+    "**{v} Kick Accuracy**. {w} has missed more targets than Rockstar missed GTA 6 release dates.",
     "{w} has **{v} Kick Accuracy**. The goalposts should press charges for harassment.","{w} has **{v} Kick Accuracy**. The uprights fear nothing from him.", "**{v} Kick Accuracy**. {w} aims small and misses everywhere."],
   kickPowerRating: ["{w} has **{v} Kick Power**. A 40-yarder is a Hail Mary for him."],
   staminaRating: ["{w} has **{v} Stamina**. Needs an oxygen tank after the national anthem."],

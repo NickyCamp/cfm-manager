@@ -312,6 +312,7 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
       add("silent", ROAST + 1, [
         `${who} has a **${money(cap)} cap hit** and hasn't recorded **a single stat** this season${why}.`,
         `${Team} are paying ${full} **${money(cap)}** this season. Stats so far: **none**${why}.`,
+      `${who} has a **${money(cap)}** cap hit and zero stats${why}. GTA 6 got delayed twice and still showed up more than this guy.`,
         `${money(cap)} for ${who} this year, and the stat sheet is blank${why}. Nice work if you can get it.`,
       ]);
       overpaid = true;
@@ -322,6 +323,7 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
         `${who} has the **${ord(capRank)}-biggest cap hit among ${GROUP_NAME[g]}** (${money(cap)}) and ranks **${ord(prodRank)} of ${peers.length}** in ${prod.label}.${per}`,
         `Paid like the ${ord(capRank)}-best of the ${GROUP_NAME[g]} (${money(cap)}), producing like the ${ord(prodRank)}-best. ${who} is a heist.${per}`,
         `${Team} pay ${who} **${money(cap)}**, ${nth(capRank, "most")} among ${GROUP_NAME[g]}. He's **${ord(prodRank)} of ${peers.length}** in ${prod.label}.${per}`,
+        `${Team} paying ${who} **${money(cap)}** to rank ${ord(prodRank)} in ${prod.label} is the most criminal thing an NFL team has done since the Bengals' 2006 offseason.${per}`,
       ]);
     }
   }

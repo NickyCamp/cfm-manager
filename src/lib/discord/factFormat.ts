@@ -43,6 +43,18 @@ const TAILS = [
   "The ambulance is already idling outside.", "Football was committed against them.", "Lock him up.",
   "Straight to the shadow realm.", "Witnesses are still in therapy.", "Put the whole roster on a milk carton.",
   "Euthanize the season.", "Hall of Shame, first ballot.", "Mercy rule should be in the CBA.",
+  // Real-world / pop culture (Nick, 2026-11-18: "GTA 6, OJ Simpson, NFL players committing crimes… crazy
+  // headlines"). Kept evergreen and non-partisan.
+  "GTA 6 got delayed twice and still showed up before this team did.", "OJ's Bronco chase had more urgency.",
+  "If it doesn't fit, you must acquit. This doesn't fit.", "Butt fumble energy.", "Dan Orlovsky ran out the back of the end zone with more awareness.",
+  "Antonio Brown walked off mid-game with more dignity.", "Deflategate had more integrity than this.", "Fyre Festival was better organized.",
+  "Congress has a higher approval rating.", "Longer than a government shutdown and twice as useless.",
+  "More flip-flops than an election year.", "Goes down faster than a crypto exchange.",
+  "Blockbuster had a better comeback plan.", "Even the Browns' QB room is laughing.", "Somebody leak this to TMZ.",
+  "The Jets would cut this guy.", "Leon Lett on Thanksgiving made a smarter play.", "More red flags than an NFL rookie's background check.",
+  "Got the Bengals' 2000s arrest record energy.", "Plaxico Burress handled a gun better than this.",
+  "Cheaper than Taylor Swift tickets and somehow worse to watch.", "Netflix would cancel this after one season.",
+  "The Titanic had a better finish.", "Y2K was a bigger threat.", "Breaking Bad had cleaner execution.",
 ];
 // Openers, now and then, for the same reason.
 const HEADS = [

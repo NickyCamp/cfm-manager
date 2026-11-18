@@ -104,6 +104,7 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
   if (a?.gp && payRank <= 10 && losing) add("payroll", R + 1, [
     `${The} have ${nth(payRank, "highest")} payroll in the league (${money(team.cap.spent)}) and a **${rec(team)}** record.`,
     `${money(team.cap.spent)} spent, **${rec(team)}** to show for it. ${The} have ${nth(payRank, "highest")} payroll in the league.`,
+    `${The} spent ${money(team.cap.spent)} to go **${rec(team)}**. That's Fyre Festival budgeting.`,
     `${The} are proof money can't buy wins: ${nth(payRank, "highest")} payroll, **${rec(team)}** record.`,
     `Imagine spending ${money(team.cap.spent)} (${nth(payRank, "most")} in the league) to go **${rec(team)}**. ${The} don't have to imagine.`,
   ]);
@@ -134,6 +135,7 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
       `${The} have given the ball away **${a.to} times** and taken it away only **${a.take}**. That's a **${diff}** turnover margin.`,
       `${The} are **${diff}** in turnover margin. They're basically playing for the other team.`,
       `${a.to} giveaways, ${a.take} takeaways. ${The} are very generous people.`,
+      `${a.to} giveaways. ${poss(The)} highlight reel is just the butt fumble on loop.`,
     ]);
     const allowRank = 1 + [...c.teamAgg.values()].filter((x) => x.gp && x.pa / x.gp > a.pa / a.gp).length;
     if (allowRank <= 5) add("allowed", R - 0.5, [
@@ -143,6 +145,7 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
     const penRank = 1 + [...c.teamAgg.values()].filter((x) => x.gp && x.penYds > a.penYds).length;
     if (penRank <= 6 && a.penYds >= 100) add("flags", R - 1, [
       `${The} have ${nth(penRank, "most")} penalty yards in the league (**${n(a.penYds)}**). Zero discipline.`,
+      `${The} have more flags (**${a.pen}**) than an NFL rookie's background check.`,
       `The refs know ${the} by name: **${a.pen} flags for ${n(a.penYds)} yards**, ${nth(penRank, "most")} in the league.`,
     ]);
     const margin = a.pf - a.pa;
@@ -179,10 +182,12 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
     if (low.us <= 6) add("lowgame", R, [
       `${The} scored **${low.us === 0 ? "zero points" : `${low.us} points`}** against ${tn(low.opp)} in ${wk(low.g)}.${low.us === 0 ? " Not a field goal. Nothing." : ""}`,
       `${wk(low.g)}: ${the} put up **${low.us}** on ${tn(low.opp)}. A kicker alone could do that.`,
+      `${The} scored **${low.us}** against ${tn(low.opp)} in ${wk(low.g)}. OJ's Bronco chase moved the ball faster.`,
     ]);
   }
   if (Math.abs(team.rec.streak) >= 3 && team.rec.streak < 0) add("skid", R, [
     `${The} have lost **${-team.rec.streak} straight**.`,
+    `${The} have lost **${-team.rec.streak} in a row**. That's longer than a government shutdown and somehow less productive.`,
     `${The} haven't won in **${-team.rec.streak} games**. Remember winning? They don't.`,
     `L after L after L: ${the} have dropped **${-team.rec.streak} in a row**.`,
   ]);
@@ -269,6 +274,9 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
       `${user} is ${rec(team)} with ${the}. The grass outside misses you, buddy.`,
       `A **${wp}** win rate in Madden is not the flex ${user} thinks it is. Call your mom. Go outside.`,
       `${user} at **${rec(team)}**: no job, no girlfriend, no losses. Two of those are a problem.`,
+      Date.now() >= Date.parse("2026-11-19T05:00:00Z")
+        ? `GTA 6 is finally out and ${user} is still in Madden winning ${wp} of his games. Seek help.`
+        : `GTA 6 drops November 19 and ${user} is still farming Madden wins at ${wp}. Priorities.`,
       `${The} win ${wp} of the time. ${user} has clearly put in hours that should have gone to a resume.`,
     ], false);
     if (team.rec.streak >= 5) add("tryhard_streak", R, [
