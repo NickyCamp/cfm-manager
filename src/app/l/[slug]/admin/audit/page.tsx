@@ -46,7 +46,7 @@ export default async function AuditPage({ params }: Props) {
         <h2>Rule audits</h2>
         <p className="muted" style={{ maxWidth: "72ch" }}>
           Write the league&apos;s rules here, then run <code>/audit abilities</code>, <code>/audit games</code> or <code>/audit players</code> in Discord
-          (admin role; add <code>public:True</code> to post for everyone). The results below use the latest sync ({d.season.year} {d.season.title}).
+          (anyone can run them; the results post in the bot&apos;s Audits category, which it makes the first time). The results below use the latest sync ({d.season.year} {d.season.title}).
           {" "}<Link href={`/l/${slug}/admin`}>Back to Admin</Link>
         </p>
 

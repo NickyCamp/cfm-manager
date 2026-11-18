@@ -31,6 +31,7 @@ import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } 
 import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "./marketChannels";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { AUDIT_KINDS, auditMessage, runAudit, type AuditKind } from "./audit";
+import { postAudit } from "./auditChannels";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { tradeChannelsCmd } from "./tradeChannels";
@@ -347,8 +348,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "tradeblock": return tradeBlockCmd(i, lg, d, footer);
     case "audit": {
+      // Anyone can run it; the results go to the matching channel in the Audits category for everyone to see.
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
-      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
       const f = flattenSub(i);
       const kind = f.sub as AuditKind;
       if (!(kind in AUDIT_KINDS)) return reply("Pick abilities, games or players.");
@@ -360,7 +361,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       }
       const h = kind === "players" ? await getLeagueHistory(lg.slug).catch(() => null) : null;
       const r = runAudit(kind, d, h, lg.settings, t?.id);
-      return { ...auditMessage(kind, r, d, { url, footer, team: t ? `${t.city} ${t.name}` : undefined }), flags: opt(f, "public") === true ? undefined : EPHEMERAL };
+      const msg = auditMessage(kind, r, d, { url, footer, team: t ? `${t.city} ${t.name}` : undefined });
+      const posted = await postAudit(lg, kind, msg, `<@${userId(i)}>`);
+      if ("error" in posted) return { ...msg, content: `Couldn't post in the Audits category (${posted.error}), so here are the results:`, flags: undefined };
+      const v = r.findings.filter((x) => x.severity === "violation").length;
+      return reply(`Posted in <#${posted.channelId}>: ${v ? `${v} violation${v === 1 ? "" : "s"}` : "no rule breaks"}${r.findings.length > v ? `, ${r.findings.length - v} to watch` : ""}.`);
     }
     case "tradechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");

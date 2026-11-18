@@ -158,8 +158,8 @@ export async function POST(req: Request) {
     }
     // Settings changes reply only to the person who ran them; everything else is public.
     const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "transactionchannels", "packchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "")
-      // /audit: private unless the admin picked public
-      || (i.data?.name === "audit" && !i.data.options?.[0]?.options?.some((o) => o.name === "public" && o.value === true));
+      // /audit: the results post in the Audits category; the runner gets a private pointer to them
+      || i.data?.name === "audit";
     after(async () => {
       try {
         const msg = await runCommand(i, base);
