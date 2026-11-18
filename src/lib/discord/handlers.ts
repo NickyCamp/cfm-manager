@@ -154,7 +154,9 @@ function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: st
   const more = String(get("more")?.value ?? "");
   const box = more ? undefined : BOX_CMDS.find(([b]) => get(b));
   // The team box plus the group, rating or order box = that team's players (/players).
-  const cmd = more || (box?.[0] === "team" && (get("group") || get("rating") || get("order")) ? "players" : box?.[1]) || "info";
+  // The group, rating or order box alone = league-wide /players.
+  const listing = get("group") || get("rating") || get("order");
+  const cmd = more || ((!box || box[0] === "team") && listing ? "players" : box?.[1]) || "info";
   const own = box ? [{ ...get(box[0])!, name: box[2] }] : [];
   const extra = opts.filter((o) => (EXTRA[cmd] || []).includes(o.name) && !own.some((x) => x.name === o.name));
   return { cmd, pick, inner: { ...i, data: { ...i.data, name: cmd, options: [...own, ...extra] } } };
@@ -302,8 +304,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return t ? { embeds: [teamEmbed(d, t, url, footer)] } : reply("No team by that name.");
     }
     case "players": {
-      const t = findTeam(d, opt(i, "team"));
-      if (!t) return reply("No team by that name.");
+      // Team optional: empty = every rostered player in the league (Nick, 2026-11-18).
+      const tv = opt(i, "team");
+      const t = tv != null && tv !== "" ? findTeam(d, tv) : undefined;
+      if (tv != null && tv !== "" && !t) return reply("No team by that name.");
       const gv = String(opt(i, "group") ?? "");
       const g = gv ? DISCORD_POS_GROUPS.find((x) => x.key === gv) : undefined;
       if (gv && !g) return reply("Pick a position group (QB, RB, WR, TE, OL, DL, LB, DB, CB, S or K/P), or leave it empty for the whole roster.");
@@ -314,6 +318,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         if (!r) return reply(`No rating called **${rv}**. Start typing in the rating box and pick one from the list.`);
         sort = { ...r, dir: ov === "asc" ? "asc" : "desc" };
       }
+      if (!t) return { embeds: [leaguePlayersEmbed(d, g, url, footer, sort)] };
       return { embeds: [groupEmbed(d, t, g, url, footer, sort)] };
     }
     case "rookie": {
@@ -870,6 +875,38 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   };
 }
 
+/** /players with no team: the league's top 25 rostered players (one position group or everyone) by a rating,
+ *  OVR best to worst by default. Free agents left out; practice squad flagged. Nick, 2026-11-18. */
+const LEAGUE_LIST = 25;
+function leaguePlayersEmbed(d: LeagueData, g: DiscordPosGroup | undefined, url: Url, footer: Footer, sort?: PlayerSort): Embed {
+  const s: PlayerSort = sort ?? { ...findSortRating("")!, dir: "desc" };
+  const pool = d.players.filter((p) => p.team > 0 && !p.gone && (!g || g.positions.includes(p.pos)));
+  const rated = pool.filter((p) => sortValue(p, s.key) != null);
+  rated.sort((a, b) => {
+    const va = sortValue(a, s.key)!, vb = sortValue(b, s.key)!;
+    return (s.dir === "asc" ? va - vb : vb - va) || b.ovr - a.ovr;
+  });
+  const showVal = s.key !== "ovr";
+  const line = (p: Player, k: number, link: boolean) => {
+    const flags = [p.ps ? "PS" : "", p.ir ? "IR" : p.injury > 0 ? `inj ${p.injury} wk` : ""].filter(Boolean);
+    const yl = p.contract.yearsLeft;
+    return `${k + 1}. ${p.pos} ${link ? `[${fullName(p)}](${url(`/players/${p.id}`)})` : fullName(p)} · ${teamOf(d, p.team)?.abbr || "FA"}`
+      + `${showVal ? ` · ${s.short} **${sortValue(p, s.key)}** · ${p.ovr} OVR` : ` · **${p.ovr}**`}`
+      + `${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age}`
+      + ` · ${money(p.contract.capHit)}, ${yl} yr${yl === 1 ? "" : "s"} left${flags.length ? ` · ${flags.join(" · ")}` : ""}`;
+  };
+  const top = rated.slice(0, LEAGUE_LIST);
+  const head = `${s.dir === "asc" ? "Bottom" : "Top"} ${top.length} of ${rated.length} rostered ${g ? g.name : "players"} league-wide by ${s.label}, `
+    + `${s.dir === "asc" ? "worst to best" : "best to worst"}.${rated.length < pool.length ? `\n-# ${pool.length - rated.length} without ratings in this build left out.` : ""}`;
+  let desc = `${head}\n\n${top.map((p, k) => line(p, k, true)).join("\n")}`;
+  if (desc.length > 4000) desc = `${head}\n\n${top.map((p, k) => line(p, k, false)).join("\n")}`;
+  return {
+    title: `League ${g ? g.label.toLowerCase() : "players"} by ${s.short}`,
+    url: url("/players"), color: BRAND, footer,
+    description: top.length ? desc : `No rostered ${g ? g.name : "players"} found.`,
+  };
+}
+
 // Every position in depth-chart order, for /players with no group (the whole roster).
 const ALL_POSITIONS = [...new Set(DISCORD_POS_GROUPS.flatMap((x) => x.positions))];
 
@@ -1136,7 +1173,7 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
 }
 
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
-export const _preview = { statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
+export const _preview = { leaguePlayersEmbed, statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
 
 // ---------- /kickoff: when betting closes on a game (Nick, 2026-11-13) ----------
 // The two teams' managers (linked with /connect) or an admin can set it; once it has
