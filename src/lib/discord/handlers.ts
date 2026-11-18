@@ -17,7 +17,7 @@ import { standInArt } from "@/lib/league/headshots";
 import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
-import { DISCORD_POS_GROUPS, groupStarters, type DiscordPosGroup } from "./posGroups";
+import { DISCORD_POS_GROUPS, findSortRating, groupStarters, sortRatingChoices, sortValue, type DiscordPosGroup, type PlayerSort } from "./posGroups";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
 import { pickFact, playerFacts, remember, teamFacts } from "./funfacts";
 import { randomInt } from "node:crypto";
@@ -133,7 +133,7 @@ const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players"
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -153,8 +153,8 @@ function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: st
   }
   const more = String(get("more")?.value ?? "");
   const box = more ? undefined : BOX_CMDS.find(([b]) => get(b));
-  // The team box plus the group box = that team's position group (/players).
-  const cmd = more || (box?.[0] === "team" && get("group") ? "players" : box?.[1]) || "info";
+  // The team box plus the group, rating or order box = that team's players (/players).
+  const cmd = more || (box?.[0] === "team" && (get("group") || get("rating") || get("order")) ? "players" : box?.[1]) || "info";
   const own = box ? [{ ...get(box[0])!, name: box[2] }] : [];
   const extra = opts.filter((o) => (EXTRA[cmd] || []).includes(o.name) && !own.some((x) => x.name === o.name));
   return { cmd, pick, inner: { ...i, data: { ...i.data, name: cmd, options: [...own, ...extra] } } };
@@ -174,6 +174,9 @@ async function pickedLeague(i: Interaction, pick: string): Promise<{ lg?: Linked
 
 export async function autocomplete(i: Interaction): Promise<{ name: string; value: string }[]> {
   i = flattenSub(i);
+  // The rating box (/players, /league): the same list for every league, no league needed.
+  const fr = i.data?.options?.find((o) => o.focused);
+  if (fr?.name === "rating") return sortRatingChoices(String(fr.value ?? ""));
   const w = unwrapLeague(i);
   if (w) {
     if (w.focused === "league") {
@@ -301,9 +304,17 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "players": {
       const t = findTeam(d, opt(i, "team"));
       if (!t) return reply("No team by that name.");
-      const g = DISCORD_POS_GROUPS.find((x) => x.key === String(opt(i, "group") ?? ""));
-      if (!g) return reply("Pick a position group (QB, RB, WR, TE, OL, DL, LB, DB, CB, S or K/P).");
-      return { embeds: [groupEmbed(d, t, g, url, footer)] };
+      const gv = String(opt(i, "group") ?? "");
+      const g = gv ? DISCORD_POS_GROUPS.find((x) => x.key === gv) : undefined;
+      if (gv && !g) return reply("Pick a position group (QB, RB, WR, TE, OL, DL, LB, DB, CB, S or K/P), or leave it empty for the whole roster.");
+      const rv = String(opt(i, "rating") ?? ""), ov = String(opt(i, "order") ?? "");
+      let sort: PlayerSort | undefined;
+      if (rv || ov) {
+        const r = findSortRating(rv);
+        if (!r) return reply(`No rating called **${rv}**. Start typing in the rating box and pick one from the list.`);
+        sort = { ...r, dir: ov === "asc" ? "asc" : "desc" };
+      }
+      return { embeds: [groupEmbed(d, t, g, url, footer, sort)] };
     }
     case "rookie": {
       const v = opt(i, "team");
@@ -859,52 +870,86 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   };
 }
 
-/** /players team group: every player the team has in one position group (practice squad last), ordered like a
- *  depth chart (position, then OVR), with dev, age, cap hit and years left. Nick, 2026-11-18. */
-function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup, url: Url, footer: Footer): Embed {
-  const order = (p: Player) => { const k = g.positions.indexOf(p.pos); return k < 0 ? 99 : k; };
-  const all = teamPlayers(d, t.id).filter((p) => g.positions.includes(p.pos))
-    .sort((a, b) => Number(a.ps) - Number(b.ps) || order(a) - order(b) || b.ovr - a.ovr);
-  const line = (p: Player) => {
+// Every position in depth-chart order, for /players with no group (the whole roster).
+const ALL_POSITIONS = [...new Set(DISCORD_POS_GROUPS.flatMap((x) => x.positions))];
+
+/** /players team [group] [rating] [order]: the team's players (one position group, or the whole roster when the
+ *  group is empty), practice squad last. Default order is a depth chart (position, then OVR); with a rating or
+ *  order picked it's that rating, best to worst or worst to best. A group also gets its league rank.
+ *  Nick, 2026-11-18. */
+function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url: Url, footer: Footer, sort?: PlayerSort): Embed {
+  const positions = g?.positions ?? ALL_POSITIONS;
+  const order = (p: Player) => { const k = positions.indexOf(p.pos); return k < 0 ? 99 : k; };
+  const val = (p: Player) => (sort ? sortValue(p, sort.key) : null);
+  // Sorted: missing ratings (older builds) always go last, ties broken by OVR.
+  const bySort = (a: Player, b: Player) => {
+    const va = val(a), vb = val(b);
+    if (va == null || vb == null) return va == null && vb == null ? b.ovr - a.ovr : va == null ? 1 : -1;
+    return (sort!.dir === "asc" ? va - vb : vb - va) || b.ovr - a.ovr;
+  };
+  const all = teamPlayers(d, t.id).filter((p) => !g || g.positions.includes(p.pos))
+    .sort((a, b) => Number(a.ps) - Number(b.ps) || (sort ? bySort(a, b) : order(a) - order(b) || b.ovr - a.ovr));
+  const showVal = sort && sort.key !== "ovr";
+  const line = (p: Player, k: number, link = true) => {
     const flags = [p.ir ? "IR" : p.injury > 0 ? `inj ${p.injury} wk` : ""].filter(Boolean);
     const yl = p.contract.yearsLeft;
-    return `${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}**${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age}`
+    const v = val(p);
+    return `${sort ? `${k + 1}. ` : ""}${p.pos} ${link ? `[${fullName(p)}](${url(`/players/${p.id}`)})` : fullName(p)}`
+      + `${showVal ? ` · ${sort!.short} **${v ?? "–"}**` : ""} · ${showVal ? "" : "**"}${p.ovr}${showVal ? " OVR" : "**"}`
+      + `${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age}`
       + ` · ${money(p.contract.capHit)}, ${yl} yr${yl === 1 ? "" : "s"} left${flags.length ? ` · ${flags.join(" · ")}` : ""}`;
   };
   const active = all.filter((p) => !p.ps), ps = all.filter((p) => p.ps);
   const cap = active.reduce((a, p) => a + p.contract.capHit, 0);
   const avg = active.length ? Math.round(active.reduce((a, p) => a + p.ovr, 0) / active.length) : 0;
-  let desc = active.length
-    ? `${active.length} on the active roster · avg ${avg} OVR · ${money(cap)} in cap hits this season\n\n${active.map(line).join("\n")}`
-    : `No ${g.name} on the ${teamLabel(t)} active roster.`;
-  if (ps.length) desc += `\n\n**Practice squad**\n${ps.map(line).join("\n")}`;
-  // Where this group ranks: every team's starters in the group by average OVR (Nick, 2026-11-18).
-  const board = d.teams.map((x) => ({ t: x, ...groupStarters(teamPlayers(d, x.id), g) })).sort((a, b) => b.avg - a.avg);
-  const rankOf = (k: number) => board.findIndex((r) => r.avg.toFixed(1) === board[k].avg.toFixed(1)) + 1; // ties share a rank
-  const me = board.findIndex((r) => r.t.id === t.id);
-  const whole = g.slots.every(([, n]) => n === 0);
-  const starterNote = g.slots.map(([pos, n]) => `${n} ${pos.length > 1 && g.key !== "db" && g.key !== "s" ? g.name : pos.join("/")}`).join(" + ");
-  const show = new Set([0, 1, 2, 3, 4, me - 1, me, me + 1, board.length - 1].filter((k) => k >= 0 && k < board.length));
-  let prev = -1;
-  const rows: string[] = [];
-  for (const k of [...show].sort((a, b) => a - b)) {
-    if (prev >= 0 && k > prev + 1) rows.push("-# …");
-    const r = board[k], mine = k === me;
-    const text = `${rankOf(k)}. ${r.t.abbr} · ${r.avg.toFixed(1)}`;
-    rows.push(mine ? `**▶ ${text}**` : text);
-    prev = k;
+  const sortNote = sort ? `\n-# Sorted by ${sort.label}, ${sort.dir === "asc" ? "worst to best" : "best to worst"}.` : "";
+  const head = active.length
+    ? `${active.length} on the active roster · avg ${avg} OVR · ${money(cap)} in cap hits this season${sortNote}`
+    : `No ${g ? g.name : "players"} on the ${teamLabel(t)} active roster.`;
+  // Where this group ranks: every team's starters in the group by average OVR (Nick, 2026-11-18). Groups only.
+  let rankBlock = "";
+  if (g) {
+    const board = d.teams.map((x) => ({ t: x, ...groupStarters(teamPlayers(d, x.id), g) })).sort((a, b) => b.avg - a.avg);
+    const rankOf = (k: number) => board.findIndex((r) => r.avg.toFixed(1) === board[k].avg.toFixed(1)) + 1; // ties share a rank
+    const me = board.findIndex((r) => r.t.id === t.id);
+    const whole = g.slots.every(([, n]) => n === 0);
+    const starterNote = g.slots.map(([pos, n]) => `${n} ${pos.length > 1 && g.key !== "db" && g.key !== "s" ? g.name : pos.join("/")}`).join(" + ");
+    const show = new Set([0, 1, 2, 3, 4, me - 1, me, me + 1, board.length - 1].filter((k) => k >= 0 && k < board.length));
+    let prev = -1;
+    const rows: string[] = [];
+    for (const k of [...show].sort((a, b) => a - b)) {
+      if (prev >= 0 && k > prev + 1) rows.push("-# …");
+      const r = board[k], mine = k === me;
+      const text = `${rankOf(k)}. ${r.t.abbr} · ${r.avg.toFixed(1)}`;
+      rows.push(mine ? `**▶ ${text}**` : text);
+      prev = k;
+    }
+    const rankHead = whole
+      ? `**League rank: #${rankOf(me)} of ${board.length}** (room avg ${board[me].avg.toFixed(1)} OVR)`
+        + `\n-# Every ${g.name} on each active roster (practice squad left out); an empty room counts as 40.`
+      : `**League rank: #${rankOf(me)} of ${board.length}** (starters avg ${board[me].avg.toFixed(1)} OVR)`
+        + `\n-# Starters: ${starterNote}, best OVR on the active roster; an empty spot counts as 40.`;
+    rankBlock = `${rankHead}\n${rows.join("\n")}\n\n`;
   }
-  const rankHead = whole
-    ? `**League rank: #${rankOf(me)} of ${board.length}** (room avg ${board[me].avg.toFixed(1)} OVR)`
-      + `\n-# Every ${g.name} on each active roster (practice squad left out); an empty room counts as 40.`
-    : `**League rank: #${rankOf(me)} of ${board.length}** (starters avg ${board[me].avg.toFixed(1)} OVR)`
-      + `\n-# Starters: ${starterNote}, best OVR on the active roster; an empty spot counts as 40.`;
-  const rankBlock = `${rankHead}\n${rows.join("\n")}`;
-  const room = 4000 - rankBlock.length - 2;
-  if (desc.length > room) desc = desc.slice(0, desc.lastIndexOf("\n", room - 10)) + "\n…";
-  desc = `${rankBlock}\n\n${desc}`;
+
+  // Player lines, then the practice squad. Discord caps a description at 4,096: if the list doesn't fit with
+  // each name linked (a whole roster usually doesn't), names go unlinked; whatever still doesn't fit is "+N more".
+  const build = (link: boolean) => {
+    let out = `${rankBlock}${head}${active.length ? "\n" : ""}`, shown = 0;
+    const rows = [...active.map((p, k) => line(p, k, link)), ...(ps.length ? ["", "**Practice squad**"] : []), ...ps.map((p, k) => line(p, k, link))];
+    const budget = 4000 - 90; // room for the "+N more" line
+    for (const l of rows) {
+      if (out.length + l.length + 1 > budget) break;
+      out += `\n${l}`;
+      if (l && !l.startsWith("**Practice")) shown++;
+    }
+    return { out, left: all.length - shown };
+  };
+  let { out: desc, left } = build(true);
+  if (left > 0) ({ out: desc, left } = build(false));
+  if (left > 0) desc += `\n-# +${left} more on the [team page](${url(`/teams/${t.abbr.toLowerCase()}`)}).`;
   return {
-    title: `${teamLabel(t)}: ${g.label}`,
+    title: `${teamLabel(t)}: ${g ? g.label : "Roster"}${sort ? ` by ${sort.short}` : ""}`,
     url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
     description: desc,
   };

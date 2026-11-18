@@ -20,6 +20,8 @@ const ANYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] };
 
 const player = { type: STRING, name: "player", description: "Start typing a name", required: true, autocomplete: true };
 const group = (required: boolean) => ({ type: STRING, name: "group", description: "Position group (OL, DL, DB…)", required, choices: DISCORD_POS_GROUPS.map((g) => ({ name: g.name, value: g.key })) });
+const rating = { type: STRING, name: "rating", description: "Sort by a rating: Overall, Speed, Throw Power… (start typing)", required: false, autocomplete: true };
+const order = { type: STRING, name: "order", description: "Best to worst (default) or worst to best", required: false, choices: [{ name: "Best to worst", value: "desc" }, { name: "Worst to best", value: "asc" }] };
 const team = (required: boolean) => ({ type: STRING, name: "team", description: "Start typing a team", required, autocomplete: true });
 
 // /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
@@ -89,9 +91,9 @@ const PLAIN = [
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
   {
     name: "players",
-    description: "A team's players in one position group (OL, DL, DB…) with OVR, dev, age and contract",
+    description: "A team's players (all, or one position group) with OVR, dev, age and contract; sort by any rating",
     ...ANYWHERE,
-    options: [team(true), group(true)],
+    options: [team(true), group(false), rating, order],
   },
   { name: "expiring", description: "A team's top 10 expiring contracts by overall, with each player's projected ask", ...ANYWHERE, options: [team(true)] },
   { name: "rookie", description: "Top 10 rookies by overall; pick a team and/or a draft year (default: newest class)", ...ANYWHERE, options: [team(false), { type: INTEGER, name: "year", description: "Draft class year, e.g. 2027 (default: the newest class)", required: false, min_value: 2000, max_value: 2100 }] },
@@ -150,6 +152,8 @@ export const COMMANDS = [
       { type: STRING, name: "contract", description: "What a player will likely ask for on his next deal", required: false, autocomplete: true },
       { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, expiring deals, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
       { ...group(false), description: "With the team box: that team's players in one position group (OL, DL, DB…)" },
+      { ...rating, description: "With the team box: sort the team's players by a rating (start typing)" },
+      { ...order, description: "With the team box + rating: best to worst (default) or worst to best" },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028; for rookies: draft class year", required: false, min_value: 2000, max_value: 2100 },
     ],
