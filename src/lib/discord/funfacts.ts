@@ -9,6 +9,7 @@ import type { Game, LeagueData, Player, StatLine, Team } from "../league/types";
 import { RATING_KEYS, RATING_LABEL } from "../league/ratings";
 import { every, factId, money, nth, ord, pct, pick, plural, poss, tail, type Fact } from "./factFormat";
 import { teamRoasts } from "./teamRoasts";
+import { extraPlayerRoasts, extraTeamRoasts } from "./extraRoasts";
 
 export type { Fact } from "./factFormat";
 
@@ -160,7 +161,7 @@ export function playerFacts(d: LeagueData, p: Player): Fact[] {
     `${who} is a **${p.ovr} overall** stuck on a **${tm.rec.w}-${tm.rec.l}** team. Blink twice if you need help.`,
     `Somebody free ${who}. ${p.ovr} OVR, wasting his prime on the ${tm.rec.w}-${tm.rec.l} ${tm.name}.`,
   ]);
-  out.push(...playerRoasts(c, p, t));
+  out.push(...playerRoasts(c, p, t), ...extraPlayerRoasts(d, c.totals, p, t));
   return out;
 }
 
@@ -228,7 +229,7 @@ export function teamFacts(d: LeagueData, team: Team): Fact[] {
     `Nobody even runs the ${team.name}. The CPU has them at **${team.rec.w}-${team.rec.l}**, which is better than a bunch of you with a controller in your hands.`,
     `${name} are a **CPU team** at ${team.rec.w}-${team.rec.l}. Some of you are losing to a robot that doesn't even care.`,
   ]);
-  out.push(...teamRoasts(c, team));
+  out.push(...teamRoasts(c, team), ...extraTeamRoasts(d, team));
   return out;
 }
 

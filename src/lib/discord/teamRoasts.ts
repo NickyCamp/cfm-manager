@@ -329,7 +329,7 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
       const us = rs.reduce((s, r) => s + r.us, 0), them = rs.reduce((s, r) => s + r.them, 0);
       add("swept", R + 1, [
         `${Tn(o)} are **${rs.length}-0 against ${the}** this season, ${them}-${us} combined. Landlord behavior.`,
-        `${The} have played ${tn(o)} ${rs.length} times. They've lost all ${rs.length}, by **${them - us} points** combined.`,
+        `${The} have played ${tn(o)} ${rs.length} times. They've lost ${rs.length === 2 ? "both" : `all ${rs.length}`}, by **${them - us} points** combined.`,
         `${Tn(o)} own ${the}. ${rs.length} games, ${rs.length} losses, ${them}-${us} combined. Pay rent.`,
       ]);
     }
