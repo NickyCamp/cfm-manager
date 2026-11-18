@@ -135,18 +135,13 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
       `${The} are **${diff}** in turnover margin. They're basically playing for the other team.`,
       `${a.to} giveaways, ${a.take} takeaways. ${The} are very generous people.`,
     ]);
-    const failed = a.fourth[1] - a.fourth[0];
-    if (failed >= 8) add("fourth", R - 1, [
-      `${The} have come up short on 4th down **${failed} times** this season.`,
-      `${The} go for it on 4th like they're good at it. They've failed **${failed} times**.`,
-    ]);
     const allowRank = 1 + [...c.teamAgg.values()].filter((x) => x.gp && x.pa / x.gp > a.pa / a.gp).length;
     if (allowRank <= 5) add("allowed", R - 0.5, [
       `${The} give up a point every **${(60 / (a.pa / a.gp)).toFixed(1)} minutes** (${(a.pa / a.gp).toFixed(1)} a game, ${nth(allowRank, "most")} in the league).`,
       `Opponents average **${(a.pa / a.gp).toFixed(1)} points** against ${the}, ${nth(allowRank, "most")} in the league. Easy money.`,
     ]);
     const penRank = 1 + [...c.teamAgg.values()].filter((x) => x.gp && x.penYds > a.penYds).length;
-    if (penRank <= 3 && a.penYds >= 100) add("flags", R - 1, [
+    if (penRank <= 6 && a.penYds >= 100) add("flags", R - 1, [
       `${The} have ${nth(penRank, "most")} penalty yards in the league (**${n(a.penYds)}**). Zero discipline.`,
       `The refs know ${the} by name: **${a.pen} flags for ${n(a.penYds)} yards**, ${nth(penRank, "most")} in the league.`,
     ]);
@@ -200,6 +195,29 @@ export function teamRoasts(c: RoastCtx, team: Team): Fact[] {
     `${The} are **${aw}-${al} on the road**. They should just stay home.`,
     `Get ${the} on a plane and they fall apart: **${aw}-${al}** away from home.`,
   ]);
+
+  // Run/pass balance: way too run-heavy or way too pass-heavy.
+  {
+    const share = (id: number) => {
+      const ts = [...c.totals.values()].filter((t) => t.team === id);
+      const ra = ts.reduce((s, t) => s + t.ra, 0), pa = ts.reduce((s, t) => s + t.pa, 0);
+      return ra + pa >= 100 ? ra / (ra + pa) : null;
+    };
+    const mine = share(team.id);
+    if (mine != null) {
+      const shares = d.teams.map((t) => share(t.id)).filter((x): x is number => x != null);
+      const runRank = 1 + shares.filter((x) => x > mine).length, passRank = 1 + shares.filter((x) => x < mine).length;
+      if (runRank <= 3 && mine >= 0.5) add("runheavy", R, [
+        `${The} run the ball on **${pct(mine * 100)} of their plays** (${nth(runRank, "most")} in the league). At this point just snap it and close your eyes.`,
+        `${pct(mine * 100)} runs. ${poss(The)} playbook is one page and it's a handoff. They may as well snap the ball and close their eyes.`,
+        `${The} run it ${pct(mine * 100)} of the time. The QB is just a guy who hands people the ball and watches.`,
+      ]);
+      if (passRank <= 3 && mine <= 0.35) add("passheavy", R - 0.5, [
+        `${The} throw it on **${pct((1 - mine) * 100)} of their plays**. Their running back has filed a missing persons report on himself.`,
+        `${pct((1 - mine) * 100)} passes. ${The} play Madden like it's 7-on-7 at the park.`,
+      ]);
+    }
+  }
 
   // ---------- division and the standings ----------
   const div = d.teams.filter((t) => t.division === team.division);

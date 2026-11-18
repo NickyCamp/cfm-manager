@@ -460,7 +460,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (p && f && randomInt(100) < 4) f = { text: `${fullName(p)} had accident today. Number 2.`, weight: 0 };
       const who = p ? fullName(p) : `${t!.city} ${t!.name}`;
       const color = hexColor((p ? teamOf(d, p.team) : t)?.primary);
-      if (!f) return { embeds: [{ title: `Fun fact: ${who}`, color, footer, description: "Not enough this season to say anything fun yet. Check back after a few games." }] };
+      if (!f) return { embeds: [{ title: `Fun fact: ${who}`, color, footer, description: "Not even enough here to roast yet. That alone is embarrassing. Check back after a few games." }] };
       return { embeds: [{
         title: `🤓 Fun fact: ${who}`, url: url(p ? `/players/${p.id}` : `/teams/${t!.abbr.toLowerCase()}`), color, footer: { text: `${footer.text} · /funfact again for another (${facts.length} on file)` },
         description: f.text,

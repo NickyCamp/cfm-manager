@@ -28,8 +28,13 @@ const TAILS = [
   "Concerning.", "That's a choice.", "Someone tell the owner.", "Please stop.", "Tough look.",
   "Season tickets are going cheap.", "The film room must be a crime scene.", "Pathetic, honestly.",
   "Ownership should be asking questions.", "It's giving rebuild.", "Unwatchable football.",
+  "Uninstall the game.", "Delete the franchise file.", "Absolute clown show.", "A disgrace to the sport.",
+  "Their fans deserve better. Actually, maybe not.", "Put this team in a museum of failures.",
+  "Somebody turn the difficulty down for them.", "This is why nobody respects them.",
+  "Genuinely sad to look at.", "Rookie mode might be more their speed.", "Hide the controller from this man.",
+  "The tape should be used as evidence.", "Get this team off my screen.", "Not even the CPU wants to play them.",
 ];
-export const tail = (text: string, chance = 0.45) => (randomInt(1000) < chance * 1000 ? `${text} ${pick(TAILS)}` : text);
+export const tail = (text: string, chance = 0.6) => (randomInt(1000) < chance * 1000 ? `${text} ${pick(TAILS)}` : text);
 
 /** Short, stable id for a fact, for the recently-shown list. */
 export const factId = (f: Fact) => createHash("sha1").update(f.key || f.text).digest("base64url").slice(0, 7);

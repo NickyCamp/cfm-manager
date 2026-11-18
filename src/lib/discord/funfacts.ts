@@ -7,7 +7,7 @@ import { REG_SEASON_LAST_WEEK, capSeason, seasonTotals, weekTitle, type Totals }
 import { projectPlayer } from "../league/projection";
 import type { Game, LeagueData, Player, StatLine, Team } from "../league/types";
 import { RATING_KEYS, RATING_LABEL } from "../league/ratings";
-import { every, factId, money, n, nth, ord, pct, pick, plural, poss, tail, type Fact } from "./factFormat";
+import { every, factId, money, nth, ord, pct, pick, plural, poss, tail, type Fact } from "./factFormat";
 import { teamRoasts } from "./teamRoasts";
 
 export type { Fact } from "./factFormat";
@@ -57,100 +57,109 @@ const GROUP: Record<string, string> = {
   K: "K", P: "P",
 };
 
+// Everything is a roast now (Nick, 2026-11-18: "I want these all to be roasts and as vicious as you
+// can be"). Stats that used to be neutral only show up when the number is embarrassing.
 export function playerFacts(d: LeagueData, p: Player): Fact[] {
   const c = context(d);
   const t = c.totals.get(p.id);
   const who = p.last;
   const team = c.teamName(p.team);
+  const Team = team.charAt(0).toUpperCase() + team.slice(1);
   const g = GROUP[p.pos] || "";
   const out: Fact[] = [];
-  const add = (weight: number, text: string) => out.push({ text, weight });
+  const add = (key: string, weight: number, variants: string[], jab = true) => {
+    const text = pick(variants);
+    out.push({ key: `p:${key}`, weight, text: jab ? tail(text) : text });
+  };
 
   if (t && t.gp) {
-    // Passing
+    // INT rate, only when it's worse than the league's.
     if (t.pa >= 50 && t.pint > 0) {
       const qbs = [...c.totals.values()].filter((x) => x.pa >= 50);
       const leagueRate = qbs.reduce((a, x) => a + x.pa, 0) / Math.max(1, qbs.reduce((a, x) => a + x.pint, 0));
       const mine = t.pa / t.pint;
-      add(3, `**1 in every ${every(mine)} passes** ${who} throws ends up in the other team's hands (${plural(t.pint, "INT")} on ${n(t.pa)} attempts). `
-        + (mine < leagueRate * 0.85 ? `The league's QBs average 1 in ${every(leagueRate)}, so defenses are eating well.` : mine > leagueRate * 1.15 ? `The league's QBs average 1 in ${every(leagueRate)}, so he's protecting it better than most.` : `That's about league average (1 in ${every(leagueRate)}).`));
+      if (mine < leagueRate * 0.9) add("intrate", 3, [
+        `**1 in every ${every(mine)} passes** ${who} throws gets picked off (league average: 1 in ${every(leagueRate)}). Defenses see him on the schedule and start stretching their hands.`,
+        `${who} throws a pick every **${every(mine)} attempts**. The league average is ${every(leagueRate)}. He's basically a defensive coordinator for the other team.`,
+        `${who} throws a pick every **${every(mine)} passes**. Floyd Mayweather reads better than this man.`,
+        `1 INT every ${every(mine)} throws. ${who} reads defenses like he's holding the book upside down.`,
+      ]);
     }
-    if (t.pa >= 50 && t.pint === 0) add(3, `${who} has thrown **${n(t.pa)} passes without a single interception**.`);
-    if (t.ptd > 0 && t.pc >= 20) add(2, `Every **${every(t.pc / t.ptd)} completions**, one of ${poss(who)} passes goes for a touchdown (${plural(t.ptd, "TD")} this season).`);
-    if (t.py >= 500) {
-      const miles = (t.py * 3) / 5280;
-      add(2, `${who} has thrown for **${n(t.py)} yards**. That's **${miles.toFixed(2)} miles** of football, or **${every(t.py / 100)} football fields** laid end to end.`);
-    }
-    if (t.psk > 0 && t.pa >= 50) add(1.5, `${who} gets sacked once every **${every((t.pa + t.psk) / t.psk)} dropbacks** (${plural(t.psk, "sack")} this season).`);
-    // Rushing
-    if (t.ra >= 20) {
+    if (t.psk > 0 && t.pa >= 50 && (t.pa + t.psk) / t.psk < 12) add("sackrate", 2.5, [
+      `${who} gets sacked once every **${every((t.pa + t.psk) / t.psk)} dropbacks**. He holds the ball like it owes him money.`,
+      `${plural(t.psk, "sack")} this season for ${who}, one every ${every((t.pa + t.psk) / t.psk)} dropbacks. Pocket presence of a lawn chair.`,
+    ]);
+    if (g === "QB" && t.pa >= 50 && t.ra / t.gp >= 6) add("qbruns", 3, [
+      `${who} has taken off running **${t.ra} times** this season. He may as well snap the ball and close his eyes.`,
+      `${t.ra} QB runs for ${who}. Reading the defense is optional when you just panic and sprint.`,
+      `${who} runs it **${(t.ra / t.gp).toFixed(1)} times a game**. Someone tell him the forward pass is allowed.`,
+    ]);
+    if (t.ra >= 20 && t.ry / t.ra < 4) {
       const ypc = t.ry / t.ra;
-      if (ypc > 0) add(1.5, `${who} averages **${ypc.toFixed(1)} yards a carry**. At that pace it would take him **${every(100 / ypc)} straight carries** to go the length of the field.`);
-      if (t.rfum > 0) add(2, `${who} puts the ball on the ground once every **${every((t.ra + t.rc) / t.rfum)} touches** (${plural(t.rfum, "fumble")}).`);
-      if (t.rbt >= 3) add(2, `${who} breaks a tackle every **${every((t.ra + t.rc) / t.rbt)} touches** (${plural(t.rbt, "broken tackle")}).`);
+      add("carries100", 2.5, [
+        `${who} averages **${ypc.toFixed(1)} yards a carry**. It would take him **${every(100 / ypc)} straight carries** to go the length of the field.`,
+        `At ${ypc.toFixed(1)} a carry, ${who} needs **${every(100 / ypc)} carries** to go 100 yards. Bring a lunch.`,
+        `${t.ra} carries, ${ypc.toFixed(1)} a pop. ${Team} hand it to ${who} and may as well snap the ball and close their eyes.`,
+      ]);
     }
-    // Receiving
-    if (t.rc >= 10) {
-      if (t.rcyac > 0 && t.rcy > 0) add(2, `**${pct((t.rcyac / t.rcy) * 100)} of ${poss(who)} receiving yards** came after the catch (${n(t.rcyac)} of ${n(t.rcy)}).`);
-      if (t.rcdrop > 0) add(2, `${who} drops one pass for every **${every(t.rc / t.rcdrop)} he catches** (${plural(t.rcdrop, "drop")}).`);
-      if (t.rclng >= 40) add(1, `${poss(who)} longest catch went **${t.rclng} yards**, ${pct(t.rclng)} of the field in one play.`);
-    }
-    // Defense
-    if (t.sk >= 2) {
-      const fewer = [...c.teamAgg.entries()].filter(([id, a]) => id !== p.team && a.sacksBy < t.sk).length;
-      if (fewer > 0) add(3, `${who} has **${t.sk} sacks by himself**, more than **${plural(fewer, "entire team")}** have managed.`);
-      else add(1.5, `${who} has a sack every **${every(t.gp / t.sk)} games** (${t.sk} in ${t.gp}).`);
-    }
-    if (t.int >= 2) {
-      const fewer = [...c.teamAgg.entries()].filter(([id, a]) => id !== p.team && a.intsBy < t.int).length;
-      if (fewer > 0) add(3, `${who} has **${plural(t.int, "interception")}**, more than **${plural(fewer, "whole defense")}** in the league.`);
-    }
-    if (t.tk >= 20) add(1, `${who} averages **${(t.tk / t.gp).toFixed(1)} tackles a game**, a tackle roughly every **${every(60 / (t.tk / t.gp))} minutes** of game clock.`);
-    // Kicking / punting
-    if (t.fga >= 5) add(1.5, `${who} has made **${pct((t.fgm / t.fga) * 100)} of his field goals** (${t.fgm}/${t.fga}), with a long of ${t.fglng}.`);
-    if (t.pnt >= 15) add(1.5, `${who} has punted **${n(t.pnty)} yards** this season, **${(t.pnty * 3 / 5280).toFixed(2)} miles** of kicking the ball away.`);
-
-    // Share of team points
-    const a = c.teamAgg.get(t.team);
-    const pts = 6 * (t.rtd + t.rctd + t.dtd) + 3 * t.fgm + t.xpm;
-    if (a && a.pf > 0 && pts > 0) {
-      const share = (pts / a.pf) * 100;
-      if (share >= 10) add(2.5, `${who} has personally scored **${pct(share)} of ${poss(team)} points** (${n(pts)} of ${n(a.pf)}).`);
-    }
-
-    // Cost per stat
+    if (t.rfum >= 3) add("fumrate", 3, [
+      `${who} puts the ball on the ground once every **${every((t.ra + t.rc) / t.rfum)} touches** (${plural(t.rfum, "fumble")}). Hands made of butter.`,
+      `${plural(t.rfum, "fumble")} for ${who} this season. Every touch is a coin flip for ${team}.`,
+    ]);
+    if (t.rc >= 10 && t.rcdrop >= 3) add("droprate", 3, [
+      `${who} drops one pass for every **${every(t.rc / t.rcdrop)} he catches** (${plural(t.rcdrop, "drop")}). Stone hands.`,
+      `${plural(t.rcdrop, "drop")} for ${who}. QBs throw to him and then pray.`,
+      `${plural(t.rcdrop, "drop")} this year. A T-Rex has better hands than ${who}.`,
+    ]);
+    if (t.fga >= 5 && t.fgm / t.fga < 0.8) add("fgpct", 3, [
+      `${who} has made **${pct((t.fgm / t.fga) * 100)} of his field goals** (${t.fgm}/${t.fga}). ${Team} should just go for it every time.`,
+      `${t.fgm} of ${t.fga} on field goals for ${who}. The uprights are 18 and a half feet apart, my guy.`,
+      `${who} is ${t.fgm}/${t.fga} on field goals. Kicks like he's wearing Crocs.`,
+    ]);
+    if (t.pnt >= 30) add("punts", 2, [
+      `${who} has punted **${t.pnt} times** this season: **${(t.pnty * 3 / 5280).toFixed(2)} miles** of the offense giving up.`,
+      `${poss(Team)} offense has sent ${who} out **${t.pnt} times**. He's their most reliable player, which says everything.`,
+    ]);
+    // Cost per stat, only when he costs a lot more per unit than his position usually does.
     const capHit = p.contract.capHit;
-    const main = g === "QB" ? [t.py, "passing yard"] : g === "RB" ? [t.ry, "rushing yard"] : g === "WR" ? [t.rcy, "receiving yard"]
-      : g === "DEF" ? [t.tk, "tackle"] : g === "K" ? [t.fgm, "field goal"] : g === "P" ? [t.pnt, "punt"] : null;
-    if (p.team && capHit > 0 && main && (main[0] as number) > 0) {
-      add(3, `${team.charAt(0).toUpperCase() + team.slice(1)} are paying ${who} about **${money(capHit / (main[0] as number))} per ${main[1]}** this season (${money(capHit)} cap hit).`);
+    const val = (x: Totals) => (g === "QB" ? x.py : g === "RB" ? x.ry : g === "WR" ? x.rcy : g === "DEF" ? x.tk : g === "K" ? x.fgm : 0);
+    const unit = g === "QB" ? "passing yard" : g === "RB" ? "rushing yard" : g === "WR" ? "receiving yard" : g === "DEF" ? "tackle" : g === "K" ? "field goal" : "";
+    if (p.team && capHit >= 2e6 && unit && val(t) > 0) {
+      const costs = d.players.filter((x) => !x.gone && x.team && !x.ps && GROUP[x.pos] === g && x.contract.capHit > 0)
+        .map((x) => { const xt = c.totals.get(x.id); return xt && val(xt) > 0 ? x.contract.capHit / val(xt) : null; })
+        .filter((v): v is number => v != null).sort((x, y) => x - y);
+      const mine = capHit / val(t);
+      const median = costs[Math.floor(costs.length / 2)] || Infinity;
+      if (costs.length >= 10 && mine >= median * 1.5) add("costper", 3.5, [
+        `${Team} are paying ${who} **${money(mine)} per ${unit}** (${money(capHit)} cap hit). Highway robbery.`,
+        `Every ${unit} ${who} gets costs ${team} **${money(mine)}**. His agent should be in the Hall of Fame.`,
+      ]);
     }
-
-    // Best game and scoring streaks, from the game log
-    const log = d.lines.filter((l) => l.p === p.id && regGame(c.games.get(l.g)))
-      .map((l) => ({ l, g: c.games.get(l.g)! })).sort((x, y) => x.g.week - y.g.week);
-    const metric = (l: StatLine) => (g === "QB" ? l.py || 0 : g === "RB" ? (l.ry || 0) + (l.rcy || 0) : g === "WR" ? l.rcy || 0 : g === "DEF" ? (l.tk || 0) + 5 * (l.sk || 0) + 8 * (l.int || 0) : 0);
-    const best = log.length ? log.reduce((x, y) => (metric(y.l) > metric(x.l) ? y : x)) : null;
-    if (best && metric(best.l) > 0) {
-      const opp = best.g.home === best.l.t ? best.g.away : best.g.home;
-      const l = best.l;
-      const line = g === "QB" ? `${n(l.py || 0)} passing yards and ${plural(l.ptd || 0, "TD")}` : g === "RB" ? `${n((l.ry || 0) + (l.rcy || 0))} yards from scrimmage` : g === "WR" ? `${l.rc || 0} catches for ${n(l.rcy || 0)} yards` : `${l.tk || 0} tackles${l.sk ? `, ${l.sk} sacks` : ""}${l.int ? `, ${l.int} INT` : ""}`;
-      add(1.5, `${poss(who)} best game this season: **${line}** against ${c.teamName(opp)} in ${weekTitle(d, best.g.stage, best.g.week)}.`);
-    }
-    let streak = 0, run = 0;
-    for (const { l } of log) { const td = (l.ptd || 0) + (l.rtd || 0) + (l.rctd || 0) + (l.dtd || 0); run = td > 0 ? run + 1 : 0; streak = Math.max(streak, run); }
-    if (streak >= 3) add(2, `${who} had a hand in a touchdown in **${streak} straight games** at one point this season.`);
   }
 
-  // Not stat-based: ratings, age, contract
+  // Not stat-based: always something to make fun of.
   if (p.ratings) {
-    const rs = RATING_KEYS.map((k, i) => ({ k, v: p.ratings![i] ?? 0 })).filter((r) => r.k !== "injuryRating" && r.k !== "staminaRating" && r.k !== "confRating");
-    const hi = rs.reduce((a, b) => (b.v > a.v ? b : a)), lo = rs.reduce((a, b) => (b.v < a.v ? b : a));
-    add(1, `${poss(who)} best rating is **${RATING_LABEL[hi.k]} (${hi.v})**. His worst is **${RATING_LABEL[lo.k]} (${lo.v})**.`);
+    const rs = RATING_KEYS.map((k, i) => ({ k, v: p.ratings![i] ?? 0 })).filter((r) => r.k !== "injuryRating" && r.k !== "staminaRating" && r.k !== "confRating" && r.v > 0);
+    if (rs.length) {
+      const lo = rs.reduce((a, b) => (b.v < a.v ? b : a));
+      add("worstrating", 1.5, [
+        `${poss(who)} **${RATING_LABEL[lo.k]}** rating is a **${lo.v}**. My grandma is a ${Math.min(99, lo.v + 20)}.`,
+        `${who} has **${lo.v} ${RATING_LABEL[lo.k]}**. Genuinely one of the worst things on his card.`,
+        `Fun fact: ${poss(who)} ${RATING_LABEL[lo.k]} is **${lo.v}**. The scouts were being generous.`,
+      ]);
+    }
   }
   const older = d.players.filter((x) => !x.gone && x.team && x.age < p.age).length / Math.max(1, d.players.filter((x) => !x.gone && x.team).length);
-  if (p.age >= 32) add(1.5, `At ${p.age}, ${who} is older than **${pct(older * 100)} of the league**.`);
-  if (p.team && p.contract.capHit > 0) add(1, `${who} makes about **${money(p.contract.capHit / 17)} per game** against the cap this season.`);
+  if (p.age >= 32) add("age", 2, [
+    `At ${p.age}, ${who} is older than **${pct(older * 100)} of the league**. His knees file for retirement every Sunday.`,
+    `${who} is **${p.age}**, older than ${pct(older * 100)} of the league. Senior discount at the team hotel.`,
+  ]);
+  // A star stuck on a bad team: roast the team through him.
+  const tm = d.teams.find((x) => x.id === p.team);
+  if (tm && p.ovr >= 88 && tm.rec.l - tm.rec.w >= 3) add("hostage", 3, [
+    `${who} is a **${p.ovr} overall** stuck on a **${tm.rec.w}-${tm.rec.l}** team. Blink twice if you need help.`,
+    `Somebody free ${who}. ${p.ovr} OVR, wasting his prime on the ${tm.rec.w}-${tm.rec.l} ${tm.name}.`,
+  ]);
   out.push(...playerRoasts(c, p, t));
   return out;
 }
@@ -162,74 +171,63 @@ export function teamFacts(d: LeagueData, team: Team): Fact[] {
   const a = c.teamAgg.get(team.id);
   const name = `The ${team.name}`;
   const out: Fact[] = [];
-  const add = (weight: number, text: string) => out.push({ text, weight });
-  const rankOf = (f: (x: NonNullable<typeof a>) => number, high = true) => {
-    const vals = [...c.teamAgg.values()].filter((x) => x.gp).map(f);
-    const mine = f(a!);
-    return 1 + vals.filter((v) => (high ? v > mine : v < mine)).length;
-  };
+  const add = (key: string, weight: number, variants: string[]) => out.push({ key: `t:${key}`, weight, text: tail(pick(variants)) });
+  const losing = team.rec.l > team.rec.w;
 
-  if (a && a.gp) {
-    const ppg = a.pf / a.gp;
-    if (ppg > 0) add(2, `${name} score a point every **${(60 / ppg).toFixed(1)} minutes** of game clock (${ppg.toFixed(1)} a game, ${ord(rankOf((x) => x.pf / x.gp))} in the league).`);
-    if (a.penYds >= 100) add(2, `${name} have been flagged **${a.pen} times for ${n(a.penYds)} yards**. That's **${every(a.penYds / 100)} football fields** of penalties.`);
-    if (a.to > 0) {
-      const q = (a.gp * 4) / a.to;
-      add(1.5, `${name} give the ball away ${q < 1.15 ? "about **once a quarter**" : `once every **${every(q)} quarters**`} (${plural(a.to, "turnover")} in ${a.gp} games).`);
-    }
-    if (a.rz[1] >= 5) add(1.5, `${name} turn **${pct((a.rz[0] / a.rz[1]) * 100)}** of red zone trips into touchdowns (${a.rz[0]} of ${a.rz[1]}).`);
-    if (a.fourth[1] >= 3) add(1.5, `${name} have gone for it on 4th down **${a.fourth[1]} times** and converted ${a.fourth[0]} (${pct((a.fourth[0] / a.fourth[1]) * 100)}).`);
-    if (a.sacksBy > 0) add(1, `${name} have **${a.sacksBy} sacks**, ${ord(rankOf((x) => x.sacksBy))} in the league.`);
-    const spent = team.cap.spent;
-    if (spent > 0 && a.pf > 0) {
-      const perPoint = (tt: Team) => { const x = c.teamAgg.get(tt.id); return x && x.pf ? tt.cap.spent / x.pf : Infinity; };
-      const mine = perPoint(team);
-      const cheaper = d.teams.filter((tt) => perPoint(tt) < mine).length;
-      add(2.5, `${name} pay **${money(mine)} in cap for every point** they score. ${cheaper === 0 ? "Nobody in the league gets points cheaper." : cheaper <= 10 ? `Only ${plural(cheaper, "team")} get points cheaper.` : `${plural(cheaper, "team")} get their points cheaper.`}`);
-    }
+  // 4th downs: only when they're awful at it.
+  if (a && a.fourth[1] >= 4 && a.fourth[0] / a.fourth[1] <= 0.3) add("fourthpct", 3.5, [
+    `${name} have gone for it on 4th down **${a.fourth[1]} times** and converted **${a.fourth[0]}** (${pct((a.fourth[0] / a.fourth[1]) * 100)}). Stop. Just punt.`,
+    `${pct((a.fourth[0] / a.fourth[1]) * 100)} on 4th down (${a.fourth[0]}/${a.fourth[1]}). ${name} play 4th and 2 like it's 4th and 40.`,
+  ]);
+  // Cap per point: only when they pay more than most.
+  const spent = team.cap.spent;
+  if (a && a.gp && spent > 0 && a.pf > 0) {
+    const perPoint = (tt: Team) => { const x = c.teamAgg.get(tt.id); return x && x.pf ? tt.cap.spent / x.pf : Infinity; };
+    const mine = perPoint(team);
+    const cheaper = d.teams.filter((tt) => perPoint(tt) < mine).length;
+    if (cheaper >= d.teams.length - 10) add("perpoint", 3.5, [
+      `${name} pay **${money(mine)} in cap for every point** they score. ${plural(cheaper, "team")} get their points cheaper. Terrible investment.`,
+      `Every point the ${team.name} score costs **${money(mine)}**. Their offense is a luxury item with no luxury.`,
+    ]);
   }
-
-  // Games: one-score record, biggest margins, home/away
+  // Worst loss, only if it was ugly.
   const gs = d.games.filter((g) => g.final && regGame(g) && (g.home === team.id || g.away === team.id));
   const res = gs.map((g) => { const home = g.home === team.id; const us = home ? g.hs : g.as, them = home ? g.as : g.hs; return { g, home, us, them, diff: us - them }; });
-  const close = res.filter((r) => Math.abs(r.diff) <= 8);
-  if (close.length >= 3) {
-    const w = close.filter((r) => r.diff > 0).length, l = close.filter((r) => r.diff < 0).length;
-    add(2, `${name} are **${w}-${l}${close.length - w - l ? `-${close.length - w - l}` : ""} in one-score games** (8 points or less).`);
-  }
   if (res.length) {
-    const big = res.reduce((x, y) => (y.diff > x.diff ? y : x)), worst = res.reduce((x, y) => (y.diff < x.diff ? y : x));
-    if (big.diff >= 14) add(1.5, `${poss(name)} biggest win: **${big.us}-${big.them}** over ${c.teamName(big.home ? big.g.away : big.g.home)} in ${weekTitle(d, big.g.stage, big.g.week)}.`);
-    if (worst.diff <= -14) add(1.5, `${poss(name)} worst loss: **${worst.them}-${worst.us}** to ${c.teamName(worst.home ? worst.g.away : worst.g.home)} in ${weekTitle(d, worst.g.stage, worst.g.week)}.`);
-    const hw = res.filter((r) => r.home && r.diff > 0).length, hl = res.filter((r) => r.home && r.diff < 0).length;
-    const aw = res.filter((r) => !r.home && r.diff > 0).length, al = res.filter((r) => !r.home && r.diff < 0).length;
-    if (Math.abs((hw - hl) - (aw - al)) >= 4) add(2, `${name} are **${hw}-${hl} at home** but **${aw}-${al} on the road**.`);
+    const worst = res.reduce((x, y) => (y.diff < x.diff ? y : x));
+    if (worst.diff <= -21) add("worstloss", 4, [
+      `${poss(name)} worst loss: **${worst.them}-${worst.us}** to ${c.teamName(worst.home ? worst.g.away : worst.g.home)} in ${weekTitle(d, worst.g.stage, worst.g.week)}. Burn the tape.`,
+      `${weekTitle(d, worst.g.stage, worst.g.week)}: ${c.teamName(worst.home ? worst.g.away : worst.g.home)} ${worst.them}, the ${team.name} ${worst.us}. That wasn't a game, that was a public execution.`,
+    ]);
   }
-
-  // Roster and cap
+  // Top cap hit vs the cheap guys, only on a losing team.
   const roster = d.players.filter((p) => !p.gone && p.team === team.id && !p.ps);
-  if (roster.length >= 10) {
+  if (losing && roster.length >= 10) {
     const hits = roster.map((p) => ({ p, hit: p.contract.capHit })).filter((x) => x.hit > 0).sort((x, y) => y.hit - x.hit);
     if (hits.length > 10) {
       const top = hits[0];
       let sum = 0, k = 0;
       for (let i = hits.length - 1; i > 0 && sum + hits[i].hit <= top.hit; i--) { sum += hits[i].hit; k++; }
-      if (k >= 5) add(2.5, `${poss(`${top.p.first} ${top.p.last}`)} ${money(top.hit)} cap hit is more than the **${k} cheapest ${team.name} combined**.`);
-    }
-    const avgAge = roster.reduce((s, p) => s + p.age, 0) / roster.length;
-    const oldest = roster.reduce((x, y) => (y.age > x.age ? y : x));
-    add(1, `${poss(name)} active roster averages **${avgAge.toFixed(1)} years old**. ${oldest.first} ${oldest.last} is the oldest at ${oldest.age}.`);
-    const xf = roster.filter((p) => p.dev === 3).length;
-    if (xf) {
-      const counts = d.teams.map((tt) => d.players.filter((p) => !p.gone && p.team === tt.id && !p.ps && p.dev === 3).length);
-      const fewer = counts.filter((v) => v < xf).length;
-      add(1.5, `${name} have **${plural(xf, "X-Factor")}**, more than ${plural(fewer, "team")} in the league.`);
+      if (k >= 5) add("tophit", 3.5, [
+        `${poss(`${top.p.first} ${top.p.last}`)} ${money(top.hit)} cap hit is more than the **${k} cheapest ${team.name} combined**. They're ${team.rec.w}-${team.rec.l}. Great plan.`,
+        `${name} put ${money(top.hit)} into ${top.p.first} ${top.p.last} and are **${team.rec.w}-${team.rec.l}**. Money well spent.`,
+      ]);
     }
   }
-  if (Math.abs(team.rec.streak) >= 3) {
-    // EA stores the streak as + wins / − losses (derive's streakText).
-    add(1, team.rec.streak > 0 ? `${name} have won **${team.rec.streak} straight**.` : `${name} have lost **${-team.rec.streak} straight**.`);
+  // The worst-rated guy they actually pay.
+  const paid = roster.filter((p) => p.contract.capHit >= 1e6);
+  if (paid.length) {
+    const scrub = paid.reduce((x, y) => (y.ovr < x.ovr ? y : x));
+    if (scrub.ovr <= 70) add("scrub", 2.5, [
+      `${name} are paying ${scrub.first} ${scrub.last} **${money(scrub.contract.capHit)}** to be a **${scrub.ovr} overall** ${scrub.pos}.`,
+      `${scrub.first} ${scrub.last}: ${scrub.ovr} OVR, ${money(scrub.contract.capHit)}. ${poss(name)} scouting department should be in jail.`,
+    ]);
   }
+  // A good CPU team: roast everybody who loses to it.
+  if (!team.user && gs.length >= 4 && team.rec.w - team.rec.l >= 3) add("cpugood", 3, [
+    `Nobody even runs the ${team.name}. The CPU has them at **${team.rec.w}-${team.rec.l}**, which is better than a bunch of you with a controller in your hands.`,
+    `${name} are a **CPU team** at ${team.rec.w}-${team.rec.l}. Some of you are losing to a robot that doesn't even care.`,
+  ]);
   out.push(...teamRoasts(c, team));
   return out;
 }
@@ -353,6 +351,8 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
       `${who} has thrown **more interceptions (${t.pint}) than touchdowns (${t.ptd})**.`,
       `${who}: ${plural(t.ptd, "touchdown")}, **${plural(t.pint, "interception")}**. The other team is his favorite target.`,
       `Defenses have caught more of ${poss(who)} passes for picks (${t.pint}) than his own guys have for TDs (${t.ptd}).`,
+      `${t.pint} INTs, ${t.ptd} TDs. Floyd Mayweather reads better than ${who}.`,
+      `${who} has more picks (${t.pint}) than touchdowns (${t.ptd}). Hooked on Phonics didn't work for him.`,
     ]);
     const worst = (key: string, v: (x: Totals) => number, what: string, min: (x: Totals) => boolean, w = ROAST) => {
       const mine = v(t);
@@ -400,6 +400,7 @@ function playerRoasts(c: Ctx, p: Player, t: (Totals & { team: number }) | undefi
     if (picks && (picks.l.pint || 0) >= 3) add("badint", ROAST, [
       `${who} threw **${picks.l.pint} interceptions** against ${vs(picks)} in ${wk(picks)}.`,
       `${wk(picks)}: ${who} vs ${vs(picks)}. **${picks.l.pint} picks.** He was throwing to the wrong colors all day.`,
+      `${who} threw **${picks.l.pint} picks** against ${vs(picks)} in ${wk(picks)}. Floyd Mayweather would've read that coverage better.`,
     ]);
     const fum = byMost((l) => l.rfum || 0);
     if (fum && (fum.l.rfum || 0) >= 2) add("badfum", ROAST - 0.5, [
