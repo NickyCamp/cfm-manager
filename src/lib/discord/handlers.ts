@@ -19,7 +19,7 @@ import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, rec
 import { loadPackStats, savePackStats } from "./packStore";
 import { DISCORD_POS_GROUPS, groupStarters, type DiscordPosGroup } from "./posGroups";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
-import { pickFact, playerFacts, teamFacts } from "./funfacts";
+import { pickFact, playerFacts, remember, teamFacts } from "./funfacts";
 import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
@@ -42,6 +42,9 @@ import { blockStateOf, setManualBlock, tradeBlockEmbed } from "./tradeBlock";
 import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, leaguesForDiscordUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
+
+/** How many players/teams /funfact remembers recent facts for, per league. */
+const FUNFACT_SUBJECTS = 80;
 
 export type Option = { name: string; type: number; value?: string | number | boolean; focused?: boolean; options?: Option[] };
 export type Interaction = {
@@ -437,7 +440,24 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         else t = d.teams[randomInt(d.teams.length)];
       }
       const facts = p ? playerFacts(d, p) : teamFacts(d, t!);
-      const f = pickFact(facts);
+      // Skip what this player/team got recently (any wording), remembered in leagues.settings.
+      const subject = p ? `p${p.id}` : `t${t!.id}`;
+      const recentAll = (lg.settings?.funfactRecent || {}) as Record<string, string[]>;
+      let f = pickFact(facts, Array.isArray(recentAll[subject]) ? recentAll[subject] : []);
+      if (f) {
+        const next = remember(recentAll[subject] || [], f, facts.length);
+        await updateLeagueSettings(lg.id, (s) => {
+          const cur = { ...((s.funfactRecent as Record<string, string[]>) || {}) };
+          delete cur[subject]; // re-insert last so the oldest subjects drop off first
+          cur[subject] = next;
+          const keys = Object.keys(cur);
+          for (const k of keys.slice(0, Math.max(0, keys.length - FUNFACT_SUBJECTS))) delete cur[k];
+          s.funfactRecent = cur;
+          return s;
+        }).catch(() => {});
+      }
+      // Nick, 2026-11-18: every player fact has a small special chance of this instead.
+      if (p && f && randomInt(100) < 4) f = { text: `${fullName(p)} had accident today. Number 2.`, weight: 0 };
       const who = p ? fullName(p) : `${t!.city} ${t!.name}`;
       const color = hexColor((p ? teamOf(d, p.team) : t)?.primary);
       if (!f) return { embeds: [{ title: `Fun fact: ${who}`, color, footer, description: "Not enough this season to say anything fun yet. Check back after a few games." }] };
