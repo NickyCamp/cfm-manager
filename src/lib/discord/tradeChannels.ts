@@ -90,7 +90,7 @@ export async function botOnly(guildId: string) {
   ];
 }
 /** The smallest lock: @everyone can't send, the bot can view and send. A fallback when the full one is refused. */
-async function minimalLock(guildId: string) {
+export async function minimalLock(guildId: string) {
   const me = await botUserId();
   return [
     { id: guildId, type: 0, deny: String(SEND), allow: "0" },

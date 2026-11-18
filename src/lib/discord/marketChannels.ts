@@ -21,6 +21,7 @@ import { discordOf, leagueBySlug } from "./links";
 import { BRAND, clip, hexColor, type Embed } from "./api";
 import { channelGone, dc, isGone, sleep } from "./rest";
 import { withLeagueLock } from "./lock";
+import { botOnly, minimalLock } from "./tradeChannels";
 
 /** True only when Discord says the channel is gone. If Discord can't say (rate limit, outage), assume it's
  *  still there: recreating on a hiccup is what leaves duplicate channels behind. */
@@ -210,35 +211,40 @@ async function fillFutures(d: LeagueData, markets: Market[], tickets: boolean, s
   return n;
 }
 
-// ---------------------------------------------------------------- bot-only (Nick, 2026-11-14)
+// ---------------------------------------------------------------- bot-only (Nick, 2026-11-14; fixed 2026-11-18)
 // "only the bot should be allowed to type messages in the market chats": in the Markets category and every
 // channel in it, @everyone can't send messages or start/post in threads; the bot itself is explicitly allowed.
-// Buttons, menus and slash commands still work (those aren't messages). Needs the bot to have Manage Roles
-// ("Manage Permissions") in the server; without it the sync says so and channels stay as they are.
-const SEND = BigInt(1) << BigInt(11), THREADS = (BigInt(1) << BigInt(35)) | (BigInt(1) << BigInt(36)) | (BigInt(1) << BigInt(38));
-const BOT_ALLOW = (BigInt(1) << BigInt(10)) | SEND | (BigInt(1) << BigInt(14)) | (BigInt(1) << BigInt(15)) | (BigInt(1) << BigInt(16)) | (BigInt(1) << BigInt(38));
-let botId: string | null = null;
-async function botUserId() {
-  if (botId) return botId;
-  const r = await dc("GET", "/users/@me");
-  botId = r.ok ? String(r.data.id) : null;
-  return botId;
-}
+// Buttons, menus and slash commands still work (those aren't messages). Needs Manage Roles in the server.
+// Discord refuses (403) an overwrite that allows or denies a permission the bot doesn't hold itself, which is
+// what broke this in the new NCL server (its bot role came from an older invite without Read Message History /
+// thread perms). So the overwrites come from botOnly (masked to the bot's own permissions), falling back to
+// minimalLock (just "@everyone can't send").
 /** Makes these channels bot-only (skips ones already done). Returns an error to show, or "". */
 export async function lockMarketChannels(guildId: string, state: MarketChannels, ids: (string | undefined)[]): Promise<string> {
-  const me = await botUserId();
-  if (!me) return "";
+  const todo = ids.filter((id): id is string => Boolean(id) && !(state.locked || []).includes(id!));
+  if (!todo.length) { state.lockError = undefined; return ""; }
   const done = new Set(state.locked || []);
-  for (const id of ids) {
-    if (!id || done.has(id)) continue;
-    const a = await dc("PUT", `/channels/${id}/permissions/${me}`, { type: 1, allow: String(BOT_ALLOW), deny: "0" });
-    const b = a.ok ? await dc("PUT", `/channels/${id}/permissions/${guildId}`, { type: 0, allow: "0", deny: String(SEND | THREADS) }) : a;
-    if (!b.ok) {
-      state.lockError = b.status === 403 ? "To make the Markets channels bot-only, give the CFM Manager role the **Manage Roles** permission (Server Settings → Roles), then run /marketupdate." : `Discord said ${b.status} locking a channel.`;
+  const full = await botOnly(guildId);
+  let small: Awaited<ReturnType<typeof minimalLock>> | null = null;
+  const put = async (id: string, ows: { id: string; type: number; allow: string; deny: string }[]) => {
+    for (const o of ows) {
+      const r = await dc("PUT", `/channels/${id}/permissions/${o.id}`, { type: o.type, allow: o.allow, deny: o.deny });
+      if (!r.ok) return r;
+    }
+    return null;
+  };
+  for (const id of new Set(todo)) {
+    let bad = await put(id, full);
+    if (bad?.status === 403) bad = await put(id, (small ||= await minimalLock(guildId)));
+    if (bad && !isGone(bad)) {
+      const msg = bad.data?.message ? ` (Discord: ${String(bad.data.message)})` : "";
+      state.lockError = bad.status === 403
+        ? `Couldn't make the Markets channels bot-only${msg}. Give the CFM Manager role the **Manage Roles** permission (Server Settings → Roles), or turn off Send Messages for @everyone on the Markets category yourself, then run /marketupdate.`
+        : `Discord said ${bad.status} locking a Markets channel${msg}.`;
       state.locked = [...done];
       return state.lockError;
     }
-    done.add(id);
+    if (!bad) done.add(id);
     await sleep(150);
   }
   state.locked = [...done];
