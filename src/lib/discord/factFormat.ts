@@ -22,39 +22,31 @@ export const esc = (s: string) => s.replace(/([\\*_~`|>])/g, "\\$1");
 
 /** Closing jabs, tacked onto some roasts at random so the same stat doesn't always read the same. */
 const TAILS = [
-  "Thoughts and prayers.", "Somebody check on the fans.", "Brutal.", "Yikes.", "Sell the team.",
-  "The group chat has questions.", "Not great, Bob.", "Fire everybody.", "Embarrassing for the whole building.",
-  "Sit with that for a minute.", "Draft position is looking strong though.", "Even the mascot wants a trade.",
-  "Concerning.", "That's a choice.", "Someone tell the owner.", "Please stop.", "Tough look.",
-  "Season tickets are going cheap.", "The film room must be a crime scene.", "Pathetic, honestly.",
-  "Ownership should be asking questions.", "It's giving rebuild.", "Unwatchable football.",
-  "Uninstall the game.", "Delete the franchise file.", "Absolute clown show.", "A disgrace to the sport.",
-  "Their fans deserve better. Actually, maybe not.", "Put this team in a museum of failures.",
-  "Somebody turn the difficulty down for them.", "This is why nobody respects them.",
-  "Genuinely sad to look at.", "Rookie mode might be more their speed.", "Hide the controller from this man.",
-  "The tape should be used as evidence.", "Get this team off my screen.", "Not even the CPU wants to play them.",
-  // Nick, 2026-11-18: "don't be afraid to be even more violent with them".
-  "Call the coroner.", "Somebody call 911.", "Rest in pieces.", "Bury the film. Then bury the team.",
-  "Absolutely murdered.", "Get the body bags.", "They'll need dental records to identify the offense.",
-  "Execution-style.", "Somebody pull the plug.", "Cremate the playbook.", "Next of kin has been notified.",
-  "Crime scene tape around the end zone.", "The Geneva Convention has questions.", "Death certificate pending.",
-  "Flatlined.", "Send flowers to the family.", "Closed-casket performance.", "Pour one out.",
-  "Somebody chalk-outline the 50-yard line.", "Time of death: kickoff.", "Light a candle for this man.",
-  "The ambulance is already idling outside.", "Football was committed against them.", "Lock him up.",
-  "Straight to the shadow realm.", "Witnesses are still in therapy.", "Put the whole roster on a milk carton.",
-  "Euthanize the season.", "Hall of Shame, first ballot.", "Mercy rule should be in the CBA.",
-  // Real-world / pop culture (Nick, 2026-11-18: "GTA 6, OJ Simpson, NFL players committing crimes… crazy
-  // headlines"). Kept evergreen and non-partisan.
-  "GTA 6 got delayed twice and still showed up before this team did.", "OJ's Bronco chase had more urgency.",
-  "If it doesn't fit, you must acquit. This doesn't fit.", "Butt fumble energy.", "Dan Orlovsky ran out the back of the end zone with more awareness.",
-  "Antonio Brown walked off mid-game with more dignity.", "Deflategate had more integrity than this.", "Fyre Festival was better organized.",
-  "Congress has a higher approval rating.", "Longer than a government shutdown and twice as useless.",
-  "More flip-flops than an election year.", "Goes down faster than a crypto exchange.",
-  "Blockbuster had a better comeback plan.", "Even the Browns' QB room is laughing.", "Somebody leak this to TMZ.",
-  "The Jets would cut this guy.", "Leon Lett on Thanksgiving made a smarter play.", "More red flags than an NFL rookie's background check.",
-  "Got the Bengals' 2000s arrest record energy.", "Plaxico Burress handled a gun better than this.",
-  "Cheaper than Taylor Swift tickets and somehow worse to watch.", "Netflix would cancel this after one season.",
-  "The Titanic had a better finish.", "Y2K was a bigger threat.", "Breaking Bad had cleaner execution.",
+  // Nick, 2026-11-18: "no low hanging fruits", so no generic "Yikes."/"Brutal." filler.
+  "Somebody check on the fans.", "The group chat has questions.", "Embarrassing for the whole building.",
+  "Draft position is looking strong though.", "Even the mascot wants a trade.", "Someone tell the owner.",
+  "Season tickets are going cheap.", "The film room must be a crime scene.", "Ownership should be asking questions.",
+  "Uninstall the game.", "Delete the franchise file.", "Their fans deserve better. Actually, maybe not.",
+  "Somebody turn the difficulty down for them.", "Rookie mode might be more their speed.", "Hide the controller from this man.",
+  "The tape should be used as evidence.", "Not even the CPU wants to play them.",
+  // "even more violent"
+  "Call the coroner.", "Bury the film. Then bury the team.", "They'll need dental records to identify the offense.",
+  "Cremate the playbook.", "Next of kin has been notified.", "Crime scene tape around the end zone.",
+  "The Geneva Convention has questions.", "Closed-casket performance.", "Somebody chalk-outline the 50-yard line.",
+  "Time of death: kickoff.", "The ambulance is already idling outside.", "Football was committed against them.",
+  "Witnesses are still in therapy.", "Put the whole roster on a milk carton.", "Euthanize the season.",
+  "Hall of Shame, first ballot.", "Mercy rule should be in the CBA.",
+  // Real world / pop culture ("GTA 6, OJ Simpson, NFL players committing crimes… crazy headlines").
+  "Rockstar delayed GTA 6 twice for polish. This team skipped the polish and shipped anyway.",
+  "Johnnie Cochran couldn't get this acquitted.", "The Bronco chase averaged 35 mph and still ran a better two-minute drill.",
+  "The butt fumble was at least a team effort.", "Plaxico shot himself in a nightclub and still had a better week.",
+  "The 2006 Bengals had nine arrests in nine months and a better culture than this.",
+  "Congress passes more bills than this team completes passes.", "This drive got filibustered.",
+  "Sam Bankman-Fried kept cleaner books than this cap sheet.", "FTX had better risk management.",
+  "Antonio Brown took his jersey off mid-game and still left with more dignity.",
+  "Dan Orlovsky ran out the back of his own end zone and still had more situational awareness.",
+  "Somewhere Leon Lett is finally off the hook.", "Deflategate got a 4-game suspension. This deserves life.",
+  "If the glove doesn't fit, you must acquit. Nothing about this fits.", "Tariffs on this offense would be an act of mercy.",
 ];
 // Openers, now and then, for the same reason.
 const HEADS = [
