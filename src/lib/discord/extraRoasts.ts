@@ -3,7 +3,7 @@
 // busts, cheaper/better teammates, rookies out-producing them, stat-padding winners, frauds.
 import { REG_SEASON_LAST_WEEK, type Totals } from "../league/derive";
 import type { Game, LeagueData, Player, Team } from "../league/types";
-import { RATING_KEYS, RATING_LABEL } from "../league/ratings";
+import { RATING_KEYS } from "../league/ratings";
 import { esc, money, n, nth, ord, pct, pick, plural, poss, tail, type Fact } from "./factFormat";
 
 const W = 4; // weight, same band as the other roasts
@@ -11,39 +11,11 @@ const regGame = (g: Game | undefined) => Boolean(g && g.stage === 1 && g.week <=
 const feet = (inches: number) => `${Math.floor(inches / 12)}'${inches % 12}"`;
 type Tot = Map<number, Totals & { team: number }>;
 
-// The ratings that matter for each position, for "his worst important rating".
-const KEY_RATINGS: Record<string, string[]> = {
-  QB: ["throwAccShortRating", "throwAccMidRating", "throwAccDeepRating", "throwOnRunRating", "throwUnderPressureRating", "playActionRating", "breakSackRating", "throwPowerRating", "awareRating"],
-  HB: ["carryRating", "bCVRating", "breakTackleRating", "jukeMoveRating", "speedRating", "catchRating", "truckRating", "stiffArmRating"],
-  WR: ["catchRating", "cITRating", "specCatchRating", "routeRunShortRating", "routeRunMedRating", "routeRunDeepRating", "releaseRating", "speedRating"],
-  TE: ["catchRating", "cITRating", "routeRunShortRating", "runBlockRating", "passBlockRating", "speedRating"],
-  OL: ["passBlockRating", "passBlockPowerRating", "passBlockFinesseRating", "runBlockRating", "runBlockPowerRating", "runBlockFinesseRating", "strengthRating", "impactBlockRating"],
-  DL: ["blockShedRating", "powerMovesRating", "finesseMovesRating", "pursuitRating", "tackleRating", "playRecRating", "strengthRating"],
-  LB: ["tackleRating", "pursuitRating", "playRecRating", "zoneCoverRating", "manCoverRating", "blockShedRating", "hitPowerRating"],
-  DB: ["manCoverRating", "zoneCoverRating", "pressRating", "speedRating", "playRecRating", "catchRating", "tackleRating"],
-  K: ["kickAccRating", "kickPowerRating"], P: ["kickAccRating", "kickPowerRating"],
-};
 const POS_GROUP: Record<string, string> = {
   QB: "QB", HB: "HB", FB: "HB", WR: "WR", TE: "TE", LT: "OL", LG: "OL", C: "OL", RG: "OL", RT: "OL",
   LEDG: "DL", REDG: "DL", LE: "DL", RE: "DL", DT: "DL", SAM: "LB", MIKE: "LB", WILL: "LB", LOLB: "LB", MLB: "LB", ROLB: "LB",
   CB: "DB", FS: "DB", SS: "DB", K: "K", P: "P",
 };
-const JOKE: Record<string, string[]> = {
-  throwAccDeepRating: ["His deep ball lands in the parking lot.", "Every deep shot is a jump ball for the defense."],
-  throwAccShortRating: ["He misses screens. Screens.", "Five-yard throws are a coin flip."],
-  throwUnderPressureRating: ["One defender breathes on him and he folds.", "Pressure turns him into a statue."],
-  throwOnRunRating: ["Make him move and the ball goes anywhere.", "Rolling out is a guaranteed incompletion."],
-  carryRating: ["Holds the ball like it's a live animal.", "Fumble waiting to happen."],
-  catchRating: ["Hands of stone.", "Catching is optional for him."],
-  speedRating: ["Getting chased down by linemen.", "Runs like he's in sand."],
-  passBlockRating: ["His QB has his number saved as 'traitor'.", "A turnstile with a jersey."],
-  runBlockRating: ["Running backs avoid his gap.", "Gets pushed back into his own runner."],
-  manCoverRating: ["Receivers wave at him on the way by.", "He's covering air."],
-  zoneCoverRating: ["His zone is a suggestion.", "Lost in his own zone."],
-  tackleRating: ["Tackles like he's giving hugs.", "Ball carriers bounce off him."],
-  kickAccRating: ["The uprights fear nothing from him.", "Aim small, miss everywhere."],
-};
-
 export function extraPlayerRoasts(d: LeagueData, totals: Tot, p: Player, t: (Totals & { team: number }) | undefined): Fact[] {
   const out: Fact[] = [];
   const add = (key: string, weight: number, variants: string[], jab = true) => {
@@ -67,24 +39,8 @@ export function extraPlayerRoasts(d: LeagueData, totals: Tot, p: Player, t: (Tot
     `${who} is on the practice squad. He holds the tackling dummies.`,
   ]);
 
-  // His worst rating that actually matters for his position.
-  if (p.ratings && KEY_RATINGS[grp]) {
-    const ks = KEY_RATINGS[grp].filter((k) => rating(k) > 0);
-    if (ks.length) {
-      const lo = ks.reduce((a, b) => (rating(b) < rating(a) ? b : a));
-      const v = rating(lo);
-      if (v < 85) add("keyrating", W - 0.5, [
-        `${who} plays ${p.pos} with **${v} ${RATING_LABEL[lo]}**. ${pick(JOKE[lo] || ["That's the one thing he's paid to do."])}`,
-        `**${v} ${RATING_LABEL[lo]}** on a ${p.pos}. ${pick(JOKE[lo] || ["Who signed off on this?"])}`,
-        `For a ${p.pos}, ${poss(who)} ${RATING_LABEL[lo]} (**${v}**) is a crime. ${pick(JOKE[lo] || ["Unplayable."])}`,
-      ]);
-    }
-    const spd = rating("speedRating");
-    if (["HB", "WR", "DB"].includes(grp) && spd && spd < 86) add("slow", W, [
-      `${who} is a ${p.pos} with **${spd} speed**. Offensive linemen are running him down.`,
-      `${spd} speed at ${p.pos}. ${who} runs like he's carrying a couch.`,
-      `${who} (${spd} SPD) gets passed by the refs jogging downfield.`,
-    ]);
+  // (Position ratings and speed: ratingRoasts.ts.)
+  if (p.ratings) {
     const inj = rating("injuryRating");
     if (inj && inj < 75) add("glass", W - 1, [
       `${who} has **${inj} injury**. He's made of glass and bad decisions.`,
