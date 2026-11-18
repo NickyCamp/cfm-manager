@@ -1,0 +1,14 @@
+name: Diag team ids (temporary)
+on:
+  push:
+    branches: [diag-team-ids]
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - env: { SUPABASE_URL: "${{ secrets.SUPABASE_URL }}" }
+        run: npx tsx scripts/diag/team-ids.ts
