@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLeagueData, getLeagueHistory } from "@/lib/league/load";
 import { indexes } from "@/lib/league/derive";
 import { money } from "@/lib/league/format";
+import { RATING_KEYS } from "@/lib/league/ratings";
 import { tradeKey, weekKey, weekOrder, type C, type TradePicks, type TxEvent, type TxKind } from "@/lib/league/history";
 import { isCommissioner, viewer } from "@/lib/marketStore";
 import { leagueBySlug } from "@/lib/discord/links";
@@ -22,10 +23,11 @@ const CATS = [
   ["cuts", "Cuts", ["released"]],
   ["dev", "Dev changes", ["dev"]],
   ["ratings", "Rating changes", ["rating"]],
+  ["positions", "Position changes", ["position"]],
 ] as const satisfies readonly (readonly [string, string, readonly TxKind[]])[];
 
 const BADGE: Partial<Record<TxKind, string>> = {
-  extended: "Extension", restructured: "Restructure", trade: "Trade", signed: "Signed", released: "Cut", retired: "Retired",
+  extended: "Extension", restructured: "Restructure", trade: "Trade", signed: "Signed", released: "Cut", retired: "Retired", position: "Position",
 };
 const RATING_LIMIT = 40;
 
@@ -75,7 +77,7 @@ export default async function Transactions({ params, searchParams }: Props) {
       <div className="wrap">
         <h2>Transactions</h2>
         <p className="muted" style={{ maxWidth: "70ch" }}>
-          Every move CFM Manager has seen, newest first: extensions, restructures, trades, signings and cuts, plus dev trait and overall changes.
+          Every move CFM Manager has seen, newest first: extensions, restructures, trades, signings and cuts, plus dev trait, overall and position changes.
           EA only shows the league as it is now, so moves are found by comparing each sync with the last
           {hist ? <> (tracked since {fmtDate(hist.trackedSince)})</> : null}.
         </p>
@@ -148,6 +150,9 @@ function Detail({ e }: { e: TxEvent }) {
   }
   if (e.kind === "extended" && a) {
     return <span>{deal(a)}, {money((a[2] + a[3]) / Math.max(1, a[0]))}/yr; {e.caps?.[1]} cap hit <strong>{money(a[4])}</strong>{b ? <span className="muted"> · was {deal(b)} with {b[1]} left</span> : null}</span>;
+  }
+  if (e.kind === "position" && e.move) {
+    return <span>{e.move[0]} → <strong>{e.move[1]}</strong>{e.snap ? <span className="muted"> · {e.snap.wt} lbs{e.snap.r ? `, ${e.snap.r[RATING_KEYS.indexOf("speedRating")]} SPD` : ""}</span> : null}</span>;
   }
   if (e.kind === "signed" && a) return <span>{deal(a)}; cap hit <strong>{money(a[4])}</strong></span>;
   if ((e.kind === "released" || e.kind === "retired") && b) return <span className="muted">Was on {deal(b)}, {b[1]} yr{b[1] === 1 ? "" : "s"} left, {money(b[4])} cap hit</span>;

@@ -6,7 +6,7 @@ import type { LeagueData, Player } from "../league/types";
 import { DEV_LABEL } from "../league/types";
 import { money } from "../league/format";
 import { weekTitle } from "../league/derive";
-import { RATING_KEYS } from "../league/ratings";
+import { RATING_KEYS, RATING_SHORT } from "../league/ratings";
 import { diffLeague, tradeKey, weekKey, weekOrder, type C, type LeagueHistory, type TradePicks, type TxEvent } from "../league/history";
 import { BRAND, type Message } from "./api";
 import { tradeTransactionPosts } from "./tradeTransactions";
@@ -37,18 +37,7 @@ const MAX_MSGS = 10;
 const DESC_MAX = 3900;
 
 // Short rating names, Madden style. Confidence is left out: it moves with every game and would bury the rest.
-const SHORT: Record<string, string> = {
-  accelRating: "ACC", agilityRating: "AGI", awareRating: "AWR", bCVRating: "BCV", blockShedRating: "BSH", breakSackRating: "BSK",
-  breakTackleRating: "BTK", cITRating: "CIT", carryRating: "CAR", catchRating: "CTH", changeOfDirectionRating: "COD", confRating: "CNF",
-  finesseMovesRating: "FMV", hitPowerRating: "POW", impactBlockRating: "IBL", injuryRating: "INJ", jukeMoveRating: "JKM", jumpRating: "JMP",
-  kickAccRating: "KAC", kickPowerRating: "KPW", kickRetRating: "KR", leadBlockRating: "LBK", longSnapRating: "LS", manCoverRating: "MCV",
-  passBlockFinesseRating: "PBF", passBlockPowerRating: "PBP", passBlockRating: "PBK", playActionRating: "PAC", playRecRating: "PRC",
-  powerMovesRating: "PMV", pressRating: "PRS", pursuitRating: "PUR", releaseRating: "RLS", routeRunDeepRating: "DRR", routeRunMedRating: "MRR",
-  routeRunShortRating: "SRR", runBlockFinesseRating: "RBF", runBlockPowerRating: "RBP", runBlockRating: "RBK", specCatchRating: "SPC",
-  speedRating: "SPD", spinMoveRating: "SPM", staminaRating: "STA", stiffArmRating: "SFA", strengthRating: "STR", tackleRating: "TAK",
-  throwAccDeepRating: "DAC", throwAccMidRating: "MAC", throwAccRating: "TAC", throwAccShortRating: "SAC", throwOnRunRating: "TOR",
-  throwPowerRating: "THP", throwUnderPressureRating: "TUP", toughRating: "TGH", truckRating: "TRK", zoneCoverRating: "ZCV",
-};
+const SHORT = RATING_SHORT;
 const SKIP_RATINGS = new Set(["confRating"]);
 
 const TRAIT_LABEL: Record<string, string> = {

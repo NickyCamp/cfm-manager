@@ -4,3 +4,18 @@ export const RATING_KEYS = ["accelRating", "agilityRating", "awareRating", "bCVR
 export type RatingKey = (typeof RATING_KEYS)[number];
 
 export const RATING_LABEL: Record<string, string> = {"accelRating": "Acceleration", "agilityRating": "Agility", "awareRating": "Awareness", "bCVRating": "Ball Carrier Vision", "blockShedRating": "Block Shedding", "breakSackRating": "Break Sack", "breakTackleRating": "Break Tackle", "cITRating": "Catch In Traffic", "carryRating": "Carrying", "catchRating": "Catching", "changeOfDirectionRating": "Change Of Direction", "confRating": "Confidence", "finesseMovesRating": "Finesse Moves", "hitPowerRating": "Hit Power", "impactBlockRating": "Impact Blocking", "injuryRating": "Injury", "jukeMoveRating": "Juke Move", "jumpRating": "Jumping", "kickAccRating": "Kick Accuracy", "kickPowerRating": "Kick Power", "kickRetRating": "Kick Return", "leadBlockRating": "Lead Block", "longSnapRating": "Long Snap", "manCoverRating": "Man Coverage", "passBlockFinesseRating": "Pass Block Finesse", "passBlockPowerRating": "Pass Block Power", "passBlockRating": "Pass Block", "playActionRating": "Play Action", "playRecRating": "Play Recognition", "powerMovesRating": "Power Moves", "pressRating": "Press", "pursuitRating": "Pursuit", "releaseRating": "Release", "routeRunDeepRating": "Deep Route Running", "routeRunMedRating": "Medium Route Running", "routeRunShortRating": "Short Route Running", "runBlockFinesseRating": "Run Block Finesse", "runBlockPowerRating": "Run Block Power", "runBlockRating": "Run Block", "specCatchRating": "Spectacular Catch", "speedRating": "Speed", "spinMoveRating": "Spin Move", "staminaRating": "Stamina", "stiffArmRating": "Stiff Arm", "strengthRating": "Strength", "tackleRating": "Tackle", "throwAccDeepRating": "Deep Throw Accuracy", "throwAccMidRating": "Medium Throw Accuracy", "throwAccRating": "Throw Accuracy", "throwAccShortRating": "Short Throw Accuracy", "throwOnRunRating": "Throw On The Run", "throwPowerRating": "Throw Power", "throwUnderPressureRating": "Throw Under Pressure", "toughRating": "Toughness", "truckRating": "Trucking", "zoneCoverRating": "Zone Coverage"};
+
+
+/** Short rating names, Madden style (SPD, THP…). Used by the Transactions posts and the rule audits. */
+export const RATING_SHORT: Record<string, string> = {
+  accelRating: "ACC", agilityRating: "AGI", awareRating: "AWR", bCVRating: "BCV", blockShedRating: "BSH", breakSackRating: "BSK",
+  breakTackleRating: "BTK", cITRating: "CIT", carryRating: "CAR", catchRating: "CTH", changeOfDirectionRating: "COD", confRating: "CNF",
+  finesseMovesRating: "FMV", hitPowerRating: "POW", impactBlockRating: "IBL", injuryRating: "INJ", jukeMoveRating: "JKM", jumpRating: "JMP",
+  kickAccRating: "KAC", kickPowerRating: "KPW", kickRetRating: "KR", leadBlockRating: "LBK", longSnapRating: "LS", manCoverRating: "MCV",
+  passBlockFinesseRating: "PBF", passBlockPowerRating: "PBP", passBlockRating: "PBK", playActionRating: "PAC", playRecRating: "PRC",
+  powerMovesRating: "PMV", pressRating: "PRS", pursuitRating: "PUR", releaseRating: "RLS", routeRunDeepRating: "DRR", routeRunMedRating: "MRR",
+  routeRunShortRating: "SRR", runBlockFinesseRating: "RBF", runBlockPowerRating: "RBP", runBlockRating: "RBK", specCatchRating: "SPC",
+  speedRating: "SPD", spinMoveRating: "SPM", staminaRating: "STA", stiffArmRating: "SFA", strengthRating: "STR", tackleRating: "TAK",
+  throwAccDeepRating: "DAC", throwAccMidRating: "MAC", throwAccRating: "TAC", throwAccShortRating: "SAC", throwOnRunRating: "TOR",
+  throwPowerRating: "THP", throwUnderPressureRating: "TUP", toughRating: "TGH", truckRating: "TRK", zoneCoverRating: "ZCV",
+};

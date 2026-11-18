@@ -9,7 +9,7 @@
 // Caught: signings, releases, extensions/new deals, restructures, trades (one
 // event per player; a trade's players share the same sync and team pair), the
 // draft class arriving, retirements, dev trait changes and overall changes
-// (merged per league week). Practice-squad shuffles are left out.
+// (merged per league week), and position changes (since 2026-11-18). Practice-squad shuffles are left out.
 
 import type { Contract, LeagueData, Player, Restructure } from "./types";
 
@@ -18,7 +18,7 @@ export type C = [number, number, number, number, number];
 
 export type TxKind =
   | "signed" | "released" | "extended" | "restructured" | "trade"
-  | "drafted" | "retired" | "expired" | "dev" | "rating";
+  | "drafted" | "retired" | "expired" | "dev" | "rating" | "position";
 
 export type TxWeek = { year: number; stage: number; week: number; title: string };
 
@@ -33,6 +33,9 @@ export type TxEvent = {
   before?: C; after?: C;
   caps?: [number, number];    // seasons the before/after contracts describe (capYear)
   change?: [number, number];  // dev or overall, from → to
+  /** Position changes (added 2026-11-18 for the rule audits): from → to, and the player just before the move. */
+  move?: [string, string];
+  snap?: { wt: number; ht: number; age: number; r?: number[] };
   /** Trades imported from MyMadden's trade log: everything each team received, picks included. */
   deal?: { teams: [number, number]; got: Record<string, { name?: string; pos?: string; pick?: string }[]> };
   src?: "ncl-site";
@@ -91,6 +94,9 @@ export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string
     }
     if (o.dev !== p.dev) ev("dev", p, { change: [o.dev, p.dev], to: p.team });
     if (o.ovr !== p.ovr) ev("rating", p, { change: [o.ovr, p.ovr], to: p.team });
+    if (o.pos !== p.pos && p.team && o.team) {
+      ev("position", p, { move: [o.pos, p.pos], to: p.team, dev: o.dev, snap: { wt: o.weight, ht: o.height, age: o.age, r: o.ratings } });
+    }
 
     const c = p.contract, oc = o.contract;
     const newDeal = c.length !== oc.length || c.yearsLeft > oc.yearsLeft - tick;

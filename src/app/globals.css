@@ -1692,3 +1692,15 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
   .ac-rating { grid-template-columns: 1fr auto 3.5ch; }
   .ac-weight { display: none; }
 }
+
+/* Rule audits (/l/<slug>/admin/audit) */
+.audit-team h4 { display: flex; gap: 8px; align-items: center; margin: 14px 0 4px; }
+.audit-list { list-style: none; padding: 0; margin: 0; }
+.audit-list li { padding: 4px 0; border-top: 1px solid var(--line, rgba(255,255,255,.08)); }
+.audit-list li.watch { opacity: .85; }
+.audit-form h4 { margin: 18px 0 6px; }
+.audit-form .audit-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.audit-form label { display: flex; flex-direction: column; gap: 6px; }
+.audit-form .admin-row label { flex-direction: row; }
+.audit-form textarea { width: 100%; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px; background: var(--rail); color: inherit; border: 1px solid var(--line, rgba(255,255,255,.15)); border-radius: 6px; color-scheme: dark; }
+.audit-form .audit-wide { margin-bottom: 8px; }

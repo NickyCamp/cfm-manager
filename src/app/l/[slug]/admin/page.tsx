@@ -76,7 +76,7 @@ export default async function AdminPage({ params }: Props) {
     <main className="page league-page markets-page">
       <div className="wrap">
         <h2>Admin</h2>
-        <p className="muted">Everything the Discord admin commands do, for the commissioner. Changes apply to the site and Discord straight away. <Link href={`/l/${slug}/markets/setup`}>Setup guide</Link> · <Link href={`/l/${slug}/markets/activity`}>Trade log</Link></p>
+        <p className="muted">Everything the Discord admin commands do, for the commissioner. Changes apply to the site and Discord straight away. <Link href={`/l/${slug}/admin/audit`}>Rule audits</Link> · <Link href={`/l/${slug}/markets/setup`}>Setup guide</Link> · <Link href={`/l/${slug}/markets/activity`}>Trade log</Link></p>
         <AdminPanel data={data} />
       </div>
     </main>

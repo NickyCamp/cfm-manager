@@ -157,7 +157,9 @@ export async function POST(req: Request) {
       if (problem) return NextResponse.json({ type: 4, data: { content: problem, flags: 1 << 6 } });
     }
     // Settings changes reply only to the person who ran them; everything else is public.
-    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "transactionchannels", "packchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "");
+    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "tradechannels", "transactionchannels", "packchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "")
+      // /audit: private unless the admin picked public
+      || (i.data?.name === "audit" && !i.data.options?.[0]?.options?.some((o) => o.name === "public" && o.value === true));
     after(async () => {
       try {
         const msg = await runCommand(i, base);

@@ -6,8 +6,9 @@
 import { ALERT_EVENTS } from "./api";
 import { STAT_CATS } from "./stats";
 import { DISCORD_POS_GROUPS } from "./posGroups";
+import { AUDIT_KINDS } from "./audit";
 
-const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
+const SUB_COMMAND = 1, STRING = 3, CHANNEL = 7, INTEGER = 4, BOOLEAN = 5, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
 
 // Where a command can be used. Server setup commands need the bot added to the
@@ -166,6 +167,19 @@ export const COMMANDS = [
       { ...player, required: false, description: "With action: the player to add or remove" },
       { type: STRING, name: "note", description: "With Add: what you're looking for, e.g. 2nd round pick or a CB", required: false, max_length: 100 },
     ],
+  },
+  {
+    // /audit abilities | games | players (Nick, 2026-11-18). Rules are edited on the site: Admin → Rule audits.
+    name: "audit",
+    description: "Admins: check the league rules for breaks (abilities, games or players)",
+    ...SERVER_ONLY,
+    options: Object.entries(AUDIT_KINDS).map(([name, description]) => ({
+      type: SUB_COMMAND, name, description,
+      options: [
+        team(false),
+        { type: BOOLEAN, name: "public", description: "Post the results for everyone (default: only you see them)", required: false },
+      ],
+    })),
   },
   { name: "trade", description: "Build a trade step by step (teams, players, picks), see its score and submit it", ...SERVER_ONLY },
   {

@@ -1,6 +1,7 @@
 // What each slash command answers. Everything reads the same league data file
 // and helpers the website uses, so the bot and the site always agree.
 import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore";
+import { getLeagueHistory } from "@/lib/league/load";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
 import {
@@ -29,6 +30,7 @@ import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZ
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
 import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "./marketChannels";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
+import { AUDIT_KINDS, auditMessage, runAudit, type AuditKind } from "./audit";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { tradeChannelsCmd } from "./tradeChannels";
@@ -68,6 +70,13 @@ async function resolveLeague(i: Interaction): Promise<{ lg: LinkedLeague; via: "
   const uid = userId(i);
   const lg = uid ? await leagueForUser(uid) : null;
   return lg ? { lg, via: "user" } : null;
+}
+
+/** /audit has subcommands: their options sit one level down. Lift them up and keep the subcommand's name. */
+function flattenSub(i: Interaction): Interaction & { sub?: string } {
+  const s = i.data?.options?.[0];
+  if (!i.data || s?.type !== 1) return i;
+  return { ...i, sub: s.name, data: { ...i.data, options: s.options || [] } };
 }
 
 const opt = (i: Interaction, name: string) => i.data?.options?.find((o) => o.name === name)?.value;
@@ -160,6 +169,7 @@ async function pickedLeague(i: Interaction, pick: string): Promise<{ lg?: Linked
 // ---------- autocomplete ----------
 
 export async function autocomplete(i: Interaction): Promise<{ name: string; value: string }[]> {
+  i = flattenSub(i);
   const w = unwrapLeague(i);
   if (w) {
     if (w.focused === "league") {
@@ -336,6 +346,22 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { ...(await tradeBuilderStart(lg)), flags: EPHEMERAL };
     }
     case "tradeblock": return tradeBlockCmd(i, lg, d, footer);
+    case "audit": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      const f = flattenSub(i);
+      const kind = f.sub as AuditKind;
+      if (!(kind in AUDIT_KINDS)) return reply("Pick abilities, games or players.");
+      const tv = opt(f, "team");
+      let t: Team | undefined;
+      if (tv != null && tv !== "") {
+        t = findTeam(d, tv);
+        if (!t) return reply("No team by that name.");
+      }
+      const h = kind === "players" ? await getLeagueHistory(lg.slug).catch(() => null) : null;
+      const r = runAudit(kind, d, h, lg.settings, t?.id);
+      return { ...auditMessage(kind, r, d, { url, footer, team: t ? `${t.city} ${t.name}` : undefined }), flags: opt(f, "public") === true ? undefined : EPHEMERAL };
+    }
     case "tradechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);

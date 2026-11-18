@@ -7,6 +7,8 @@ import { correctAwardBets, isCommissioner, memberNames, setCloseTime, settleFini
 import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { postPayoutsNow, rebuildMarketChannels, refreshForMarket, refreshGame, syncMarketChannels } from "@/lib/discord/marketChannels";
 import { removeGameChannels, syncGameChannels } from "@/lib/discord/gameChannels";
+import { leagueBySlug } from "@/lib/discord/links";
+import { auditRulesOf, parseAbilityRules, parsePositionRules, type AuditRules } from "@/lib/league/audit";
 
 // The site's admin panel (/l/<slug>/admin, Nick 2026-11-14): everything the Discord admin commands do,
 // for the league's commissioner or owner. POST { action, ... }.
@@ -107,6 +109,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       if (fix.fixed) parts.push(`${fix.fixed} bet${fix.fixed === 1 ? "" : "s"} that had settled on a different winner ${fix.fixed === 1 ? "was" : "were"} corrected (${fix.users.size} member${fix.users.size === 1 ? "" : "s"})${tickets ? "; the corrections go in the next payouts report" : ""}.`);
       if (fix.stuck) parts.push(`⚠️ ${fix.stuck} bet${fix.stuck === 1 ? " was" : "s were"} already corrected once and need${fix.stuck === 1 ? "s" : ""} fixing by hand.`);
       return ok(parts.join(" "));
+    }
+    case "audit": {
+      // Rule audits (/l/<slug>/admin/audit, /audit in Discord): the league's rules
+      if (b.reset) {
+        const r = await updateLeagueSettings(v.leagueId, (settings) => { delete settings.audit; return settings; });
+        return r.ok ? ok("Default rules put back.") : fail(r.error || "Couldn't save that.", 500);
+      }
+      const r = b.rules as Partial<AuditRules> | undefined;
+      const str = (x: unknown, max = 8000) => (typeof x === "string" ? x.slice(0, max) : undefined);
+      const n = (x: unknown, lo: number, hi: number) => (typeof x === "number" && Number.isFinite(x) && x >= lo && x <= hi ? x : undefined);
+      const cur = auditRulesOf((await leagueBySlug(slug))?.settings);
+      const next: AuditRules = {
+        abilities: { banned: str(r?.abilities?.banned) ?? cur.abilities.banned, limited: str(r?.abilities?.limited) ?? cur.abilities.limited },
+        positions: {
+          changes: str(r?.positions?.changes) ?? cur.positions.changes,
+          lastWeek: n(r?.positions?.lastWeek, 0, 18) ?? cur.positions.lastWeek,
+          eliteOnce: typeof r?.positions?.eliteOnce === "boolean" ? r.positions.eliteOnce : cur.positions.eliteOnce,
+        },
+        games: {
+          gameCatches: n(r?.games?.gameCatches, 1, 50) ?? cur.games.gameCatches,
+          gameShare: n(r?.games?.gameShare, 0.01, 1) ?? cur.games.gameShare,
+          seasonShare: n(r?.games?.seasonShare, 0.01, 1) ?? cur.games.seasonShare,
+          passTdShare: n(r?.games?.passTdShare, 0.01, 1) ?? cur.games.passTdShare,
+          includeUnknown: typeof r?.games?.includeUnknown === "boolean" ? r.games.includeUnknown : cur.games.includeUnknown,
+          includePlayoffs: typeof r?.games?.includePlayoffs === "boolean" ? r.games.includePlayoffs : cur.games.includePlayoffs,
+        },
+      };
+      const saved = await updateLeagueSettings(v.leagueId, (settings) => { settings.audit = next; return settings; });
+      if (!saved.ok) return fail(saved.error || "Couldn't save that.", 500);
+      const errs = [...parseAbilityRules(next.abilities).errors, ...parsePositionRules(next.positions.changes).errors];
+      return ok(errs.length ? `Saved, but some lines couldn't be read: ${errs.join("; ")}` : "Rules saved. /audit uses them right away.");
     }
     case "payouts": return ok(await postPayoutsNow(slug));
     case "marketchannels": return ok(await rebuildMarketChannels(slug));
