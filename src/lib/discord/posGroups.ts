@@ -1,13 +1,14 @@
 // Position groups for /players (and /league's group box). Same groups as the site's Players tab chips.
 
-/** slots: the starters a group's ranking uses, as [positions, how many] (e.g. DB = top 3 CBs + top 2 safeties). */
+/** slots: the players a group's ranking uses, as [positions, how many] (e.g. DB = top 3 CBs + top 2 safeties).
+ *  0 = the whole active room (QB, RB, TE: Nick, 2026-11-18). */
 export type DiscordPosGroup = { key: string; name: string; label: string; positions: string[]; slots: [string[], number][] };
 
 export const DISCORD_POS_GROUPS: DiscordPosGroup[] = [
-  { key: "qb", name: "QB", label: "Quarterbacks", positions: ["QB"], slots: [[["QB"], 1]] },
-  { key: "rb", name: "RB", label: "Running backs", positions: ["HB", "FB"], slots: [[["HB"], 1]] },
+  { key: "qb", name: "QB", label: "Quarterbacks", positions: ["QB"], slots: [[["QB"], 0]] },
+  { key: "rb", name: "RB", label: "Running backs", positions: ["HB", "FB"], slots: [[["HB", "FB"], 0]] },
   { key: "wr", name: "WR", label: "Wide receivers", positions: ["WR"], slots: [[["WR"], 3]] },
-  { key: "te", name: "TE", label: "Tight ends", positions: ["TE"], slots: [[["TE"], 1]] },
+  { key: "te", name: "TE", label: "Tight ends", positions: ["TE"], slots: [[["TE"], 0]] },
   { key: "ol", name: "OL", label: "Offensive line", positions: ["LT", "LG", "C", "RG", "RT"], slots: [[["LT", "LG", "C", "RG", "RT"], 5]] },
   { key: "dl", name: "DL", label: "Defensive line", positions: ["LEDG", "REDG", "LE", "RE", "DT"], slots: [[["LEDG", "REDG", "LE", "RE", "DT"], 4]] },
   { key: "lb", name: "LB", label: "Linebackers", positions: ["SAM", "MIKE", "WILL", "LOLB", "MLB", "ROLB"], slots: [[["SAM", "MIKE", "WILL", "LOLB", "MLB", "ROLB"], 3]] },
@@ -24,10 +25,12 @@ export function groupStarters<P extends { pos: string; ovr: number; ps: boolean 
   const starters: P[] = [];
   let sum = 0, n = 0;
   for (const [pos, count] of g.slots) {
-    const best = players.filter((p) => !p.ps && pos.includes(p.pos)).sort((a, b) => b.ovr - a.ovr).slice(0, count);
+    const room = players.filter((p) => !p.ps && pos.includes(p.pos)).sort((a, b) => b.ovr - a.ovr);
+    const best = count ? room.slice(0, count) : room;
+    const spots = count || Math.max(room.length, 1);
     starters.push(...best);
-    sum += best.reduce((a, p) => a + p.ovr, 0) + (count - best.length) * EMPTY_SLOT;
-    n += count;
+    sum += best.reduce((a, p) => a + p.ovr, 0) + (spots - best.length) * EMPTY_SLOT;
+    n += spots;
   }
   return { starters, avg: n ? sum / n : 0 };
 }

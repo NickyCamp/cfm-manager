@@ -823,6 +823,7 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup, url: Url, footer
   const board = d.teams.map((x) => ({ t: x, ...groupStarters(teamPlayers(d, x.id), g) })).sort((a, b) => b.avg - a.avg);
   const rankOf = (k: number) => board.findIndex((r) => r.avg.toFixed(1) === board[k].avg.toFixed(1)) + 1; // ties share a rank
   const me = board.findIndex((r) => r.t.id === t.id);
+  const whole = g.slots.every(([, n]) => n === 0);
   const starterNote = g.slots.map(([pos, n]) => `${n} ${pos.length > 1 && g.key !== "db" && g.key !== "s" ? g.name : pos.join("/")}`).join(" + ");
   const show = new Set([0, 1, 2, 3, 4, me - 1, me, me + 1, board.length - 1].filter((k) => k >= 0 && k < board.length));
   let prev = -1;
@@ -834,8 +835,11 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup, url: Url, footer
     rows.push(mine ? `**▶ ${text}**` : text);
     prev = k;
   }
-  const rankHead = `**League rank: #${rankOf(me)} of ${board.length}** (starters avg ${board[me].avg.toFixed(1)} OVR)`
-    + `\n-# Starters: ${starterNote}, best OVR on the active roster; an empty spot counts as 40.`;
+  const rankHead = whole
+    ? `**League rank: #${rankOf(me)} of ${board.length}** (room avg ${board[me].avg.toFixed(1)} OVR)`
+      + `\n-# Every ${g.name} on each active roster (practice squad left out); an empty room counts as 40.`
+    : `**League rank: #${rankOf(me)} of ${board.length}** (starters avg ${board[me].avg.toFixed(1)} OVR)`
+      + `\n-# Starters: ${starterNote}, best OVR on the active roster; an empty spot counts as 40.`;
   const rankBlock = `${rankHead}\n${rows.join("\n")}`;
   const room = 4000 - rankBlock.length - 2;
   if (desc.length > room) desc = desc.slice(0, desc.lastIndexOf("\n", room - 10)) + "\n…";
