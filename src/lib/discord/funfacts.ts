@@ -10,7 +10,7 @@ import { RATING_KEYS, RATING_LABEL } from "../league/ratings";
 import { every, factId, money, nth, ord, pct, pick, plural, poss, tail, type Fact } from "./factFormat";
 import { teamRoasts } from "./teamRoasts";
 import { extraPlayerRoasts, extraTeamRoasts } from "./extraRoasts";
-import { ratingRoasts } from "./ratingRoasts";
+import { positionRatings, ratingRoasts } from "./ratingRoasts";
 
 export type { Fact } from "./factFormat";
 
@@ -141,12 +141,16 @@ export function playerFacts(d: LeagueData, p: Player): Fact[] {
 
   // Not stat-based: always something to make fun of.
   if (p.ratings) {
-    const rs = RATING_KEYS.map((k, i) => ({ k, v: p.ratings![i] ?? 0 })).filter((r) => r.k !== "injuryRating" && r.k !== "staminaRating" && r.k !== "confRating" && r.v > 0);
+    // Worst rating among the ones that matter for his position.
+    const relevant = positionRatings(p.pos);
+    const rs = RATING_KEYS.map((k, i) => ({ k, v: p.ratings![i] ?? 0 })).filter((r) => relevant.includes(r.k) && r.v > 0);
     if (rs.length) {
       const lo = rs.reduce((a, b) => (b.v < a.v ? b : a));
-      add("worstrating", 1.5, [
+      // At or under the bar, ratingRoasts.ts already has a line for it; this is the dig for
+      // good players whose weakest position rating is still decent.
+      if (lo.v > (p.pos === "K" || p.pos === "P" ? 80 : 75)) add("worstrating", 1.5, [
         `${poss(who)} **${RATING_LABEL[lo.k]}** rating is a **${lo.v}**. My grandma is a ${Math.min(99, lo.v + 20)}.`,
-        `${who} has **${lo.v} ${RATING_LABEL[lo.k]}**. Genuinely one of the worst things on his card.`,
+        `${poss(who)} weakest spot: **${lo.v} ${RATING_LABEL[lo.k]}**. For a ${p.pos}, that's the one thing you can't be mid at.`,
         `Fun fact: ${poss(who)} ${RATING_LABEL[lo.k]} is **${lo.v}**. The scouts were being generous.`,
       ]);
     }

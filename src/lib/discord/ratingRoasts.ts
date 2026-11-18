@@ -1,7 +1,7 @@
 // /funfact: one roast per bad rating (Nick, 2026-11-18: "low awareness, it's a surprise they can even
 // figure out how to get dressed for the day, bad ball carrier vision, someone needs to get this guy
-// a map"). Each rating at or under its bar becomes its own keyed fact; ratings that matter for his
-// position count for more, and only his worst few are used so one player doesn't drown in them.
+// a map"). Each rating at or under its bar becomes its own keyed fact; only ratings that matter for his
+// position count, and only his worst few are used so one player doesn't drown in them.
 import type { Player } from "../league/types";
 import { RATING_KEYS } from "../league/ratings";
 import { pick, tail, type Fact } from "./factFormat";
@@ -98,6 +98,9 @@ const GROUP: Record<string, string> = {
   CB: "DB", FS: "DB", SS: "DB", K: "K", P: "P",
 };
 
+/** The ratings that matter for a player's position. */
+export const positionRatings = (pos: string) => POS_KEYS[GROUP[pos] || ""] || [];
+
 export function ratingRoasts(p: Player): Fact[] {
   if (!p.ratings) return [];
   const mine = POS_KEYS[GROUP[p.pos] || ""] || [];
@@ -105,11 +108,12 @@ export function ratingRoasts(p: Player): Fact[] {
   for (const k of Object.keys(LINES)) {
     const v = p.ratings[RATING_KEYS.indexOf(k as (typeof RATING_KEYS)[number])] ?? 0;
     if (!v) continue;
-    const relevant = mine.includes(k);
-    // Position ratings: bad under 75 (kickers under 80). Everything else only when it's comical.
-    const bar = relevant ? (p.pos === "K" || p.pos === "P" ? 80 : 75) : 40;
+    // Only ratings that matter for his position (Nick: "more targeted at relevant stats for
+    // positions"); bad at 75 or under, kickers/punters 80.
+    if (!mine.includes(k)) continue;
+    const bar = p.pos === "K" || p.pos === "P" ? 80 : 75;
     if (v > bar) continue;
-    bad.push({ k, v, w: relevant ? 3.5 + (bar - v) / 20 : 1.5 });
+    bad.push({ k, v, w: 3.5 + (bar - v) / 20 });
   }
   bad.sort((a, b) => b.w - a.w);
   return bad.slice(0, 6).map(({ k, v, w }) => ({
