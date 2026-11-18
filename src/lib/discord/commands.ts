@@ -36,10 +36,10 @@ const PLAIN = [
   { name: "unlink", description: "Disconnect this server from its league", default_member_permissions: MANAGE_SERVER, ...SERVER_ONLY },
   {
     name: "notify",
-    description: "Post league updates (advances, scores, moves) in a channel; leave empty to turn off",
+    description: "Post a message when the league advances; leave empty to turn off",
     default_member_permissions: MANAGE_SERVER,
     ...SERVER_ONLY,
-    options: [{ type: CHANNEL, name: "channel", description: "Where to post updates", required: false, channel_types: [0, 5] }],
+    options: [{ type: CHANNEL, name: "channel", description: "Where to post advance alerts", required: false, channel_types: [0, 5] }],
   },
   {
     name: "alertvideo",

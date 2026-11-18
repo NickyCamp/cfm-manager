@@ -504,12 +504,12 @@ async function notify(i: Interaction, lg: LinkedLeague): Promise<Message> {
   const token = process.env.DISCORD_BOT_TOKEN;
   if (token) {
     const err = await postToChannel(token, String(channel), {
-      embeds: [{ color: BRAND, title: `${lg.name} updates will post here`, description: "After each sync: league advances, final scores, signings, releases, trades, extensions, and teams over the cap." }],
+      embeds: [{ color: BRAND, title: `${lg.name} updates will post here`, description: "A message each time the league advances to a new week." }],
     });
     if (err) return reply(err);
   }
   await setDiscord(lg.id, { ...cur, channelId: String(channel) });
-  return reply(`Updates for **${lg.name}** will post in <#${channel}>.`);
+  return reply(`**${lg.name}** advance alerts will post in <#${channel}>.`);
 }
 
 async function alertVideo(i: Interaction, lg: LinkedLeague): Promise<Message> {
