@@ -94,7 +94,7 @@ const PLAIN = [
     options: [team(true), group(true)],
   },
   { name: "expiring", description: "A team's top 10 expiring contracts by overall, with each player's projected ask", ...ANYWHERE, options: [team(true)] },
-  { name: "rookie", description: "Top 10 rookies by overall; pick a team for just its rookies", ...ANYWHERE, options: [team(false)] },
+  { name: "rookie", description: "Top 10 rookies by overall; pick a team and/or a draft year (default: newest class)", ...ANYWHERE, options: [team(false), { type: INTEGER, name: "year", description: "Draft class year, e.g. 2027 (default: the newest class)", required: false, min_value: 2000, max_value: 2100 }] },
   {
     name: "tws",
     description: "A team's game: this week's matchup with ranks, or a past week's score and stats",
@@ -151,7 +151,7 @@ export const COMMANDS = [
       { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, expiring deals, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
       { ...group(false), description: "With the team box: that team's players in one position group (OL, DL, DB…)" },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
-      { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028", required: false, min_value: 2000, max_value: 2100 },
+      { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028; for rookies: draft class year", required: false, min_value: 2000, max_value: 2100 },
     ],
   },
 

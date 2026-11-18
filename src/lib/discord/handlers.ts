@@ -133,7 +133,7 @@ const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players"
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -312,7 +312,8 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         t = findTeam(d, v);
         if (!t) return reply("No team by that name.");
       }
-      return { embeds: [rookiesEmbed(d, t, url, footer)] };
+      const y = Number(opt(i, "year")) || undefined;
+      return { embeds: [rookiesEmbed(d, t, url, footer, y)] };
     }
     case "expiring": {
       const v = opt(i, "team");
@@ -946,11 +947,13 @@ function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed 
 
 /** Top 10 rookies of the newest draft class by overall (real dev traits, which Madden hides in game), league-wide
  *  (rostered players only) or one team's. */
-function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Footer): Embed {
+function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Footer, year?: number): Embed {
   // The newest draft class by EA's rookieYear, not "0 years pro": around the draft Madden may still show last
   // year's rookies at 0 years pro, which would mix two classes. Players without a rookieYear fall back to yearsPro.
-  const cls = d.players.reduce((m, p) => (!p.gone && p.draft.year > m ? p.draft.year : m), 0);
-  const isRookie = (p: Player) => (cls && p.draft.year ? p.draft.year === cls : p.yearsPro === 0);
+  const newest = d.players.reduce((m, p) => (!p.gone && p.draft.year > m ? p.draft.year : m), 0);
+  const cls = year || newest;
+  // A past class (year given) matches by draft year only; the newest class also takes players with no rookieYear at 0 years pro.
+  const isRookie = (p: Player) => (p.draft.year ? p.draft.year === cls : !year && p.yearsPro === 0);
   const rookies = d.players
     .filter((p) => isRookie(p) && !p.gone && (t ? p.team === t.id : p.team > 0))
     .sort((a, b) => b.ovr - a.ovr || b.dev - a.dev || a.draft.round - b.draft.round || a.draft.pick - b.draft.pick)
@@ -962,10 +965,10 @@ function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Foot
     return `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)})${team} · **${p.ovr}** · ${extra}`;
   });
   return {
-    title: `${t ? `${teamLabel(t)}: top` : "Top"}${cls ? ` ${cls}` : ""} rookies${t ? "" : " in the league"}`,
+    title: `${t ? `${teamLabel(t)}: top` : "Top"}${cls ? ` ${cls}` : ""} ${year && year !== newest ? "draft class" : "rookies"}${t ? "" : " in the league"}`,
     url: t ? url(`/teams/${t.abbr.toLowerCase()}`) : url(),
     color: t ? hexColor(t.primary) : BRAND, footer,
-    description: lines.join("\n") || (t ? `No rookies on the ${teamLabel(t)}.` : "No rookies on any roster yet."),
+    description: lines.join("\n") || (year ? `No ${year} draft picks on ${t ? `the ${teamLabel(t)}` : "any roster"}.` : t ? `No rookies on the ${teamLabel(t)}.` : "No rookies on any roster yet."),
   };
 }
 
