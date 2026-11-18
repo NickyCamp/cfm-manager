@@ -3,7 +3,7 @@
 // /audit makes the category the first time it's run and posts its results in the matching channel.
 // State: leagues.settings.auditChannels = { categoryId, channels: { abilities: id, games: id, players: id } }.
 import { updateLeagueSettings } from "@/lib/leagueSettings";
-import { discordOf, type LinkedLeague } from "./links";
+import { discordOf, leagueBySlug, type LinkedLeague } from "./links";
 import { dc } from "./rest";
 import { botOnly, makeChannel } from "./tradeChannels";
 import { postToChannel, type Message } from "./api";
@@ -18,8 +18,9 @@ export type AuditChannelsState = { categoryId: string; channels: Partial<Record<
 
 type Chan = { id: string; name: string; type: number; parent_id?: string };
 
-/** Finds or makes the Audits category and its channels (bot-only). Returns the state, or an error to show. */
-export async function ensureAuditChannels(lg: LinkedLeague): Promise<AuditChannelsState | string> {
+/** Finds or makes the Audits category and its channels (bot-only). Returns the state, or an error to show.
+ *  repair: also lock existing channels again and reset their topics (/auditchannels). */
+export async function ensureAuditChannels(lg: LinkedLeague, repair = false): Promise<AuditChannelsState | string> {
   const guildId = discordOf(lg)?.guildId;
   if (!guildId) return "This league isn't linked to a Discord server yet (an admin runs /link there).";
   const old = (lg.settings?.auditChannels as AuditChannelsState | undefined) || null;
@@ -27,7 +28,7 @@ export async function ensureAuditChannels(lg: LinkedLeague): Promise<AuditChanne
   if (!list.ok) return `Discord said ${list.status} listing the server's channels.`;
   const chans = (Array.isArray(list.data) ? list.data : []) as unknown as Chan[];
   // Everything already in place: nothing to do (the usual case).
-  if (old && chans.some((c) => c.id === old.categoryId) && AUDIT_CHANNELS.every((w) => chans.some((c) => c.id === old.channels[w.key]))) return old;
+  if (!repair && old && chans.some((c) => c.id === old.categoryId) && AUDIT_CHANNELS.every((w) => chans.some((c) => c.id === old.channels[w.key]))) return old;
 
   let cat = (old?.categoryId && chans.find((c) => c.id === old.categoryId && c.type === 4)?.id)
     || chans.find((c) => c.type === 4 && c.name.toLowerCase() === "audits")?.id;
@@ -41,7 +42,14 @@ export async function ensureAuditChannels(lg: LinkedLeague): Promise<AuditChanne
   for (const w of AUDIT_CHANNELS) {
     const known = old?.channels?.[w.key];
     const found = (known && chans.find((c) => c.id === known)?.id) || chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === w.name)?.id;
-    if (found) { state.channels[w.key] = found; continue; }
+    if (found) {
+      if (repair) {
+        const r = await dc("PATCH", `/channels/${found}`, { permission_overwrites: locked, topic: w.topic, parent_id: cat });
+        if (!r.ok && r.status === 403) return `I couldn't make #${w.name} bot-only. Give the bot the Manage Roles permission, then run /auditchannels again.`;
+      }
+      state.channels[w.key] = found;
+      continue;
+    }
     const r = await makeChannel(guildId, { name: w.name, type: 0, parent_id: cat, topic: w.topic }, locked);
     if (!r.ok) return r.status === 403 ? `The bot couldn't make #${w.name}: it needs Manage Channels.` : `Discord said ${r.status} making #${w.name}.`;
     state.channels[w.key] = String(r.data.id);
@@ -66,4 +74,24 @@ export async function postAudit(lg: LinkedLeague, kind: AuditKind, msg: Message,
     err = await postToChannel(token, st.channels[kind]!, out);
   }
   return err ? { error: err } : { channelId: st.channels[kind]! };
+}
+
+/** /auditchannels (admins, like /transactionchannels): make or repair the Audits category; Remove deletes it. */
+export async function auditChannelsCmd(slug: string, remove: boolean): Promise<string> {
+  const lg = await leagueBySlug(slug);
+  if (!lg) return "This league isn't linked to a Discord server (/link).";
+  if (remove) {
+    const st = lg.settings?.auditChannels as AuditChannelsState | undefined;
+    if (!st) return "There's no Audits category to remove.";
+    for (const id of [...Object.values(st.channels), st.categoryId]) if (id) await dc("DELETE", `/channels/${id}`);
+    await updateLeagueSettings(lg.id, (s) => { delete s.auditChannels; return s; });
+    return "Audits category removed. /audit makes it again the next time someone runs it (or run /auditchannels).";
+  }
+  const st = await ensureAuditChannels(lg, true);
+  if (typeof st === "string") return st;
+  return [
+    "Audits category ready. Only the bot can post in these; anyone can run /audit and the results land here:",
+    ...AUDIT_CHANNELS.map((c) => `• <#${st.channels[c.key]}>: /audit ${c.key}`),
+    "Rules are edited on the site: Admin → Rule audits.",
+  ].join("\n");
 }

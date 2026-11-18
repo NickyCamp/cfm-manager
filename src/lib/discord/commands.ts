@@ -178,6 +178,14 @@ export const COMMANDS = [
       options: [team(false)],
     })),
   },
+  {
+    name: "auditchannels",
+    description: "Admins: make the bot-only Audits category (ability, game and player audits)",
+    ...SERVER_ONLY,
+    options: [
+      { type: STRING, name: "action", description: "Leave empty to make or repair it; Remove deletes the Audits category", required: false, choices: [{ name: "Remove", value: "remove" }] },
+    ],
+  },
   { name: "trade", description: "Build a trade step by step (teams, players, picks), see its score and submit it", ...SERVER_ONLY },
   {
     name: "tradechannels",

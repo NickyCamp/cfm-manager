@@ -31,7 +31,7 @@ import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } 
 import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "./marketChannels";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
 import { AUDIT_KINDS, auditMessage, runAudit, type AuditKind } from "./audit";
-import { postAudit } from "./auditChannels";
+import { auditChannelsCmd, postAudit } from "./auditChannels";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { tradeChannelsCmd } from "./tradeChannels";
@@ -347,6 +347,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { ...(await tradeBuilderStart(lg)), flags: EPHEMERAL };
     }
     case "tradeblock": return tradeBlockCmd(i, lg, d, footer);
+    case "auditchannels": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await auditChannelsCmd(lg.slug, opt(i, "action") === "remove"));
+    }
     case "audit": {
       // Anyone can run it; the results go to the matching channel in the Audits category for everyone to see.
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
