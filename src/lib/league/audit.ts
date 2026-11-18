@@ -317,22 +317,32 @@ export function auditGames(d: LeagueData, rules: AuditRules, teamId?: number): A
   const regDone = !d.games.some((x) => x.stage === 1 && x.week < 18 && x.home && x.away && !x.final);
   const sev: Finding["severity"] = regDone ? "violation" : "watch";
   const tail = regDone ? "" : " so far";
+  // Which of each team's finished games counted, and which simmed ones were left out (shown with the totals,
+  // so a commissioner can see why a total looks low: Nick, 2026-11-18, Panthers "only 2 rushing TDs").
+  const allFinals = d.games.filter((x) => x.stage === 1 && x.final && x.home && x.away && (g.includePlayoffs || x.week < 18));
+  const basis = (tid: number) => {
+    const mine = allFinals.filter((x) => x.home === tid || x.away === tid);
+    const used = mine.filter((x) => gameById.has(x.id)).length;
+    const out = mine.filter((x) => !gameById.has(x.id)).map((x) => `Wk ${x.week + 1}`);
+    return ` (${used} user game${used === 1 ? "" : "s"}${out.length ? `; simmed, not counted: ${out.join(", ")}` : ""})`;
+  };
   for (const [tid, a] of season) {
     for (const [pid, rc] of a.byP) {
       if (a.rc < 20 || rc / a.rc <= g.seasonShare) continue;
       const p = players.get(pid);
-      findings.push({ team: tid, severity: sev, rule: "Season catch share", players: [pid], text: `${p ? name(p) : pid} (${p?.pos ?? "?"}): ${rc} of ${a.rc} team catches (${pct(rc / a.rc)})${tail}; limit ${pct(g.seasonShare)}` });
+      findings.push({ team: tid, severity: sev, rule: "Season catch share", players: [pid], text: `${p ? name(p) : pid} (${p?.pos ?? "?"}): ${rc} of ${a.rc} team catches (${pct(rc / a.rc)})${tail}${basis(tid)}; limit ${pct(g.seasonShare)}` });
     }
     const tds = a.ptd + a.rtd;
     if (tds >= 5 && a.ptd / tds > g.passTdShare) {
       const need = Math.ceil(a.ptd * (1 - g.passTdShare) / g.passTdShare - a.rtd);
-      findings.push({ team: tid, severity: sev, rule: "Pass/rush TD split", text: `${a.ptd} passing to ${a.rtd} rushing TDs (${pct(a.ptd / tds)} passing)${tail}; limit ${Math.round(g.passTdShare * 100)}/${Math.round(100 - g.passTdShare * 100)}${regDone ? "" : ` · needs ${need} more rushing TD${need === 1 ? "" : "s"} at this pace`}` });
+      findings.push({ team: tid, severity: sev, rule: "Pass/rush TD split", text: `${a.ptd} passing to ${a.rtd} rushing TDs (${pct(a.ptd / tds)} passing)${tail}${basis(tid)}; limit ${Math.round(g.passTdShare * 100)}/${Math.round(100 - g.passTdShare * 100)}${regDone ? "" : ` · needs ${need} more rushing TD${need === 1 ? "" : "s"} at this pace`}` });
     }
   }
   const notes = [
     `${games.length} user game${games.length === 1 ? "" : "s"} checked; ${simmed} simmed game${simmed === 1 ? "" : "s"} left out${g.includePlayoffs ? "" : " (regular season only)"}.`,
   ];
   if (unknown) notes.push(`${unknown} game${unknown === 1 ? "'s" : "s'"} sim status was never seen by a sync, so ${unknown === 1 ? "it's" : "they're"} counted as user games and marked "sim?".`);
+  if (d.lineTeamFix?.fixed) notes.push(`${d.lineTeamFix.fixed} stat lines EA had moved to a player's new team were put back on the team he played for${d.lineTeamFix.unresolved ? ` (${d.lineTeamFix.unresolved} couldn't be placed)` : ""}.`);
   if (!regDone) notes.push("Season limits are marked ⚠️ until the regular season ends, since they apply to final numbers.");
   return { kind: "games", findings, notes, checked: `${games.length} games` };
 }

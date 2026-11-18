@@ -2,6 +2,7 @@
 // The data file lives in public storage (league-data/<slug>/data.json.gz) and
 // is cached in memory for a minute per server instance.
 
+import { fixLineTeams } from "./lineTeams";
 import { cache } from "react";
 import { gunzipSync } from "node:zlib";
 import fs from "node:fs";
@@ -89,6 +90,9 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
     if (data) {
       markXFactorAbilities(data);
       attachRestructures(data, hist);
+      // Stat lines EA re-tagged with a player's new team go back to the team he played for (lineTeams.ts).
+      const lt = fixLineTeams(data, hist);
+      if (lt.fixed || lt.unresolved) data.lineTeamFix = lt;
       const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > (data.season.capYear ?? data.season.year)));
       if (Object.keys(known).length) data.knownCaps = known;
       const awards = await awardResults(slug, data.season.year);

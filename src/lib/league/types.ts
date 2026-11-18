@@ -141,6 +141,8 @@ export type LeagueData = {
   traitKeys?: string[];
   /** The EA roster field that says a player is on the trade block, when EA sends one (added 2026-11-18). */
   blockKey?: string;
+  /** Stat lines whose team didn't play in that game, put back on load (lineTeams.ts). */
+  lineTeamFix?: { fixed: number; unresolved: number };
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;

@@ -253,7 +253,12 @@ export function mergeHistory(prev: LeagueData | null, next: LeagueData): LeagueD
   if (!prev || prev.season.year !== next.season.year) return next;
   const lineKey = (l: StatLine) => `${l.g}:${l.p}`;
   const lines = new Map(prev.lines.map((l) => [lineKey(l), l]));
-  for (const l of next.lines) lines.set(lineKey(l), l);
+  // EA tags lines with a player's current team; keep the team he had in that game (lineTeams.ts).
+  const sides = new Map(next.games.map((g) => [g.id, [g.home, g.away]]));
+  for (const l of next.lines) {
+    const old = lines.get(lineKey(l)), s = sides.get(l.g);
+    lines.set(lineKey(l), old && s && !s.includes(l.t) && s.includes(old.t) ? { ...l, t: old.t } : l);
+  }
   const tgKey = (t: TeamGame) => `${t.g}:${t.t}`;
   const teamGames = new Map(prev.teamGames.map((t) => [tgKey(t), t]));
   for (const t of next.teamGames) teamGames.set(tgKey(t), t);
