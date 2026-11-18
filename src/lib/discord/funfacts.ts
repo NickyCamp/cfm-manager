@@ -12,6 +12,7 @@ import { teamRoasts } from "./teamRoasts";
 import { extraPlayerRoasts, extraTeamRoasts } from "./extraRoasts";
 import { positionRatings, ratingRoasts } from "./ratingRoasts";
 import { savagePlayerRoasts, savageTeamRoasts } from "./savageRoasts";
+import { userPlayerRoasts, userTeamRoasts } from "./userRoasts";
 
 export type { Fact } from "./factFormat";
 
@@ -167,7 +168,7 @@ export function playerFacts(d: LeagueData, p: Player): Fact[] {
     `${who} is a **${p.ovr} overall** stuck on a **${tm.rec.w}-${tm.rec.l}** team. Blink twice if you need help.`,
     `Somebody free ${who}. ${p.ovr} OVR, wasting his prime on the ${tm.rec.w}-${tm.rec.l} ${tm.name}.`,
   ]);
-  out.push(...playerRoasts(c, p, t), ...extraPlayerRoasts(d, c.totals, p, t), ...ratingRoasts(p), ...savagePlayerRoasts(d, p));
+  out.push(...playerRoasts(c, p, t), ...extraPlayerRoasts(d, c.totals, p, t), ...ratingRoasts(p), ...savagePlayerRoasts(d, p), ...userPlayerRoasts(c, p, t));
   return out;
 }
 
@@ -235,7 +236,7 @@ export function teamFacts(d: LeagueData, team: Team): Fact[] {
     `Nobody even runs the ${team.name}. The CPU has them at **${team.rec.w}-${team.rec.l}**, which is better than a bunch of you with a controller in your hands.`,
     `${name} are a **CPU team** at ${team.rec.w}-${team.rec.l}. Some of you are losing to a robot that doesn't even care.`,
   ]);
-  out.push(...teamRoasts(c, team), ...extraTeamRoasts(d, team), ...savageTeamRoasts(d, team));
+  out.push(...teamRoasts(c, team), ...extraTeamRoasts(d, team), ...savageTeamRoasts(d, team), ...userTeamRoasts(c, team));
   return out;
 }
 

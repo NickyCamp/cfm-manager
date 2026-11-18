@@ -53,7 +53,7 @@ const HEADS = [
   "Autopsy report:", "BREAKING:", "Police report:", "Coroner's note:", "Exhibit A:", "Witness statement:",
   "Crime scene update:", "Obituary:", "For the record:", "Evidence #47:", "Breaking news from the morgue:",
 ];
-export const tail = (text: string, chance = 0.6) => {
+export const tail = (text: string, chance = 0.4) => {
   let t = text;
   if (randomInt(1000) < 150) t = `${pick(HEADS)} ${t}`;
   if (randomInt(1000) < chance * 1000) t = `${t} ${pick(TAILS)}`;
