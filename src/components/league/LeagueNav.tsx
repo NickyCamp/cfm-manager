@@ -22,6 +22,7 @@ const TOOLS = [
   ["draft", "Draft"],
   ["dev", "Dev tracker"],
   ["abilities", "Abilities"],
+  ["archetypes", "Archetype calc"],
   ["contracts", "Contract tool"],
   ["trades", "Trade Tool"],
 ] as const;
