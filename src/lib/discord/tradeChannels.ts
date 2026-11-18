@@ -63,23 +63,64 @@ async function botUserId() {
   botId = r.ok ? String(r.data.id) : null;
   return botId;
 }
-/** Read-only for everyone (no messages, no threads); the bot can post. */
-export async function botOnly(guildId: string) {
+/** The bot's server-wide permissions (roles + @everyone), or null if Discord won't say. */
+async function botGuildPerms(guildId: string): Promise<bigint | null> {
   const me = await botUserId();
-  return [
-    { id: guildId, type: 0, deny: String(SEND | PUB_THREADS | PRIV_THREADS | THREAD_SEND), allow: "0" },
-    ...(me ? [{ id: me, type: 1, allow: String(VIEW | SEND | EMBED | ATTACH | HISTORY), deny: "0" }] : []),
-  ];
+  if (!me) return null;
+  const [member, roles] = await Promise.all([dc("GET", `/guilds/${guildId}/members/${me}`), dc("GET", `/guilds/${guildId}/roles`)]);
+  if (!member.ok || !roles.ok || !Array.isArray(roles.data)) return null;
+  const mine = new Set([guildId, ...((member.data.roles as string[]) || [])]);
+  let p = BigInt(0);
+  for (const r of roles.data as unknown as { id: string; permissions: string }[]) if (mine.has(r.id)) p |= BigInt(r.permissions);
+  if (p & bit(3)) return ~BigInt(0); // Administrator
+  return p;
 }
 
+/** Read-only for everyone (no messages, no threads); the bot can post.
+ *  Discord refuses an overwrite that allows or denies a permission the bot doesn't have itself
+ *  (403 Missing Permissions), so only the bits the bot holds are included. */
+export async function botOnly(guildId: string) {
+  const me = await botUserId();
+  const has = (await botGuildPerms(guildId)) ?? ~BigInt(0);
+  const deny = (SEND | PUB_THREADS | PRIV_THREADS | THREAD_SEND) & has;
+  const allow = (VIEW | SEND | EMBED | ATTACH | HISTORY) & has;
+  return [
+    { id: guildId, type: 0, deny: String(deny), allow: "0" },
+    ...(me ? [{ id: me, type: 1, allow: String(allow), deny: "0" }] : []),
+  ];
+}
+/** The smallest lock: @everyone can't send, the bot can view and send. A fallback when the full one is refused. */
+async function minimalLock(guildId: string) {
+  const me = await botUserId();
+  return [
+    { id: guildId, type: 0, deny: String(SEND), allow: "0" },
+    ...(me ? [{ id: me, type: 1, allow: String(VIEW | SEND), deny: "0" }] : []),
+  ];
+}
+/** Makes a text channel, locked if asked. Falls back to a smaller lock, then to unlocked, when Discord refuses. */
+export async function makeChannel(guildId: string, body: Record<string, unknown>, lock: unknown[] | null) {
+  let r = await dc("POST", `/guilds/${guildId}/channels`, { ...body, ...(lock ? { permission_overwrites: lock } : {}) });
+  if (r.ok || !lock || r.status !== 403) return { ...r, unlocked: false };
+  r = await dc("POST", `/guilds/${guildId}/channels`, { ...body, permission_overwrites: await minimalLock(guildId) });
+  if (r.ok) return { ...r, unlocked: false };
+  r = await dc("POST", `/guilds/${guildId}/channels`, body);
+  return { ...r, unlocked: r.ok };
+}
+const why = (r: { data: Record<string, unknown> }) => (r.data?.message ? ` (Discord: ${String(r.data.message)})` : "");
+
 /** Makes (or finds again) the Trades category and its three channels. Returns the state or an error. */
-export async function ensureTradeChannels(lg: LinkedLeague): Promise<TradeChannels | string> {
+export async function ensureTradeChannels(lg: LinkedLeague): Promise<(TradeChannels & { unlocked?: string[] }) | string> {
   const guildId = discordOf(lg)?.guildId;
   if (!guildId) return "This league isn't linked to a Discord server yet (an admin runs /link there).";
   const old = stateOf(lg);
+  let moved = false;
   if (old?.approvalsId && old.transactionsId) {
-    const gone = await Promise.all([old.categoryId, old.channelId, old.approvalsId, old.transactionsId].map((id) => channelGone(id)));
+    // Saved channels from another server (the league was /linked somewhere new) don't count.
+    const c = await dc("GET", `/channels/${old.categoryId}`);
+    const here = c.ok && String(c.data.guild_id) === guildId;
+    const gone = !here ? [true] : await Promise.all([old.categoryId, old.channelId, old.approvalsId, old.transactionsId].map((id) => channelGone(id)));
     if (!gone.some(Boolean)) return old;
+    if (!here) { moved = true; old.recent = undefined; old.proposals = undefined; }
   }
   const list = await dc("GET", `/guilds/${guildId}/channels`);
   const chans = (Array.isArray(list.data) ? list.data : []) as unknown as { id: string; name: string; type: number; parent_id?: string }[];
@@ -96,27 +137,29 @@ export async function ensureTradeChannels(lg: LinkedLeague): Promise<TradeChanne
     { key: "transactionsId", name: "trade-transactions", lock: true, topic: "Trades as they happened in Madden, posted after each sync." },
   ];
   const state: TradeChannels = { categoryId: cat, channelId: "", recent: old?.recent, proposals: old?.proposals };
+  const unlocked: string[] = [];
   for (const w of want) {
     const found = chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === w.name)?.id;
     if (found) {
       if (w.lock) {
         // An older #trade-proposals was open to everyone: lock it (needs Manage Roles).
         const r = await dc("PATCH", `/channels/${found}`, { permission_overwrites: locked, topic: w.topic });
-        if (!r.ok && r.status === 403) return `I couldn't make #${w.name} bot-only. Give the bot the Manage Roles permission, or turn off Send Messages for @everyone in that channel yourself, then run /tradechannels again.`;
+        if (!r.ok && r.status === 403) return `I couldn't make #${w.name} bot-only${why(r)}. Give the bot the Manage Roles permission, or turn off Send Messages for @everyone in that channel yourself, then run /tradechannels again.`;
       }
       state[w.key] = found;
       continue;
     }
-    const r = await dc("POST", `/guilds/${guildId}/channels`, { name: w.name, type: 0, parent_id: cat, topic: w.topic, ...(w.lock ? { permission_overwrites: locked } : {}) });
-    if (!r.ok) return r.status === 403 ? `The bot couldn't make #${w.name}: it needs Manage Channels (and Manage Roles for the bot-only channels).` : `Discord said ${r.status} making #${w.name}.`;
+    const r = await makeChannel(guildId, { name: w.name, type: 0, parent_id: cat, topic: w.topic }, w.lock ? locked : null);
+    if (!r.ok) return r.status === 403 ? `The bot couldn't make #${w.name}: it needs Manage Channels, and View Channels in the Trades category${why(r)}.` : `Discord said ${r.status} making #${w.name}${why(r)}.`;
+    if (r.unlocked) unlocked.push(w.name);
     state[w.key] = String(r.data.id);
   }
   await updateLeagueSettings(lg.id, (s) => {
     const cur = (s.tradeChannels as TradeChannels | undefined) || {};
-    s.tradeChannels = { ...cur, ...state, recent: (cur as TradeChannels).recent, proposals: (cur as TradeChannels).proposals };
+    s.tradeChannels = moved ? state : { ...cur, ...state, recent: (cur as TradeChannels).recent, proposals: (cur as TradeChannels).proposals };
     return s;
   });
-  return state;
+  return unlocked.length ? { ...state, unlocked } : state;
 }
 
 /** /tradechannels: make the category; action remove deletes it. */
@@ -137,6 +180,7 @@ export async function tradeChannelsCmd(slug: string, remove: boolean): Promise<s
     `• <#${st.channelId}>: agreed trades from the Trade Tool (${APP_URL}/l/${slug}/trades). Only the bot posts; admins vote with the buttons, ${VOTES_NEEDED} approvals passes a trade.`,
     `• <#${st.approvalsId}>: approved trades, open for everyone to talk.`,
     `• <#${st.transactionsId}>: trades as they happened in Madden, after each sync. Only the bot posts.`,
+    ...(st.unlocked?.length ? [`⚠️ Discord wouldn't let me make ${st.unlocked.map((n) => `#${n}`).join(" and ")} bot-only, so anyone can type there for now. Give the CFM Manager role Manage Roles (or Administrator) and run /tradechannels again.`] : []),
   ].join("\n");
 }
 

@@ -4,7 +4,7 @@
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { discordOf, leagueBySlug, type LinkedLeague } from "./links";
 import { dc } from "./rest";
-import { botOnly } from "./tradeChannels";
+import { makeChannel, botOnly } from "./tradeChannels";
 import { TX_CHANNELS, type TxChannelsState } from "./txPosts";
 import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 
@@ -37,8 +37,8 @@ export async function ensureTxChannels(lg: LinkedLeague): Promise<TxChannelsStat
       state.channels[w.key] = found;
       continue;
     }
-    const r = await dc("POST", `/guilds/${guildId}/channels`, { name: w.name, type: 0, parent_id: cat, topic: w.topic, permission_overwrites: locked });
-    if (!r.ok) return r.status === 403 ? `The bot couldn't make #${w.name}: it needs Manage Channels and Manage Roles.` : `Discord said ${r.status} making #${w.name}.`;
+    const r = await makeChannel(guildId, { name: w.name, type: 0, parent_id: cat, topic: w.topic }, locked);
+    if (!r.ok) return r.status === 403 ? `The bot couldn't make #${w.name}: it needs Manage Channels, and View Channels in the Transactions category${r.data?.message ? ` (Discord: ${String(r.data.message)})` : ""}.` : `Discord said ${r.status} making #${w.name}.`;
     state.channels[w.key] = String(r.data.id);
   }
   await updateLeagueSettings(lg.id, (s) => { s.txChannels = state; return s; });
