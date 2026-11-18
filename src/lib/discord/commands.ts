@@ -42,6 +42,8 @@ const PLAIN = [
       { type: STRING, name: "command", description: "One command explained (start typing its name)", required: false, autocomplete: true },
     ],
   },
+  // /web (Nick, 2026-11-18): just posts the link to the main site. Public reply.
+  { name: "web", description: "Post the link to the CFM Manager website", ...ANYWHERE },
   {
     name: "link",
     description: "Connect this Discord server to a CFM Manager league",

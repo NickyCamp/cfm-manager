@@ -17,11 +17,20 @@ const USER_INSTALL_URL = "https://discord.com/oauth2/authorize?client_id=1570587
 type Opt = { type: number; name: string; description: string; required?: boolean; options?: Opt[] };
 type Cmd = { name: string; description: string; options?: Opt[]; default_member_permissions?: string; contexts?: number[] };
 const ALL = COMMANDS as Cmd[];
+/** /web: the main site's link, posted for everyone in the chat, with a button to open it. */
+export function webReply() {
+  return {
+    content: APP_URL,
+    components: [{ type: 1, components: [{ type: 2, style: 5, label: "Open CFM Manager", url: APP_URL }] }],
+    allowed_mentions: { parse: [] as string[] },
+  };
+}
+
 const byName = (n: string) => ALL.find((c) => c.name === n.replace(/^\//, "").trim().toLowerCase());
 
 // The overview's groups, in order. Commands missing from every group go under "Other".
 const GROUPS: [string, string[]][] = [
-  ["🚀 Start here", ["help", "myleague", "connect", "league"]],
+  ["🚀 Start here", ["help", "web", "myleague", "connect", "league"]],
   ["🏈 Players and teams", ["player", "contract", "team", "players", "rookie", "expiring"]],
   ["💰 Cap", ["cap"]],
   ["📊 Games and stats", ["tws", "scores", "standings", "playoffs", "stats", "funfact", "sync"]],
