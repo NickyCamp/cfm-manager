@@ -16,6 +16,7 @@ import { standInArt } from "@/lib/league/headshots";
 import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
+import { DISCORD_POS_GROUPS, type DiscordPosGroup } from "./posGroups";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
 import { pickFact, playerFacts, teamFacts } from "./funfacts";
 import { randomInt } from "node:crypto";
@@ -114,11 +115,11 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 
 // ---------- /league: the same commands for any league you're in ----------
 
-const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "sync", "info"]);
+const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "sync", "info"]);
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -138,7 +139,8 @@ function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: st
   }
   const more = String(get("more")?.value ?? "");
   const box = more ? undefined : BOX_CMDS.find(([b]) => get(b));
-  const cmd = more || box?.[1] || "info";
+  // The team box plus the group box = that team's position group (/players).
+  const cmd = more || (box?.[0] === "team" && get("group") ? "players" : box?.[1]) || "info";
   const own = box ? [{ ...get(box[0])!, name: box[2] }] : [];
   const extra = opts.filter((o) => (EXTRA[cmd] || []).includes(o.name) && !own.some((x) => x.name === o.name));
   return { cmd, pick, inner: { ...i, data: { ...i.data, name: cmd, options: [...own, ...extra] } } };
@@ -280,6 +282,13 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "team": {
       const t = findTeam(d, opt(i, "team"));
       return t ? { embeds: [teamEmbed(d, t, url, footer)] } : reply("No team by that name.");
+    }
+    case "players": {
+      const t = findTeam(d, opt(i, "team"));
+      if (!t) return reply("No team by that name.");
+      const g = DISCORD_POS_GROUPS.find((x) => x.key === String(opt(i, "group") ?? ""));
+      if (!g) return reply("Pick a position group (QB, RB, WR, TE, OL, DL, LB, DB, CB, S or K/P).");
+      return { embeds: [groupEmbed(d, t, g, url, footer)] };
     }
     case "rookie": {
       const v = opt(i, "team");
@@ -791,6 +800,33 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   };
 }
 
+/** /players team group: every player the team has in one position group (practice squad last), ordered like a
+ *  depth chart (position, then OVR), with dev, age, cap hit and years left. Nick, 2026-11-18. */
+function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup, url: Url, footer: Footer): Embed {
+  const order = (p: Player) => { const k = g.positions.indexOf(p.pos); return k < 0 ? 99 : k; };
+  const all = teamPlayers(d, t.id).filter((p) => g.positions.includes(p.pos))
+    .sort((a, b) => Number(a.ps) - Number(b.ps) || order(a) - order(b) || b.ovr - a.ovr);
+  const line = (p: Player) => {
+    const flags = [p.ir ? "IR" : p.injury > 0 ? `inj ${p.injury} wk` : ""].filter(Boolean);
+    const yl = p.contract.yearsLeft;
+    return `${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}**${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age}`
+      + ` · ${money(p.contract.capHit)}, ${yl} yr${yl === 1 ? "" : "s"} left${flags.length ? ` · ${flags.join(" · ")}` : ""}`;
+  };
+  const active = all.filter((p) => !p.ps), ps = all.filter((p) => p.ps);
+  const cap = active.reduce((a, p) => a + p.contract.capHit, 0);
+  const avg = active.length ? Math.round(active.reduce((a, p) => a + p.ovr, 0) / active.length) : 0;
+  let desc = active.length
+    ? `${active.length} on the active roster · avg ${avg} OVR · ${money(cap)} in cap hits this season\n\n${active.map(line).join("\n")}`
+    : `No ${g.name} on the ${teamLabel(t)} active roster.`;
+  if (ps.length) desc += `\n\n**Practice squad**\n${ps.map(line).join("\n")}`;
+  if (desc.length > 4000) desc = desc.slice(0, desc.lastIndexOf("\n", 3990)) + "\n…";
+  return {
+    title: `${teamLabel(t)}: ${g.label}`,
+    url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
+    description: desc,
+  };
+}
+
 /** Top 10 rookies (yearsPro 0) by overall, league-wide (rostered players only) or one team's. */
 const marketOf = (d: LeagueData): MarketPlayer[] => d.players.filter((x) => !x.gone).map((x) => ({
   id: x.id, n: fullName(x), pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
@@ -965,7 +1001,7 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
 }
 
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
-export const _preview = { statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
+export const _preview = { statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
 
 // ---------- /kickoff: when betting closes on a game (Nick, 2026-11-13) ----------
 // The two teams' managers (linked with /connect) or an admin can set it; once it has

@@ -5,6 +5,7 @@
 
 import { ALERT_EVENTS } from "./api";
 import { STAT_CATS } from "./stats";
+import { DISCORD_POS_GROUPS } from "./posGroups";
 
 const STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
@@ -16,6 +17,7 @@ const SERVER_ONLY = { integration_types: [0], contexts: [0] };
 const ANYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] };
 
 const player = { type: STRING, name: "player", description: "Start typing a name", required: true, autocomplete: true };
+const group = (required: boolean) => ({ type: STRING, name: "group", description: "Position group (OL, DL, DB…)", required, choices: DISCORD_POS_GROUPS.map((g) => ({ name: g.name, value: g.key })) });
 const team = (required: boolean) => ({ type: STRING, name: "team", description: "Start typing a team", required, autocomplete: true });
 
 // /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
@@ -73,6 +75,12 @@ const PLAIN = [
     options: [team(false), { type: INTEGER, name: "year", description: "Season, e.g. 2028 (this season and the next 4)", required: false, min_value: 2000, max_value: 2100 }],
   },
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
+  {
+    name: "players",
+    description: "A team's players in one position group (OL, DL, DB…) with OVR, dev, age and contract",
+    ...ANYWHERE,
+    options: [team(true), group(true)],
+  },
   { name: "expiring", description: "A team's top 10 expiring contracts by overall, with each player's projected ask", ...ANYWHERE, options: [team(true)] },
   { name: "rookie", description: "Top 10 rookies by overall; pick a team for just its rookies", ...ANYWHERE, options: [team(false)] },
   {
@@ -125,10 +133,11 @@ export const COMMANDS = [
       { type: STRING, name: "player", description: "A player's card (start typing a name from that league)", required: false, autocomplete: true },
       { type: STRING, name: "tws", description: "A team's game this week (or the week box): start typing a team", required: false, autocomplete: true },
       { type: STRING, name: "stats", description: "Top 10 in a stat this season (add the team box for one team)", required: false, choices: STAT_CATS.map((c) => ({ name: c.label, value: c.key })) },
-      { type: STRING, name: "team", description: "A team's page (start typing a team)", required: false, autocomplete: true },
+      { type: STRING, name: "team", description: "A team's page (start typing a team); add the group box for one position group", required: false, autocomplete: true },
       { type: STRING, name: "cap", description: "A team's cap space by year (add the year box to focus a season)", required: false, autocomplete: true },
       { type: STRING, name: "contract", description: "What a player will likely ask for on his next deal", required: false, autocomplete: true },
       { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, expiring deals, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
+      { ...group(false), description: "With the team box: that team's players in one position group (OL, DL, DB…)" },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028", required: false, min_value: 2000, max_value: 2100 },
     ],
