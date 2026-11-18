@@ -63,14 +63,23 @@ const TRAIT_LABEL: Record<string, string> = {
 export const traitLabel = (k: string) =>
   TRAIT_LABEL[k] || k.replace(/Trait$/, "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()).replace(/\b([A-Z]) (?=[A-Z]\b)/g, "$1");
 
+/** Team id → abbreviation, from this sync's teams, falling back to the previous sync's when EA sent an empty or partial team list. */
+function teamAbbr(prev: LeagueData | null, next: LeagueData) {
+  const teams = new Map<number, string>();
+  for (const t of prev?.teams || []) if (t.abbr) teams.set(t.id, t.abbr);
+  for (const t of next.teams) if (t.abbr) teams.set(t.id, t.abbr);
+  return (id: number | undefined) => (id ? teams.get(id) || "?" : "FA");
+}
+
 type Opts = { appUrl: string; slug: string; leagueName: string; trade: TradeChannels | null; guildId?: string; tradePicks?: TradePicks };
 
 /** Everything one sync newly recorded, as messages per channel. Empty when nothing new was pulled. */
 export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: Opts): Partial<Record<TxKey, Message[]>> {
   if (!prev || prev.pulledAt === next.pulledAt) return {};
   const url = (path = "") => `${o.appUrl}/l/${o.slug}${path}`;
-  const teams = new Map(next.teams.map((t) => [t.id, t]));
-  const abbr = (id: number | undefined) => (id ? teams.get(id)?.abbr || "?" : "FA");
+  const abbr = teamAbbr(prev, next);
+  // A score line with unknown teams ("? 25 @ ? 42") is useless, so those games are left out.
+  const known = (g: { home: number; away: number }) => abbr(g.home) !== "?" && abbr(g.away) !== "?";
   const who = (p: { id: number; first: string; last: string; pos: string; ovr: number; team: number }) =>
     `[**${p.first} ${p.last}**](${url(`/players/${p.id}`)}) (${p.pos}, ${abbr(p.team)}, ${p.ovr})`;
   const footer = { text: `${o.leagueName} · ${next.season.year} ${next.season.title} · sync of ${new Date(next.pulledAt).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} ET` };
@@ -89,7 +98,7 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
   // Scores: games that went final since the last sync (same season), one post per week.
   if (prev.season.year === next.season.year) {
     const was = new Map(prev.games.map((g) => [g.id, g]));
-    const finals = next.games.filter((g) => g.final && g.home && g.away && !was.get(g.id)?.final);
+    const finals = next.games.filter((g) => g.final && g.home && g.away && !was.get(g.id)?.final && known(g));
     const byWeek = new Map<string, typeof finals>();
     for (const g of finals) { const k = weekTitle(next, g.stage, g.week); byWeek.set(k, [...(byWeek.get(k) || []), g]); }
     const msgs: Message[] = [];
@@ -226,8 +235,9 @@ function contractLine(e: TxEvent, abbr: (id: number | undefined) => string, url:
  */
 export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, next: LeagueData, o: Opts): Partial<Record<TxKey, Message[]>> {
   const url = (path = "") => `${o.appUrl}/l/${o.slug}${path}`;
-  const teams = new Map(next.teams.map((t) => [t.id, t]));
-  const abbr = (id: number | undefined) => (id ? teams.get(id)?.abbr || "?" : "FA");
+  const abbr = teamAbbr(prev, next);
+  // A score line with unknown teams ("? 25 @ ? 42") is useless, so those games are left out.
+  const known = (g: { home: number; away: number }) => abbr(g.home) !== "?" && abbr(g.away) !== "?";
   const footer = { text: `${o.leagueName} · everything recorded before ${new Date(next.pulledAt).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" })}` };
   const meta = Object.fromEntries(TX_CHANNELS.map((c) => [c.key, c])) as Record<TxKey, (typeof TX_CHANNELS)[number]>;
   const out: Partial<Record<TxKey, Message[]>> = {};
@@ -288,7 +298,7 @@ export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, n
 
   // Scores: this season's games that were already final before this sync.
   if (prev) {
-    const finals = prev.games.filter((g) => g.final && g.home && g.away && g.stage === 1 && prev.season.year === next.season.year);
+    const finals = prev.games.filter((g) => g.final && g.home && g.away && g.stage === 1 && prev.season.year === next.season.year && known(g));
     const lines: string[] = [];
     let wk = "";
     for (const g of [...finals].sort((x, y) => x.week - y.week || x.id - y.id)) {
