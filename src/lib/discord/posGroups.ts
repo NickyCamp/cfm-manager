@@ -1,5 +1,7 @@
 // Position groups for /players (and /league's group box). Same groups as the site's Players tab chips.
 
+import { RATING_KEYS, RATING_LABEL, RATING_SHORT } from "../league/ratings";
+
 /** slots: the players a group's ranking uses, as [positions, how many] (e.g. DB = top 3 CBs + top 2 safeties).
  *  0 = the whole active room (QB, RB, TE: Nick, 2026-11-18). */
 export type DiscordPosGroup = { key: string; name: string; label: string; positions: string[]; slots: [string[], number][] };
@@ -33,4 +35,42 @@ export function groupStarters<P extends { pos: string; ovr: number; ps: boolean 
     n += spots;
   }
   return { starters, avg: n ? sum / n : 0 };
+}
+
+// ---------- /players sort: any rating, best to worst or worst to best (Nick, 2026-11-18) ----------
+
+
+export type PlayerSort = { key: string; label: string; short: string; dir: "desc" | "asc" };
+
+/** "ovr" plus every EA rating, for the rating box's autocomplete. */
+export const SORT_RATINGS: { key: string; label: string; short: string }[] = [
+  { key: "ovr", label: "Overall", short: "OVR" },
+  ...RATING_KEYS.map((k) => ({ key: k as string, label: RATING_LABEL[k] || k, short: RATING_SHORT[k] || k })),
+];
+
+const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** A picked autocomplete value (key) or typed text ("speed", "SPD", "throw power") → the rating; undefined if no match. */
+export function findSortRating(raw: string) {
+  const q = squash(raw);
+  if (!q) return SORT_RATINGS[0];
+  return SORT_RATINGS.find((r) => squash(r.key) === q || squash(r.short) === q || squash(r.label) === q)
+    || SORT_RATINGS.find((r) => squash(r.label).startsWith(q));
+}
+
+/** Autocomplete list for the rating box (Discord shows 25 at most). */
+export function sortRatingChoices(typed: string) {
+  const q = squash(typed);
+  return SORT_RATINGS
+    .filter((r) => !q || squash(r.label).includes(q) || squash(r.short).startsWith(q))
+    .slice(0, 25)
+    .map((r) => ({ name: `${r.label} (${r.short})`, value: r.key }));
+}
+
+/** The player's value for a sort rating; null when this build has no ratings for him. */
+export function sortValue(p: { ovr: number; ratings?: number[] }, key: string): number | null {
+  if (key === "ovr") return p.ovr;
+  const k = (RATING_KEYS as readonly string[]).indexOf(key);
+  const v = k >= 0 ? p.ratings?.[k] : undefined;
+  return typeof v === "number" ? v : null;
 }
