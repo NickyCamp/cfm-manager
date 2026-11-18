@@ -47,18 +47,85 @@ const TAILS = [
   "Dan Orlovsky ran out the back of his own end zone and still had more situational awareness.",
   "Somewhere Leon Lett is finally off the hook.", "Deflategate got a 4-game suspension. This deserves life.",
   "If the glove doesn't fit, you must acquit. Nothing about this fits.", "Tariffs on this offense would be an act of mercy.",
+  // More, so the league goes longer between repeats.
+  "The film is being studied by the FBI.", "Scientists are studying this as a new form of losing.",
+  "The Hall of Fame wants the tape for its 'what not to do' wing.", "Even the scoreboard looked away.",
+  "This should come with a parental advisory.", "The league is looking into whether this counts as football.",
+  "Their highlight reel is just the coin toss.", "Insurance companies list this team as a natural disaster.",
+  "The turf filed a noise complaint.", "Somewhere a high school coach is taking notes on what not to do.",
+  "The stadium lights flicker out of shame.", "The team chaplain has started drinking.",
+  "A local news anchor cried reading this on air.", "Even the waterboy asked for a trade.",
+  "The playbook was found in a dumpster behind the stadium.", "NASA could see this disaster from orbit.",
+  "Ticket scalpers are paying people to take them.", "The refs felt bad and stopped throwing flags out of pity.",
+  "History will not be kind. Neither are we.", "The tape has been sealed by court order.",
+  "Their fight song is just someone sighing.", "This aged like milk in a hot car.",
+  "This is why the CPU has trust issues.", "Natural selection is coming for this roster.",
+  "The bye week is their best performance of the year.", "Even the Lions of 2008 are laughing.",
 ];
 // Openers, now and then, for the same reason.
 const HEADS = [
   "Autopsy report:", "BREAKING:", "Police report:", "Coroner's note:", "Exhibit A:", "Witness statement:",
   "Crime scene update:", "Obituary:", "For the record:", "Evidence #47:", "Breaking news from the morgue:",
 ];
+// Quips are placed as tokens when facts are built and filled in by resolveQuips once a fact is picked,
+// so the bot can skip quips the league saw recently (Nick, 2026-11-18: saw "The Geneva Convention has
+// questions" several times quickly).
+const T_HEAD = "\u0001H\u0001", T_TAIL = "\u0001T\u0001", T_USER = "\u0001U\u0001";
 export const tail = (text: string, chance = 0.4) => {
   let t = text;
-  if (randomInt(1000) < 150) t = `${pick(HEADS)} ${t}`;
-  if (randomInt(1000) < chance * 1000) t = `${t} ${pick(TAILS)}`;
+  if (randomInt(1000) < 150) t = `${T_HEAD} ${t}`;
+  if (randomInt(1000) < chance * 1000) t = `${t} ${T_TAIL}`;
   return t;
 };
+/** A closer aimed at the user who runs the team (userRoasts.ts). */
+export const userJab = (text: string) => `${text} ${T_USER}`;
+
+/** Closers aimed at the user, not the team. */
+const AT_USER = [
+  "His PS5 should be seized as evidence.", "His controller has filed for a restraining order.",
+  "His thumbs should be tried at The Hague.", "Somebody unplug his console before he hurts anyone else.",
+  "Revoke his EA account.", "He should be legally barred from holding a controller.",
+  "His Madden license has been suspended indefinitely.", "Throw the controller in a river and him after it.",
+  "The franchise should press charges.", "Ban him from the group chat until further notice.",
+  "His teammates are drafting a petition to have him removed as coach.", "Every fan in that stadium wants a refund and an apology.",
+  "Rookie difficulty has a waiting list and he's on it.", "Uninstall Madden, then uninstall yourself from the league.",
+  "His mom still thinks he's good at this. Somebody tell her.", "EA should send him a cease and desist.",
+  "Sony is considering a recall on his specific PS5.", "His controller drift is the best player on the team.",
+  "The CPU on Rookie would run him out of the building.", "His trophy case is just a participation ribbon and a restraining order.",
+  "He should have to wear a bell so people know he's coming.", "Somebody check if he's even plugged the controller in.",
+];
+
+/** Recently used quips per kind, league-wide (newest last); the kinds are h(eads), t(ails), u(ser). */
+export type QuipMemory = { h?: string[]; t?: string[]; u?: string[] };
+const QUIP_KEEP = { h: 7, t: 45, u: 14 } as const;
+const qid = (q: string) => createHash("sha1").update(q).digest("base64url").slice(0, 5);
+type Kind = "h" | "t" | "u";
+/** Fill a fact's quip tokens, skipping quips in `mem`; returns the text and the ids used. */
+export function resolveQuips(text: string, mem: QuipMemory = {}): { text: string; used: QuipMemory } {
+  const used: QuipMemory = {};
+  const fill = (kind: Kind, pool: readonly string[]) => {
+    const seen = new Set(Array.isArray(mem[kind]) ? mem[kind] : []);
+    const fresh = pool.filter((q) => !seen.has(qid(q)));
+    const q = pick(fresh.length ? fresh : pool);
+    used[kind] = [qid(q)];
+    return q;
+  };
+  let out = text;
+  if (out.includes(T_HEAD)) out = out.replace(T_HEAD, fill("h", HEADS));
+  if (out.includes(T_TAIL)) out = out.replace(T_TAIL, fill("t", TAILS));
+  if (out.includes(T_USER)) out = out.replace(T_USER, fill("u", AT_USER));
+  return { text: out, used };
+}
+/** Add the ids `used` to the memory (newest last, trimmed per kind). */
+export function mergeQuips(mem: QuipMemory | undefined, used: QuipMemory): QuipMemory {
+  const next: QuipMemory = {};
+  for (const kind of ["h", "t", "u"] as Kind[]) {
+    const cur = Array.isArray(mem?.[kind]) ? mem![kind]! : [];
+    const add = used[kind] || [];
+    next[kind] = [...cur.filter((x) => !add.includes(x)), ...add].slice(-QUIP_KEEP[kind]);
+  }
+  return next;
+}
 
 /** Short, stable id for a fact, for the recently-shown list. */
 export const factId = (f: Fact) => createHash("sha1").update(f.key || f.text).digest("base64url").slice(0, 7);

@@ -4,25 +4,14 @@
 // did: in Madden the user throws the picks, takes the sacks, calls the 4th downs and signs the contracts.
 import { REG_SEASON_LAST_WEEK, inferredDeadCap, weekTitle, type Totals } from "../league/derive";
 import type { Game, Player, Team } from "../league/types";
-import { esc, money, ord, pct, pick, plural, type Fact } from "./factFormat";
+import { esc, money, ord, pct, pick, plural, userJab, type Fact } from "./factFormat";
 import type { RoastCtx } from "./teamRoasts";
 
 const W = 5; // above the other roasts (3.5–5.5) so these come up a lot
 const regGame = (g: Game | undefined) => Boolean(g && g.stage === 1 && g.week <= REG_SEASON_LAST_WEEK);
 const userOf = (t: Team | undefined) => (t?.user ? esc(t.user) : "");
 
-/** Closers aimed at the user, not the team. */
-const AT_USER = [
-  "His PS5 should be seized as evidence.", "His controller has filed for a restraining order.",
-  "His thumbs should be tried at The Hague.", "Somebody unplug his console before he hurts anyone else.",
-  "Revoke his EA account.", "He should be legally barred from holding a controller.",
-  "His Madden license has been suspended indefinitely.", "Throw the controller in a river and him after it.",
-  "The franchise should press charges.", "Ban him from the group chat until further notice.",
-  "His teammates are drafting a petition to have him removed as coach.", "Every fan in that stadium wants a refund and an apology.",
-  "Rookie difficulty has a waiting list and he's on it.", "Uninstall Madden, then uninstall yourself from the league.",
-];
-// The fact already names him, so the closer stays "His…"/"He…".
-const jab = (_u: string, text: string) => `${text} ${pick(AT_USER)}`;
+const jab = (_u: string, text: string) => userJab(text);
 
 export function userTeamRoasts(c: RoastCtx, team: Team): Fact[] {
   const u = userOf(team);
