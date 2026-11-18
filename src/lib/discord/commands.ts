@@ -7,6 +7,7 @@ import { ALERT_EVENTS } from "./api";
 import { STAT_CATS } from "./stats";
 import { DISCORD_POS_GROUPS } from "./posGroups";
 import { AUDIT_KINDS } from "./audit";
+import { HELP_TOPICS } from "./helpTopics";
 
 const SUB_COMMAND = 1, STRING = 3, CHANNEL = 7, INTEGER = 4, ATTACHMENT = 11;
 const MANAGE_SERVER = String(1 << 5);
@@ -29,6 +30,16 @@ export const LEAGUE_MORE: [string, string][] = [
 ];
 
 const PLAIN = [
+  {
+    // /help (Nick, 2026-11-18): every command, a walkthrough topic, or one command explained. Private reply.
+    name: "help",
+    description: "How to use the bot: every command, setup walkthroughs, or one command explained",
+    ...ANYWHERE,
+    options: [
+      { type: STRING, name: "topic", description: "A walkthrough: getting started, server setup, markets, trades…", required: false, choices: HELP_TOPICS.map(([value, name]) => ({ name, value })) },
+      { type: STRING, name: "command", description: "One command explained (start typing its name)", required: false, autocomplete: true },
+    ],
+  },
   {
     name: "link",
     description: "Connect this Discord server to a CFM Manager league",

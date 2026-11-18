@@ -13,6 +13,7 @@ import { leagueForGuild } from "@/lib/discord/links";
 import { packChannelProblem } from "@/lib/discord/packChannels";
 import { tradeVote } from "@/lib/discord/tradeChannels";
 import { findPlayerModal, tradeBuilderTap } from "@/lib/discord/tradeBuilder";
+import { helpAutocomplete, helpReply } from "@/lib/discord/help";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /marketchannels can post a whole week of bet lines
@@ -26,6 +27,16 @@ export async function POST(req: Request) {
 
   const i = JSON.parse(body) as Interaction;
   if (i.type === PING) return NextResponse.json({ type: 1 });
+
+  // /help: static text, so it answers at once (no league lookup, no "thinking…").
+  const helpOpt = (n: string) => i.data?.options?.find((o) => o.name === n);
+  if (i.type === AUTOCOMPLETE && i.data?.name === "help") {
+    return NextResponse.json({ type: 8, data: { choices: helpAutocomplete(String(helpOpt("command")?.value ?? "")) } });
+  }
+  if (i.type === COMMAND && i.data?.name === "help") {
+    const { flags, content, embeds, allowed_mentions } = helpReply({ topic: helpOpt("topic")?.value as string | undefined, command: helpOpt("command")?.value as string | undefined });
+    return NextResponse.json({ type: 4, data: { flags, content, embeds, allowed_mentions } });
+  }
 
   if (i.type === AUTOCOMPLETE) {
     // Must answer within 3 seconds and can't be deferred; give up quietly if the data is slow.
