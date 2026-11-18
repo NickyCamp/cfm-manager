@@ -17,6 +17,9 @@ import { cardBackProps, cardProps } from "@/lib/league/cardProps";
 import { canSeeCardArt, cardArtAccess, nicknameAccess, cardFramePath, signedCardArt } from "@/lib/cardArtStore";
 import { CardArtEditor } from "@/components/league/CardArtEditor";
 import { NicknameEditor } from "@/components/league/NicknameEditor";
+import { TradeBlockToggle } from "@/components/league/TradeBlockToggle";
+import { BLOCK_NOTE_MAX, entryLive, type TradeBlockState } from "@/lib/league/tradeBlock";
+import { leagueBySlug } from "@/lib/discord/links";
 import { NICKNAME_MAX, leagueNicknames, withNicknames } from "@/lib/nicknameStore";
 import { standInArt } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
@@ -51,6 +54,11 @@ export default async function PlayerPage({ params, searchParams }: Props) {
     cardArtAccess(slug, p.gone ? undefined : p.team || undefined).then((a) => a.canEdit).catch(() => false),
     p.gone ? Promise.resolve(false) : nicknameAccess(slug, p.team || undefined).then((a) => a.canEdit).catch(() => false),
   ]);
+  // Trade block (2026-11-18): Madden's flag, or added by the team's manager.
+  const blockSt = p.gone || !p.team ? null : ((await leagueBySlug(slug).catch(() => null))?.settings?.tradeBlock as TradeBlockState | undefined) || null;
+  const blockEntry = blockSt?.manual?.[String(p.id)];
+  const manualBlock = entryLive(p, blockEntry) ? blockEntry : undefined;
+  const onBlock = Boolean(p.team && !p.gone && (p.block || manualBlock));
   const [uploaded, layout] = await Promise.all([viewer ? signedCardArt(slug, p.id) : Promise.resolve(undefined), cardLayout(slug, p.id)]);
   // An uploaded custom border follows the same visibility as uploaded art (signed in).
   const frameArt = viewer && layout?.customFrame ? await signedCardArt(slug, p.id, undefined, cardFramePath) : undefined;
@@ -77,7 +85,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
       <div className="wrap page-tight">
         <p>
           {p.gone ? "No longer in the league." : team ? <Link className="team-link" href={`/l/${slug}/teams/${team.abbr.toLowerCase()}`}><TeamBadge team={team} size={22} />{team.city} {team.name}</Link> : "Free agent"}
-          {p.ps && <span className="tag">Practice squad</span>} {p.injury > 0 && <span className="tag inj">Injured, {p.injury} wk</span>} <DevTag dev={p.dev} />
+          {onBlock && <span className="tag inj" title={manualBlock?.note || undefined}>On the trade block</span>} {p.ps && <span className="tag">Practice squad</span>} {p.injury > 0 && <span className="tag inj">Injured, {p.injury} wk</span>} <DevTag dev={p.dev} />
         </p>
 
         <div className="player-hero">
@@ -85,6 +93,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
           <CardBuilder card={{ ...cardProps(d, slug, p, team, art), ...cardBackProps(d, p), layout, frameArt }} slug={slug} playerId={p.id} canEdit={canEditArt} />
           {canEditArt && <CardArtEditor slug={slug} playerId={p.id} hasArt={Boolean(uploaded)} />}
           {canNick && <NicknameEditor slug={slug} playerId={p.id} current={p.nick} max={NICKNAME_MAX} />}
+          {canNick && p.team > 0 && <TradeBlockToggle slug={slug} playerId={p.id} onManual={Boolean(manualBlock)} onMadden={Boolean(p.block)} note={manualBlock?.note} max={BLOCK_NOTE_MAX} />}
           </div>
           <div className="player-tabs">
             <nav className="tabs" aria-label="Player">

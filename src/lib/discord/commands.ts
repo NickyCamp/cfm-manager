@@ -155,6 +155,18 @@ export const COMMANDS = [
       { type: STRING, name: "action", description: "Leave empty to build/refresh; Remove deletes the game channels", required: false, choices: [{ name: "Remove", value: "remove" }] },
     ],
   },
+  {
+    name: "tradeblock",
+    description: "Who's on the trade block, by team and/or position; managers add or remove their players",
+    ...ANYWHERE,
+    options: [
+      team(false),
+      { type: STRING, name: "position", description: "Position group (QB, WR, OL, DL…)", required: false, choices: DISCORD_POS_GROUPS.map((g) => ({ name: g.name, value: g.key })) },
+      { type: STRING, name: "action", description: "Managers: add or remove one of your players (fill the player box)", required: false, choices: [{ name: "Add a player", value: "add" }, { name: "Remove a player", value: "remove" }] },
+      { ...player, required: false, description: "With action: the player to add or remove" },
+      { type: STRING, name: "note", description: "With Add: what you're looking for, e.g. 2nd round pick or a CB", required: false, max_length: 100 },
+    ],
+  },
   { name: "trade", description: "Build a trade step by step (teams, players, picks), see its score and submit it", ...SERVER_ONLY },
   {
     name: "tradechannels",

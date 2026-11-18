@@ -72,6 +72,7 @@ export type Player = {
   // EA's portrait for the player (added 2026-11-13). game: which EA ratings-site folder has the
   // picture (27 for real players; generated draft-class faces only exist under 26). Set by the worker.
   portrait?: { id: number; game?: number };
+  block?: boolean;       // on Madden's in-game trade block (EA roster flag; see LeagueData.blockKey)
   nick?: string;         // nickname set by the team's manager; not in data.json, applied at read time (nicknameStore.ts)
   /** A restructure seen in the transaction log for his current deal; set at load time (history.ts). */
   restructure?: Restructure;
@@ -138,6 +139,8 @@ export type LeagueData = {
   awardResults?: Record<string, string>;
   /** EA's player trait fields (clutchTrait, qBStyleTrait, …) in the order Player.traits stores them. */
   traitKeys?: string[];
+  /** The EA roster field that says a player is on the trade block, when EA sends one (added 2026-11-18). */
+  blockKey?: string;
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;

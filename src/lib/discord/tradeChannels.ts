@@ -6,6 +6,7 @@
 //  - #trade-approvals (anyone can talk): the bot reposts each approved trade there.
 //  - #trade-transactions (only the bot posts): when a trade shows up in a sync, the worker posts the
 //    Madden transaction (tradeTransactions.ts), linked to the approved proposal it matches.
+//  - #trade-block (anyone can talk, added 2026-11-18): players going on/off the trade block (tradeBlock.ts).
 //
 // Made by /tradechannels (admins), or on the first submit if missing.
 // State: leagues.settings.tradeChannels (TradeChannels below).
@@ -45,6 +46,7 @@ export type TradeChannels = {
   channelId: string;                          // #trade-proposals
   approvalsId?: string;                       // #trade-approvals
   transactionsId?: string;                    // #trade-transactions
+  blockId?: string;                           // #trade-block
   recent?: Record<string, string>;
   proposals?: Record<string, TradeProposal>;
 };
@@ -114,11 +116,11 @@ export async function ensureTradeChannels(lg: LinkedLeague): Promise<(TradeChann
   if (!guildId) return "This league isn't linked to a Discord server yet (an admin runs /link there).";
   const old = stateOf(lg);
   let moved = false;
-  if (old?.approvalsId && old.transactionsId) {
+  if (old?.approvalsId && old.transactionsId && old.blockId) {
     // Saved channels from another server (the league was /linked somewhere new) don't count.
     const c = await dc("GET", `/channels/${old.categoryId}`);
     const here = c.ok && String(c.data.guild_id) === guildId;
-    const gone = !here ? [true] : await Promise.all([old.categoryId, old.channelId, old.approvalsId, old.transactionsId].map((id) => channelGone(id)));
+    const gone = !here ? [true] : await Promise.all([old.categoryId, old.channelId, old.approvalsId, old.transactionsId, old.blockId].map((id) => channelGone(id)));
     if (!gone.some(Boolean)) return old;
     if (!here) { moved = true; old.recent = undefined; old.proposals = undefined; }
   }
@@ -131,10 +133,11 @@ export async function ensureTradeChannels(lg: LinkedLeague): Promise<(TradeChann
     cat = String(r.data.id);
   }
   const locked = await botOnly(guildId);
-  const want: { key: "channelId" | "approvalsId" | "transactionsId"; name: string; topic: string; lock: boolean }[] = [
+  const want: { key: "channelId" | "approvalsId" | "transactionsId" | "blockId"; name: string; topic: string; lock: boolean }[] = [
     { key: "channelId", name: "trade-proposals", lock: true, topic: "Agreed trades from the CFM Manager Trade Tool. Admins vote with the buttons; 3 approvals passes a trade." },
     { key: "approvalsId", name: "trade-approvals", lock: false, topic: "Trades the admins approved. Talk about them here." },
     { key: "transactionsId", name: "trade-transactions", lock: true, topic: "Trades as they happened in Madden, posted after each sync." },
+    { key: "blockId", name: "trade-block", lock: false, topic: "Players on the trade block (Madden's block + ones managers add). Anyone can talk. /tradeblock to search by team or position." },
   ];
   const state: TradeChannels = { categoryId: cat, channelId: "", recent: old?.recent, proposals: old?.proposals };
   const unlocked: string[] = [];
@@ -169,7 +172,7 @@ export async function tradeChannelsCmd(slug: string, remove: boolean): Promise<s
   if (remove) {
     const st = stateOf(lg);
     if (!st) return "There's no Trades category to remove.";
-    for (const id of [st.channelId, st.approvalsId, st.transactionsId, st.categoryId]) if (id) await dc("DELETE", `/channels/${id}`);
+    for (const id of [st.channelId, st.approvalsId, st.transactionsId, st.blockId, st.categoryId]) if (id) await dc("DELETE", `/channels/${id}`);
     await updateLeagueSettings(lg.id, (s) => { delete s.tradeChannels; return s; });
     return "Trades category removed. Run /tradechannels again any time to bring it back.";
   }
@@ -180,6 +183,7 @@ export async function tradeChannelsCmd(slug: string, remove: boolean): Promise<s
     `• <#${st.channelId}>: agreed trades from the Trade Tool (${APP_URL}/l/${slug}/trades). Only the bot posts; admins vote with the buttons, ${VOTES_NEEDED} approvals passes a trade.`,
     `• <#${st.approvalsId}>: approved trades, open for everyone to talk.`,
     `• <#${st.transactionsId}>: trades as they happened in Madden, after each sync. Only the bot posts.`,
+    `• <#${st.blockId}>: players going on and off the trade block, open for everyone to talk. Look it up any time with /tradeblock.`,
     ...(st.unlocked?.length ? [`⚠️ Discord wouldn't let me make ${st.unlocked.map((n) => `#${n}`).join(" and ")} bot-only, so anyone can type there for now. Give the CFM Manager role Manage Roles (or Administrator) and run /tradechannels again.`] : []),
   ].join("\n");
 }

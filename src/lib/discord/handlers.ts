@@ -35,6 +35,7 @@ import { tradeChannelsCmd } from "./tradeChannels";
 import { txChannelsCmd } from "./txChannels";
 import { packChannelProblem, packChannelsCmd } from "./packChannels";
 import { tradeBuilderStart } from "./tradeBuilder";
+import { blockStateOf, setManualBlock, tradeBlockEmbed } from "./tradeBlock";
 import { MANUAL_COOLDOWN_MS, requestSync } from "@/lib/sync";
 import { supabaseAdmin as admin2 } from "@/lib/supabase/server";
 import { clearMarketChannels, discordOf, leagueBySlug, leagueForGuild, leagueForUser, leaguesForDiscordUser, setDiscord, setUserLeague, type LinkedLeague } from "./links";
@@ -334,6 +335,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (via !== "server") return reply("Run /trade in the league's own Discord server (linked with `/link`).");
       return { ...(await tradeBuilderStart(lg)), flags: EPHEMERAL };
     }
+    case "tradeblock": return tradeBlockCmd(i, lg, d, footer);
     case "tradechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
@@ -1096,6 +1098,38 @@ async function verifyKickoffCmd(i: Interaction, lg: LinkedLeague, d: LeagueData,
 }
 
 // ---------- /balance and /bets (Tickets) ----------
+/** /tradeblock: the list (team/position filters), or a manager adding/removing one of his players. */
+async function tradeBlockCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, footer: Footer): Promise<Message> {
+  const action = String(opt(i, "action") ?? "");
+  const tv = opt(i, "team"), gv = String(opt(i, "position") ?? "");
+  const group = gv ? DISCORD_POS_GROUPS.find((g) => g.key === gv) : undefined;
+  if (!action) {
+    let t: Team | undefined;
+    if (tv != null && tv !== "") { t = findTeam(d, tv); if (!t) return reply("No team by that name."); }
+    if (opt(i, "player") != null) return reply("To add or remove a player, pick an action too: `/tradeblock action:Add a player player:<name>`.");
+    return { embeds: [tradeBlockEmbed(d, lg.slug, blockStateOf(lg.settings), { teamId: t?.id, group }, footer)] };
+  }
+  const p = findPlayer(d, opt(i, "player"));
+  if (!p) return reply("Pick the player too (start typing his name in the player box).");
+  if (!p.team || p.gone) return reply(`${fullName(p)} isn't on a team, so he can't go on the trade block.`);
+  const t = teamOf(d, p.team);
+  // Same lock as nicknames: the person running his team (EA account linked to their Discord with /connect).
+  // Admins can do CPU teams' players, and can take anyone off (cleanup).
+  const caller = await userForDiscord(userId(i)).catch(() => null);
+  const mine = caller ? await teamsOfUser(lg.id, caller).catch(() => [] as string[]) : [];
+  const manager = Boolean(t && mine.some((a) => a.toLowerCase() === t.abbr.toLowerCase()));
+  const admin = !manager && (await isLeagueAdmin(i));
+  const allowed = manager || (admin && (!t?.user || action === "remove"));
+  if (!allowed) {
+    return reply(caller
+      ? `Only the person running the ${teamLabel(t)} can put their players on or off the trade block.`
+      : `Only the person running the ${teamLabel(t)} can do that. If that's you, link your Discord first with /connect.`);
+  }
+  const who = `<@${userId(i)}>`;
+  const r = await setManualBlock(lg, d, p, action === "add", { by: `discord:${userId(i)}`, who, note: String(opt(i, "note") ?? "") });
+  return reply(r.ok ? r.text : r.error);
+}
+
 async function linkedUser(i: Interaction) {
   const uid = await userForDiscord(userId(i)).catch(() => null);
   return uid;

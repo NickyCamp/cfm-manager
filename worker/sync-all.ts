@@ -37,6 +37,8 @@ import { leagueChanges } from "../src/lib/discord/changes";
 import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
 import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState } from "../src/lib/discord/txPosts";
+import { maddenBlockChanges, type TradeBlockState } from "../src/lib/league/tradeBlock";
+import { maddenBlockPosts } from "../src/lib/discord/tradeBlock";
 import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -51,7 +53,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels; txChannels?: TxChannelsState; tradePicks?: TradePicks } | null;
+  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels; tradeBlock?: TradeBlockState; txChannels?: TxChannelsState; tradePicks?: TradePicks } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -98,6 +100,25 @@ async function postTradeTransactions(lg: League, prev: LeagueData | null, data: 
     if (msgs.length) log(`- Posted ${msgs.length} trade${msgs.length === 1 ? "" : "s"} to #trade-transactions.`);
   } catch (e) {
     log(`- Discord #trade-transactions failed: ${(e as Error).message}`);
+  }
+}
+
+/** #trade-block: players Madden newly lists on (or drops from) its trade block this sync. Never fails the sync. */
+async function postTradeBlock(lg: League, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+  const st = lg.settings?.tradeChannels;
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!data.blockKey) { if (st?.blockId) log("- Trade block: EA's roster data has no trade block field, so only players added by hand show."); return; }
+  if (!st?.blockId || !token || prev?.pulledAt === data.pulledAt) return;
+  try {
+    const { on, off } = maddenBlockChanges(prev, data, lg.settings?.tradeBlock);
+    const msgs = maddenBlockPosts(data, lg.slug, on, off);
+    for (const m of msgs) {
+      const err = await postToChannel(token, st.blockId, m);
+      if (err) { log(`- Discord #trade-block: ${err}`); return; }
+    }
+    if (msgs.length) log(`- #trade-block: ${on.length} on, ${off.length} off Madden's block (field ${data.blockKey}).`);
+  } catch (e) {
+    log(`- Discord #trade-block failed: ${(e as Error).message}`);
   }
 }
 
@@ -233,6 +254,7 @@ async function syncLeague(lg: League): Promise<string> {
   const built = await buildAndSave(lg.slug, files, log);
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
   if (built) await postTradeTransactions(lg, built.prev, built.data, log);
+  if (built) await postTradeBlock(lg, built.prev, built.data, log);
   if (built) await postTransactionChannels(lg, built.prev, built.data, log);
   if (built) await refreshMarketChannels(lg, log);
   if (built) await refreshGameChannels(lg, log);

@@ -114,6 +114,14 @@ export function buildLeagueData(files: Raw): LeagueData {
     if (!first) continue;
     for (const k of Object.keys(first).sort()) if (/Trait$/.test(k) && k !== "devTrait" && !traitKeys.includes(k)) traitKeys.push(k);
   }
+  // Madden's trade block (Nick, 2026-11-18). Found by name (isOnTradeBlock / isOnTradingBlock …), since the
+  // exact field isn't documented; if EA sends none, blockKey stays unset and only manual adds count.
+  let blockKey: string | undefined;
+  for (const name of Object.keys(files).filter((n) => n.startsWith("rosters/"))) {
+    const first = list(files, name)[0];
+    blockKey = first ? Object.keys(first).find((k) => /trad(e|ing)_?block/i.test(k)) : undefined;
+    if (blockKey) break;
+  }
   const traitVal = (x: unknown) => (typeof x === "boolean" ? Number(x) : num(x));
   for (const name of Object.keys(files).filter((n) => n.startsWith("rosters/"))) {
     for (const p of list(files, name)) {
@@ -141,6 +149,7 @@ export function buildLeagueData(files: Raw): LeagueData {
           .map((s: Any) => ({ title: s.signatureAbility.signatureTitle, tier: num(s.ovrThreshold) === 0 ? "X-Factor" : TIER[s.signatureAbility.rank] || "" })),
         ratings: RATING_KEYS.map((k) => num(p[k])),
         traits: traitKeys.length ? traitKeys.map((k) => traitVal(p[k])) : undefined,
+        block: blockKey && !fa && traitVal(p[blockKey]) ? true : undefined,
         slots: (p.signatureSlotList || []).map((s: Any) => ({
           ovr: num(s.ovrThreshold), locked: Boolean(s.locked),
           title: (!s.isEmpty && s.signatureAbility?.signatureTitle) || "", tier: TIER[s.signatureAbility?.rank] || "",
@@ -208,6 +217,7 @@ export function buildLeagueData(files: Raw): LeagueData {
     teamGames,
     admins: maddenAdmins(hub, teams),
     traitKeys: traitKeys.length ? traitKeys : undefined,
+    blockKey,
   };
 }
 
