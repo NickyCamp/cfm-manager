@@ -298,7 +298,10 @@ export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, n
 
   // Scores: this season's games that were already final before this sync.
   if (prev) {
-    const finals = prev.games.filter((g) => g.final && g.home && g.away && g.stage === 1 && prev.season.year === next.season.year && known(g));
+    // Taken from this sync's games (same ids, teams as EA numbers them now): the previous sync's copies can carry
+    // team ids from before EA renumbered them, which printed every team as "?".
+    const wasFinal = new Set(prev.games.filter((g) => g.final).map((g) => g.id));
+    const finals = next.games.filter((g) => wasFinal.has(g.id) && g.final && g.home && g.away && g.stage === 1 && prev.season.year === next.season.year && known(g));
     const lines: string[] = [];
     let wk = "";
     for (const g of [...finals].sort((x, y) => x.week - y.week || x.id - y.id)) {
