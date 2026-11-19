@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { money, onColor } from "@/lib/league/format";
-import { capRows, DEV, GROUP_NAME, pickSlot, pickSpotText, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
+import { capRows, DEV, GROUP_NAME, pickKey, pickParam as pickParamOf, pickSlot, pickSpotText, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
 
 export type { TradePlayer, TradeTeam };
 
@@ -24,11 +24,11 @@ export function TradeTool({ slug, year, firstDraft, orderFinal, draftYears, year
     if (tb) q.set("b", tb.abbr);
     if (a.players.length) q.set("pa", a.players.join(","));
     if (b.players.length) q.set("pb", b.players.join(","));
-    if (a.picks.length) q.set("ka", a.picks.map(pickParam).join(","));
-    if (b.picks.length) q.set("kb", b.picks.map(pickParam).join(","));
+    if (a.picks.length) q.set("ka", a.picks.map((k) => pickParamOf(k, teams, a.team)).join(","));
+    if (b.picks.length) q.set("kb", b.picks.map((k) => pickParamOf(k, teams, b.team)).join(","));
     const s = q.toString();
     window.history.replaceState(null, "", `/l/${slug}/trades${s ? `?${s}` : ""}`);
-  }, [a, b, slug, teamById]);
+  }, [a, b, slug, teamById, teams]);
 
   const ready = a.team && b.team && a.team !== b.team;
   const anything = a.players.length + b.players.length + a.picks.length + b.picks.length > 0;
@@ -39,11 +39,11 @@ export function TradeTool({ slug, year, firstDraft, orderFinal, draftYears, year
   return (
     <>
       <div className="trade-sides">
-        <SidePicker label="Team 1" side={a} setSide={setA} other={b.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} firstDraft={firstDraft} orderFinal={orderFinal} />
+        <SidePicker label="Team 1" slug={slug} side={a} setSide={setA} other={b.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} firstDraft={firstDraft} orderFinal={orderFinal} />
         <div className="trade-swap">
           <button type="button" className="btn btn-quiet trade-swap-btn" onClick={swap} aria-label="Swap sides" title="Swap sides">⇄</button>
         </div>
-        <SidePicker label="Team 2" side={b} setSide={setB} other={a.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} firstDraft={firstDraft} orderFinal={orderFinal} />
+        <SidePicker label="Team 2" slug={slug} side={b} setSide={setB} other={a.team} teams={teams} players={players} playerById={playerById} draftYears={draftYears} firstDraft={firstDraft} orderFinal={orderFinal} />
       </div>
 
       {!ready ? (
@@ -73,8 +73,8 @@ export function TradeTool({ slug, year, firstDraft, orderFinal, draftYears, year
   );
 }
 
-function SidePicker({ label, side, setSide, other, teams, players, playerById, draftYears, firstDraft, orderFinal }: {
-  label: string; side: Side; setSide: (s: Side) => void; other: number | null; teams: TradeTeam[];
+function SidePicker({ label, slug, side, setSide, other, teams, players, playerById, draftYears, firstDraft, orderFinal }: {
+  label: string; slug: string; side: Side; setSide: (s: Side) => void; other: number | null; teams: TradeTeam[];
   players: TradePlayer[]; playerById: Map<number, TradePlayer>; draftYears: number[]; firstDraft: number; orderFinal: boolean;
 }) {
   const [q, setQ] = useState("");
@@ -88,12 +88,21 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
   }, [players, side.team, q]);
   const toggle = (id: number) =>
     setSide({ ...side, players: side.players.includes(id) ? side.players.filter((x) => x !== id) : [...side.players, id] });
-  const [pickYear, setPickYear] = useState(draftYears[0]);
-  const [pickRound, setPickRound] = useState(1);
+  // Picks this team holds (the league's pick tracker: its own and ones it got); every own pick if not tracked.
+  const options = useMemo(() => {
+    if (!team) return [];
+    const held = team.picks ?? draftYears.flatMap((y) => [1, 2, 3, 4, 5, 6, 7].map((r) => ({ y, r, o: team.id })));
+    return held.filter((k) => !side.picks.some((x) => pickKey(x, team.id) === pickKey(k, team.id)));
+  }, [team, draftYears, side.picks]);
+  const [pickOpt, setPickOpt] = useState("");
   const addPick = () => {
-    if (side.picks.some((k) => k.y === pickYear && k.r === pickRound)) return;
-    setSide({ ...side, picks: [...side.picks, { y: pickYear, r: pickRound }].sort((x, y) => x.y - y.y || x.r - y.r) });
+    const k = options.find((x) => `${x.y}-${x.r}-${x.o}` === pickOpt) || options[0];
+    if (!k || !team) return;
+    const pk: Pick = k.o === team.id ? { y: k.y, r: k.r } : { y: k.y, r: k.r, o: k.o };
+    setSide({ ...side, picks: [...side.picks, pk].sort((x, y) => x.y - y.y || x.r - y.r) });
+    setPickOpt("");
   };
+  const optLabel = (k: { y: number; r: number; o: number }) => `${k.y} ${ROUND[k.r]} round${k.o !== side.team ? ` (via ${teams.find((t) => t.id === k.o)?.abbr || "?"})` : ""}`;
 
   return (
     <section className="panel trade-side" style={team ? { borderTop: `4px solid ${team.primary}` } : undefined}>
@@ -120,18 +129,20 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
                 );
               })}
               {side.picks.map((k) => {
-                const auto = pickSlot({ y: k.y, r: k.r }, team, firstDraft).slot;
+                const from = (k.o && teams.find((t) => t.id === k.o)) || team;
+                const auto = pickSlot({ y: k.y, r: k.r }, from, firstDraft).slot;
+                const base = (): Pick => (k.o ? { y: k.y, r: k.r, o: k.o } : { y: k.y, r: k.r });
                 const setSlot = (v: string) => {
                   const n = Math.round(Number(v));
-                  setSide({ ...side, picks: side.picks.map((x) => (x === k ? (n >= 1 && n <= 32 && n !== auto ? { y: k.y, r: k.r, s: n } : { y: k.y, r: k.r }) : x)) });
+                  setSide({ ...side, picks: side.picks.map((x) => (x === k ? (n >= 1 && n <= 32 && n !== auto ? { ...base(), s: n } : base()) : x)) });
                 };
                 return (
-                  <li key={`${k.y}-${k.r}`} className="trade-pick-chip">
+                  <li key={pickKey(k, team.id)} className="trade-pick-chip">
                     <span>
-                      <strong>{k.y} {ROUND[k.r]} round pick</strong>
-                      <span className="muted small"> {pickSpotText(k, team, firstDraft, orderFinal)}</span>
+                      <strong>{k.y} {ROUND[k.r]} round pick{k.o ? ` (via ${from.abbr})` : ""}</strong>
+                      <span className="muted small"> {pickSpotText(k, from, firstDraft, orderFinal)}</span>
                     </span>
-                    <label className="trade-pick-slot small" title="Pick number within the round. Leave it on the automatic number unless the real pick is different (e.g. a pick this team got from someone else).">
+                    <label className="trade-pick-slot small" title="Pick number within the round. Leave it on the automatic number unless the real pick is different.">
                       #
                       <input type="number" min={1} max={32} inputMode="numeric" value={k.u ? "" : k.s ?? auto} placeholder={k.u ? "?" : undefined} onChange={(e) => setSlot(e.target.value)} aria-label={`${k.y} ${ROUND[k.r]} round pick number in the round`} />
                       {k.s || k.u ? <button type="button" className="btn-link small" onClick={() => setSlot("")}>auto</button> : null}
@@ -166,14 +177,16 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
 
           <div className="trade-pick-add">
             <span className="small muted">Draft pick</span>
-            <select value={pickYear} onChange={(e) => setPickYear(Number(e.target.value))} aria-label="Pick year">
-              {draftYears.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select value={pickRound} onChange={(e) => setPickRound(Number(e.target.value))} aria-label="Pick round">
-              {[1, 2, 3, 4, 5, 6, 7].map((r) => <option key={r} value={r}>{ROUND[r]} round</option>)}
-            </select>
-            <button type="button" className="btn btn-quiet trade-pick-btn" onClick={addPick}>Add</button>
+            {options.length ? (
+              <>
+                <select value={pickOpt} onChange={(e) => setPickOpt(e.target.value)} aria-label="Pick to add">
+                  {options.map((k) => <option key={`${k.y}-${k.r}-${k.o}`} value={`${k.y}-${k.r}-${k.o}`}>{optLabel(k)}</option>)}
+                </select>
+                <button type="button" className="btn btn-quiet trade-pick-btn" onClick={addPick}>Add</button>
+              </>
+            ) : <span className="small muted">{team.picks ? "No picks left to add (per the pick tracker)" : "All picks added"}</span>}
           </div>
+          {team.picks && <p className="small muted" style={{ margin: "4px 0 0" }}>Only picks {team.abbr} holds per the <Link href={`/l/${slug}/picks`}>pick tracker</Link>.</p>}
         </>
       )}
     </section>
@@ -295,7 +308,6 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
 }
 
 
-const pickParam = (k: Pick) => `${k.y}-${k.r}${k.u ? "-u" : k.s ? `-${k.s}` : ""}`;
 
 function describe(ps: TradePlayer[], picks: Pick[]) {
   const parts = [...ps.map((p) => p.n), ...picks.map((k) => `${k.y} ${ROUND[k.r]}`)];

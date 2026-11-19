@@ -7,7 +7,7 @@ import { isCapSet, leagueCap, MAX_BONUS_PRORATION_YEARS, projectedLeagueCap } fr
 import { projectPlayer } from "./projection";
 import { RATING_KEYS } from "./ratings";
 import { draftOrder, roundOrder } from "./playoffs";
-import { playerValue, PHYSICAL, TRAIT_WEIGHTS, tradeGroup, type TradePlayer, type TradeTeam } from "./tradeMath";
+import { holdsPick, parsePickParam, playerValue, PHYSICAL, TRAIT_WEIGHTS, tradeGroup, type Pick, type TradePlayer, type TradeTeam } from "./tradeMath";
 
 const IDX = new Map<string, number>(RATING_KEYS.map((k, i) => [k, i]));
 const trait = (p: Player, key: string) => (key === "height" ? p.height : key === "weight" ? p.weight : p.ratings?.[IDX.get(key) ?? -1] ?? 0);
@@ -58,7 +58,8 @@ export function gradePlayers(players: Player[]) {
 
 const RATING = (k: string) => IDX.get(k) ?? -1;
 
-export function buildTradeData(d: LeagueData) {
+/** owned: each team's picks from the pick tracker (pickLedgerLoad.ownedPicks); null = not tracked. */
+export function buildTradeData(d: LeagueData, owned?: Map<number, { y: number; r: number; o: number }[]> | null) {
   const year = capSeason(d);
   const baseCap = leagueCap(d.teams);
   const years = Array.from({ length: PROJECTION_YEARS + 1 }, (_, i) => year + i);
@@ -104,6 +105,7 @@ export function buildTradeData(d: LeagueData) {
     id: t.id, abbr: t.abbr, name: `${t.city} ${t.name}`, primary: t.primary, conf: t.conference, active: active.get(t.id) || 0,
     committed: committed.get(t.id)!, slot: draftSlots.get(t.id)?.[1] ?? 16, slots: draftSlots.get(t.id) ?? Array(8).fill(16),
     cap: years.map((y, i) => (i === 0 ? t.cap.room : projectedLeagueCap(baseCap, year, y, d.knownCaps))),
+    ...(owned ? { picks: (owned.get(t.id) || []).filter((k) => draftYears.includes(k.y)).map(({ y, r, o }) => ({ y, r, o })) } : {}),
   }));
 
   return { year, years, firstDraft, orderFinal, draftYears, capSet: years.map((y) => isCapSet(year, y, d.knownCaps)), players, teams };
@@ -128,16 +130,26 @@ export function teamDraftSlots(d: LeagueData, firstDraft: number): { slots: Map<
 }
 
 /** Parses the Trade Tool's query (?a=NYJ&b=PIT&pa=1,2&pb=3&ka=2028-1&kb=...) into sides. */
-export function parseTrade(td: Pick<TradeData, "teams" | "players">, q: Record<string, string | undefined>) {
+export function parseTrade(td: Pick2<TradeData, "teams" | "players">, q: Record<string, string | undefined>) {
   const ids = (s?: string) => (s || "").split(",").map(Number).filter((n) => n > 0);
-  // "2028-1" automatic spot, "2028-1-12" set to #12 in the round, "2028-1-u" set as unknown.
-  const picks = (s?: string) => (s || "").split(",").map((x) => x.split("-")).map(([y, r, n]) => ({ y: Number(y), r: Number(r), n }))
-    .filter(({ y, r }) => y > 2000 && r >= 1 && r <= 7)
-    .map(({ y, r, n }) => (n === "u" ? { y, r, u: true } : Number(n) >= 1 && Number(n) <= 32 ? { y, r, s: Number(n) } : { y, r }));
+  // "2028-1" automatic spot, "2028-1-12" #12 in the round, "2028-1-u" unknown; "…-PHI" another team's pick.
+  // With the pick tracker on, a pick the team doesn't hold is dropped.
+  const picks = (s: string | undefined, team: number | null) => {
+    const t = td.teams.find((x) => x.id === team);
+    const out: Pick[] = [];
+    for (const x of (s || "").split(",")) {
+      const k = parsePickParam(x, td.teams);
+      if (k && k.o === team) delete k.o;
+      if (!k || !holdsPick(t, k) || out.some((o) => o.y === k.y && o.r === k.r && o.o === k.o)) continue;
+      out.push(k);
+    }
+    return out;
+  };
   const a = td.teams.find((t) => t.abbr === q.a)?.id ?? null, b = td.teams.find((t) => t.abbr === q.b)?.id ?? null;
   const team = new Map(td.players.map((p) => [p.id, p.t]));
   return {
-    a: { team: a, players: ids(q.pa).filter((id) => team.get(id) === a), picks: picks(q.ka) },
-    b: { team: b, players: ids(q.pb).filter((id) => team.get(id) === b), picks: picks(q.kb) },
+    a: { team: a, players: ids(q.pa).filter((id) => team.get(id) === a), picks: picks(q.ka, a) },
+    b: { team: b, players: ids(q.pb).filter((id) => team.get(id) === b), picks: picks(q.kb, b) },
   };
 }
+type Pick2<T, K extends keyof T> = { [P in K]: T[P] };

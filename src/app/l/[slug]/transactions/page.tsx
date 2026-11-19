@@ -215,7 +215,7 @@ function TradeRow({ slug, list, players, teams, pk }: { slug: string; list: TxEv
           );
         })}
         {pk.commish && <TradePicksEditor slug={pk.slug} tradeKey={key} firstYear={pk.firstYear} initial={picks}
-          teams={sides.map((t) => ({ id: t, abbr: teams.get(t)?.abbr || "?" }))} />}
+          teams={sides.map((t) => ({ id: t, abbr: teams.get(t)?.abbr || "?" }))} allAbbrs={[...teams.values()].map((t) => t.abbr).sort()} />}
       </div>
       {list[0].at && <span className="tx-time muted small">{fmtDate(list[0].at)}</span>}
     </li>

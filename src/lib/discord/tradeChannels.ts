@@ -17,6 +17,8 @@
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { getLeagueData } from "@/lib/league/load";
 import { buildTradeData, parseTrade } from "@/lib/league/tradeData";
+import { loadPickLedger, ownedPicks } from "@/lib/league/pickLedgerLoad";
+import { proposalPickMoves, type PickMove } from "@/lib/league/picks";
 import { pickSpotText, ROUND, scoreTrade, type Pick } from "@/lib/league/tradeMath";
 import { money } from "@/lib/league/format";
 import { discordOf, leagueBySlug, leagueForGuild, type LinkedLeague } from "./links";
@@ -242,15 +244,21 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
   if (!lg || !discordOf(lg)?.guildId) throw new Error("This league isn't linked to a Discord server yet. An admin runs /link in the league's server first.");
   const d = await getLeagueData(slug);
   if (!d) throw new Error("No league data yet.");
-  const td = buildTradeData(d);
+  const td = buildTradeData(d, ownedPicks(await loadPickLedger(slug, d, lg.settings).catch(() => null)));
   const { a, b } = parseTrade(td, query);
   if (!a.team || !b.team || a.team === b.team) throw new Error("Pick two different teams.");
+  // The pick tracker: a pick the team doesn't hold is dropped by parseTrade; say so instead of posting without it.
+  const asked = (k?: string) => (k || "").split(",").filter(Boolean).length;
+  if (asked(query.ka) > a.picks.length || asked(query.kb) > b.picks.length) {
+    const who = asked(query.ka) > a.picks.length ? query.a : query.b;
+    throw new Error(`${who} doesn't hold one of those picks per the league's pick tracker (Draft picks page). If the tracker is wrong, a commissioner fixes it there first.`);
+  }
   if (!a.players.length && !a.picks.length && !b.players.length && !b.picks.length) throw new Error("Add what each team sends first.");
   const s = scoreTrade({ players: td.players, teams: td.teams, years: td.years, firstDraft: td.firstDraft, a, b, orderFinal: td.orderFinal });
   if (!s) throw new Error("Couldn't score that trade.");
 
   // The same trade twice within 10 minutes is a double tap.
-  const key = [query.a, query.b, a.players.join(","), b.players.join(","), a.picks.map((k) => `${k.y}-${k.r}-${k.s ?? ""}`).join(","), b.picks.map((k) => `${k.y}-${k.r}-${k.s ?? ""}`).join(",")].join("|");
+  const key = [query.a, query.b, a.players.join(","), b.players.join(","), a.picks.map((k) => `${k.y}-${k.r}-${k.s ?? ""}-${k.o ?? ""}`).join(","), b.picks.map((k) => `${k.y}-${k.r}-${k.s ?? ""}-${k.o ?? ""}`).join(",")].join("|");
   const prev = stateOf(lg)?.recent?.[key];
   if (prev && Date.now() - Date.parse(prev) < 10 * 60_000) throw new Error("This exact trade was just posted.");
 
@@ -265,7 +273,10 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
   const tag = (t: typeof ta) => (roles.get(t.id) ? `<@&${roles.get(t.id)}>` : `**${t.name}**`);
   const byId = new Map(td.players.map((p) => [p.id, p]));
   const ownerOf = new Map(td.teams.map((t) => [t.id, t]));
-  const pickText = (k: Pick, from: number) => `${k.y} ${ROUND[k.r]} round pick · ${pickSpotText(k, ownerOf.get(from) || { slot: 16 }, td.firstDraft, td.orderFinal)}`;
+  const pickText = (k: Pick, from: number) => {
+    const via = k.o && k.o !== from ? ownerOf.get(k.o)?.abbr : undefined;
+    return `${k.y} ${ROUND[k.r]} round pick${via ? ` (via ${via})` : ""} · ${pickSpotText(k, ownerOf.get(k.o ?? from) || { slot: 16 }, td.firstDraft, td.orderFinal)}`;
+  };
   const list = (ids: number[], picks: Pick[], from: number) =>
     [...ids.map((id) => { const p = byId.get(id)!; return `${p.pos} ${p.n} (${p.ovr} OVR, ${p.ur} UR, ${money(p.hits[0])})`; }), ...picks.map((k) => pickText(k, from))].join("\n") || "Nothing";
   const link = `${APP_URL}/l/${slug}/trades?${new URLSearchParams(Object.entries(query).filter(([, v]) => v)).toString()}`;
@@ -406,6 +417,16 @@ export async function tradeVote(i: ComponentInteraction): Promise<VoteResult> {
   const p = after as TradeProposal | null;
   if (!p) return { reply: why || "Couldn't save your vote." };
 
+  if (justDecided && p.status === "approved" && !p.pa.length && !p.pb.length) {
+    // Picks only: no player moves, so a sync can never see it. The pick tracker takes it from the approval.
+    const d = await getLeagueData(lg.slug).catch(() => null);
+    const add = d ? proposalPickMoves(p, d.teams) : [];
+    if (add.length) await updateLeagueSettings(lg.id, (s) => {
+      const list = ((s.pickMoves as PickMove[] | undefined) || []).filter((m) => m.ref !== p.id);
+      s.pickMoves = [...list, ...add];
+      return s;
+    }).catch((e) => console.error("pick moves", e));
+  }
   if (justDecided && p.status === "approved") {
     const url = await postApproval(lg, p, i).catch((e) => { console.error("trade approval post", e); return null; });
     if (url) {
@@ -455,7 +476,7 @@ async function postApproval(lg: LinkedLeague, p: TradeProposal, i: ComponentInte
     ...(png ? { image: { url: "attachment://trade.png" } } : {}),
   };
   const payload = {
-    content: `✅ Trade approved (${p.yes.length}–${p.no.length}): ${tag(ta, p.a)} ⇄ ${tag(tb, p.b)}. Make it in Madden; it shows up in <#${st.transactionsId}> after the next sync.`,
+    content: `✅ Trade approved (${p.yes.length}–${p.no.length}): ${tag(ta, p.a)} ⇄ ${tag(tb, p.b)}. Make it in Madden; ${!p.pa.length && !p.pb.length ? "picks only, so the league's pick tracker has moved the picks already (a sync can't see pick-only trades)." : `it shows up in <#${st.transactionsId}> after the next sync.`}`,
     embeds: [embed],
     allowed_mentions: { roles: [ta, tb].map((t) => (t ? roles.get(t.id) : undefined)).filter((r): r is string => Boolean(r)), users: [] as string[] },
     ...(png ? { attachments: [{ id: 0, filename: "trade.png" }] } : {}),

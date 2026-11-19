@@ -174,6 +174,12 @@ export const COMMANDS = [
     ],
   },
   {
+    name: "picks",
+    description: "Who holds which draft picks (the league's pick tracker): one team, or every traded pick",
+    ...ANYWHERE,
+    options: [team(false), { type: INTEGER, name: "year", description: "Only one draft, e.g. 2029", required: false, min_value: 2000, max_value: 2100 }],
+  },
+  {
     name: "tradeblock",
     description: "Who's on the trade block, by team and/or position; managers add or remove their players",
     ...ANYWHERE,

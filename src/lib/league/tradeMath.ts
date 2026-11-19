@@ -28,13 +28,45 @@ export type TradeTeam = {
   id: number; abbr: string; name: string; primary: string; conf?: string; active: number; committed: number[]; cap: number[];
   slot: number;      // 1st-round spot in the next draft (1 = first pick)
   slots: number[];   // spot in each round (index = round 1-7): teams tied on record rotate between rounds
+  /** Picks this team holds per the pick tracker (picks.ts), its own and ones it got; missing = not tracked. */
+  picks?: { y: number; r: number; o: number }[];
 };
 /** A draft pick: year, round, and (optional) its slot in the round, set by hand when the automatic one is wrong. */
 /** s: pick number in the round set by hand (1–32); u: spot set by hand as unknown (valued as mid-round). */
-export type Pick = { y: number; r: number; s?: number; u?: boolean };
+/** o: the team whose pick it originally was, when it isn't the sending team's own (pick tracker, 2026-11-18). */
+export type Pick = { y: number; r: number; s?: number; u?: boolean; o?: number };
 export type Side = { team: number | null; players: number[]; picks: Pick[] };
 
 export const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
+
+// ---------------------------------------------------------------- pick params
+// URL / Discord form of a pick: "2028-1" automatic spot, "2028-1-12" #12 in the round, "2028-1-u" unknown;
+// another team's pick adds its abbreviation: "2028-1-a-PHI", "2028-1-12-PHI", "2028-1-u-PHI".
+type Abbr = { id: number; abbr: string };
+export function pickParam(k: Pick, teams: Abbr[], sender?: number | null) {
+  const via = k.o && k.o !== sender ? teams.find((t) => t.id === k.o)?.abbr : undefined;
+  const spot = k.u ? "u" : k.s ? String(k.s) : via ? "a" : "";
+  return `${k.y}-${k.r}${spot ? `-${spot}` : ""}${via ? `-${via}` : ""}`;
+}
+export function parsePickParam(x: string, teams: Abbr[]): Pick | null {
+  const [ys, rs, n, via] = x.split("-");
+  const y = Number(ys), r = Number(rs);
+  if (!(y > 2000) || !(r >= 1 && r <= 7)) return null;
+  const k: Pick = { y, r };
+  if (n === "u") k.u = true;
+  else if (Number(n) >= 1 && Number(n) <= 32) k.s = Number(n);
+  const o = via ? teams.find((t) => t.abbr.toUpperCase() === via.toUpperCase())?.id : undefined;
+  if (o) k.o = o;
+  return k;
+}
+/** Same pick (spot aside): year, round and whose pick. */
+export const pickKey = (k: Pick, sender?: number | null) => `${k.y}-${k.r}-${k.o ?? sender ?? 0}`;
+/** Does the team hold this pick per the pick tracker? (true when picks aren't tracked) */
+export function holdsPick(team: TradeTeam | undefined, k: Pick) {
+  if (!team?.picks) return true;
+  const o = k.o ?? team.id;
+  return team.picks.some((p) => p.y === k.y && p.r === k.r && p.o === o);
+}
 export const ROUND = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
 
 // ---------------------------------------------------------------- cap
@@ -242,7 +274,7 @@ export function scoreTrade(args: {
         : `Backup behind ${spot} better ${GROUP_NAME[p.g] || p.g}${spot === 1 ? "" : "s"}`;
       return { kind: "player", id: String(p.id), label: p.n, sub: `${p.pos} · ${p.ovr} OVR · ${p.ur} UR`, value: p.v, fit, worth: p.v * fit, note };
     });
-    getsA.push(...gets.picks.map((k) => pickAsset(k, teamOf.get(gets.team!)!, firstDraft, orderFinal)));
+    getsA.push(...gets.picks.map((k) => pickAsset(k, teamOf.get(k.o ?? -1) || teamOf.get(gets.team!)!, firstDraft, orderFinal)));
 
     // Players going out: cost = how much the lineup drops without him, before anyone arrives (the
     // players coming in already get credit above for filling the spot, so it isn't counted twice).
@@ -255,7 +287,7 @@ export function scoreTrade(args: {
       const note = drop > 0 ? `Starter lost${hole >= 0.6 ? `; leaves a hole at ${GROUP_NAME[p.g] || p.g}` : ""}` : "Depth piece; starters unchanged";
       return { kind: "player", id: String(p.id), label: p.n, sub: `${p.pos} · ${p.ovr} OVR · ${p.ur} UR`, value: p.v, fit, worth: p.v * fit, note };
     });
-    givesA.push(...sends.picks.map((k) => pickAsset(k, team, firstDraft, orderFinal)));
+    givesA.push(...sends.picks.map((k) => pickAsset(k, teamOf.get(k.o ?? -1) || team, firstDraft, orderFinal)));
 
     const rows = capRows(team, out, inc, years);
     // Cap room has value: each $1M of space gained this season (or next, at 60%) ≈ 0.3 points,
@@ -283,5 +315,5 @@ export function scoreTrade(args: {
 
 function pickAsset(k: Pick, owner: TradeTeam, firstDraft: number, orderFinal: boolean): AssetScore {
   const v = pickValue(k, owner, firstDraft);
-  return { kind: "pick", id: `${k.y}-${k.r}`, label: `${k.y} ${ROUND[k.r]} (${owner.abbr})`, sub: pickSpotText(k, owner, firstDraft, orderFinal), value: v, fit: 1, worth: v, note: "" };
+  return { kind: "pick", id: `${k.y}-${k.r}-${owner.id}`, label: `${k.y} ${ROUND[k.r]} (${owner.abbr})`, sub: pickSpotText(k, owner, firstDraft, orderFinal), value: v, fit: 1, worth: v, note: "" };
 }

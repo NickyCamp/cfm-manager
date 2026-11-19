@@ -34,7 +34,8 @@ import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
-import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
+import { syncedTrades, tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
+import { proposalTradePicks } from "../src/lib/league/picks";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
 import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState } from "../src/lib/discord/txPosts";
 import { maddenBlockChanges, type TradeBlockState } from "../src/lib/league/tradeBlock";
@@ -83,6 +84,29 @@ async function postDiscordUpdates(lg: League, prev: LeagueData | null, data: Lea
     if (msgs.length) log(`- Posted ${msgs.length} update${msgs.length === 1 ? "" : "s"} to Discord.`);
   } catch (e) {
     log(`- Discord post failed: ${(e as Error).message}`);
+  }
+}
+
+/** Pick tracker (picks.ts): a trade this sync found that matches an approved proposal gets that proposal's
+ *  picks in settings.tradePicks (unless a commissioner already set them). Never fails the sync. */
+async function recordTradePicks(lg: League, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+  try {
+    const found = syncedTrades(prev, data, lg.settings?.tradeChannels?.proposals)
+      .map((g) => ({ key: g.key, got: g.match ? proposalTradePicks(g.match, data.teams) : {} }))
+      .filter((x) => Object.keys(x.got).length);
+    if (!found.length) return;
+    const r = await updateSettings(db, lg.id, (s) => {
+      const all = { ...((s.tradePicks as TradePicks | undefined) || {}) };
+      let n = 0;
+      for (const x of found) if (!all[x.key]) { all[x.key] = x.got; n++; }
+      if (!n) return null;
+      s.tradePicks = all;
+      return s;
+    });
+    if (r.ok && r.settings) lg.settings = r.settings as League["settings"];
+    log(`- Pick tracker: picks from ${found.length} approved trade${found.length === 1 ? "" : "s"} recorded.`);
+  } catch (e) {
+    log(`- Pick tracker update failed: ${(e as Error).message}`);
   }
 }
 
@@ -253,6 +277,7 @@ async function syncLeague(lg: League): Promise<string> {
   log(`- Saved ${Object.keys(files).length} files (${(bundle.length / 1024).toFixed(0)} KB compressed).`);
   const built = await buildAndSave(lg.slug, files, log);
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
+  if (built) await recordTradePicks(lg, built.prev, built.data, log);
   if (built) await postTradeTransactions(lg, built.prev, built.data, log);
   if (built) await postTradeBlock(lg, built.prev, built.data, log);
   if (built) await postTransactionChannels(lg, built.prev, built.data, log);

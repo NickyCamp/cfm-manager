@@ -3,6 +3,7 @@ import { getLeagueData } from "@/lib/league/load";
 import { buildTradeData, parseTrade } from "@/lib/league/tradeData";
 import { NoData } from "@/components/league/bits";
 import { TradeTool } from "./TradeTool";
+import { loadPickLedger, ownedPicks } from "@/lib/league/pickLedgerLoad";
 
 export const metadata: Metadata = { title: "Trade Tool" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | undefined>> };
@@ -20,7 +21,7 @@ export default async function TradesPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
-  const td = buildTradeData(d);
+  const td = buildTradeData(d, ownedPicks(await loadPickLedger(slug, d).catch(() => null)));
   const { a, b } = parseTrade(td, sp);
   const initial = { a: a.team, b: b.team, pa: a.players, pb: b.players, ka: a.picks, kb: b.picks };
 

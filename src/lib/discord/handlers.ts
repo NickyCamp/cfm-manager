@@ -4,6 +4,8 @@ import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore
 import { getLeagueHistory } from "@/lib/league/load";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
+import { loadPickLedger } from "@/lib/league/pickLedgerLoad";
+import { picksGone, teamPicks, type PickLedger } from "@/lib/league/picks";
 import {
   capSeason,
   capYears, fullName, gamesForWeek, inferredDeadCap, record, seasonTotals, standings, streakText,
@@ -368,6 +370,14 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { ...(await tradeBuilderStart(lg)), flags: EPHEMERAL };
     }
     case "tradeblock": return tradeBlockCmd(i, lg, d, footer);
+    case "picks": {
+      const v = opt(i, "team");
+      const t = v != null && v !== "" ? findTeam(d, v) : null;
+      if (v && !t) return reply("No team by that name.");
+      const l = await loadPickLedger(lg.slug, d, lg.settings).catch(() => null);
+      if (!l) return reply("Couldn't load the pick tracker.");
+      return { embeds: [picksEmbed(d, l, t ?? null, Number(opt(i, "year")) || null, url, footer)] };
+    }
     case "auditchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
@@ -1251,6 +1261,33 @@ async function verifyKickoffCmd(i: Interaction, lg: LinkedLeague, d: LeagueData,
 }
 
 // ---------- /balance and /bets (Tickets) ----------
+/** /picks: one team's picks by draft (own, acquired, traded away), or every pick that changed hands. */
+function picksEmbed(d: LeagueData, l: PickLedger, t: Team | null, year: number | null, url: (p?: string) => string, footer: { text: string }) {
+  const R = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
+  const abbr = (id: number) => d.teams.find((x) => x.id === id)?.abbr || "?";
+  const years = year ? l.years.filter((y) => y === year) : l.years;
+  if (!years.length) return { title: "Draft picks", description: `The tracker covers the ${l.years.join(", ")} drafts.`, footer };
+  if (t) {
+    const held = teamPicks(l, t.id), gone = picksGone(l, t.id);
+    const fields = years.map((y) => {
+      const own = held.filter((p) => p.y === y && p.o === t.id).map((p) => p.r);
+      const extra = held.filter((p) => p.y === y && p.o !== t.id).map((p) => `+ ${R[p.r]} (via ${abbr(p.o)})`);
+      const out = gone.filter((p) => p.y === y).map((p) => `~~${R[p.r]}~~ → ${abbr(p.owner)}`);
+      return { name: `${y} draft (${held.filter((p) => p.y === y).length} picks)`, value: [own.length ? `Own: ${own.map((r) => R[r]).join(", ")}` : "None of its own", ...extra, ...out].join("\n").slice(0, 1024), inline: true };
+    });
+    return { title: `${t.city} ${t.name}: draft picks`, url: url(`/picks?team=${t.abbr.toLowerCase()}`), color: hexColor(t.primary), fields, footer };
+  }
+  const moved = [...l.picks.values()].filter((p) => years.includes(p.y) && p.owner !== p.o).sort((a, b) => a.y - b.y || a.r - b.r || abbr(a.o).localeCompare(abbr(b.o)));
+  const lines = moved.map((p) => `${p.y} ${R[p.r]} (${abbr(p.o)}) → **${abbr(p.owner)}**`);
+  return {
+    title: "Draft picks that changed hands",
+    url: url("/picks"),
+    description: (lines.length ? lines.join("\n") : "No picks have changed hands in these drafts.").slice(0, 4000),
+    fields: l.notes.length ? [{ name: "⚠️ For a commissioner to check", value: l.notes.slice(0, 5).map((n) => `• ${n}`).join("\n").slice(0, 1024) }] : [],
+    footer: { text: `${footer.text} · add team: for one team's full list` },
+  };
+}
+
 /** /tradeblock: the list (team/position filters), or a manager adding/removing one of his players. */
 async function tradeBlockCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, footer: Footer): Promise<Message> {
   const action = String(opt(i, "action") ?? "");

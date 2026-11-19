@@ -8,6 +8,7 @@
 // nothing is saved until it's submitted. Every tap answers "deferred update" and then edits the message.
 import { getLeagueData } from "@/lib/league/load";
 import { buildTradeData, parseTrade, type TradeData } from "@/lib/league/tradeData";
+import { loadPickLedger, ownedPicks } from "@/lib/league/pickLedgerLoad";
 import { DEV, pickSpotText, ROUND, scoreTrade, type Pick } from "@/lib/league/tradeMath";
 import { money } from "@/lib/league/format";
 import { teamsOfUser } from "@/lib/marketStore";
@@ -46,9 +47,15 @@ function decode(msg: ComponentInteraction["message"]): St | null {
 }
 /** The Trade Tool's query for this trade. */
 const query = (s: St): Record<string, string> => ({ a: s.a, b: s.b, pa: s.pa.join(","), pb: s.pb.join(","), ka: s.ka.join(","), kb: s.kb.join(",") });
-/** Builder pick value → Pick: "2028-1" automatic, "2028-1-12" #12 in the round, "2028-1-u" unknown. */
+/** Builder pick value → Pick: "2028-1" automatic, "2028-1-12" #12 in the round, "2028-1-u" unknown;
+ *  another team's pick (pick tracker) ends in its abbreviation: "2028-1-a-PHI", "2028-1-12-PHI". */
 const pickOf = (x: string): Pick => { const [y, r, n] = x.split("-"); return n === "u" ? { y: +y, r: +r, u: true } : Number(n) ? { y: +y, r: +r, s: Number(n) } : { y: +y, r: +r }; };
-const baseKey = (x: string) => x.split("-").slice(0, 2).join("-");
+const viaOf = (x: string) => x.split("-")[3] || "";
+/** The pick without its spot: "2028-1" or "2028-1-PHI". */
+const baseKey = (x: string) => { const [y, r] = x.split("-"); const v = viaOf(x); return v ? `${y}-${r}-${v}` : `${y}-${r}`; };
+/** A base key with a spot ("" automatic, "u", or 1–32) → builder value. */
+const withSpot = (key: string, spot: string) => { const [y, r, v] = key.split("-"); return v ? `${y}-${r}-${spot || "a"}-${v}` : spot ? `${y}-${r}-${spot}` : `${y}-${r}`; };
+const pickName = (x: string) => { const k = pickOf(x); const v = viaOf(x); return `${k.y} ${ROUND[k.r]} round pick${v ? ` (via ${v})` : ""}`; };
 const sideOf = (s: St): "a" | "b" => (s.st === "b" || s.st === "B" ? "b" : "a");
 
 // ---------------------------------------------------------------- rendering
@@ -60,7 +67,7 @@ function render(lg: LinkedLeague, td: TradeData, s: St, note = ""): Message {
     const t = team(abbr);
     const lines = [
       ...ids.map((id) => byId.get(id)).filter(Boolean).map((p) => `• ${p!.pos} **${p!.n}** · ${p!.ovr} OVR · ${p!.ur} UR · ${money(p!.hits[0])}`),
-      ...picks.map((x) => { const k = pickOf(x); return `• ${k.y} ${ROUND[k.r]} round pick${t ? ` · ${pickSpotText(k, t, td.firstDraft, td.orderFinal)}` : ""}`; }),
+      ...picks.map((x) => { const k = pickOf(x); const o = (viaOf(x) && team(viaOf(x))) || t; return `• ${pickName(x)}${o ? ` · ${pickSpotText(k, o, td.firstDraft, td.orderFinal)}` : ""}`; }),
     ];
     return lines.length ? lines.join("\n") : "_nothing yet_";
   };
@@ -132,22 +139,28 @@ function components(td: TradeData, s: St, slug: string): unknown[] {
         options: roster.map((p) => ({ label: `${p.n} · ${p.pos} ${p.ovr}`.slice(0, 100), value: String(p.id), description: `${p.ur} UR · ${p.spd} SPD · age ${p.age}${p.dev ? ` · ${DEV[p.dev]}` : ""} · ${money(p.hits[0])}${p.ps ? " · PS" : ""}`.slice(0, 100) })),
       }] });
     }
-    const have = new Set((side === "a" ? s.ka : s.kb).map((x) => x.split("-").slice(0, 2).join("-")));
-    const pickOpts = td.draftYears.flatMap((y) => [1, 2, 3, 4, 5, 6, 7].map((r) => ({ y, r }))).filter((k) => !have.has(`${k.y}-${k.r}`)).slice(0, 25);
+    const have = new Set((side === "a" ? s.ka : s.kb).map(baseKey));
+    // Picks this team holds per the league's pick tracker (own and ones it got); every own pick if not tracked.
+    const held = t ? (t.picks ?? td.draftYears.flatMap((y) => [1, 2, 3, 4, 5, 6, 7].map((r) => ({ y, r, o: t.id })))) : [];
+    const pickOpts = held.map((k) => {
+      const from = td.teams.find((x) => x.id === k.o);
+      const value = k.o === t?.id || !from ? `${k.y}-${k.r}` : `${k.y}-${k.r}-a-${from.abbr}`;
+      return { k, from, value };
+    }).filter((x) => !have.has(baseKey(x.value))).slice(0, 25);
     if (pickOpts.length && t) {
       rows.push({ type: 1, components: [{
-        type: 3, custom_id: "tb|pick", placeholder: `Add a ${abbr} draft pick`, min_values: 1, max_values: Math.min(5, pickOpts.length),
-        options: pickOpts.map((k) => ({ label: `${k.y} ${ROUND[k.r]} round`, value: `${k.y}-${k.r}`, description: pickSpotText(k, t, td.firstDraft, td.orderFinal).slice(0, 100) })),
+        type: 3, custom_id: "tb|pick", placeholder: `Add a ${abbr} draft pick${t.picks ? " (picks it holds)" : ""}`, min_values: 1, max_values: Math.min(5, pickOpts.length),
+        options: pickOpts.map(({ k, from, value }) => ({ label: pickName(value).replace(" pick", ""), value, description: pickSpotText(k, from || t, td.firstDraft, td.orderFinal).slice(0, 100) })),
       }] });
     }
     const sidePicks = side === "a" ? s.ka : s.kb;
     if (sidePicks.length && t) {
       rows.push({ type: 1, components: [{
         type: 3, custom_id: "tb|spot", placeholder: "Set a pick's number in the round (1–32 or unknown)",
-        options: sidePicks.slice(0, 25).map((x) => { const k = pickOf(x); return { label: `${k.y} ${ROUND[k.r]} round pick`, value: baseKey(x), description: pickSpotText(k, t, td.firstDraft, td.orderFinal).slice(0, 100) }; }),
+        options: sidePicks.slice(0, 25).map((x) => { const k = pickOf(x); const o = td.teams.find((y) => y.abbr === viaOf(x)) || t; return { label: pickName(x), value: baseKey(x), description: pickSpotText(k, o, td.firstDraft, td.orderFinal).slice(0, 100) }; }),
       }] });
     }
-    const mine = [...(side === "a" ? s.pa : s.pb).map((id) => ({ v: `p:${id}`, l: td.players.find((p) => p.id === id)?.n || String(id) })), ...(side === "a" ? s.ka : s.kb).map((x) => ({ v: `k:${x}`, l: `${x.split("-")[0]} ${ROUND[Number(x.split("-")[1])]} round pick` }))];
+    const mine = [...(side === "a" ? s.pa : s.pb).map((id) => ({ v: `p:${id}`, l: td.players.find((p) => p.id === id)?.n || String(id) })), ...(side === "a" ? s.ka : s.kb).map((x) => ({ v: `k:${x}`, l: pickName(x) }))];
     if (mine.length) {
       rows.push({ type: 1, components: [{ type: 3, custom_id: "tb|remove", placeholder: "Remove something", min_values: 1, max_values: mine.length, options: mine.slice(0, 25).map((x) => ({ label: x.l.slice(0, 100), value: x.v })) }] });
     }
@@ -174,7 +187,7 @@ function components(td: TradeData, s: St, slug: string): unknown[] {
 
 async function loadTd(slug: string) {
   const d = await getLeagueData(slug);
-  return d ? buildTradeData(d) : null;
+  return d ? buildTradeData(d, ownedPicks(await loadPickLedger(slug, d).catch(() => null))) : null;
 }
 
 /** /trade (server only). */
@@ -197,7 +210,7 @@ export function pickSpotModal(i: ComponentInteraction): unknown {
   const s = decode(i.message);
   const cur = s ? [...s.ka, ...s.kb].find((x) => baseKey(x) === key) : undefined;
   const k = pickOf(cur || key);
-  return { type: 9, data: { custom_id: `tb|spotm|${key}`, title: `${k.y} ${ROUND[k.r]} round pick`.slice(0, 45), components: [{ type: 1, components: [{
+  return { type: 9, data: { custom_id: `tb|spotm|${key}`, title: pickName(cur || key).slice(0, 45), components: [{ type: 1, components: [{
     type: 4, custom_id: "spot", label: "Pick # in the round: 1–32, or unknown", style: 1, max_length: 7, required: false,
     placeholder: "e.g. 12, or unknown. Blank = automatic", value: k.u ? "unknown" : k.s ? String(k.s) : undefined,
   }] }] } };
@@ -242,14 +255,14 @@ export async function tradeBuilderTap(i: ComponentInteraction): Promise<BuilderA
       const raw = String(i.data?.components?.[0]?.components?.[0]?.value || "").trim().toLowerCase().replace(/^#/, "");
       const n = Number(raw);
       let val: string | null = null;
-      if (!raw || raw === "auto") val = key;
-      else if (["unknown", "u", "?", "tbd", "unk"].includes(raw)) val = `${key}-u`;
-      else if (Number.isInteger(n) && n >= 1 && n <= 32) val = `${key}-${n}`;
+      if (!raw || raw === "auto") val = withSpot(key, "");
+      else if (["unknown", "u", "?", "tbd", "unk"].includes(raw)) val = withSpot(key, "u");
+      else if (Number.isInteger(n) && n >= 1 && n <= 32) val = withSpot(key, String(n));
       if (!val) { note = `"${raw}" isn't a pick number. Use 1–32, unknown, or leave it blank for automatic.`; break; }
       if (!s[K].some((x) => baseKey(x) === key)) { note = "That pick isn't in this side of the trade any more."; break; }
       s[K] = s[K].map((x) => (baseKey(x) === key ? val! : x));
-      const k = pickOf(val), t = td.teams.find((x) => x.abbr === s[side]);
-      note = `${k.y} ${ROUND[k.r]} round pick: ${t ? pickSpotText(k, t, td.firstDraft, td.orderFinal) : "updated"}.`;
+      const k = pickOf(val), t = td.teams.find((x) => x.abbr === (viaOf(val) || s[side]));
+      note = `${pickName(val)}: ${t ? pickSpotText(k, t, td.firstDraft, td.orderFinal) : "updated"}.`;
       break;
     }
     case "team1": s.st = "a"; break;

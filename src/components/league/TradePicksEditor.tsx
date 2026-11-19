@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 
 const ROUNDS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
 
-export function TradePicksEditor({ slug, tradeKey, teams, initial, firstYear }: {
-  slug: string; tradeKey: string; teams: { id: number; abbr: string }[]; initial: Record<string, string[]>; firstYear: number;
+export function TradePicksEditor({ slug, tradeKey, teams, initial, firstYear, allAbbrs = [] }: {
+  slug: string; tradeKey: string; teams: { id: number; abbr: string }[]; initial: Record<string, string[]>; firstYear: number; allAbbrs?: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [picks, setPicks] = useState<Record<string, string[]>>(initial);
-  const [form, setForm] = useState<Record<string, { y: number; r: number; n: string }>>({});
+  // via: whose pick it originally was ("" = the other team's own), for the pick tracker.
+  const [form, setForm] = useState<Record<string, { y: number; r: number; n: string; via: string }>>({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const years = [firstYear, firstYear + 1, firstYear + 2, firstYear + 3];
@@ -19,10 +20,11 @@ export function TradePicksEditor({ slug, tradeKey, teams, initial, firstYear }: 
 
   if (!open) return <button type="button" className="toggle-link small" onClick={() => setOpen(true)}>{has ? "Edit picks" : "Add picks"}</button>;
 
-  const f = (t: number) => form[t] || { y: firstYear, r: 1, n: "" };
+  const f = (t: number) => form[t] || { y: firstYear, r: 1, n: "", via: "" };
   const add = (t: number) => {
     const x = f(t);
-    const label = `${x.y} ${ROUNDS[x.r - 1]} round pick${x.n ? ` (#${x.n})` : ""}`;
+    const extra = [x.n ? `#${x.n}` : "", x.via ? `via ${x.via}` : ""].filter(Boolean).join(", ");
+    const label = `${x.y} ${ROUNDS[x.r - 1]} round pick${extra ? ` (${extra})` : ""}`;
     setPicks((p) => ({ ...p, [t]: [...(p[t] || []), label] }));
   };
   const save = async () => {
@@ -55,6 +57,12 @@ export function TradePicksEditor({ slug, tradeKey, teams, initial, firstYear }: 
             </select>
             <input aria-label="Pick number (optional)" placeholder="Pick # (optional)" inputMode="numeric" style={{ width: 130 }}
               value={f(t.id).n} onChange={(e) => setForm((s) => ({ ...s, [t.id]: { ...f(t.id), n: e.target.value.replace(/\D/g, "").slice(0, 3) } }))} />
+            {allAbbrs.length > 0 && (
+              <select aria-label="Whose pick" value={f(t.id).via} onChange={(e) => setForm((s) => ({ ...s, [t.id]: { ...f(t.id), via: e.target.value } }))}>
+                <option value="">{teams.find((x) => x.id !== t.id)?.abbr || "their"}&apos;s own</option>
+                {allAbbrs.filter((a) => a !== teams.find((x) => x.id !== t.id)?.abbr).map((a) => <option key={a} value={a}>via {a}</option>)}
+              </select>
+            )}
             <button type="button" className="btn btn-quiet" onClick={() => add(t.id)}>Add</button>
           </div>
         </div>

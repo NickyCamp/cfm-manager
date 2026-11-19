@@ -4,6 +4,8 @@ import { getLeagueData } from "@/lib/league/load";
 import { DRAFT_GROUP, draftOrder, recText, roundOrder } from "@/lib/league/playoffs";
 import { NoData, TeamBadge } from "@/components/league/bits";
 import { DecryptText } from "@/components/league/DecryptText";
+import { loadPickLedger } from "@/lib/league/pickLedgerLoad";
+import { pickId } from "@/lib/league/picks";
 
 export const metadata: Metadata = { title: "Draft order" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ round?: string }> };
@@ -17,6 +19,10 @@ export default async function Draft({ params, searchParams }: Props) {
   const { slots, sos, realPlayoffs, pic } = draftOrder(d);
   const rows = roundOrder(slots, r);
   const n = rows.length;
+  // Who holds each pick now (the league's pick tracker), when this order is for the tracker's next draft.
+  const ledger = await loadPickLedger(slug, d).catch(() => null);
+  const holder = (team: number) => (ledger && ledger.firstDraft === d.season.year + 1 ? ledger.picks.get(pickId(ledger.firstDraft, r, team))?.owner ?? team : team);
+  const abbrOf = new Map(d.teams.map((t) => [t.id, t.abbr]));
   const groupLabel = (g: number) => (g === 2 && !realPlayoffs ? "Playoff teams (current top 7 seeds)" : DRAFT_GROUP[g]);
 
   return (
@@ -41,7 +47,9 @@ export default async function Draft({ params, searchParams }: Props) {
                   <td className="num strong">{(r - 1) * n + i + 1}{r > 1 && <span className="muted small"> ({r}.{String(i + 1).padStart(2, "0")})</span>}</td>
                   <td>
                     <Link className="team-link" href={`/l/${slug}/teams/${x.c.abbr.toLowerCase()}`}><TeamBadge team={x.c.team} size={22} /><span><DecryptText text={x.c.name} delay={Math.min(i, 12) * 40} /></span></Link>
-                    {x.c.team.user && <div className="muted small">{x.c.team.user}</div>}
+                    {holder(x.c.id) !== x.c.id
+                      ? <div className="small"><strong>Held by {abbrOf.get(holder(x.c.id))}</strong> <Link className="muted" href={`/l/${slug}/picks`}>(pick tracker)</Link></div>
+                      : x.c.team.user && <div className="muted small">{x.c.team.user}</div>}
                   </td>
                   <td className="num">{recText(x.c.w, x.c.l, x.c.t)}</td>
                   <td className="num muted">{sos.get(x.c.id)!.toFixed(3).replace(/^0/, "")}</td>
@@ -52,7 +60,7 @@ export default async function Draft({ params, searchParams }: Props) {
           </table>
         </section>
         <p className="hint">
-          Shows each team&apos;s own pick. EA&apos;s export doesn&apos;t include traded picks, so a pick that changed hands still shows the original team, and compensatory picks aren&apos;t included.
+          Each pick is listed by the team it belongs to; &quot;Held by&quot; shows a traded pick&apos;s current owner from the league&apos;s <Link href={`/l/${slug}/picks`}>pick tracker</Link> (EA&apos;s export doesn&apos;t include pick trades). Compensatory picks aren&apos;t included.
           Strength of schedule uses every opponent on the regular-season schedule at their current record.
         </p>
       </div>

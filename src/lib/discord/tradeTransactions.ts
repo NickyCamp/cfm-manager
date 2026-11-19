@@ -10,7 +10,9 @@ import type { TradeChannels, TradeProposal } from "./tradeChannels";
 
 const ROUND = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
 
-export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData, st: TradeChannels, guildId: string | undefined, appUrl: string, slug: string): Message[] {
+/** Trades seen in this sync (players who moved directly between the same two teams), each with the
+ *  admin-approved proposal it matches, if any. Also used by the worker to give the pick tracker their picks. */
+export function syncedTrades(prev: LeagueData | null, next: LeagueData, proposals: TradeChannels["proposals"]) {
   if (!prev || prev.pulledAt === next.pulledAt) return [];
   const before = new Map(prev.players.filter((p) => !p.gone).map((p) => [p.id, p]));
   const teams = new Map(next.teams.map((t) => [t.id, t]));
@@ -24,10 +26,8 @@ export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData,
     const g = groups.get(key)!;
     (p.team === a ? g.toA : g.toB).push(p);
   }
-  const approved = Object.values(st.proposals || {}).filter((p) => p.status === "approved").sort((x, y) => (y.decidedAt || "").localeCompare(x.decidedAt || ""));
-  const line = (p: Player) => `${p.pos} **${p.first} ${p.last}** · ${p.ovr} OVR${p.dev ? ` ${DEV_LABEL[p.dev]}` : ""} · ${money(p.contract.capHit)}${p.contract.yearsLeft ? `, ${p.contract.yearsLeft} yr${p.contract.yearsLeft === 1 ? "" : "s"}` : ""}`;
-
-  const out: Message[] = [];
+  const approved = Object.values(proposals || {}).filter((p) => p.status === "approved").sort((x, y) => (y.decidedAt || "").localeCompare(x.decidedAt || ""));
+  const out = [];
   for (const g of groups.values()) {
     const ta = teams.get(g.a), tb = teams.get(g.b);
     if (!ta || !tb) continue;
@@ -38,6 +38,17 @@ export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData,
       const ids = [...p.pa, ...p.pb];
       return pair && ids.length > 0 && ids.every((id) => moved.has(id));
     });
+    // key: the transaction log's id for this trade (history.ts tradeKey: sync time, then the team ids).
+    out.push({ ...g, ta, tb, match, key: `${next.pulledAt}:${g.a}-${g.b}` });
+  }
+  return out;
+}
+
+export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData, st: TradeChannels, guildId: string | undefined, appUrl: string, slug: string): Message[] {
+  const line = (p: Player) => `${p.pos} **${p.first} ${p.last}** · ${p.ovr} OVR${p.dev ? ` ${DEV_LABEL[p.dev]}` : ""} · ${money(p.contract.capHit)}${p.contract.yearsLeft ? `, ${p.contract.yearsLeft} yr${p.contract.yearsLeft === 1 ? "" : "s"}` : ""}`;
+  const out: Message[] = [];
+  for (const g of syncedTrades(prev, next, st.proposals)) {
+    const { ta, tb, match } = g;
     const picks = (abbr: string) => {
       if (!match) return [];
       // what this team received = what the other side sent
@@ -62,7 +73,7 @@ export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData,
           { name: `${tb.city} ${tb.name} got`, value: got(tb, g.toB), inline: true },
           { name: "Approval", value: status },
         ],
-        footer: { text: "Draft picks come from the approved proposal; EA's export doesn't list picks." },
+        footer: { text: "Draft picks come from the approved proposal (EA's export doesn't list picks); the league's pick tracker moves them." },
       }],
     });
   }

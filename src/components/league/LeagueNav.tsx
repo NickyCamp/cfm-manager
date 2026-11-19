@@ -20,6 +20,7 @@ const TABS = [
 const TOOLS = [
   ["playoffs", "Playoffs"],
   ["draft", "Draft"],
+  ["picks", "Draft picks"],
   ["dev", "Dev tracker"],
   ["abilities", "Abilities"],
   ["archetypes", "Archetype calc"],

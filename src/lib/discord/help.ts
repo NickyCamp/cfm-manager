@@ -34,7 +34,7 @@ const GROUPS: [string, string[]][] = [
   ["🏈 Players and teams", ["player", "contract", "team", "players", "rookie", "expiring"]],
   ["💰 Cap", ["cap"]],
   ["📊 Games and stats", ["tws", "scores", "standings", "playoffs", "stats", "funfact", "sync"]],
-  ["🔁 Trades", ["trade", "tradeblock"]],
+  ["🔁 Trades", ["trade", "tradeblock", "picks"]],
   ["🎟️ Markets", ["kickoff", "balance", "bets"]],
   ["🔎 Audits", ["audit"]],
   ["🃏 Packs", ["pack", "packs"]],
@@ -71,6 +71,7 @@ const TIPS: Record<string, string> = {
   stats: "Regular season only. Rate stats (completion %, passer rating, YPC, FG %, punt average) need a minimum number of attempts to qualify.",
   sync: "Pulls from EA now instead of waiting for the schedule. Once every 15 minutes per league; usually takes 2–4 minutes.",
   trade: "Opens a private builder: pick the teams, add players and picks, check the score, then submit it to #trade-proposals for the admins to vote on.",
+  picks: "Madden doesn't export pick trades, so the site tracks them: picks in approved trades move once the trade shows up in a sync (picks-only trades when approved). A commissioner fixes anything else on the site's Draft picks page.",
   tradeblock: "Anyone can look things up. To list one of your own players: `action:Add a player player:<name> note:<what you want>`.",
   kickoff: "Set it when you've scheduled your game in chat, e.g. `/kickoff time:sat 7pm`. Betting on the game closes then.",
   link: "Use the part after /l/ in your league's web address, e.g. `/link league:ncl`. One league per server, and the league must be public.",
@@ -85,7 +86,7 @@ const TOPIC_OF: Record<string, string> = {
   link: "setup", unlink: "setup", notify: "setup", gamechannels: "setup", marketchannels: "markets", marketupdate: "markets",
   tradechannels: "trades", transactionchannels: "setup", auditchannels: "audits", packchannels: "packs", betcap: "markets",
   economy: "markets", payouts: "markets", verifykickoff: "markets", kickoff: "markets", balance: "markets", bets: "markets",
-  trade: "trades", tradeblock: "trades", audit: "audits", pack: "packs", packs: "packs", myleague: "start", connect: "start",
+  trade: "trades", tradeblock: "trades", picks: "trades", audit: "audits", pack: "packs", packs: "packs", myleague: "start", connect: "start",
   league: "lookups", player: "lookups", cap: "lookups", tws: "lookups", stats: "lookups",
 };
 const topicLabel = (k: string) => HELP_TOPICS.find(([v]) => v === k)?.[1] ?? k;
@@ -189,6 +190,7 @@ function topicHelp(key: string): Embed | null {
       "**Proposing:** agree a trade with the other manager, then run `/trade` (or use the site's Trade Tool). Pick both teams, add players and picks, check the score and cap impact, then submit.",
       `**Voting:** it posts in #trade-proposals, where only admins can vote. ${VOTES_NEEDED} approvals passes it (${VOTES_NEEDED} rejections fails it). Passed trades post in the approvals channel, where anyone can comment.`,
       "**Making it official:** do the trade in Madden. Once a sync picks it up, it posts in the trade transactions channel.",
+      "**Draft picks:** `/picks` shows who holds which picks. Picks in approved trades move on their own; anything else a commissioner records on the site's Draft picks page.",
       "**Trade block:** `/tradeblock` shows who's available, by team and/or position. Managers list their own players with `action:Add a player player:<name> note:<what you want>`.",
       "Admins set up the channels with `/tradechannels`. Add `admin_channel:` (e.g. a private #trade-chat) to also post each proposal there with the same vote buttons; a vote in either spot counts once and updates both.",
     ].join("\n"),
