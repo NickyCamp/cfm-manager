@@ -114,13 +114,13 @@ export function outcomeResult(d: LeagueData, book: MarketBook, marketKey: string
   const gm = /^game-(\d+)$/.exec(marketKey);
   if (gm) {
     const g = d.games.find((x) => x.id === Number(gm[1]));
-    if (g?.forced) return "void"; // /set: a forced result doesn't count for bets
+    if (g?.forced || g?.disconnect) return "void"; // /set force or disconnect: doesn't count for bets
     if (!g?.final) return null;
     if (g.hs === g.as) return "void";
     return String(g.hs > g.as ? g.home : g.away) === outcomeId ? "won" : "lost";
   }
   const pm = /^props-(\d+)-/.exec(marketKey);
-  if (pm) return d.games.find((x) => x.id === Number(pm[1]))?.forced ? "void" : propResult(d, Number(pm[1]), outcomeId);
+  if (pm) return ((g) => g?.forced || g?.disconnect)(d.games.find((x) => x.id === Number(pm[1]))) ? "void" : propResult(d, Number(pm[1]), outcomeId);
   const mk = book.markets.find((m) => m.key === marketKey);
   // league-wide OPOY/DPOY/OROY/DROY bets from before the awards were split by conference
   if (!mk) return legacyAwardResult(book, marketKey, outcomeId);

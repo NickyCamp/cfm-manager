@@ -19,7 +19,8 @@ import { dc } from "./rest";
 import { activityAfterForce, activityTeams } from "./activity";
 
 // "dc" (/set disconnect, Nick 2026-11-19): the game disconnected and the users won't replay it, so both
-// get a game played even if it sims. Not a force: EA's result stands (bets settle on it as usual).
+// get a game played even if it sims. Its bets are voided like a force's (Nick: "Disconnects should also void
+// bets"); the result shown is EA's, and it isn't marked simmed by the bot.
 export type ForceKind = "win" | "loss" | "sim" | "dc";
 export type ForcedGame = { kind: ForceKind; team?: number; activity?: number | number[]; by: string; at: string };
 /** settings.forcedGames: season → game id → the forced result. */
@@ -200,11 +201,11 @@ async function setDisconnect(lg: LinkedLeague, d: LeagueData, pick: Pick, by: st
     const name = channelNameFor(away, home, f);
     note = renameNote(await rename(pick.channelId, name), pick.channelId, name);
     if (prev?.kind !== "dc") {
-      await dc("POST", `/channels/${pick.channelId}/messages`, { content: `🔌 An admin marked this game as a **disconnect**: it won't be replayed, so ${users.length ? users.map((t) => `**${t.user}** (${t.abbr})`).join(" and ") : "both users"} get credit for playing it, even if it sims.${prev ? ` (Replaces the ${describeForce(d, prev)}.)` : ""}`, allowed_mentions: { parse: [] } });
+      await dc("POST", `/channels/${pick.channelId}/messages`, { content: `🔌 An admin marked this game as a **disconnect**: it won't be replayed, so ${users.length ? users.map((t) => `**${t.user}** (${t.abbr})`).join(" and ") : "both users"} get credit for playing it, even if it sims. Bets on it are voided (stakes come back).${prev ? ` (Replaces the ${describeForce(d, prev)}.)` : ""}`, allowed_mentions: { parse: [] } });
     }
   }
-  if (prev && prev.kind !== "dc") await settleNow(lg); // a force came off: its markets reopen/settle on EA's result
-  return `**Disconnect** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. Both users get a game played for activity, even if it sims; the result stands as EA reports it.${prev && prev.kind !== "dc" ? ` Replaced the ${describeForce(d, prev)}.` : ""}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
+  await settleNow(lg); // void its bets right away
+  return `**Disconnect** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. Both users get a game played for activity, even if it sims, and its bets are voided (stakes back).${prev && prev.kind !== "dc" ? ` Replaced the ${describeForce(d, prev)}.` : ""}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
 }
 
 export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown }): Promise<string> {
@@ -225,5 +226,5 @@ export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: un
     note = renameNote(await rename(ch, name), ch, name);
     await dc("POST", `/channels/${ch}/messages`, { content: `↩️ An admin removed the **${describeForce(d, f)}** on this game.`, allowed_mentions: { parse: [] } });
   }
-  return `Removed **${describeForce(d, f)}** from ${away.abbr} @ ${home.abbr}. The game counts normally again (simmed or played as EA reports it).${note}${f.kind === "dc" ? "" : " Bets already voided by the force stay refunded; new bets can be placed if the game is still open."}${await activityAfterForce(lg.slug, g.id)}`;
+  return `Removed **${describeForce(d, f)}** from ${away.abbr} @ ${home.abbr}. The game counts normally again (simmed or played as EA reports it).${note} Bets already voided stay refunded; new bets can be placed if the game is still open.${await activityAfterForce(lg.slug, g.id)}`;
 }

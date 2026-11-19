@@ -100,7 +100,7 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       // /set (Nick, 2026-11-19): a forced result counts as simmed everywhere (site, audits, bets).
       for (const g of data.games) {
         const f = forced?.[String(g.id)];
-        // /set disconnect: not a force; EA's result stands, both users get a game played (activity)
+        // /set disconnect: both users get a game played (activity) and its bets are voided; EA's result is kept as is
         if (f && g.stage === 1 && f.kind === "dc") g.disconnect = true;
         else if (f && g.stage === 1) { g.forced = { kind: f.kind as "win" | "loss" | "sim", team: f.team, ...(f.activity != null ? { activity: f.activity } : {}) }; g.simmed = true; }
       }
