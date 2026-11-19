@@ -190,7 +190,7 @@ function topicHelp(key: string): Embed | null {
       `**Voting:** it posts in #trade-proposals, where only admins can vote. ${VOTES_NEEDED} approvals passes it (${VOTES_NEEDED} rejections fails it). Passed trades post in the approvals channel, where anyone can comment.`,
       "**Making it official:** do the trade in Madden. Once a sync picks it up, it posts in the trade transactions channel.",
       "**Trade block:** `/tradeblock` shows who's available, by team and/or position. Managers list their own players with `action:Add a player player:<name> note:<what you want>`.",
-      "Admins set up the channels with `/tradechannels`.",
+      "Admins set up the channels with `/tradechannels`. Add `admin_channel:` (e.g. a private #trade-chat) to also post each proposal there with the same vote buttons; a vote in either spot counts once and updates both.",
     ].join("\n"),
     audits: [
       "**`/audit` checks the league's rules** and posts the results in the Audits category for everyone:",

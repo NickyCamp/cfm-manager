@@ -396,7 +396,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "tradechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
-      return reply(await tradeChannelsCmd(lg.slug, opt(i, "action") === "remove"));
+      const act = opt(i, "action");
+      const adminCh = act === "adminoff" ? "off" : (opt(i, "admin_channel") as string | undefined);
+      return reply(await tradeChannelsCmd(lg.slug, act === "remove", adminCh ? String(adminCh) : undefined));
     }
     case "transactionchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");

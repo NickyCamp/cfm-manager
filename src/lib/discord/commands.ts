@@ -209,7 +209,8 @@ export const COMMANDS = [
     description: "Admins: make the Trades category: proposals (admins vote), approvals, transactions",
     ...SERVER_ONLY,
     options: [
-      { type: STRING, name: "action", description: "Leave empty to make it; Remove deletes the Trades category", required: false, choices: [{ name: "Remove", value: "remove" }] },
+      { type: STRING, name: "action", description: "Leave empty to make it; Remove deletes the Trades category", required: false, choices: [{ name: "Remove", value: "remove" }, { name: "Admin copy off", value: "adminoff" }] },
+      { type: CHANNEL, name: "admin_channel", description: "Admins-only channel that also gets each proposal with the vote buttons", required: false, channel_types: [0] },
     ],
   },
   {

@@ -8,6 +8,10 @@
 //    Madden transaction (tradeTransactions.ts), linked to the approved proposal it matches.
 //  - #trade-block (anyone can talk, added 2026-11-18): players going on/off the trade block (tradeBlock.ts).
 //
+// Admin copy (Nick, 2026-11-18): /tradechannels admin_channel:#trade-chat makes every proposal also post in
+// that admins-only channel with the same Approve / Reject buttons. Both posts share one vote count; a tap
+// on either one edits both.
+//
 // Made by /tradechannels (admins), or on the first submit if missing.
 // State: leagues.settings.tradeChannels (TradeChannels below).
 import { updateLeagueSettings } from "@/lib/leagueSettings";
@@ -36,6 +40,7 @@ export type TradeProposal = {
   by: string;                                 // submitter: Discord id, or a name
   picks?: { a: string[]; b: string[] };       // picks each side sends, with their spot ("2028 1st round pick (#23, 23rd overall …)")
   messageId: string | null;
+  adminMessageId?: string;                    // the copy in the admins-only channel (adminChannelId)
   yes: string[]; no: string[];                // Discord ids of the admins who voted
   status: "open" | "approved" | "rejected";
   decidedAt?: string;
@@ -47,6 +52,7 @@ export type TradeChannels = {
   approvalsId?: string;                       // #trade-approvals
   transactionsId?: string;                    // #trade-transactions
   blockId?: string;                           // #trade-block
+  adminChannelId?: string;                    // admins-only channel that gets a copy of each proposal (picked by the league)
   recent?: Record<string, string>;
   proposals?: Record<string, TradeProposal>;
 };
@@ -139,7 +145,7 @@ export async function ensureTradeChannels(lg: LinkedLeague): Promise<(TradeChann
     { key: "transactionsId", name: "trade-transactions", lock: true, topic: "Trades as they happened in Madden, posted after each sync." },
     { key: "blockId", name: "trade-block", lock: false, topic: "Players on the trade block (Madden's block + ones managers add). Anyone can talk. /tradeblock to search by team or position." },
   ];
-  const state: TradeChannels = { categoryId: cat, channelId: "", recent: old?.recent, proposals: old?.proposals };
+  const state: TradeChannels = { categoryId: cat, channelId: "", recent: old?.recent, proposals: old?.proposals, adminChannelId: moved ? undefined : old?.adminChannelId };
   const unlocked: string[] = [];
   for (const w of want) {
     const found = chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === w.name)?.id;
@@ -159,14 +165,17 @@ export async function ensureTradeChannels(lg: LinkedLeague): Promise<(TradeChann
   }
   await updateLeagueSettings(lg.id, (s) => {
     const cur = (s.tradeChannels as TradeChannels | undefined) || {};
-    s.tradeChannels = moved ? state : { ...cur, ...state, recent: (cur as TradeChannels).recent, proposals: (cur as TradeChannels).proposals };
+    s.tradeChannels = moved ? state : { ...cur, ...state, recent: (cur as TradeChannels).recent, proposals: (cur as TradeChannels).proposals, adminChannelId: (cur as TradeChannels).adminChannelId };
     return s;
   });
   return unlocked.length ? { ...state, unlocked } : state;
 }
 
-/** /tradechannels: make the category; action remove deletes it. */
-export async function tradeChannelsCmd(slug: string, remove: boolean): Promise<string> {
+/**
+ * /tradechannels: make the category; action remove deletes it.
+ * `admin`: a channel id to get an admin copy of each proposal, or "off" to stop the copies.
+ */
+export async function tradeChannelsCmd(slug: string, remove: boolean, admin?: string): Promise<string> {
   const lg = await leagueBySlug(slug);
   if (!lg) return "This league isn't linked to a Discord server (/link).";
   if (remove) {
@@ -178,12 +187,29 @@ export async function tradeChannelsCmd(slug: string, remove: boolean): Promise<s
   }
   const st = await ensureTradeChannels(lg);
   if (typeof st === "string") return st;
+  let adminNote: string | null = null;
+  if (admin === "off") {
+    await updateLeagueSettings(lg.id, (s) => { const t = s.tradeChannels as TradeChannels | undefined; if (t) delete t.adminChannelId; return s; });
+    st.adminChannelId = undefined;
+    adminNote = "Admin copies turned off: proposals only post in #trade-proposals now.";
+  } else if (admin) {
+    const c = await dc("GET", `/channels/${admin}`);
+    if (!c.ok) adminNote = `⚠️ I can't see that admin channel${why(c)}. Give the CFM Manager role View Channel, Send Messages, Embed Links and Attach Files there, then run /tradechannels admin_channel again.`;
+    else if (String(c.data.guild_id) !== discordOf(lg)?.guildId) adminNote = "⚠️ That channel isn't in this league's server.";
+    else if (admin === st.channelId) adminNote = "⚠️ Pick a different channel than #trade-proposals for the admin copy.";
+    else {
+      await updateLeagueSettings(lg.id, (s) => { const t = s.tradeChannels as TradeChannels | undefined; if (t) t.adminChannelId = admin; return s; });
+      st.adminChannelId = admin;
+    }
+  }
   return [
     `Trades category ready:`,
     `• <#${st.channelId}>: agreed trades from the Trade Tool (${APP_URL}/l/${slug}/trades). Only the bot posts; admins vote with the buttons, ${VOTES_NEEDED} approvals passes a trade.`,
     `• <#${st.approvalsId}>: approved trades, open for everyone to talk.`,
     `• <#${st.transactionsId}>: trades as they happened in Madden, after each sync. Only the bot posts.`,
     `• <#${st.blockId}>: players going on and off the trade block, open for everyone to talk. Look it up any time with /tradeblock.`,
+    ...(st.adminChannelId ? [`• <#${st.adminChannelId}>: an admins-only copy of every proposal with the same vote buttons. A vote in either place counts once and updates both posts. (Turn off: /tradechannels action:Admin copy off)`] : []),
+    ...(adminNote ? [adminNote] : []),
     ...(st.unlocked?.length ? [`⚠️ Discord wouldn't let me make ${st.unlocked.map((n) => `#${n}`).join(" and ")} bot-only, so anyone can type there for now. Give the CFM Manager role Manage Roles (or Administrator) and run /tradechannels again.`] : []),
   ].join("\n");
 }
@@ -268,6 +294,20 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
   if (!res.ok) throw new Error(res.status === 403 ? "The bot can't post in #trade-proposals. Give it View Channel, Send Messages, Embed Links and Attach Files there." : `Discord said ${res.status}.`);
   proposal.messageId = res.id;
 
+  // Admin copy: same picture, embed and buttons in the admins-only channel, no pings, link to the public post.
+  let adminFail = "";
+  if (st.adminChannelId) {
+    const publicUrl = res.id ? `https://discord.com/channels/${discordOf(lg)!.guildId}/${st.channelId}/${res.id}` : null;
+    const adminPayload = {
+      ...payload,
+      content: `🔒 Admin copy: **${ta.abbr} ⇄ ${tb.abbr}**, submitted by ${by.discordId ? `<@${by.discordId}>` : `**${by.name}**`}. Votes here and in ${publicUrl ? `[#trade-proposals](${publicUrl})` : "#trade-proposals"} are the same count.`,
+      allowed_mentions: { parse: [] as string[] },
+    };
+    const ar = await postWithImage(st.adminChannelId, adminPayload, png).catch(() => ({ ok: false, status: 0, id: null }));
+    if (ar.ok && ar.id) proposal.adminMessageId = ar.id;
+    else adminFail = ` (I couldn't post the admin copy: Discord said ${ar.status}. The CFM Manager role needs View Channel, Send Messages, Embed Links and Attach Files in the admin channel.)`;
+  }
+
   await updateLeagueSettings(lg.id, (set) => {
     const cur = (set.tradeChannels as TradeChannels | undefined) || st;
     const recent = Object.fromEntries([...Object.entries(cur.recent || {}), [key, new Date().toISOString()]].slice(-30));
@@ -275,7 +315,7 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
     set.tradeChannels = { ...cur, recent, proposals };
     return set;
   });
-  return `Posted in #trade-proposals for the admins to vote on (${VOTES_NEEDED} approvals passes it): ${s.verdict}.`;
+  return `Posted in #trade-proposals${proposal.adminMessageId ? " and the admin channel" : ""} for the admins to vote on (${VOTES_NEEDED} approvals passes it): ${s.verdict}.${adminFail}`;
 }
 
 async function postWithImage(channelId: string, payload: object, png: Buffer): Promise<{ ok: boolean; status: number; id: string | null }> {
@@ -336,8 +376,17 @@ export async function tradeVote(i: ComponentInteraction): Promise<VoteResult> {
   const old = i.message?.embeds?.[0] || {};
   // The picture stays the message's own attachment.
   const embed: Embed = { ...old, image: { url: "attachment://trade.png" }, fields: [...(old.fields || []).filter((f) => f.name !== "Admin votes"), voteField(p)] };
+  const components = voteButtons(slug, p);
+  // The same proposal can sit in #trade-proposals and the admin channel: edit the one that wasn't tapped too.
+  const st = stateOf(lg);
+  const tapped = (i.message as { id?: string } | undefined)?.id;
+  const copies = [[st?.channelId, p.messageId], [st?.adminChannelId, p.adminMessageId]] as const;
+  await Promise.all(copies.filter(([ch, m]) => ch && m && m !== tapped).map(async ([ch, m]) => {
+    const r = await dc("PATCH", `/channels/${ch}/messages/${m}`, { embeds: [embed], components }).catch(() => null);
+    if (r && !r.ok) console.error("trade vote mirror", ch, m, r.status, JSON.stringify(r.data).slice(0, 200));
+  }));
   const extra = why ? { reply: why } : {};
-  return { ...extra, message: { embeds: [embed], components: voteButtons(slug, p) } };
+  return { ...extra, message: { embeds: [embed], components } };
 }
 
 /** Reposts an approved trade (same picture) in #trade-approvals. Returns the post's link. */
