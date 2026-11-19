@@ -94,6 +94,7 @@ export type Game = {
   final: boolean;
   simmed: boolean | null; // null = unknown
   gotw: boolean;
+  disconnect?: boolean; // /set disconnect: both users get a game played (activity), result as EA reports it
   forced?: { kind: "win" | "loss" | "sim"; team?: number; activity?: number | number[] }; // activity: team id(s) credited with a game played // an admin's /set (overlaid at load; simmed is true too)
 };
 

@@ -33,7 +33,7 @@ import { seedFor } from "./activitySeeds";
 
 type Status = "P" | "M"; // played, missed
 /** How a game counted: played, forced by an admin, missed (not played), or unknown (EA didn't say). */
-type How = "played" | "forced" | "missed" | "unknown";
+type How = "played" | "forced" | "missed" | "unknown" | "disconnect";
 type Rec = { wk: string; how: How; by: Record<string, { u: string; s: Status }> };
 export type ActivityState = {
   categoryId: string;
@@ -90,6 +90,8 @@ function judge(d: LeagueData, g: Game): Rec {
     const act = new Set(activityTeams(g.forced));
     return { wk, how: "forced", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: act.has(t.id) ? "P" : "M" }])) };
   }
+  // /set disconnect: both users played, even if EA simmed it
+  if (g.disconnect) return { wk, how: "disconnect", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "P" as Status }])) };
   if (playedNow(g)) return { wk, how: "played", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "P" as Status }])) };
   if (g.final && g.simmed == null) return { wk, how: "unknown", by: {} };
   return { wk, how: "missed", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "M" as Status }])) };
@@ -111,6 +113,7 @@ function line(d: LeagueData, g: Game, r: Rec): string {
   const people = [who(a), who(h)].filter(Boolean).join(" · ");
   const match = `${a?.abbr ?? "?"} @ ${h?.abbr ?? "?"}`;
   if (r.how === "played") return `✅ ${label(a)} ${g.as} @ ${label(h)} ${g.hs} · ${Object.keys(r.by).length === 2 ? "both played" : `${people.replace(/^✅ /, "")}`}`;
+  if (r.how === "disconnect") return `🔌 ${match} · disconnect, not replayed · ${people}`;
   if (r.how === "forced") return `⚖️ ${match} · ${forceText(d, g)} · ${people || "no user teams"}`;
   if (r.how === "unknown") return `❓ ${label(a)} @ ${label(h)} · EA didn't say if this was played or simmed before the advance; not counted. An admin can settle it with \`/set force\` and \`activity\`.`;
   return `❌ ${match} · not played (sim) · ${people}`;
@@ -337,7 +340,7 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
   // games played since the last run (any tracked week), one post each
   const played: string[] = [];
   for (const g of tracked.sort((a, b) => a.week - b.week || a.id - b.id)) {
-    if (st.games[String(g.id)] || !playedNow(g)) continue;
+    if (st.games[String(g.id)] || !(playedNow(g) || (g.disconnect && g.final))) continue;
     const r = judge(d, g);
     st.games[String(g.id)] = r;
     played.push(`**${weekTitle(d, g.stage, g.week)}** · ${line(d, g, r)}`);
@@ -353,11 +356,11 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
     let nPlayed = 0;
     for (const g of games) {
       const prev = st.games[String(g.id)];
-      if (prev?.how === "played" && !g.forced) { nPlayed++; continue; }
+      if ((prev?.how === "played" && !g.forced && !g.disconnect) || (prev?.how === "disconnect" && g.disconnect)) { if (prev.how === "played") nPlayed++; else forced.push(line(d, g, prev)); continue; }
       const r = judge(d, g);
       st.games[String(g.id)] = r;
       if (r.how === "played") nPlayed++;
-      else if (r.how === "forced") forced.push(line(d, g, r));
+      else if (r.how === "forced" || r.how === "disconnect") forced.push(line(d, g, r));
       else if (r.how === "unknown") unknown.push(line(d, g, r));
       else missed.push(line(d, g, r));
     }
@@ -442,7 +445,7 @@ export async function activityAfterForce(slug: string, gameId: number): Promise<
     if (rankOf(w) < rankOf(st.start)) return "";
     const next = judge(d, g);
     // the week isn't over and the force was taken off: it isn't decided yet
-    if (!st.wrapped.includes(w) && next.how !== "played") { delete st.games[String(g.id)]; }
+    if (!st.wrapped.includes(w) && next.how !== "played" && !(next.how === "disconnect" && g.final)) { delete st.games[String(g.id)]; }
     else st.games[String(g.id)] = next;
     if (JSON.stringify(prev) === JSON.stringify(st.games[String(g.id)])) return "";
     await post(st.channelId, { content: `✏️ **Updated after /set** · ${weekTitle(d, g.stage, g.week)} · ${st.games[String(g.id)] ? line(d, g, next) : `${label(d.teams.find((t) => t.id === g.away))} @ ${label(d.teams.find((t) => t.id === g.home))}: counted again in this week's wrap-up after the advance`}` });
