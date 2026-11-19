@@ -116,7 +116,7 @@ export function forgetLeagueData(slug: string) {
   memo.delete(slug);
 }
 
-type Forced = Record<string, { kind: "win" | "loss" | "sim"; team?: number; activity?: number }>;
+type Forced = Record<string, { kind: "win" | "loss" | "sim"; team?: number; activity?: number | number[] }>;
 /** From leagues.settings for this season: Madden's award winners a commissioner entered (awards[year])
  *  and the results admins forced with /set (forcedGames[year]). */
 async function leagueOverlays(slug: string, year: number): Promise<{ awards: Record<string, string> | null; forced: Forced | null }> {

@@ -39,7 +39,7 @@ const GROUPS: [string, string[]][] = [
   ["🔎 Audits", ["audit"]],
   ["🃏 Packs", ["pack", "packs"]],
   ["🛠️ Server setup (Manage Server)", ["link", "unlink", "notify"]],
-  ["🛡️ League admins", ["gamechannels", "set", "marketchannels", "marketupdate", "tradechannels", "transactionchannels", "auditchannels", "packchannels", "betcap", "economy", "payouts", "verifykickoff"]],
+  ["🛡️ League admins", ["gamechannels", "set", "activitychannels", "marketchannels", "marketupdate", "tradechannels", "transactionchannels", "auditchannels", "packchannels", "betcap", "economy", "payouts", "verifykickoff"]],
   ["🎬 Bot owner", ["alertvideo", "removealertvideo"]],
 ];
 
@@ -79,12 +79,13 @@ const TIPS: Record<string, string> = {
   audit: "Pick abilities, games or players; add a team to check just that team. Results post in the Audits category for everyone.",
   gamechannels: "Each week you pick gets its own category; other weeks stay. Leave year and week empty for this week. Run it again for a week to refresh it. `action:Remove` with a week deletes just that week's category.",
   set: "`/set force` picks a game channel from your game channel categories (any week), then Force Win, Force Loss or Force Sim (win/loss also need the team). Add `activity` with one of the two teams to count it as a game played for that user, not a missed one. The channel is renamed and the game counts as simmed: its bets come back and /audit skips it. `/set remove` takes a Force back off.",
+  activitychannels: "Makes the bot-only #activity-tracker-week, counting from the current week. Played games post after every sync; after each advance a wrap-up lists /set forces (the `activity` team gets a game played) and games nobody played (a miss for both users). Season totals stay at the top.",
   marketchannels: "Deletes and rebuilds the whole Markets category. Use /marketupdate to just refresh it.",
   betcap: "Run it with no numbers to see the current caps. 0 means no cap.",
   economy: "Run it with no numbers to see the current settings. Whole percents, e.g. `cut:5`.",
 };
 const TOPIC_OF: Record<string, string> = {
-  link: "setup", unlink: "setup", notify: "setup", gamechannels: "setup", set: "setup", marketchannels: "markets", marketupdate: "markets",
+  link: "setup", unlink: "setup", notify: "setup", gamechannels: "setup", set: "setup", activitychannels: "setup", marketchannels: "markets", marketupdate: "markets",
   tradechannels: "trades", transactionchannels: "setup", auditchannels: "audits", packchannels: "packs", betcap: "markets",
   economy: "markets", payouts: "markets", verifykickoff: "markets", kickoff: "markets", balance: "markets", bets: "markets",
   trade: "trades", tradeblock: "trades", audit: "audits", pack: "packs", packs: "packs", myleague: "start", connect: "start",

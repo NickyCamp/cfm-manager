@@ -172,7 +172,7 @@ export async function POST(req: Request) {
       if (problem) return NextResponse.json({ type: 4, data: { content: problem, flags: 1 << 6 } });
     }
     // Settings changes reply only to the person who ran them; everything else is public.
-    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "set", "tradechannels", "transactionchannels", "auditchannels", "packchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "")
+    const quiet = ["link", "unlink", "notify", "myleague", "alertvideo", "removealertvideo", "connect", "marketchannels", "gamechannels", "set", "activitychannels", "tradechannels", "transactionchannels", "auditchannels", "packchannels", "trade", "balance", "bets", "payouts"].includes(i.data?.name || "")
       // /audit: the results post in the Audits category; the runner gets a private pointer to them
       || i.data?.name === "audit";
     after(async () => {

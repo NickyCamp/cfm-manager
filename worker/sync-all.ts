@@ -53,7 +53,7 @@ const STALE_HOURS = 20;
 type League = {
   id: string; slug: string; name: string; ea_league_id: number; console: string;
   ea_connection_id: string | null; last_sync_key: string | null; last_synced_at: string | null;
-  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; tradeChannels?: TradeChannels; tradeBlock?: TradeBlockState; txChannels?: TxChannelsState; tradePicks?: TradePicks } | null;
+  settings: { discord?: { guildId?: string; channelId?: string | null; videos?: Partial<Record<AlertEvent, AlertVideo>> }; marketChannels?: unknown; gameChannels?: unknown; activity?: unknown; tradeChannels?: TradeChannels; tradeBlock?: TradeBlockState; txChannels?: TxChannelsState; tradePicks?: TradePicks } | null;
 };
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -172,6 +172,19 @@ async function refreshMarketChannels(lg: League, log: (s: string) => void) {
   }
 }
 
+/** Asks the site to update #activity-tracker-week (only if /activitychannels was run). */
+async function refreshActivity(lg: League, log: (s: string) => void) {
+  if (!lg.settings?.activity || !process.env.EA_TOKEN_KEY) return;
+  try {
+    const { ts, sig } = signWorkerCall(lg.slug);
+    const res = await fetch(`${APP_URL}/api/leagues/${lg.slug}/discord/activity`, { method: "POST", headers: { "x-cfm-ts": ts, "x-cfm-sig": sig } });
+    const j = (await res.json().catch(() => ({}))) as { result?: string; error?: string };
+    log(`- Discord activity: ${j.result || j.error || `HTTP ${res.status}`}`);
+  } catch (e) {
+    log(`- Discord activity refresh failed: ${(e as Error).message}`);
+  }
+}
+
 async function syncLeague(lg: League): Promise<string> {
   const report: string[] = [];
   const log = (s: string) => { console.log(`[${lg.slug}] ${s}`); report.push(s); };
@@ -244,6 +257,7 @@ async function syncLeague(lg: League): Promise<string> {
   if (built) await postTradeBlock(lg, built.prev, built.data, log);
   if (built) await postTransactionChannels(lg, built.prev, built.data, log);
   if (built) await refreshMarketChannels(lg, log);
+  if (built) await refreshActivity(lg, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);
 }
 

@@ -36,6 +36,7 @@ import { auditChannelsCmd, postAudit } from "./auditChannels";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
 import { removeForce, setChoices, setForce } from "./forceResult";
+import { activityChannelsCmd } from "./activity";
 import { tradeChannelsCmd } from "./tradeChannels";
 import { txChannelsCmd } from "./txChannels";
 import { packChannelProblem, packChannelsCmd } from "./packChannels";
@@ -381,6 +382,11 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { ...(await tradeBuilderStart(lg)), flags: EPHEMERAL };
     }
     case "tradeblock": return tradeBlockCmd(i, lg, d, footer);
+    case "activitychannels": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      return reply(await activityChannelsCmd(lg.slug, opt(i, "action") === "remove"));
+    }
     case "auditchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);

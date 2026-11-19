@@ -16,9 +16,10 @@ import { bookKey, ticketsConfig } from "@/lib/tickets";
 import { readGameChannels } from "./gameChannels";
 import type { LinkedLeague } from "./links";
 import { dc } from "./rest";
+import { activityAfterForce, activityTeams } from "./activity";
 
 export type ForceKind = "win" | "loss" | "sim";
-export type ForcedGame = { kind: ForceKind; team?: number; activity?: number; by: string; at: string };
+export type ForcedGame = { kind: ForceKind; team?: number; activity?: number | number[]; by: string; at: string };
 /** settings.forcedGames: season → game id → the forced result. */
 export type ForcedGames = Record<string, Record<string, ForcedGame>>;
 
@@ -38,10 +39,10 @@ export function channelNameFor(a: Team, h: Team, f?: { kind: ForceKind; team?: n
   return `${base}-force-${f.kind}${f.kind !== "sim" && who ? `-${slugName(who.name)}` : ""}`.slice(0, 100);
 }
 
-export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number; activity?: number }): string {
+export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number; activity?: number | number[] }): string {
   const t = d.teams.find((x) => x.id === f.team);
-  const act = f.activity != null ? d.teams.find((x) => x.id === f.activity) : undefined;
-  return `${f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`}${act ? ` (activity: ${act.abbr})` : ""}`;
+  const act = activityTeams(f).map((id) => d.teams.find((x) => x.id === id)?.abbr ?? "?");
+  return `${f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`}${act.length ? ` (activity: ${act.join(" + ")})` : ""}`;
 }
 
 const teamOf = (d: LeagueData, id: number) => d.teams.find((t) => t.id === id);
@@ -73,9 +74,11 @@ export function setChoices(lg: LinkedLeague, d: LeagueData, sub: string | undefi
   if (focused === "team" || focused === "activity") {
     const g = d.games.find((x) => String(x.id) === String(gameValue ?? ""));
     if (!g) return [];
-    return [g.away, g.home].map((id) => teamOf(d, id)).filter((t): t is Team => Boolean(t))
-      .filter((t) => !n || norm(`${t.city} ${t.name} ${t.abbr}`).includes(n))
-      .map((t) => ({ name: `${t.city} ${t.name} (${t.abbr})`, value: t.abbr }));
+    const two = [g.away, g.home].map((id) => teamOf(d, id)).filter((t): t is Team => Boolean(t))
+      .map((t) => ({ name: `${t.city} ${t.name} (${t.abbr})${focused === "activity" ? ` · ${t.user || "CPU"}` : ""}`, value: t.abbr }));
+    // activity: "Both teams" too, e.g. a game both users played that EA didn't report before the advance
+    const all = focused === "activity" ? [...two, { name: "Both teams (both users played)", value: "both" }] : two;
+    return all.filter((x) => !n || norm(x.name).includes(n));
   }
   return candidates(lg, d)
     .filter(({ g }) => sub !== "remove" || forced[String(g.id)])
@@ -150,12 +153,17 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
     if (!team) return `Pick ${away.name} or ${home.name}; they're the two teams in that game.`;
   }
   const pickTeam = (v: unknown) => { const n = norm(String(v ?? "")); return n ? [away, home].find((t) => [t.abbr, t.name, `${t.city} ${t.name}`].some((x) => norm(x) === n)) : undefined; };
-  let act: Team | undefined;
-  if (String(a.activity ?? "").trim()) {
-    act = pickTeam(a.activity);
-    if (!act) return `For activity, pick ${away.name} or ${home.name}; they're the two teams in that game.`;
+  let acts: Team[] = [];
+  const av = String(a.activity ?? "").trim();
+  if (av) {
+    if (norm(av) === "both") acts = [away, home];
+    else {
+      const one = pickTeam(a.activity);
+      if (!one) return `For activity, pick ${away.name}, ${home.name} or Both teams.`;
+      acts = [one];
+    }
   }
-  const f: ForcedGame = { kind, team: team?.id, ...(act ? { activity: act.id } : {}), by: a.by, at: new Date().toISOString() };
+  const f: ForcedGame = { kind, team: team?.id, ...(acts.length ? { activity: acts.length === 1 ? acts[0].id : acts.map((t) => t.id) } : {}), by: a.by, at: new Date().toISOString() };
   const label = describeForce(d, f);
   const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
   await saveForced(lg, d.season.year, g.id, f);
@@ -165,13 +173,13 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
   if (ch) {
     const name = channelNameFor(away, home, f);
     note = renameNote(await rename(ch, name), ch, name);
-    if (!prev || prev.kind !== f.kind || prev.team !== f.team || prev.activity !== f.activity) {
-      const actLine = act ? ` It counts as a game played for **${act.city} ${act.name}**${act.user ? ` (${act.user})` : ""} for activity.` : "";
+    if (!prev || prev.kind !== f.kind || prev.team !== f.team || JSON.stringify(prev.activity) !== JSON.stringify(f.activity)) {
+      const actLine = acts.length ? ` For activity it counts as a game played for ${acts.map((t) => `**${t.city} ${t.name}**${t.user ? ` (${t.user})` : ""}`).join(" and ")}.` : "";
       await dc("POST", `/channels/${ch}/messages`, { content: `⚖️ An admin set **${label}** on this game. It's marked simmed on the site, so it doesn't count for bets (stakes come back) or audits.${actLine}`, allowed_mentions: { parse: [] } });
     }
   }
   await settleNow(lg);
-  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${act ? ` Activity: counts as a game played for ${act.abbr}${act.user ? ` (${act.user})` : ""}.` : ""}${note} Undo with \`/set remove\`.`;
+  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${acts.length ? ` Activity: a game played for ${acts.map((t) => `${t.abbr}${t.user ? ` (${t.user})` : ""}`).join(" and ")}.` : ""}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
 }
 
 export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown }): Promise<string> {
@@ -192,5 +200,5 @@ export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: un
     note = renameNote(await rename(ch, name), ch, name);
     await dc("POST", `/channels/${ch}/messages`, { content: `↩️ An admin removed the **${describeForce(d, f)}** on this game.`, allowed_mentions: { parse: [] } });
   }
-  return `Removed **${describeForce(d, f)}** from ${away.abbr} @ ${home.abbr}. The game counts normally again (simmed or played as EA reports it).${note} Bets already voided by the force stay refunded; new bets can be placed if the game is still open.`;
+  return `Removed **${describeForce(d, f)}** from ${away.abbr} @ ${home.abbr}. The game counts normally again (simmed or played as EA reports it).${note} Bets already voided by the force stay refunded; new bets can be placed if the game is still open.${await activityAfterForce(lg.slug, g.id)}`;
 }
