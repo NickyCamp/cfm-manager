@@ -508,7 +508,7 @@ export async function postPayoutsNow(slug: string): Promise<string> {
 /** The week's odds charts: Super Bowl + conferences (+ #1 seeds), then the 8 divisions. Returns charts posted. */
 /** Deletes every message in a channel (newest 1,000). Bulk-deletes what's under 14 days old when the
  *  bot has Manage Messages, else one by one (the bot's own posts don't need it). -1 if it couldn't read the channel. */
-async function clearChannel(channel: string): Promise<number> {
+export async function clearChannel(channel: string): Promise<number> {
   let n = 0, bulk = true;
   for (let page = 0; page < 10; page++) {
     const r = await dc("GET", `/channels/${channel}/messages?limit=100`);

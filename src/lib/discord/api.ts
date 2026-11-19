@@ -69,7 +69,7 @@ export function tidy(msg: Message): Message {
   };
 }
 
-type FileUpload = { data: Buffer; filename: string; contentType: string };
+export type FileUpload = { data: Buffer; filename: string; contentType: string };
 
 /** A JSON body, or multipart (payload_json + files[0]) when a file goes along. */
 function messageBody(payload: object, file?: FileUpload): { body: BodyInit; headers: Record<string, string> } {

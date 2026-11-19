@@ -9,6 +9,10 @@
 //    after the last sync but before the advance comes through "unknown". Those aren't counted;
 //    the wrap-up flags them for an admin to settle with /set force … activity.
 //  - A message at the top of the channel keeps each user's season totals (played / missed).
+//  - #activity-tracker-season: a chart of all 32 teams' users (played, missed, miss %) for this season,
+//    cleared and reposted after each advance. #activity-tracker-cycle: every user's totals over every
+//    season, starting from the league's own sheet for the seasons before the bot (activitySeeds.ts).
+//  - Regular season and playoffs only (stage 1); preseason games never count.
 // Only user-run teams count; CPU teams have no one to track.
 //
 // State: leagues.settings.activity (see ActivityState). Runs after every sync (the worker calls
@@ -22,6 +26,10 @@ import { discordOf, leagueBySlug, type LinkedLeague } from "./links";
 import { withLeagueLock } from "./lock";
 import { dc, isGone, sleep } from "./rest";
 import { botOnly, makeChannel } from "./tradeChannels";
+import { postToChannel } from "./api";
+import { clearChannel } from "./marketChannels";
+import { missPct, renderActivity, type ActivityRow } from "./activityImage";
+import { seedFor } from "./activitySeeds";
 
 type Status = "P" | "M"; // played, missed
 /** How a game counted: played, forced by an admin, missed (not played), or unknown (EA didn't say). */
@@ -39,10 +47,17 @@ export type ActivityState = {
   wrapped: string[];
   /** Earlier seasons' totals: year → user → [played, missed]. */
   history?: Record<string, Record<string, [number, number]>>;
+  seasonChannelId?: string;
+  cycleChannelId?: string;
+  /** The seasons before the bot, from the league's sheet: each row's EA user is the team's user when it was loaded. */
+  seed?: { seasons: string[]; gamesPerSeason: number; rows: { name: string; team: string; ea: string | null; misses: number[] }[] };
 };
 
 const CHANNEL = "activity-tracker-week";
 const TOPIC = "User activity: games played and missed each week. Posted by the bot after every sync and advance.";
+const SEASON_CH = "activity-tracker-season", CYCLE_CH = "activity-tracker-cycle";
+const SEASON_TOPIC = "Every team's user: games played and missed this season (regular season + playoffs). Redrawn after each advance.";
+const CYCLE_TOPIC = "Every user's games played and missed over every season. Redrawn after each advance.";
 const wkOf = (stage: number, week: number) => `${stage}:${week}`;
 const rankOf = (wk: string) => { const [s, w] = wk.split(":").map(Number); return (s || 0) * 100 + (w || 0); };
 const BUSY = "Activity tracking is already updating (a sync or another command). Try again in a minute.";
@@ -135,7 +150,8 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
   const list = await dc("GET", `/guilds/${guildId}/channels`);
   if (!list.ok) return `Discord said ${list.status} listing the server's channels.`;
   const chans = (Array.isArray(list.data) ? list.data : []) as unknown as { id: string; name: string; type: number; parent_id?: string }[];
-  if (!repair && old && chans.some((c) => c.id === old.channelId)) return old;
+  const have = (id?: string) => Boolean(id && chans.some((c) => c.id === id));
+  if (!repair && old && have(old.channelId) && have(old.seasonChannelId) && have(old.cycleChannelId)) return old;
 
   let cat = (old?.categoryId && chans.find((c) => c.id === old.categoryId && c.type === 4)?.id)
     || chans.find((c) => c.type === 4 && c.name.toLowerCase() === "activity")?.id;
@@ -145,18 +161,38 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
     cat = String(r.data.id);
   }
   const locked = await botOnly(guildId);
-  let ch = (old?.channelId && chans.find((c) => c.id === old.channelId)?.id) || chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === CHANNEL)?.id;
-  let fresh = false;
-  if (ch && repair) await dc("PATCH", `/channels/${ch}`, { permission_overwrites: locked, topic: TOPIC, parent_id: cat });
-  if (!ch) {
-    const r = await makeChannel(guildId, { name: CHANNEL, type: 0, parent_id: cat, topic: TOPIC }, locked);
-    if (!r.ok) return r.status === 403 ? `The bot couldn't make #${CHANNEL}: it needs Manage Channels.` : `Discord said ${r.status} making #${CHANNEL}.`;
-    ch = String(r.data.id);
-    fresh = true;
-  }
+  const made: Record<string, boolean> = {};
+  const one = async (known: string | undefined, name: string, topic: string): Promise<string> => {
+    let id = (known && chans.find((c) => c.id === known)?.id) || chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === name)?.id;
+    if (id && repair) await dc("PATCH", `/channels/${id}`, { permission_overwrites: locked, topic, parent_id: cat });
+    if (!id) {
+      const r = await makeChannel(guildId, { name, type: 0, parent_id: cat, topic }, locked);
+      if (!r.ok) throw new Error(r.status === 403 ? `The bot couldn't make #${name}: it needs Manage Channels.` : `Discord said ${r.status} making #${name}.`);
+      id = String(r.data.id);
+      made[name] = true;
+    }
+    return id;
+  };
+  let ch: string, seasonCh: string, cycleCh: string;
+  try {
+    ch = await one(old?.channelId, CHANNEL, TOPIC);
+    seasonCh = await one(old?.seasonChannelId, SEASON_CH, SEASON_TOPIC);
+    cycleCh = await one(old?.cycleChannelId, CYCLE_CH, CYCLE_TOPIC);
+  } catch (e) { return (e as Error).message; }
+  const fresh = Boolean(made[CHANNEL]);
   const st: ActivityState = old
-    ? { ...old, categoryId: cat, channelId: ch, totalsMessageId: fresh ? null : old.totalsMessageId }
-    : { categoryId: cat, channelId: ch, totalsMessageId: null, season: d.season.year, start: wkOf(d.season.stage, d.season.week), games: {}, wrapped: [] };
+    ? { ...old, categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: fresh ? null : old.totalsMessageId }
+    : { categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: null, season: d.season.year, start: wkOf(d.season.stage, d.season.week), games: {}, wrapped: [] };
+  // the league's sheet for the seasons before the bot (once)
+  if (!st.seed) {
+    const seed = seedFor(lg.slug, lg.name);
+    if (seed) {
+      st.seed = { seasons: seed.seasons, gamesPerSeason: seed.gamesPerSeason, rows: seed.rows.map((r) => {
+        const t = d.teams.find((x) => x.name.toLowerCase() === r.team.toLowerCase());
+        return { name: r.name, team: t?.abbr || r.team, ea: t?.user || null, misses: r.misses };
+      }) };
+    }
+  }
   if (fresh) {
     await post(ch, { content: `**User activity.** Every user game played posts here after each sync. After each advance, the week that ended gets a wrap-up: games an admin set with \`/set\` first (the team picked for \`activity\` gets a game played, not a miss), then games nobody played, which count as a sim with a miss for both users. Season totals are in the next message and stay up to date.` });
   }
@@ -178,14 +214,85 @@ async function refreshTotals(st: ActivityState, d: LeagueData) {
   }
 }
 
+/** How a user shows on the charts: their name from the league's sheet when there is one. */
+function displayName(st: ActivityState, ea: string): string {
+  return st.seed?.rows.find((r) => r.ea && r.ea.toLowerCase() === ea.toLowerCase())?.name || ea;
+}
+
+/** This season, one row per team (CPU teams included, with no counts). */
+function seasonRows(d: LeagueData, st: ActivityState): ActivityRow[] {
+  const rows = d.teams.map((t) => {
+    let played = 0, missed = 0;
+    if (t.user) for (const r of Object.values(st.games)) { const x = r.by[String(t.id)]; if (x && x.u === t.user) { if (x.s === "P") played++; else missed++; } }
+    return { user: t.user ? displayName(st, t.user) : "CPU", team: t, teamAbbr: t.abbr, played, missed };
+  });
+  return rows.sort((a, b) => Number(a.user === "CPU") - Number(b.user === "CPU") || missPct(a) - missPct(b) || a.missed - b.missed || b.played - a.played || a.user.localeCompare(b.user));
+}
+
+/** Every season: the sheet's seasons, then each season the bot counted (this one included). */
+function cycleRows(d: LeagueData, st: ActivityState): { rows: ActivityRow[]; labels: string[] } {
+  const seedN = st.seed?.seasons.length || 0;
+  // this season gets a column once anything counts (or the season is under way), not while it's an empty offseason
+  const live = Object.keys(st.games).length > 0 || d.season.stage <= 1;
+  const years = [...Object.keys(st.history || {}).map(Number), ...(live ? [st.season] : [])].filter((y, i, a) => a.indexOf(y) === i).sort((a, b) => a - b);
+  const labels = [...(st.seed?.seasons || []), ...years.map((y, i) => `Season ${seedN + i + 1}`)];
+  type P = { key: string; name: string; teamAbbr: string; team?: Team; per: ({ p: number; m: number } | null)[] };
+  const people = new Map<string, P>();
+  const get = (ea: string | null, fallback: string, abbr: string) => {
+    const key = (ea || `sheet:${fallback}`).toLowerCase();
+    if (!people.has(key)) people.set(key, { key, name: ea ? displayName(st, ea) : fallback, teamAbbr: abbr, per: labels.map(() => null) });
+    return people.get(key)!;
+  };
+  for (const r of st.seed?.rows || []) {
+    const p = get(r.ea, r.name, r.team);
+    r.misses.forEach((m, k) => { p.per[k] = { p: st.seed!.gamesPerSeason - m, m }; });
+  }
+  const cur = totals(d, st);
+  years.forEach((y, i) => {
+    const src: [string, [number, number]][] = y === st.season && !st.history?.[String(y)] ? [...cur].map(([u, e]) => [u, [e.p, e.m]]) : Object.entries(st.history?.[String(y)] || {});
+    for (const [u, [pl, mi]] of src) { const p = get(u, u, ""); p.per[seedN + i] = { p: pl, m: mi }; }
+  });
+  const rows: ActivityRow[] = [...people.values()].map((p) => {
+    const t = d.teams.find((x) => x.user && x.user.toLowerCase() === p.key);
+    const played = p.per.reduce((s, x) => s + (x?.p || 0), 0), missed = p.per.reduce((s, x) => s + (x?.m || 0), 0);
+    const seasons = p.per.filter((x) => x && x.p + x.m > 0).length;
+    // newest season first, like the sheet
+    return { user: p.name, team: t, teamAbbr: t?.abbr || p.teamAbbr || "—", played, missed, seasons, perSeason: [...p.per].reverse().map((x) => (x ? x.m : null)) };
+  }).filter((r) => r.played + r.missed > 0 || r.team);
+  rows.sort((a, b) => missPct(a) - missPct(b) || a.missed - b.missed || a.user.localeCompare(b.user));
+  return { rows, labels: [...labels].reverse() };
+}
+
+/** Clears #activity-tracker-season and #activity-tracker-cycle and posts fresh charts. */
+async function postCharts(lg: LinkedLeague, st: ActivityState, d: LeagueData): Promise<void> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return;
+  if (st.seasonChannelId) {
+    await clearChannel(st.seasonChannelId).catch(() => -1);
+    const png = await renderActivity({ title: `${d.season.year} season activity`, subtitle: `${lg.name} · games played and missed · through ${d.season.title}`, rows: seasonRows(d, st) });
+    await postToChannel(token, st.seasonChannelId, { content: `**${d.season.year} season activity** (regular season and playoffs; preseason doesn't count). Redrawn after each advance.`, allowed_mentions: { parse: [] } }, { data: png, filename: "activity-season.png", contentType: "image/png" });
+  }
+  if (st.cycleChannelId) {
+    await clearChannel(st.cycleChannelId).catch(() => -1);
+    const { rows, labels } = cycleRows(d, st);
+    const png = await renderActivity({ title: "Activity: all seasons", subtitle: `${lg.name} · total games played and missed · misses per season`, rows, seasonLabels: labels });
+    await postToChannel(token, st.cycleChannelId, { content: `**Activity over every season**${st.seed ? ` (${st.seed.seasons.join(" and ")} from the league's sheet)` : ""}. Redrawn after each advance.`, allowed_mentions: { parse: [] } }, { data: png, filename: "activity-cycle.png", contentType: "image/png" });
+  }
+}
+
 /** The work for one run: new played games, wrap-ups for finished weeks, the totals. */
-async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData): Promise<string> {
+async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, redraw = false): Promise<string> {
   const notes: string[] = [];
   // a new season: keep last season's totals, start over
   if (st.season !== d.season.year) {
-    st.history = { ...(st.history || {}), [String(st.season)]: Object.fromEntries([...totals(d, st)].map(([u, e]) => [u, [e.p, e.m] as [number, number]])) };
-    await post(st.channelId, { content: `**${st.season} season done.** Final activity totals are kept; counting starts over for ${d.season.year}.` });
+    const done = Object.fromEntries([...totals(d, st)].map(([u, e]) => [u, [e.p, e.m] as [number, number]]));
+    // a season with nothing counted (tracking began in its offseason) isn't a season of its own
+    if (Object.keys(done).length) {
+      st.history = { ...(st.history || {}), [String(st.season)]: done };
+      await post(st.channelId, { content: `**${st.season} season done.** Final activity totals are kept; counting starts over for ${d.season.year}.` });
+    }
     Object.assign(st, { season: d.season.year, start: wkOf(d.season.stage, d.season.week), games: {}, wrapped: [], totalsMessageId: null });
+    redraw = true;
   }
   const cur = rankOf(wkOf(d.season.stage, d.season.week)), start = rankOf(st.start);
   const tracked = d.games.filter((g) => g.stage === 1 && g.home && g.away && rankOf(wkOf(g.stage, g.week)) >= start && rankOf(wkOf(g.stage, g.week)) <= cur && userTeams(d, g).length);
@@ -232,6 +339,8 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData): 
   }
 
   if (changed || !st.totalsMessageId) await refreshTotals(st, d);
+  // the season and cycle charts: after each advance (a wrap-up), and when asked
+  if (weeks.length || redraw) await postCharts(lg, st, d).catch((e) => console.error("activity charts", (e as Error).message));
   await save(lg, st);
   return notes.length ? `Activity: ${notes.join("; ")}.` : "Activity: nothing new.";
 }
@@ -258,7 +367,7 @@ export async function activityChannelsCmd(slug: string, remove: boolean): Promis
   if (remove) {
     const st = readActivity(lg);
     if (!st) return "Activity tracking isn't set up.";
-    await dc("DELETE", `/channels/${st.channelId}`);
+    for (const id of [st.channelId, st.seasonChannelId, st.cycleChannelId]) if (id) await dc("DELETE", `/channels/${id}`);
     await dc("DELETE", `/channels/${st.categoryId}`);
     await save(lg, null);
     return "Activity tracking removed (the channel and its counts). Run /activitychannels again to start over from the current week.";
@@ -269,12 +378,13 @@ export async function activityChannelsCmd(slug: string, remove: boolean): Promis
     const isNew = !readActivity(lg);
     const st = await ensureChannel(lg, d, true);
     if (typeof st === "string") return st;
-    const res = await runActivity(lg, st, d);
+    const res = await runActivity(lg, st, d, true);
     return [
-      isNew ? `Activity tracking is on: <#${st.channelId}> (bot-only). Counting starts with ${d.season.year} ${weekTitle(d, ...(st.start.split(":").map(Number) as [number, number]))}.` : `<#${st.channelId}> repaired and up to date.`,
+      isNew ? `Activity tracking is on: <#${st.channelId}>, <#${st.seasonChannelId}> and <#${st.cycleChannelId}> (bot-only). Counting starts with ${d.season.year} ${weekTitle(d, ...(st.start.split(":").map(Number) as [number, number]))}; preseason never counts.` : `<#${st.channelId}>, <#${st.seasonChannelId}> and <#${st.cycleChannelId}> repaired and up to date.`,
+      st.seed ? `The all-seasons chart starts from the league's sheet (${st.seed.seasons.join(", ")}): ${st.seed.rows.filter((r) => !r.ea).length ? `couldn't match ${st.seed.rows.filter((r) => !r.ea).map((r) => r.name).join(", ")} to a team with a user` : "every row matched to its team's user"}.` : "",
       "It updates after every sync: played games right away, and after each advance a wrap-up with admin forces (/set, with the `activity` team getting a game played) and misses for games nobody played.",
       res,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }).catch((e) => `Activity failed: ${(e as Error).message}`);
 }
 
@@ -301,10 +411,11 @@ export async function activityAfterForce(slug: string, gameId: number): Promise<
     if (JSON.stringify(prev) === JSON.stringify(st.games[String(g.id)])) return "";
     await post(st.channelId, { content: `✏️ **Updated after /set** · ${weekTitle(d, g.stage, g.week)} · ${st.games[String(g.id)] ? line(d, g, next) : `${label(d.teams.find((t) => t.id === g.away))} @ ${label(d.teams.find((t) => t.id === g.home))}: counted again in this week's wrap-up after the advance`}` });
     await refreshTotals(st, d);
+    if (st.wrapped.includes(w)) await postCharts(fresh, st, d).catch(() => {});
     await save(fresh, st);
     return " Activity tracker updated.";
   }).catch(() => "");
 }
 
 /** For tests. */
-export const _test = { judge, line, totalsEmbed };
+export const _test = { judge, line, totalsEmbed, seasonRows, cycleRows };
