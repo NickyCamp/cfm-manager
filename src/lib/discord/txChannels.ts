@@ -26,7 +26,7 @@ export async function ensureTxChannels(lg: LinkedLeague): Promise<TxChannelsStat
     cat = String(r.data.id);
   }
   const locked = await botOnly(guildId);
-  const state: TxChannelsState = { categoryId: cat, channels: {}, historyPostedAt: old?.historyPostedAt };
+  const state: TxChannelsState = { categoryId: cat, channels: {}, historyPostedAt: old?.historyPostedAt, historyFor: old?.historyFor };
   for (const w of TX_CHANNELS) {
     const known = old?.channels?.[w.key];
     const found = (known && chans.find((c) => c.id === known)?.id) || chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === w.name)?.id;
@@ -40,6 +40,8 @@ export async function ensureTxChannels(lg: LinkedLeague): Promise<TxChannelsStat
     const r = await makeChannel(guildId, { name: w.name, type: 0, parent_id: cat, topic: w.topic }, locked);
     if (!r.ok) return r.status === 403 ? `The bot couldn't make #${w.name}: it needs Manage Channels, and View Channels in the Transactions category${r.data?.message ? ` (Discord: ${String(r.data.message)})` : ""}.` : `Discord said ${r.status} making #${w.name}.`;
     state.channels[w.key] = String(r.data.id);
+    // A channel added after the history already went out (e.g. #players-signed) gets its own history next sync.
+    if (state.historyPostedAt) state.historyFor = [...new Set([...(state.historyFor || []), w.key])];
   }
   await updateLeagueSettings(lg.id, (s) => { s.txChannels = state; return s; });
   return state;
@@ -60,14 +62,17 @@ export async function txChannelsCmd(slug: string, action: "remove" | "history" |
   const st = await ensureTxChannels(lg);
   if (typeof st === "string") return st;
   if (action === "history" && st.historyPostedAt) {
-    await updateLeagueSettings(lg.id, (s) => { const t = s.txChannels as TxChannelsState | undefined; if (!t) return null; delete t.historyPostedAt; return s; });
-    st.historyPostedAt = undefined;
+    await updateLeagueSettings(lg.id, (s) => { const t = s.txChannels as TxChannelsState | undefined; if (!t) return null; delete t.historyPostedAt; delete t.historyFor; return s; });
+    st.historyPostedAt = undefined; st.historyFor = undefined;
   }
   let when = "";
-  if (!st.historyPostedAt) {
+  if (!st.historyPostedAt || st.historyFor?.length) {
     // The history goes out with the next sync, so start one now.
     const r = await requestSync(slug, { minGapMs: MANUAL_COOLDOWN_MS, mode: "full", by });
-    when = r.started
+    if (st.historyPostedAt) {
+      const names = TX_CHANNELS.filter((c) => st.historyFor?.includes(c.key)).map((c) => `<#${st.channels[c.key]}>`).join(", ");
+      when = `${r.started ? "A sync just started: when it finishes" : "On the next sync"}, the bot posts the saved history in the new channel${names.includes(",") ? "s" : ""} (${names}) only, then new moves as usual.`;
+    } else when = r.started
       ? "A sync just started: when it finishes, the bot posts everything already saved on the site (oldest first), then this sync's new moves. After that, each sync posts only what's new."
       : "The next sync posts everything already saved on the site (oldest first), then that sync's new moves. After that, each sync posts only what's new.";
   }

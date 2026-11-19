@@ -36,7 +36,7 @@ import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
 import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
-import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState } from "../src/lib/discord/txPosts";
+import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState, type TxKey } from "../src/lib/discord/txPosts";
 import { maddenBlockChanges, type TradeBlockState } from "../src/lib/league/tradeBlock";
 import { maddenBlockPosts } from "../src/lib/discord/tradeBlock";
 import { postToChannel, type AlertEvent, type AlertVideo } from "../src/lib/discord/api";
@@ -132,11 +132,13 @@ async function postTransactionChannels(lg: League, prev: LeagueData | null, data
     const byKey = transactionPosts(prev, data, opts);
     // New channels (or "Repost history"): everything the site already saved goes first, oldest first.
     let backlog: ReturnType<typeof backlogPosts> = {};
-    if (!st.historyPostedAt) {
+    const only = st.historyPostedAt ? st.historyFor || [] : null; // null: the whole history, every channel
+    if (!st.historyPostedAt || only?.length) {
       const buf = await download(`${lg.slug}/history.json.gz`);
       let hist: LeagueHistory | null = null;
       try { hist = buf ? JSON.parse(gunzipSync(buf).toString("utf8")) : null; } catch { hist = null; }
       backlog = backlogPosts(hist, prev, data, opts);
+      if (only) backlog = Object.fromEntries(Object.entries(backlog).filter(([k]) => only.includes(k as TxKey)));
     }
     const done: string[] = [];
     for (const c of TX_CHANNELS) {
@@ -153,6 +155,9 @@ async function postTransactionChannels(lg: League, prev: LeagueData | null, data
       // (an admin can run /transactionchannels action: Repost history after fixing permissions).
       await updateSettings(db, lg.id, (s) => { const t = s.txChannels as TxChannelsState | undefined; if (!t) return null; t.historyPostedAt = new Date().toISOString(); return s; });
       log(`- Transactions channels: saved history posted (${Object.values(backlog).reduce((n, m) => n + (m?.length || 0), 0)} messages).`);
+    } else if (only?.length) {
+      await updateSettings(db, lg.id, (s) => { const t = s.txChannels as TxChannelsState | undefined; if (!t) return null; delete t.historyFor; return s; });
+      log(`- Transactions channels: saved history posted in ${only.join(", ")} (${Object.values(backlog).reduce((n, m) => n + (m?.length || 0), 0)} messages).`);
     }
   } catch (e) {
     log(`- Discord Transactions channels failed: ${(e as Error).message}`);

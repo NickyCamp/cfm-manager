@@ -1,6 +1,6 @@
 // Discord "Transactions" category (Nick, 2026-11-17): bot-only channels that each list what one
 // sync newly recorded: scores, dev changes, injuries, ability changes, rating and trait changes,
-// cuts, extensions, trades and position changes. This file is pure (prev build vs next build →
+// cuts, signings (added 2026-11-19), extensions, trades and position changes. This file is pure (prev build vs next build →
 // messages per channel); txChannels.ts makes the channels and the sync worker posts.
 import type { LeagueData, Player } from "../league/types";
 import { DEV_LABEL } from "../league/types";
@@ -20,6 +20,7 @@ export const TX_CHANNELS = [
   { key: "ratingsUp", name: "ratings-up", title: "📈 Ratings & traits up", topic: "Overall and rating increases and traits gained, posted by the bot after each sync." },
   { key: "ratingsDown", name: "ratings-down", title: "📉 Ratings & traits down", topic: "Overall and rating drops and traits lost, posted by the bot after each sync." },
   { key: "cuts", name: "cuts", title: "✂️ Cuts", topic: "Players released, with the dead money left behind, posted by the bot after each sync." },
+  { key: "signings", name: "players-signed", title: "✍️ Players signed", topic: "Free agents and practice-squad players signed to a roster, with their deals, posted by the bot after each sync." },
   { key: "extensions", name: "extensions", title: "📝 Extensions", topic: "Extensions, new deals and restructures, posted by the bot after each sync." },
   { key: "trades", name: "trades", title: "🔁 Trades", topic: "Trades as they happened in Madden, posted by the bot after each sync." },
   { key: "positions", name: "position-changes", title: "🔀 Position changes", topic: "Players moved to a new position, posted by the bot after each sync." },
@@ -30,6 +31,8 @@ export type TxChannelsState = {
   channels: Partial<Record<TxKey, string>>;
   /** When the saved history went out (backlogPosts). Missing: the next sync posts it first. */
   historyPostedAt?: string;
+  /** Channels added after the history went out (e.g. #players-signed): the next sync posts the history in just these. */
+  historyFor?: TxKey[];
 };
 
 /** Most messages one channel gets per sync (a progression week changes ratings for most of the league). */
@@ -182,7 +185,9 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
   const events = diffLeague(prev, next, next.pulledAt);
   const cuts: { ovr: number; line: string }[] = [];
   const ext: { ovr: number; line: string }[] = [];
+  const signed: { ovr: number; line: string }[] = [];
   for (const e of events) {
+    if (e.kind === "signed") { signed.push({ ovr: e.ovr, line: signedLine(e, abbr, url) }); continue; }
     if (e.kind === "released") {
       const old = before.get(e.p);
       const dead = old?.contract.releasePenalty || 0, saved = old ? old.contract.capHit - dead : 0;
@@ -192,6 +197,7 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
     }
   }
   if (cuts.length) out.cuts = list("cuts", cuts.sort((x, y) => y.ovr - x.ovr).map((x) => x.line), url("/cap"));
+  if (signed.length) out.signings = list("signings", signed.sort((x, y) => y.ovr - x.ovr).map((x) => x.line), url("/cap"));
   if (ext.length) out.extensions = list("extensions", ext.sort((x, y) => y.ovr - x.ovr).map((x) => x.line), url("/cap"));
 
   // Trades: the same post as #trade-transactions (linked to the approved proposal when there is one).
@@ -203,6 +209,13 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
 
 const deal = (c: C) => `${c[0]} yr${c[0] === 1 ? "" : "s"}, ${money(c[2] + c[3])}${c[3] ? ` (${money(c[3])} bonus)` : ""}`;
 const playerRef = (e: TxEvent, url: (p?: string) => string) => (e.p ? `[**${e.name}**](${url(`/players/${e.p}`)})` : `**${e.name}**`);
+
+/** "✍️ DAL signed Name (WR, 74 Star, age 27) · 2 yrs, $8.0M · $4.1M cap hit"; "off MIA's practice squad" when he came from one. */
+function signedLine(e: TxEvent, abbr: (id: number | undefined) => string, url: (p?: string) => string) {
+  const dev = e.dev ? ` ${DEV_LABEL[e.dev as 0 | 1 | 2 | 3]}` : "";
+  const from = e.from ? ` off ${abbr(e.from)}'s practice squad` : "";
+  return `✍️ ${abbr(e.to)} signed ${playerRef(e, url)} (${e.pos}, ${e.ovr}${dev}, age ${e.age})${from}${e.after ? ` · ${deal(e.after)} · ${money(e.after[4])} cap hit` : ""}`;
+}
 
 function contractLine(e: TxEvent, abbr: (id: number | undefined) => string, url: (p?: string) => string) {
   const t = abbr(e.to), name = `${playerRef(e, url)} (${e.pos}, ${e.ovr})`;
@@ -217,7 +230,7 @@ function contractLine(e: TxEvent, abbr: (id: number | undefined) => string, url:
  * have saved … then every sync after just updates the channels with the new ones"). Everything the site
  * already recorded before this sync, oldest first under a header per league week:
  *  - from the transaction log (history.json.gz): dev changes, overall changes (up/down), cuts,
- *    extensions and restructures, trades (imported NCL trades include their picks);
+ *    signings, extensions and restructures, trades (imported NCL trades include their picks);
  *  - from the league data: this season's final scores, and who was injured as of the last sync.
  * Ability, position, individual rating and trait changes were never saved, so they start with the live posts.
  * This sync's own moves are left out; the regular posts for this sync cover them.
@@ -254,6 +267,7 @@ export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, n
   all("ratingsUp", ovr(true));
   all("ratingsDown", ovr(false));
   all("cuts", byWeek(of("released"), (e) => `✂️ ${abbr(e.from)} cut ${playerRef(e, url)} (${e.pos}, ${e.ovr}, age ${e.age})${e.before ? ` · was ${deal(e.before)}, ${e.before[1]} yr${e.before[1] === 1 ? "" : "s"} left, ${money(e.before[4])} cap hit` : ""}`), url("/cap"));
+  all("signings", byWeek(of("signed"), (e) => signedLine(e, abbr, url)), url("/cap"));
   all("extensions", byWeek(of("extended", "restructured"), (e) => contractLine(e, abbr, url)), url("/cap"));
 
   // Trades: an imported trade is one event with the whole deal; synced trades are one event per player,
