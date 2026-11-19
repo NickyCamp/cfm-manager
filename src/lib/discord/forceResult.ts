@@ -1,4 +1,4 @@
-// /set (Nick, 2026-11-19): admins force a result on one of this week's games.
+// /set (Nick, 2026-11-19): admins force a result on a game from the game channel categories.
 //   /set force game:<this week's game channel> result:<Force Win | Force Loss | Force Sim> [team]
 //   /set remove game:<a forced game>
 // A forced game is stored in leagues.settings.forcedGames[year][gameId]. getLeagueData overlays it
@@ -42,13 +42,26 @@ export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number
   return f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`;
 }
 
-const thisWeek = (d: LeagueData) => d.games.filter((g) => g.stage === 1 && g.stage === d.season.stage && g.week === d.season.week && g.home && g.away);
 const teamOf = (d: LeagueData, id: number) => d.teams.find((t) => t.id === id);
 
-/** The game channel for a game this week, if /gamechannels built one. */
-function channelOf(lg: LinkedLeague, d: LeagueData, g: Game): string | null {
-  const wk = readGameChannels(lg.settings?.gameChannels).weeks[`${d.season.year}:${g.stage}:${g.week}`];
-  return wk?.games[String(g.id)]?.channelId || null;
+type Pick = { g: Game; channelId: string | null; category: string };
+/** The games /set can pick: every game with a channel in the game channel categories (any week built
+ *  with /gamechannels, newest week first). Only if there are none, this week's games without channels.
+ *  (Nick, 2026-11-19: it showed nothing when the league had moved past the current week's games.) */
+function candidates(lg: LinkedLeague, d: LeagueData): Pick[] {
+  const byId = new Map(d.games.map((g) => [String(g.id), g]));
+  const weeks = Object.entries(readGameChannels(lg.settings?.gameChannels).weeks)
+    .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }));
+  const out: Pick[] = [];
+  for (const [key, wk] of weeks) {
+    for (const [id, gc] of Object.entries(wk.games)) {
+      const g = byId.get(id);
+      if (g && g.home && g.away) out.push({ g, channelId: gc.channelId, category: wk.name || `${key.split(":")[0]} - ${weekTitle(d, g.stage, g.week)}` });
+    }
+  }
+  if (out.length) return out;
+  return d.games.filter((g) => g.stage === 1 && g.stage === d.season.stage && g.week === d.season.week && g.home && g.away)
+    .map((g) => ({ g, channelId: null, category: `${d.season.year} - ${weekTitle(d, g.stage, g.week)}` }));
 }
 
 /** Autocomplete for /set: `game` lists this week's games (only forced ones for remove); `team` the picked game's two teams. */
@@ -62,13 +75,13 @@ export function setChoices(lg: LinkedLeague, d: LeagueData, sub: string | undefi
       .filter((t) => !n || norm(`${t.city} ${t.name} ${t.abbr}`).includes(n))
       .map((t) => ({ name: `${t.city} ${t.name} (${t.abbr})`, value: t.abbr }));
   }
-  return thisWeek(d)
-    .filter((g) => sub !== "remove" || forced[String(g.id)])
-    .map((g) => {
+  return candidates(lg, d)
+    .filter(({ g }) => sub !== "remove" || forced[String(g.id)])
+    .map(({ g, channelId, category }) => {
       const a = teamOf(d, g.away)!, h = teamOf(d, g.home)!;
       const f = forced[String(g.id)];
-      const ch = channelOf(lg, d, g) ? `#${channelNameFor(a, h, f)}` : `${a.name} at ${h.name} (no channel)`;
-      return { name: `${ch}${f ? ` · ${describeForce(d, f)}` : ""}`.slice(0, 100), value: String(g.id), key: `${a.city} ${a.name} ${a.abbr} ${h.city} ${h.name} ${h.abbr}` };
+      const ch = channelId ? `#${channelNameFor(a, h, f)}` : `${a.name} at ${h.name} (no channel)`;
+      return { name: `${category} · ${ch}${f ? ` · ${describeForce(d, f)}` : ""}`.slice(0, 100), value: String(g.id), key: `${a.city} ${a.name} ${a.abbr} ${h.city} ${h.name} ${h.abbr}` };
     })
     .filter((x) => !n || norm(x.key + x.name).includes(n))
     .slice(0, 25)
@@ -121,8 +134,9 @@ async function saveForced(lg: LinkedLeague, year: number, gameId: number, f: For
 }
 
 export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown; kind: unknown; team: unknown; by: string }): Promise<string> {
-  const g = thisWeek(d).find((x) => String(x.id) === String(a.game ?? ""));
-  if (!g) return "Pick one of this week's games from the list.";
+  const pick = candidates(lg, d).find((x) => String(x.g.id) === String(a.game ?? ""));
+  if (!pick) return "Pick a game from the list (it shows the games in your game channel categories; build one with /gamechannels).";
+  const g = pick.g;
   const kind = String(a.kind ?? "") as ForceKind;
   if (!(kind in KIND_LABEL)) return "Pick Force Win, Force Loss or Force Sim.";
   const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
@@ -139,7 +153,7 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
   await saveForced(lg, d.season.year, g.id, f);
 
   let note = " This game has no channel yet (/gamechannels).";
-  const ch = channelOf(lg, d, g);
+  const ch = pick.channelId;
   if (ch) {
     const name = channelNameFor(away, home, f);
     note = renameNote(await rename(ch, name), ch, name);
@@ -163,7 +177,7 @@ export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: un
   const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
   await saveForced(lg, d.season.year, g.id, null);
   let note = "";
-  const ch = channelOf(lg, d, g);
+  const ch = candidates(lg, d).find((x) => x.g.id === g.id)?.channelId || null;
   if (ch) {
     const name = channelNameFor(away, home);
     note = renameNote(await rename(ch, name), ch, name);
