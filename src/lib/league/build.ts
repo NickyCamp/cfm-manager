@@ -32,6 +32,16 @@ const hex = (n: number) => "#" + (Number(n) >>> 0 & 0xffffff).toString(16).padSt
 const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
 const signedByte = (n: number) => (n > 127 ? n - 256 : n);
 
+// EA sends draftRound and draftPick one too high (Nick, 2026-11-18: the 2028 rookies showed a round late).
+// Checked on NCL: Mahomes R2 #11 (really R1 #10), Josh Allen R2 #8 (R1 #7), Jayden Daniels R2 #3 (R1 #2),
+// Brock Purdy R8 (R7). Undrafted players come as round 64. draftPick is the overall pick.
+// Result: round 1–7 with the real overall pick, or round 0 / pick 0 for undrafted.
+function draftSpot(p: Any): Player["draft"] {
+  const r = num(p.draftRound) - 1;
+  const drafted = r >= 1 && r <= 7;
+  return { round: drafted ? r : 0, pick: drafted ? Math.max(0, num(p.draftPick) - 1) : 0, year: num(p.rookieYear) };
+}
+
 export function buildLeagueData(files: Raw): LeagueData {
   const meta = files["meta.json"] as Any;
   const hub = files["league-hub.json"] as Any;
@@ -132,7 +142,7 @@ export function buildLeagueData(files: Raw): LeagueData {
         id: p.rosterId, team: fa ? 0 : p.teamId, first: p.firstName, last: p.lastName, pos: p.position, age: num(p.age),
         ovr: num(p.playerBestOvr), dev: (Math.max(0, Math.min(3, num(p.devTrait))) as 0 | 1 | 2 | 3), jersey: num(p.jerseyNum),
         yearsPro: num(p.yearsPro), college: p.college || "", height: num(p.height), weight: num(p.weight),
-        draft: { round: num(p.draftRound), pick: num(p.draftPick), year: num(p.rookieYear) },
+        draft: draftSpot(p),
         ps: Boolean(p.isOnPracticeSquad), ir: Boolean(p.isOnIR), injury: num(p.injuryType) === HEALTHY_INJURY_TYPE ? 0 : num(p.injuryLength),
         contract: {
           length: num(p.contractLength), yearsLeft: num(p.contractYearsLeft), salary: num(p.contractSalary), bonus: num(p.contractBonus),
