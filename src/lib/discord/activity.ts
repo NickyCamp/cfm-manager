@@ -172,7 +172,9 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
   const have = (id?: string) => Boolean(id && chans.some((c) => c.id === id));
   // lock v2 (2026-11-19): bot + the "admin" role can post; channels made before get the new lock once
   if (old && (old.lock || 0) < 2) repair = true;
-  if (!repair && old && have(old.channelId) && have(old.seasonChannelId) && have(old.cycleChannelId)) return old;
+  const seedNow = seedFor(lg.slug, lg.name);
+  const seedStale = Boolean(seedNow && (!old?.seed || (old.seed.version || 1) < seedNow.version));
+  if (!repair && !seedStale && old && have(old.channelId) && have(old.seasonChannelId) && have(old.cycleChannelId)) return old;
 
   let cat = (old?.categoryId && chans.find((c) => c.id === old.categoryId && c.type === 4)?.id)
     || chans.find((c) => c.type === 4 && c.name.toLowerCase() === "activity")?.id;
