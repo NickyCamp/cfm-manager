@@ -1034,8 +1034,9 @@ function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed 
   };
 }
 
-/** Top 10 rookies of the newest draft class by overall (real dev traits, which Madden hides in game), league-wide
- *  (rostered players only) or one team's. */
+/** Rookies of the newest draft class (real dev traits, which Madden hides in game). League-wide: the top 10 by
+ *  overall, rostered players only. One team (Nick, 2026-11-18): the team's whole class in draft order, then
+ *  undrafted rookies by overall, practice squad included. */
 function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Footer, year?: number): Embed {
   // The newest draft class by EA's rookieYear, not "0 years pro": around the draft Madden may still show last
   // year's rookies at 0 years pro, which would mix two classes. Players without a rookieYear fall back to yearsPro.
@@ -1045,19 +1046,27 @@ function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Foot
   const isRookie = (p: Player) => (p.draft.year ? p.draft.year === cls : !year && p.yearsPro === 0);
   const rookies = d.players
     .filter((p) => isRookie(p) && !p.gone && (t ? p.team === t.id : p.team > 0))
-    .sort((a, b) => b.ovr - a.ovr || b.dev - a.dev || a.draft.round - b.draft.round || a.draft.pick - b.draft.pick)
-    .slice(0, 10);
+    .sort(t
+      ? (a, b) => (a.draft.round || 99) - (b.draft.round || 99) || a.draft.pick - b.draft.pick || b.ovr - a.ovr || b.dev - a.dev
+      : (a, b) => b.ovr - a.ovr || b.dev - a.dev || a.draft.round - b.draft.round || a.draft.pick - b.draft.pick)
+    .slice(0, t ? undefined : 10);
   const pick = (p: Player) => (p.draft.round > 0 && p.draft.round < 8 ? `Rd ${p.draft.round}, #${p.draft.pick}` : "Undrafted");
   const lines = rookies.map((p, k) => {
     const team = t ? "" : ` · ${teamOf(d, p.team)?.abbr || "FA"}`;
     const extra = [p.dev ? DEV_LABEL[p.dev] : "", pick(p), p.ps ? "PS" : ""].filter(Boolean).join(" · ");
     return `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)})${team} · **${p.ovr}** · ${extra}`;
   });
+  // Discord caps an embed description at 4096 characters; a big class with links could pass it.
+  const teamUrl = t ? url(`/teams/${t.abbr.toLowerCase()}`) : url();
+  let shown = lines.length;
+  const body = (n: number) => lines.slice(0, n).join("\n") + (n < lines.length ? `\n\n+${lines.length - n} more on the [team page](${teamUrl}).` : "");
+  while (shown > 0 && body(shown).length > 4000) shown--;
+  const count = t && rookies.length ? ` (${rookies.length})` : "";
   return {
-    title: `${t ? `${teamLabel(t)}: top` : "Top"}${cls ? ` ${cls}` : ""} ${year && year !== newest ? "draft class" : "rookies"}${t ? "" : " in the league"}`,
-    url: t ? url(`/teams/${t.abbr.toLowerCase()}`) : url(),
+    title: `${t ? `${teamLabel(t)}:` : "Top"}${cls ? ` ${cls}` : ""} ${year && year !== newest ? "draft class" : "rookies"}${t ? count : " in the league"}`,
+    url: teamUrl,
     color: t ? hexColor(t.primary) : BRAND, footer,
-    description: lines.join("\n") || (year ? `No ${year} draft picks on ${t ? `the ${teamLabel(t)}` : "any roster"}.` : t ? `No rookies on the ${teamLabel(t)}.` : "No rookies on any roster yet."),
+    description: body(shown) || (year ? `No ${year} draft picks on ${t ? `the ${teamLabel(t)}` : "any roster"}.` : t ? `No rookies on the ${teamLabel(t)}.` : "No rookies on any roster yet."),
   };
 }
 

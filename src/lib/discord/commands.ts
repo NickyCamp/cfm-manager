@@ -98,7 +98,7 @@ const PLAIN = [
     options: [{ ...team(false), description: "Start typing a team; leave empty for the whole league" }, group(false), rating, order],
   },
   { name: "expiring", description: "A team's top 10 expiring contracts by overall, with each player's projected ask", ...ANYWHERE, options: [team(true)] },
-  { name: "rookie", description: "Top 10 rookies by overall; pick a team and/or a draft year (default: newest class)", ...ANYWHERE, options: [team(false), { type: INTEGER, name: "year", description: "Draft class year, e.g. 2027 (default: the newest class)", required: false, min_value: 2000, max_value: 2100 }] },
+  { name: "rookie", description: "Top 10 rookies by overall, or a team's whole class; pick a team and/or a draft year", ...ANYWHERE, options: [team(false), { type: INTEGER, name: "year", description: "Draft class year, e.g. 2027 (default: the newest class)", required: false, min_value: 2000, max_value: 2100 }] },
   {
     name: "tws",
     description: "A team's game: this week's matchup with ranks, or a past week's score and stats",
