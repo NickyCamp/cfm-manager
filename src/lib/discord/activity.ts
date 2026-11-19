@@ -52,7 +52,9 @@ export type ActivityState = {
   seasonChannelId?: string;
   cycleChannelId?: string;
   /** The seasons before the bot, from the league's sheet: each row's EA user is the team's user when it was loaded. */
-  seed?: { seasons: string[]; gamesPerSeason: number; rows: { name: string; team: string; ea: string | null; misses: number[] }[] };
+  seed?: { version?: number; seasons: string[]; gamesPerSeason: number; rows: { name: string; team: string; ea: string | null; misses: number[] }[];
+    /** Team abbr → the name its games count under from now on, whoever's EA account runs it (a new user, e.g. NO → Lee). */
+    teamNames?: Record<string, string> };
 };
 
 const CHANNEL = "activity-tracker-week";
@@ -114,24 +116,39 @@ function line(d: LeagueData, g: Game, r: Rec): string {
   return `❌ ${match} · not played (sim) · ${people}`;
 }
 
-type Totals = Map<string, { p: number; m: number; teams: Set<string> }>;
+/** Who a counted game belongs to: the name set for that team (a new user like NO → Lee, whatever EA account
+ *  runs it), otherwise the EA user, shown with their sheet name when they have one. */
+function personOf(st: ActivityState, d: LeagueData, teamId: string | number, u: string): { key: string; name: string } {
+  const abbr = d.teams.find((t) => String(t.id) === String(teamId))?.abbr;
+  const set = abbr ? st.seed?.teamNames?.[abbr] : undefined;
+  if (set) return { key: `name:${set.toLowerCase()}`, name: set };
+  return { key: u.toLowerCase(), name: displayName(st, u) };
+}
+/** The name for a key from personOf (history is saved by key). */
+function nameOfKey(st: ActivityState, key: string): string {
+  if (key.startsWith("name:")) return Object.values(st.seed?.teamNames || {}).find((n) => `name:${n.toLowerCase()}` === key) || key.slice(5);
+  return displayName(st, key);
+}
+
+type Totals = Map<string, { name: string; p: number; m: number; teams: Set<string> }>;
 function totals(d: LeagueData, st: ActivityState): Totals {
   const out: Totals = new Map();
   for (const r of Object.values(st.games)) {
     for (const [tid, x] of Object.entries(r.by)) {
-      const e = out.get(x.u) || { p: 0, m: 0, teams: new Set<string>() };
+      const who = personOf(st, d, tid, x.u);
+      const e = out.get(who.key) || { name: who.name, p: 0, m: 0, teams: new Set<string>() };
       if (x.s === "P") e.p++; else e.m++;
       const t = d.teams.find((tt) => String(tt.id) === tid);
       if (t) e.teams.add(t.abbr);
-      out.set(x.u, e);
+      out.set(who.key, e);
     }
   }
   return out;
 }
 
 function totalsEmbed(d: LeagueData, st: ActivityState): Embed {
-  const rows = [...totals(d, st)].sort((a, b) => b[1].m - a[1].m || a[0].localeCompare(b[0]));
-  const lines = rows.map(([u, e]) => `**${u}** (${[...e.teams].join("/")}): ${e.p} played · ${e.m} missed${e.m ? " ⚠️" : ""}`);
+  const rows = [...totals(d, st)].sort((a, b) => b[1].m - a[1].m || a[1].name.localeCompare(b[1].name));
+  const lines = rows.map(([, e]) => `**${e.name}** (${[...e.teams].join("/")}): ${e.p} played · ${e.m} missed${e.m ? " ⚠️" : ""}`);
   return {
     title: `${st.season} activity: games played and missed`,
     color: BRAND,
@@ -188,14 +205,19 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
     ? { ...old, lock: 2, categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: fresh ? null : old.totalsMessageId }
     : { lock: 2, categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: null, season: d.season.year, start: wkOf(d.season.stage, d.season.week), games: {}, wrapped: [] };
   // the league's sheet for the seasons before the bot (once)
-  if (!st.seed) {
-    const seed = seedFor(lg.slug, lg.name);
-    if (seed) {
-      st.seed = { seasons: seed.seasons, gamesPerSeason: seed.gamesPerSeason, rows: seed.rows.map((r) => {
-        const t = d.teams.find((x) => x.name.toLowerCase() === r.team.toLowerCase());
-        return { name: r.name, team: t?.abbr || r.team, ea: t?.user || null, misses: r.misses };
-      }) };
-    }
+  // (again when the sheet in activitySeeds.ts changes version, e.g. a user leaving: Melo → Lee on the Saints)
+  const seed = seedFor(lg.slug, lg.name);
+  if (seed && (!st.seed || (st.seed.version || 1) < seed.version)) {
+    const teamOf = (nick: string) => d.teams.find((x) => x.name.toLowerCase() === nick.toLowerCase());
+    st.seed = {
+      version: seed.version, seasons: seed.seasons, gamesPerSeason: seed.gamesPerSeason,
+      rows: seed.rows.map((r) => {
+        const t = teamOf(r.team);
+        // a user who has left keeps his sheet numbers under his name, tied to no EA account
+        return { name: r.name, team: t?.abbr || r.team, ea: r.left ? null : (t?.user || null), misses: r.misses };
+      }),
+      teamNames: Object.fromEntries(Object.entries(seed.teamNames || {}).map(([nick, name]) => [teamOf(nick)?.abbr || nick, name])),
+    };
   }
   if (fresh) {
     await post(ch, { content: `**User activity.** Every user game played posts here after each sync. After each advance, the week that ended gets a wrap-up: games an admin set with \`/set\` first (the team picked for \`activity\` gets a game played, not a miss), then games nobody played, which count as a sim with a miss for both users. Season totals are in the next message and stay up to date.` });
@@ -227,8 +249,10 @@ function displayName(st: ActivityState, ea: string): string {
 function seasonRows(d: LeagueData, st: ActivityState): ActivityRow[] {
   const rows = d.teams.map((t) => {
     let played = 0, missed = 0;
-    if (t.user) for (const r of Object.values(st.games)) { const x = r.by[String(t.id)]; if (x && x.u === t.user) { if (x.s === "P") played++; else missed++; } }
-    return { user: t.user ? displayName(st, t.user) : "CPU", team: t, teamAbbr: t.abbr, played, missed };
+    const set = st.seed?.teamNames?.[t.abbr];
+    // a team with a name set (a new user) counts all its games for that person; otherwise the current EA user's
+    if (t.user || set) for (const r of Object.values(st.games)) { const x = r.by[String(t.id)]; if (x && (set || x.u === t.user)) { if (x.s === "P") played++; else missed++; } }
+    return { user: set || (t.user ? displayName(st, t.user) : "CPU"), team: t, teamAbbr: t.abbr, played, missed };
   });
   return rows.sort((a, b) => Number(a.user === "CPU") - Number(b.user === "CPU") || missPct(a) - missPct(b) || a.missed - b.missed || b.played - a.played || a.user.localeCompare(b.user));
 }
@@ -242,22 +266,28 @@ function cycleRows(d: LeagueData, st: ActivityState): { rows: ActivityRow[]; lab
   const labels = [...(st.seed?.seasons || []), ...years.map((y, i) => `Season ${seedN + i + 1}`)];
   type P = { key: string; name: string; teamAbbr: string; team?: Team; per: ({ p: number; m: number } | null)[] };
   const people = new Map<string, P>();
-  const get = (ea: string | null, fallback: string, abbr: string) => {
-    const key = (ea || `sheet:${fallback}`).toLowerCase();
-    if (!people.has(key)) people.set(key, { key, name: ea ? displayName(st, ea) : fallback, teamAbbr: abbr, per: labels.map(() => null) });
+  const getKey = (key: string, name: string, abbr: string) => {
+    if (!people.has(key)) people.set(key, { key, name, teamAbbr: abbr, per: labels.map(() => null) });
     return people.get(key)!;
   };
+  const get = (ea: string | null, fallback: string, abbr: string) =>
+    ea ? getKey(ea.toLowerCase(), displayName(st, ea), abbr) : getKey(`sheet:${fallback}`.toLowerCase(), fallback, abbr);
   for (const r of st.seed?.rows || []) {
     const p = get(r.ea, r.name, r.team);
     r.misses.forEach((m, k) => { p.per[k] = { p: st.seed!.gamesPerSeason - m, m }; });
   }
   const cur = totals(d, st);
   years.forEach((y, i) => {
-    const src: [string, [number, number]][] = y === st.season && !st.history?.[String(y)] ? [...cur].map(([u, e]) => [u, [e.p, e.m]]) : Object.entries(st.history?.[String(y)] || {});
-    for (const [u, [pl, mi]] of src) { const p = get(u, u, ""); p.per[seedN + i] = { p: pl, m: mi }; }
+    const src: [string, [number, number]][] = y === st.season && !st.history?.[String(y)] ? [...cur].map(([k, e]) => [k, [e.p, e.m]]) : Object.entries(st.history?.[String(y)] || {});
+    for (const [k, [pl, mi]] of src) {
+      const key = k.toLowerCase();
+      const abbr = key.startsWith("name:") ? Object.entries(st.seed?.teamNames || {}).find(([, n]) => `name:${n.toLowerCase()}` === key)?.[0] || "" : "";
+      const p = getKey(key, nameOfKey(st, key), abbr);
+      p.per[seedN + i] = { p: pl, m: mi };
+    }
   });
   const rows: ActivityRow[] = [...people.values()].map((p) => {
-    const t = d.teams.find((x) => x.user && x.user.toLowerCase() === p.key);
+    const t = p.key.startsWith("name:") ? d.teams.find((x) => x.abbr === p.teamAbbr) : d.teams.find((x) => x.user && x.user.toLowerCase() === p.key);
     const played = p.per.reduce((s, x) => s + (x?.p || 0), 0), missed = p.per.reduce((s, x) => s + (x?.m || 0), 0);
     const seasons = p.per.filter((x) => x && x.p + x.m > 0).length;
     // newest season first, like the sheet

@@ -3,11 +3,18 @@
 // 17 games a season for every user; misses per season. Matched to teams by nickname (the sheet's ARZ is
 // Madden's ARI). Applied once, when /activitychannels runs in that league; the team's EA user at that
 // moment is recorded, so the counts stay with the person if they later move teams.
-export type SeedRow = { name: string; team: string; misses: number[] };
-export type Seed = { seasons: string[]; gamesPerSeason: number; rows: SeedRow[] };
+// left: the user is gone; his numbers stay under his name and never grow.
+// teamNames: a new user on a team, starting at 0; every game of that team from now on counts for him,
+// whatever EA account runs it. Bump `version` after a change so a league already set up picks it up.
+export type SeedRow = { name: string; team: string; misses: number[]; left?: boolean };
+export type Seed = { version: number; seasons: string[]; gamesPerSeason: number; rows: SeedRow[]; teamNames?: Record<string, string> };
 
 /** misses: [Season 1, Season 2] */
 const NCL: Seed = {
+  version: 2,
+  // 2026-11-19 (Nick): "new saints user is Lee and he is getting starting at 0 and all games with the saints
+  // going forward should track for him and melo's stays stagnant"
+  teamNames: { Saints: "Lee" },
   seasons: ["Season 1", "Season 2"],
   gamesPerSeason: 17,
   rows: [
@@ -36,7 +43,7 @@ const NCL: Seed = {
     { name: "Mayhem*", team: "Packers", misses: [2, 1] },
     { name: "Jamarri*", team: "Buccaneers", misses: [2, 1] },
     { name: "Mental", team: "Falcons", misses: [0, 4] },
-    { name: "Melo*", team: "Saints", misses: [2, 3] },
+    { name: "Melo*", team: "Saints", misses: [2, 3], left: true },
     { name: "OMy", team: "Broncos", misses: [3, 2] },
     { name: "KennyG*", team: "Panthers", misses: [4, 1] },
     { name: "Ordo*", team: "49ers", misses: [3, 3] },
