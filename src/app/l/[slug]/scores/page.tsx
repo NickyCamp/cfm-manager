@@ -123,7 +123,7 @@ export default async function Scores({ params, searchParams }: Props) {
                         <td className={aw ? "strong" : ""}>{isCurrent ? <TeamBadge team={teams.get(g.away)} size={20} /> : <Mini t={a} />} {a?.name ?? "TBD"}</td>
                         <td className="num nw"><span className={aw ? "strong" : "muted"}>{g.as}</span> – <span className={hw ? "strong" : "muted"}>{g.hs}</span></td>
                         <td className={hw ? "strong" : ""}>{isCurrent ? <TeamBadge team={teams.get(g.home)} size={20} /> : <Mini t={h} />} {h?.name ?? "TBD"}</td>
-                        <td className="hide-sm">{g.simmed === true ? <span className="tag">Sim</span> : g.simmed === false ? <span className="tag">Played</span> : null}</td>
+                        <td className="hide-sm">{g.forced ? <span className="tag">Sim (forced)</span> : g.simmed === true ? <span className="tag">Sim</span> : g.simmed === false ? <span className="tag">Played</span> : null}</td>
                         {isCurrent && <td><Link className="small" href={`/l/${slug}/games/${g.id}`}>Box score</Link></td>}
                       </tr>
                     );

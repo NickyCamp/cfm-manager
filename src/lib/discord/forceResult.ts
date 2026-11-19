@@ -1,0 +1,173 @@
+// /set (Nick, 2026-11-19): admins force a result on one of this week's games.
+//   /set force game:<this week's game channel> result:<Force Win | Force Loss | Force Sim> [team]
+//   /set remove game:<a forced game>
+// A forced game is stored in leagues.settings.forcedGames[year][gameId]. getLeagueData overlays it
+// (game.simmed = true, game.forced), so the site shows it as simmed, /audit games leaves it out
+// like any simmed game, and its game and prop markets close and settle void (every stake back).
+// The game's channel is renamed (e.g. eagles-at-saints-force-win-eagles) and gets a note.
+import { getLeagueData, forgetLeagueData } from "@/lib/league/load";
+import { weekTitle } from "@/lib/league/derive";
+import { marketBook } from "@/lib/league/markets";
+import type { Game, LeagueData, Team } from "@/lib/league/types";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
+import { settleFinished } from "@/lib/marketStore";
+import { bookKey, ticketsConfig } from "@/lib/tickets";
+import { readGameChannels } from "./gameChannels";
+import type { LinkedLeague } from "./links";
+import { dc } from "./rest";
+
+export type ForceKind = "win" | "loss" | "sim";
+export type ForcedGame = { kind: ForceKind; team?: number; by: string; at: string };
+/** settings.forcedGames: season → game id → the forced result. */
+export type ForcedGames = Record<string, Record<string, ForcedGame>>;
+
+const KIND_LABEL: Record<ForceKind, string> = { win: "Force Win", loss: "Force Loss", sim: "Force Sim" };
+const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+export function forcedFor(settings: Record<string, unknown> | null | undefined, year: number): Record<string, ForcedGame> {
+  return ((settings?.forcedGames as ForcedGames | undefined) || {})[String(year)] || {};
+}
+
+/** "eagles-at-saints", plus "-force-win-eagles" / "-force-loss-saints" / "-force-sim" when forced. */
+export function channelNameFor(a: Team, h: Team, f?: { kind: ForceKind; team?: number }): string {
+  const base = slugName(`${a.name}-at-${h.name}`);
+  if (!f) return base.slice(0, 100);
+  const who = f.team === a.id ? a : f.team === h.id ? h : undefined;
+  return `${base}-force-${f.kind}${f.kind !== "sim" && who ? `-${slugName(who.name)}` : ""}`.slice(0, 100);
+}
+
+export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number }): string {
+  const t = d.teams.find((x) => x.id === f.team);
+  return f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`;
+}
+
+const thisWeek = (d: LeagueData) => d.games.filter((g) => g.stage === 1 && g.stage === d.season.stage && g.week === d.season.week && g.home && g.away);
+const teamOf = (d: LeagueData, id: number) => d.teams.find((t) => t.id === id);
+
+/** The game channel for a game this week, if /gamechannels built one. */
+function channelOf(lg: LinkedLeague, d: LeagueData, g: Game): string | null {
+  const wk = readGameChannels(lg.settings?.gameChannels).weeks[`${d.season.year}:${g.stage}:${g.week}`];
+  return wk?.games[String(g.id)]?.channelId || null;
+}
+
+/** Autocomplete for /set: `game` lists this week's games (only forced ones for remove); `team` the picked game's two teams. */
+export function setChoices(lg: LinkedLeague, d: LeagueData, sub: string | undefined, focused: string, q: string, gameValue: unknown): { name: string; value: string }[] {
+  const forced = forcedFor(lg.settings, d.season.year);
+  const n = norm(q);
+  if (focused === "team") {
+    const g = d.games.find((x) => String(x.id) === String(gameValue ?? ""));
+    if (!g) return [];
+    return [g.away, g.home].map((id) => teamOf(d, id)).filter((t): t is Team => Boolean(t))
+      .filter((t) => !n || norm(`${t.city} ${t.name} ${t.abbr}`).includes(n))
+      .map((t) => ({ name: `${t.city} ${t.name} (${t.abbr})`, value: t.abbr }));
+  }
+  return thisWeek(d)
+    .filter((g) => sub !== "remove" || forced[String(g.id)])
+    .map((g) => {
+      const a = teamOf(d, g.away)!, h = teamOf(d, g.home)!;
+      const f = forced[String(g.id)];
+      const ch = channelOf(lg, d, g) ? `#${channelNameFor(a, h, f)}` : `${a.name} at ${h.name} (no channel)`;
+      return { name: `${ch}${f ? ` · ${describeForce(d, f)}` : ""}`.slice(0, 100), value: String(g.id), key: `${a.city} ${a.name} ${a.abbr} ${h.city} ${h.name} ${h.abbr}` };
+    })
+    .filter((x) => !n || norm(x.key + x.name).includes(n))
+    .slice(0, 25)
+    .map(({ name, value }) => ({ name, value }));
+}
+
+/** One rename attempt. Discord allows about 2 renames per channel every 10 minutes; on that limit, say so
+ *  instead of waiting it out (running /set again later renames it). */
+async function rename(channelId: string, name: string): Promise<"ok" | "same" | "limited" | "gone" | "failed"> {
+  const cur = await dc("GET", `/channels/${channelId}`);
+  if (!cur.ok) return cur.status === 404 || cur.status === 403 ? "gone" : "failed";
+  if (cur.data.name === name) return "same";
+  const res = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
+    method: "PATCH",
+    headers: { authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`, "content-type": "application/json", "x-audit-log-reason": "/set" },
+    body: JSON.stringify({ name }),
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  if (!res) return "failed";
+  if (res.status === 429) return "limited";
+  return res.ok ? "ok" : "failed";
+}
+
+const renameNote = (r: Awaited<ReturnType<typeof rename>>, ch: string, name: string) =>
+  r === "ok" ? ` Renamed <#${ch}> to **${name}**.`
+    : r === "same" ? ""
+      : r === "limited" ? ` Discord only lets a channel be renamed twice every 10 minutes, so <#${ch}> keeps its old name for now; run the same /set again in a few minutes to rename it.`
+        : r === "gone" ? " Its game channel is gone, so nothing was renamed."
+          : ` Couldn't rename <#${ch}> (Discord error); run the same /set again in a minute.`;
+
+/** Void the forced game's bets right away instead of waiting for the next sync. */
+async function settleNow(lg: LinkedLeague): Promise<void> {
+  forgetLeagueData(lg.slug);
+  const d = await getLeagueData(lg.slug);
+  if (!d) return;
+  const cfg = await ticketsConfig(lg.slug).catch(() => null);
+  await settleFinished(lg.id, bookKey(d.season.year, Boolean(cfg)), d, marketBook(d), Boolean(cfg)).catch((e) => console.error("settle after /set", (e as Error).message));
+}
+
+async function saveForced(lg: LinkedLeague, year: number, gameId: number, f: ForcedGame | null) {
+  await updateLeagueSettings(lg.id, (settings) => {
+    const all = { ...((settings.forcedGames as ForcedGames | undefined) || {}) };
+    const yr = { ...(all[String(year)] || {}) };
+    if (f) yr[String(gameId)] = f; else delete yr[String(gameId)];
+    if (Object.keys(yr).length) all[String(year)] = yr; else delete all[String(year)];
+    if (Object.keys(all).length) settings.forcedGames = all; else delete settings.forcedGames;
+    return settings;
+  });
+  forgetLeagueData(lg.slug);
+}
+
+export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown; kind: unknown; team: unknown; by: string }): Promise<string> {
+  const g = thisWeek(d).find((x) => String(x.id) === String(a.game ?? ""));
+  if (!g) return "Pick one of this week's games from the list.";
+  const kind = String(a.kind ?? "") as ForceKind;
+  if (!(kind in KIND_LABEL)) return "Pick Force Win, Force Loss or Force Sim.";
+  const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
+  let team: Team | undefined;
+  if (kind !== "sim") {
+    const tv = norm(String(a.team ?? ""));
+    if (!tv) return `${KIND_LABEL[kind]} needs a team: pick ${away.name} or ${home.name} in the team box.`;
+    team = [away, home].find((t) => [t.abbr, t.name, `${t.city} ${t.name}`].some((x) => norm(x) === tv));
+    if (!team) return `Pick ${away.name} or ${home.name}; they're the two teams in that game.`;
+  }
+  const f: ForcedGame = { kind, team: team?.id, by: a.by, at: new Date().toISOString() };
+  const label = describeForce(d, f);
+  const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
+  await saveForced(lg, d.season.year, g.id, f);
+
+  let note = " This game has no channel yet (/gamechannels).";
+  const ch = channelOf(lg, d, g);
+  if (ch) {
+    const name = channelNameFor(away, home, f);
+    note = renameNote(await rename(ch, name), ch, name);
+    if (!prev || prev.kind !== f.kind || prev.team !== f.team) {
+      await dc("POST", `/channels/${ch}/messages`, { content: `⚖️ An admin set **${label}** on this game. It's marked simmed on the site, so it doesn't count for bets (stakes come back) or audits.`, allowed_mentions: { parse: [] } });
+    }
+  }
+  await settleNow(lg);
+  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${note} Undo with \`/set remove\`.`;
+}
+
+export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown }): Promise<string> {
+  const forced = forcedFor(lg.settings, d.season.year);
+  const g = d.games.find((x) => String(x.id) === String(a.game ?? ""));
+  const f = g ? forced[String(g.id)] : undefined;
+  if (!g || !f) {
+    const list = Object.keys(forced).map((id) => d.games.find((x) => String(x.id) === id)).filter((x): x is Game => Boolean(x))
+      .map((x) => `${teamOf(d, x.away)?.abbr} @ ${teamOf(d, x.home)?.abbr} (${describeForce(d, forced[String(x.id)])})`);
+    return `That game doesn't have a forced result.${list.length ? ` Forced this season: ${list.join(", ")}.` : ""}`;
+  }
+  const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
+  await saveForced(lg, d.season.year, g.id, null);
+  let note = "";
+  const ch = channelOf(lg, d, g);
+  if (ch) {
+    const name = channelNameFor(away, home);
+    note = renameNote(await rename(ch, name), ch, name);
+    await dc("POST", `/channels/${ch}/messages`, { content: `↩️ An admin removed the **${describeForce(d, f)}** on this game.`, allowed_mentions: { parse: [] } });
+  }
+  return `Removed **${describeForce(d, f)}** from ${away.abbr} @ ${home.abbr}. The game counts normally again (simmed or played as EA reports it).${note} Bets already voided by the force stay refunded; new bets can be placed if the game is still open.`;
+}

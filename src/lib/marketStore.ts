@@ -114,12 +114,13 @@ export function outcomeResult(d: LeagueData, book: MarketBook, marketKey: string
   const gm = /^game-(\d+)$/.exec(marketKey);
   if (gm) {
     const g = d.games.find((x) => x.id === Number(gm[1]));
+    if (g?.forced) return "void"; // /set: a forced result doesn't count for bets
     if (!g?.final) return null;
     if (g.hs === g.as) return "void";
     return String(g.hs > g.as ? g.home : g.away) === outcomeId ? "won" : "lost";
   }
   const pm = /^props-(\d+)-/.exec(marketKey);
-  if (pm) return propResult(d, Number(pm[1]), outcomeId);
+  if (pm) return d.games.find((x) => x.id === Number(pm[1]))?.forced ? "void" : propResult(d, Number(pm[1]), outcomeId);
   const mk = book.markets.find((m) => m.key === marketKey);
   // league-wide OPOY/DPOY/OROY/DROY bets from before the awards were split by conference
   if (!mk) return legacyAwardResult(book, marketKey, outcomeId);
@@ -738,7 +739,7 @@ export function applyCloses(book: MarketBook, closes: Map<number, CloseRow>, pla
     markets: book.markets.map((m) => {
       // season-long markets pause while EA has results the data file doesn't (see eaLive.ts dataBehind)
       if (!m.gameId && behind && !m.settled && !m.closed) return { ...m, closed: true, status: PAUSED_STATUS };
-      if (!m.gameId || m.settled) return m;
+      if (!m.gameId || m.settled || m.forced) return m;
       const c = closes.get(m.gameId);
       if (weekMovedOn || played?.has(m.gameId)) return { ...m, closed: true, status: "Closed: game played, settles at the next sync" };
       if (c && Date.parse(c.closeAt) <= now) return { ...m, closed: true, status: `Closed at kickoff (${fmtET(c.closeAt)})` };

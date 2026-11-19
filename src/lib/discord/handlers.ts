@@ -35,6 +35,7 @@ import { AUDIT_KINDS, auditMessage, runAudit, type AuditKind } from "./audit";
 import { auditChannelsCmd, postAudit } from "./auditChannels";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
+import { removeForce, setChoices, setForce } from "./forceResult";
 import { tradeChannelsCmd } from "./tradeChannels";
 import { txChannelsCmd } from "./txChannels";
 import { packChannelProblem, packChannelsCmd } from "./packChannels";
@@ -201,6 +202,7 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
   if (!d) return [];
   const focused = i.data?.options?.find((o) => o.focused);
   const q = String(focused?.value ?? "");
+  if (i.data?.name === "set") return setChoices(lg, d, (i as { sub?: string }).sub, focused?.name || "", q, opt(i, "game"));
   if (focused?.name === "team") {
     const n = norm(q);
     return [...d.teams]
@@ -356,6 +358,16 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const st = lg.settings?.marketChannels as { categoryId?: string } | undefined;
       if (!st?.categoryId) return reply("Set up the Markets category first with /marketchannels.");
       return reply(await syncMarketChannels(lg.slug));
+    }
+    case "set": {
+      if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
+      if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
+      const f = flattenSub(i);
+      const who = i.member?.user || i.user;
+      const by = who ? `${who.global_name || who.username} (discord ${who.id})` : "discord";
+      if (f.sub === "remove") return reply(await removeForce(lg, d, { game: opt(f, "game") }));
+      if (f.sub === "force") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: opt(f, "result"), team: opt(f, "team"), by }));
+      return reply("Use `/set force` or `/set remove`.");
     }
     case "gamechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");

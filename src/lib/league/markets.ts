@@ -459,6 +459,9 @@ function snapshot(d: LeagueData, c: number, sims: number, lines: Map<number, num
 // minute even when nothing changed), a few leagues at a time.
 const cache = new Map<string, MarketBook>();
 
+/** A game an admin forced with /set: no trading, every stake comes back. */
+export const FORCED_STATUS = "Forced result (admin): void, every stake comes back";
+
 export function marketBook(d: LeagueData): MarketBook {
   const key = `${d.builtAt}|${d.pulledAt}|${d.players.length}|${d.games.length}|${d.teams.map((t) => t.id).join(",")}|${JSON.stringify(d.awardResults || {})}`;
   const hit = cache.get(key);
@@ -541,7 +544,8 @@ function buildBook(d: LeagueData): MarketBook {
         mk(String(h.id), tname(h), hp, { team: h.id, sub: h.user || "CPU" }),
       ],
     };
-    if (g.final && g.hs === g.as) { m.closed = true; m.status = "Tie: void, every stake comes back"; }
+    if (g.forced) { m.closed = true; m.forced = true; m.status = FORCED_STATUS; }
+    else if (g.final && g.hs === g.as) { m.closed = true; m.status = "Tie: void, every stake comes back"; }
     else if (g.final) settle(m, new Set([String(g.hs > g.as ? g.home : g.away)]));
     markets.push(m);
   }
@@ -549,6 +553,11 @@ function buildBook(d: LeagueData): MarketBook {
   // ---- per-game player props for the same games
   if (cur.stage === 1) {
     const props = propMarkets(d, weekGames, cur.title);
+    for (const m of props) {
+      if (!weekGames.find((g) => g.id === m.gameId)?.forced) continue;
+      Object.assign(m, { closed: true, forced: true, settled: false, status: FORCED_STATUS });
+      for (const o of m.outcomes) o.state = "open";
+    }
     const nCp = snaps.length;
     for (const m of props) for (const o of m.outcomes) o.history = [...Array(nCp - 1).fill(null), o.p];
     markets.push(...props);

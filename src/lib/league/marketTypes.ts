@@ -41,6 +41,7 @@ export type Market = {
   outcomes: Outcome[];
   gameId?: number;         // game and player-prop markets: the game they're about
   closed?: boolean;        // trading stopped (game played, waiting for the sync to settle it)
+  forced?: boolean;        // the game has an admin-forced result (/set): closed, settles void
 };
 export type Checkpoint = { c: number; label: string };
 export type MarketBook = { markets: Market[]; checkpoints: Checkpoint[]; sinceLabel: string | null; season: number; asOfTitle: string };

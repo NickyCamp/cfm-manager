@@ -95,8 +95,13 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       if (lt.fixed || lt.unresolved) data.lineTeamFix = lt;
       const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > (data.season.capYear ?? data.season.year)));
       if (Object.keys(known).length) data.knownCaps = known;
-      const awards = await awardResults(slug, data.season.year);
+      const { awards, forced } = await leagueOverlays(slug, data.season.year);
       if (awards) data.awardResults = awards;
+      // /set (Nick, 2026-11-19): a forced result counts as simmed everywhere (site, audits, bets).
+      for (const g of data.games) {
+        const f = forced?.[String(g.id)];
+        if (f && g.stage === 1) { g.forced = { kind: f.kind, team: f.team }; g.simmed = true; }
+      }
     }
     memo.set(slug, { at: Date.now(), data });
     return data;
@@ -111,17 +116,20 @@ export function forgetLeagueData(slug: string) {
   memo.delete(slug);
 }
 
-/** Madden's award winners a commissioner entered for this season (leagues.settings.awards[year]). */
-async function awardResults(slug: string, year: number): Promise<Record<string, string> | null> {
-  if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+type Forced = Record<string, { kind: "win" | "loss" | "sim"; team?: number }>;
+/** From leagues.settings for this season: Madden's award winners a commissioner entered (awards[year])
+ *  and the results admins forced with /set (forcedGames[year]). */
+async function leagueOverlays(slug: string, year: number): Promise<{ awards: Record<string, string> | null; forced: Forced | null }> {
+  if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { awards: null, forced: null };
   try {
     const { data } = await supabaseAdmin().from("leagues").select("settings").eq("slug", slug).maybeSingle();
-    const all = (data?.settings as { awards?: Record<string, Record<string, string>> } | null)?.awards;
-    const r = all?.[String(year)];
-    return r && Object.keys(r).length ? r : null;
+    const s = data?.settings as { awards?: Record<string, Record<string, string>>; forcedGames?: Record<string, Forced> } | null;
+    const r = s?.awards?.[String(year)];
+    const f = s?.forcedGames?.[String(year)];
+    return { awards: r && Object.keys(r).length ? r : null, forced: f && Object.keys(f).length ? f : null };
   } catch (e) {
-    console.error("award results load failed", slug, (e as Error).message);
-    return null;
+    console.error("league overlays load failed", slug, (e as Error).message);
+    return { awards: null, forced: null };
   }
 }
 

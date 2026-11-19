@@ -174,6 +174,26 @@ export const COMMANDS = [
   { name: "marketchannels", description: "Admins: delete and rebuild the Markets category from scratch (payouts channel kept)", ...SERVER_ONLY },
   { name: "marketupdate", description: "Admins: refresh every Markets channel with the latest odds, bets and lines", ...SERVER_ONLY },
   {
+    // /set (Nick, 2026-11-19): force a result on one of this week's games, or take it back.
+    name: "set",
+    description: "Admins: Force Win, Force Loss or Force Sim on one of this week's games",
+    ...SERVER_ONLY,
+    options: [
+      {
+        type: SUB_COMMAND, name: "force", description: "Force Win, Force Loss or Force Sim on one of this week's game channels",
+        options: [
+          { type: STRING, name: "game", description: "This week's game channel (start typing a team)", required: true, autocomplete: true },
+          { type: STRING, name: "result", description: "Force Win, Force Loss or Force Sim", required: true, choices: [{ name: "Force Win", value: "win" }, { name: "Force Loss", value: "loss" }, { name: "Force Sim", value: "sim" }] },
+          { type: STRING, name: "team", description: "For Force Win/Loss: the team that gets the win or the loss", required: false, autocomplete: true },
+        ],
+      },
+      {
+        type: SUB_COMMAND, name: "remove", description: "Remove a Force set earlier on one of this week's games",
+        options: [{ type: STRING, name: "game", description: "A game with a Force on it", required: true, autocomplete: true }],
+      },
+    ],
+  },
+  {
     name: "gamechannels",
     description: "Admins: a new category per week (e.g. 2027 - Week 1) with a channel per game; empty = this week",
     ...SERVER_ONLY,
