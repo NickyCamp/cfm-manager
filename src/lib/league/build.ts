@@ -39,7 +39,24 @@ const signedByte = (n: number) => (n > 127 ? n - 256 : n);
 function draftSpot(p: Any): Player["draft"] {
   const r = num(p.draftRound) - 1;
   const drafted = r >= 1 && r <= 7;
-  return { round: drafted ? r : 0, pick: drafted ? Math.max(0, num(p.draftPick) - 1) : 0, year: num(p.rookieYear) };
+  const ea = num(p.rookieYear);
+  return { round: drafted ? r : 0, pick: drafted ? Math.max(0, num(p.draftPick) - 1) : 0, year: ea, ea };
+}
+
+// EA's rookieYear runs late by different amounts (Nick, 2026-11-18: NCL's new 2028 rookies showed as 2030).
+// Checked in 2028 preseason: Mahomes 2017 and Daniels 2024 right, Cam Ward 2026 (really 2025), Fernando
+// Mendoza 2028 (2026), Madden-made classes two years late (2027 → 2029, 2028 → 2030). Season minus years pro
+// fit every one of them, so the draft class is worked out that way.
+// Offseason: calendarYear is still the season just played, so after the draft the new class (0 years pro,
+// EA's newest rookieYear, with last year's rookies also still at 0) belongs to next season.
+function draftClassYears(players: Player[], year: number, offseason: boolean) {
+  if (!year) return;
+  const zero = players.filter((p) => p.yearsPro === 0 && p.draft.ea);
+  const newest = Math.max(0, ...zero.map((p) => p.draft.ea!));
+  const twoClasses = offseason && zero.some((p) => p.draft.ea! < newest);
+  for (const p of players) {
+    p.draft.year = year - p.yearsPro + (twoClasses && p.yearsPro === 0 && p.draft.ea === newest ? 1 : 0);
+  }
 }
 
 export function buildLeagueData(files: Raw): LeagueData {
@@ -167,6 +184,8 @@ export function buildLeagueData(files: Raw): LeagueData {
       });
     }
   }
+
+  draftClassYears(players, num(si?.calendarYear), phase.stage === OFFSEASON_STAGE);
 
   // ---------- stat lines ----------
   const lines = new Map<string, StatLine>();

@@ -231,8 +231,8 @@ export function projectContract(c: ContractLike, currentYear: number): Record<nu
 }
 
 /** Projection inputs for a league player. */
-export function contractInput(p: { contract: { length: number; yearsLeft: number; salary: number; bonus: number; capHit: number; releasePenalty: number }; draft: { year: number }; yearsPro: number }): ContractLike {
-  return { ...p.contract, rookieYear: p.draft.year, yearsPro: p.yearsPro };
+export function contractInput(p: { contract: { length: number; yearsLeft: number; salary: number; bonus: number; capHit: number; releasePenalty: number }; draft: { year: number; ea?: number }; yearsPro: number }): ContractLike {
+  return { ...p.contract, rookieYear: p.draft.ea ?? p.draft.year, yearsPro: p.yearsPro };
 }
 
 /** The league's cap this season: the most common cap among teams (ignores a team with the cap switched off). */

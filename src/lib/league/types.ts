@@ -56,7 +56,9 @@ export type Player = {
   college: string;
   height: number;        // inches
   weight: number;
-  draft: { round: number; pick: number; year: number };
+  /** year: the draft class (season − years pro, see draftClassYears in build.ts). ea: EA's own rookieYear,
+   *  which runs 0–2 years late but is what the cap formulas were fitted to (cap.ts). */
+  draft: { round: number; pick: number; year: number; ea?: number };
   ps: boolean;           // practice squad
   ir: boolean;
   injury: number;        // weeks out, 0 = healthy
