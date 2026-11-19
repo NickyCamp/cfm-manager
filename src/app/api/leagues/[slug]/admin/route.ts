@@ -144,7 +144,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     case "payouts": return ok(await postPayoutsNow(slug));
     case "marketchannels": return ok(await rebuildMarketChannels(slug));
     case "marketupdate": return ok(await syncMarketChannels(slug));
-    case "gamechannels": return ok(b.remove ? await removeGameChannels(slug) : await syncGameChannels(slug, { week: num(b.week) }));
+    case "gamechannels": return ok(b.remove ? await removeGameChannels(slug, { week: num(b.week) }) : await syncGameChannels(slug, { week: num(b.week) }));
     case "kickoff":
     case "verify": {
       const d = await getLeagueData(slug);

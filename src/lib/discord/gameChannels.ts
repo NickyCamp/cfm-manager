@@ -1,13 +1,14 @@
 // Weekly game channels (Nick, 2026-11-14: "a command to generate each week's game channels
-// like you do for the markets"). The bot keeps a category named after the current week
+// like you do for the markets"). /gamechannels builds a category named after the week
 // ("2027 - Week 12") with one channel per game, where the two managers set up their game.
-// Each channel opens with both managers pinged (Discord linked with /connect; otherwise
-// their PSN/Xbox name), records, the kickoff on file and the /tws matchup chart. On each
-// advance the old channels are deleted and the new week's are created; when a game goes
-// final its opening message turns into the final score.
+// Each channel opens with both teams' roles tagged, records, the kickoff on file and the
+// /tws matchup chart.
 //
-// Runs on the site (needs DISCORD_BOT_TOKEN + Manage Channels): from /gamechannels, and
-// after every sync (the worker calls POST /api/leagues/<slug>/discord/gamechannels).
+// Since 2026-11-19 (Nick): every week picked gets its own category; building a week never
+// touches another week's category. `action:Remove` deletes one week's category. Syncs don't
+// build or roll anything over; running /gamechannels again for a week refreshes its embeds.
+//
+// Runs on the site (needs DISCORD_BOT_TOKEN + Manage Channels), from /gamechannels or the admin panel.
 import { getLeagueData } from "@/lib/league/load";
 import { weekTitle } from "@/lib/league/derive";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -29,19 +30,37 @@ import type { Game, LeagueData, Team } from "@/lib/league/types";
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
 
 type GameChannel = { channelId: string; messageId: string | null; final?: boolean };
-export type GameChannels = { categoryId: string; weekKey: string; games: Record<string, GameChannel> };
+type WeekChannels = { categoryId: string; name: string; games: Record<string, GameChannel> };
+/** One category per week built, keyed "year:stage:week". */
+export type GameChannels = { weeks: Record<string, WeekChannels> };
+type LegacyGameChannels = { categoryId: string; weekKey: string; games: Record<string, GameChannel> };
 
 const keyOf = (year: number, stage: number, week: number) => `${year}:${stage}:${week}`;
-/** Orders week keys so an automatic refresh only ever moves forward. */
 const rank = (key: string) => { const [y, s, w] = key.split(":").map(Number); return (y || 0) * 1000 + (s || 0) * 100 + (w || 0); };
+
+/** Reads the saved state; the old single-category shape becomes that week's entry. */
+export function readGameChannels(raw: unknown): GameChannels {
+  const v = raw as Partial<GameChannels & LegacyGameChannels> | null | undefined;
+  if (!v) return { weeks: {} };
+  if (v.weeks) return { weeks: { ...v.weeks } };
+  if (v.categoryId && v.weekKey) return { weeks: { [v.weekKey]: { categoryId: v.categoryId, name: "", games: v.games || {} } } };
+  return { weeks: {} };
+}
 const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 90);
 const record = (t: Team) => `${t.rec.w}-${t.rec.l}${t.rec.t ? `-${t.rec.t}` : ""}`;
 
-async function saveState(leagueId: string, state: GameChannels | null) {
+async function saveState(leagueId: string, state: GameChannels) {
   await updateLeagueSettings(leagueId, (settings) => {
-    if (state) settings.gameChannels = state; else delete settings.gameChannels;
+    if (Object.keys(state.weeks).length) settings.gameChannels = state; else delete settings.gameChannels;
     return settings;
   });
+}
+
+/** Which week the command means: the picked one, or the current week. */
+function pickWeek(d: LeagueData, pick?: { year?: number; week?: number }): { key: string; stage: number; week: number } | string {
+  if (pick?.year && pick.year !== d.season.year) return `Only this season's schedule (${d.season.year}) is loaded, so pick year ${d.season.year}.`;
+  const stage = pick?.week ? 1 : d.season.stage, week = pick?.week ? weekIndex(pick.week) : d.season.week;
+  return { key: keyOf(d.season.year, stage, week), stage, week };
 }
 
 /** Team id → the server role for that team, matched by name: "Eagles", "Philadelphia Eagles" or "PHI" (any case). */
@@ -104,17 +123,16 @@ function gameEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: Team, ids: 
 }
 
 /**
- * Creates/refreshes the game channels for one week; switching weeks deletes the old ones first.
- * `pick` (from /gamechannels year week; week 1-18, 19 Wild Card … 22 Super Bowl) builds that week.
- * Without it (the after-sync refresh, or the command with no options) it uses the current week,
- * but never moves back from a later week someone built ahead of time.
+ * Builds (or refreshes) one week's game channels in that week's own category. Other weeks'
+ * categories are left alone. `pick` (week 1-18, 19 Wild Card … 22 Super Bowl) picks the week;
+ * without it, the current week.
  */
 export async function syncGameChannels(slug: string, pick?: { year?: number; week?: number }): Promise<string> {
   const lg = await leagueBySlug(slug);
   if (!lg) return "This league isn't linked to a Discord server (/link).";
   return withLeagueLock(lg.id, "gameChannels", BUSY, () => syncGameChannelsNow(slug, pick).catch((e) => `Stopped: ${(e as Error).message}`));
 }
-const BUSY = "The game channels are already being updated (a sync, or someone else's command). Give it a minute, then try again.";
+const BUSY = "The game channels are already being updated (someone else's command). Give it a minute, then try again.";
 
 async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: number }): Promise<string> {
   const lg = await leagueBySlug(slug);
@@ -122,41 +140,33 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
   if (!lg || !guildId) return "This league isn't linked to a Discord server (/link).";
   const d = await getLeagueData(slug);
   if (!d) return "No league data yet.";
-  let state = (lg.settings?.gameChannels as GameChannels | undefined) || null;
+  const all = readGameChannels(lg.settings?.gameChannels);
 
-  let stage = d.season.stage, week = d.season.week;
-  if (pick?.year && pick.year !== d.season.year) return `Only this season's schedule (${d.season.year}) is loaded, so pick year ${d.season.year}.`;
-  if (pick?.week) { stage = 1; week = weekIndex(pick.week); }
-  else if (state?.weekKey && state.weekKey.startsWith(`${d.season.year}:`) && rank(state.weekKey) > rank(keyOf(d.season.year, stage, week))) {
-    [, stage, week] = state.weekKey.split(":").map(Number); // keep the week built ahead of time
-  }
-  const key = keyOf(d.season.year, stage, week);
+  const w = pickWeek(d, pick);
+  if (typeof w === "string") return w;
+  const { key, stage, week } = w;
   const title = weekTitle(d, stage, week);
   const catName = `${d.season.year} - ${title}`.slice(0, 100); // "2027 - Week 12" (Nick's format)
   const teams = new Map(d.teams.map((t) => [t.id, t]));
   // every game on this week's schedule, CPU games included
   const games = d.games.filter((g) => g.stage === stage && g.week === week && g.home && g.away);
-  if (!games.length && pick?.week) return `There are no games on the schedule for ${d.season.year} ${title} yet.`;
+  if (!games.length) return `There are no games on the schedule for ${d.season.year} ${title} yet.`;
 
-  // category (renamed for the new week)
-  if (state?.categoryId) {
+  // this week's category: reuse it if it's still there, otherwise make a new one
+  let state: WeekChannels | null = all.weeks[key] || null;
+  if (state) {
     const c = await dc("GET", `/channels/${state.categoryId}`);
     if (!c.ok) { if (await channelGone(state.categoryId)) state = null; } // throws if Discord can't say, so a hiccup doesn't start a second category
     else if (c.data.name !== catName) await dc("PATCH", `/channels/${state.categoryId}`, { name: catName });
   }
+  const isNew = !state;
   if (!state) {
     const cat = await dc("POST", `/guilds/${guildId}/channels`, { name: catName, type: 4 });
     if (!cat.ok) return cat.status === 403 ? "The bot needs the Manage Channels permission in this server to make game channels." : `Discord said ${cat.status}: ${String(cat.data.message || "")}`;
-    state = { categoryId: String(cat.data.id), weekKey: "", games: {} };
+    state = { categoryId: String(cat.data.id), name: catName, games: {} };
   }
-
-  // new week: clear out last week's channels
-  let removed = 0;
-  if (state.weekKey !== key) {
-    for (const g of Object.values(state.games)) { const r = await dc("DELETE", `/channels/${g.channelId}`); if (r.ok) removed++; await sleep(250); }
-    state.games = {};
-    state.weekKey = key;
-  }
+  state.name = catName;
+  all.weeks[key] = state;
 
   const ids = await managersByTeam(lg.id, d.teams);
   const roles = await teamRoles(guildId, d.teams);
@@ -174,7 +184,7 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
         name: slugName(`${a.name}-at-${h.name}`), type: 0, parent_id: state.categoryId,
         topic: `${title}: ${a.abbr} (${a.user || "CPU"}) at ${h.abbr} (${h.user || "CPU"}) · schedule your game here`,
       });
-      if (!ch.ok) { await saveState(lg.id, state); return ch.status === 403 ? "The bot needs the Manage Channels permission in this server." : `Discord said ${ch.status} creating a game channel.`; }
+      if (!ch.ok) { await saveState(lg.id, all); return ch.status === 403 ? "The bot needs the Manage Channels permission in this server." : `Discord said ${ch.status} creating a game channel.`; }
       gc = { channelId: String(ch.data.id), messageId: null };
       state.games[String(g.id)] = gc;
       // The opening message tags both teams' server roles (@Eagles @Saints; Nick, 2026-11-14), falling
@@ -199,23 +209,41 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
       }
     }
   }
-  await saveState(lg.id, state);
-  return `Game channels up to date (category **${catName}**): ${games.length} channel${games.length === 1 ? "" : "s"}${created ? ` (${created} new)` : ""}${removed ? `, ${removed} old removed` : ""}${updated ? `, ${updated} refreshed` : ""}. New channels tag both teams' roles (found ${roles.size} of ${d.teams.length} team roles${roles.size < d.teams.length ? `; missing: ${d.teams.filter((t) => !roles.has(t.id)).map((t) => t.name).slice(0, 12).join(", ")}` : ""}). They roll over after every advance.`;
+  await saveState(lg.id, all);
+  const others = Object.keys(all.weeks).filter((k) => k !== key).length;
+  return `${isNew ? "Made" : "Refreshed"} **${catName}**: ${games.length} channel${games.length === 1 ? "" : "s"}${created ? ` (${created} new)` : ""}${updated ? `, ${updated} refreshed` : ""}. New channels tag both teams' roles (found ${roles.size} of ${d.teams.length} team roles${roles.size < d.teams.length ? `; missing: ${d.teams.filter((t) => !roles.has(t.id)).map((t) => t.name).slice(0, 12).join(", ")}` : ""}).${others ? ` ${others} other week${others === 1 ? "" : "s"} left as they are.` : ""} Use \`action:Remove\` with the week to delete a week's category.`;
 }
 
-/** /gamechannels off: deletes the category and its channels and stops the weekly rollover. */
-export async function removeGameChannels(slug: string): Promise<string> {
+/** /gamechannels action:Remove: deletes one week's category and its channels (the picked week, or this week). */
+export async function removeGameChannels(slug: string, pick?: { year?: number; week?: number }): Promise<string> {
   const lg = await leagueBySlug(slug);
   if (!lg) return "Game channels aren't set up here.";
-  return withLeagueLock(lg.id, "gameChannels", BUSY, () => removeGameChannelsNow(slug).catch((e) => `Stopped: ${(e as Error).message}`));
+  return withLeagueLock(lg.id, "gameChannels", BUSY, () => removeGameChannelsNow(slug, pick).catch((e) => `Stopped: ${(e as Error).message}`));
 }
 
-async function removeGameChannelsNow(slug: string): Promise<string> {
+async function removeGameChannelsNow(slug: string, pick?: { year?: number; week?: number }): Promise<string> {
   const lg = await leagueBySlug(slug);
-  const state = lg?.settings?.gameChannels as GameChannels | undefined;
-  if (!lg || !state) return "Game channels aren't set up here.";
-  for (const g of Object.values(state.games)) { await dc("DELETE", `/channels/${g.channelId}`); await sleep(250); }
+  if (!lg) return "Game channels aren't set up here.";
+  const all = readGameChannels(lg.settings?.gameChannels);
+  const d = await getLeagueData(slug);
+  if (!d) return "No league data yet.";
+  const w = pickWeek(d, pick);
+  if (typeof w === "string") return w;
+  const catName = `${d.season.year} - ${weekTitle(d, w.stage, w.week)}`;
+  const state = all.weeks[w.key];
+  if (!state) {
+    const have = listGameWeeks(all);
+    return `There's no game channel category for **${catName}**.${have.length ? ` Weeks with one: ${have.join(", ")}.` : ""}`;
+  }
+  let removed = 0;
+  for (const g of Object.values(state.games)) { const r = await dc("DELETE", `/channels/${g.channelId}`); if (r.ok) removed++; await sleep(250); }
   await dc("DELETE", `/channels/${state.categoryId}`);
-  await saveState(lg.id, null);
-  return "Game channels removed. Run /gamechannels again any time to bring them back.";
+  delete all.weeks[w.key];
+  await saveState(lg.id, all);
+  return `Deleted **${state.name || catName}** and its ${removed} game channel${removed === 1 ? "" : "s"}. Other weeks are untouched.`;
+}
+
+/** Category names for the weeks that have one, oldest first. */
+export function listGameWeeks(all: GameChannels): string[] {
+  return Object.entries(all.weeks).sort(([a], [b]) => rank(a) - rank(b)).map(([k, v]) => v.name || k);
 }

@@ -131,7 +131,7 @@ export default async function MarketsSetup({ params }: Props) {
               <tr><td><code>/marketchannels</code></td><td>Admins: delete and rebuild the whole Markets category (the payouts channel is kept)</td></tr>
               <tr><td><code>/marketupdate</code></td><td>Admins: refresh every Markets channel with the latest odds, bets and lines</td></tr>
               <tr><td><code>/league</code></td><td>Admins: which league this server shows, with links</td></tr>
-              <tr><td><code>/gamechannels year week</code></td><td>A category like &ldquo;2027 - Week 1&rdquo; with a channel per game that week, pinging both managers; rolls over after each advance (admins)</td></tr>
+              <tr><td><code>/gamechannels year week</code></td><td>A new category per week, like &ldquo;2027 - Week 1&rdquo;, with a channel per game, tagging both teams; other weeks are kept. <code>action:Remove</code> deletes one week (admins)</td></tr>
               <tr><td><code>/tradechannels</code></td><td>A &ldquo;Trades&rdquo; category: #trade-proposals (bot only; admins vote, 3 approvals passes a trade), #trade-approvals (open to all) and #trade-transactions (bot only; trades from each sync). Admins; also made on the first submit. The bot needs Manage Channels and Manage Roles</td></tr>
               <tr><td><code>/connect</code></td><td>Link your Discord to your CFM Manager account</td></tr>
               <tr><td><code>/kickoff team time</code></td><td>When betting closes on your game (either manager; admins any time)</td></tr>

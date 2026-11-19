@@ -165,12 +165,12 @@ export const COMMANDS = [
   { name: "marketupdate", description: "Admins: refresh every Markets channel with the latest odds, bets and lines", ...SERVER_ONLY },
   {
     name: "gamechannels",
-    description: "Admins: a category (e.g. 2027 - Week 1) with a channel per game that week; empty = this week",
+    description: "Admins: a new category per week (e.g. 2027 - Week 1) with a channel per game; empty = this week",
     ...SERVER_ONLY,
     options: [
       { type: INTEGER, name: "year", description: "Season, e.g. 2027 (only the current season's schedule is loaded)", required: false, min_value: 2000, max_value: 2100 },
       { type: INTEGER, name: "week", description: "Week 1-18; playoffs: 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl", required: false, min_value: 1, max_value: 22 },
-      { type: STRING, name: "action", description: "Leave empty to build/refresh; Remove deletes the game channels", required: false, choices: [{ name: "Remove", value: "remove" }] },
+      { type: STRING, name: "action", description: "Leave empty to build/refresh that week; Remove deletes that week's category", required: false, choices: [{ name: "Remove", value: "remove" }] },
     ],
   },
   {

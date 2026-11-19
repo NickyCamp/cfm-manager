@@ -12,7 +12,7 @@ export type AdminData = {
   owed: { userId: string; name: string; net: number; ids: number[]; lines: string[]; discord: string | null }[];
   week: { id: number; name: string; kickoff: string | null; kickoffText: string | null; final: boolean }[];
   finals: { id: number; name: string; kickoffText: string }[];
-  discord: { linked: boolean; markets: boolean; games: boolean };
+  discord: { linked: boolean; markets: boolean; games: boolean; gameWeeks: string[] };
   seasonTitle: string;
   awards: { key: string; title: string; pos: boolean; winner: string | null; choices: { id: string; label: string }[] }[];
   awardsOpen: boolean;    // regular season still being played
@@ -177,9 +177,9 @@ export function AdminPanel({ data }: { data: AdminData }) {
             <form className="admin-row" onSubmit={(e) => { e.preventDefault(); run("gc", { action: "gamechannels", week: gcWeek }); }}>
               <label>Game channels for week <input inputMode="numeric" placeholder="this week" value={gcWeek} onChange={(e) => setGcWeek(e.target.value.replace(/\D/g, ""))} /></label>
               <button className="btn ghost" disabled={busy === "gc"}>Build (/gamechannels)</button>
-              {data.discord.games && <button type="button" className="btn ghost" disabled={busy === "gc"} onClick={() => { if (confirm("Delete the game channels category?")) run("gc", { action: "gamechannels", remove: true }); }}>Remove</button>}
+              {data.discord.games && <button type="button" className="btn ghost" disabled={busy === "gc"} onClick={() => { if (confirm(`Delete the game channels category for ${gcWeek ? `week ${gcWeek}` : "this week"}? Other weeks are kept.`)) run("gc", { action: "gamechannels", week: gcWeek, remove: true }); }}>Remove week</button>}
             </form>
-            <p className="hint small">Weeks 1–18; 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl. These can take a minute or two.</p>
+            <p className="hint small">Each week gets its own category; building one never touches the others. Weeks 1–18; 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl. These can take a minute or two.{data.discord.gameWeeks.length ? <> Built: {data.discord.gameWeeks.join(", ")}.</> : null}</p>
             {note("gc")}
           </>
         )}

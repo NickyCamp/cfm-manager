@@ -7,6 +7,7 @@ import { leagueBySlug, discordOf } from "@/lib/discord/links";
 import { betCaps, closeTimes, economyOf, fmtET, isCommissioner, ledgerRows, viewer } from "@/lib/marketStore";
 import { discordOfUser, ticketsConfig, type TicketsSetting } from "@/lib/tickets";
 import { AdminPanel, type AdminData } from "@/components/league/AdminPanel";
+import { listGameWeeks, readGameChannels } from "@/lib/discord/gameChannels";
 
 export const metadata: Metadata = { title: "Admin" };
 type Props = { params: Promise<{ slug: string }> };
@@ -46,7 +47,7 @@ export default async function AdminPage({ params }: Props) {
   const own = (lg.settings?.tickets || null) as TicketsSetting | null;
   const guild = discordOf(lg);
   const mc = lg.settings?.marketChannels as { categoryId?: string } | undefined;
-  const gc = lg.settings?.gameChannels as { categoryId?: string } | undefined;
+  const gcWeeks = listGameWeeks(readGameChannels(lg.settings?.gameChannels));
 
   // Madden's award winners (entered here; EA's export doesn't include them)
   const book = marketBook(d);
@@ -69,7 +70,7 @@ export default async function AdminPage({ params }: Props) {
     owed: owed.filter((u) => u.net !== 0 || u.ids.length).sort((a, b) => a.name.localeCompare(b.name)),
     week: week.map((g) => ({ id: g.id, name: name(g), kickoff: closes.get(g.id)?.closeAt ?? null, kickoffText: closes.get(g.id) ? fmtET(closes.get(g.id)!.closeAt) : null, final: Boolean(g.final) })),
     finals: finals.map((g) => ({ id: g.id, name: `${name(g)} · ${weekTitle(d, g.stage, g.week)}`, kickoffText: closes.get(g.id) ? `${closes.get(g.id)!.kind === "verified" ? "verified" : "listed"} ${fmtET(closes.get(g.id)!.closeAt)}` : "no kickoff on record" })),
-    discord: { linked: Boolean(guild), markets: Boolean(mc?.categoryId), games: Boolean(gc?.categoryId) },
+    discord: { linked: Boolean(guild), markets: Boolean(mc?.categoryId), games: gcWeeks.length > 0, gameWeeks: gcWeeks },
     seasonTitle: `${d.season.year} ${d.season.title}`,
   };
   return (

@@ -360,8 +360,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "gamechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
       if (!(await isLeagueAdmin(i))) return reply(NOT_ADMIN);
-      if (opt(i, "action") === "remove") return reply(await removeGameChannels(lg.slug));
-      return reply(await syncGameChannels(lg.slug, { year: Number(opt(i, "year")) || undefined, week: Number(opt(i, "week")) || undefined }));
+      const pick = { year: Number(opt(i, "year")) || undefined, week: Number(opt(i, "week")) || undefined };
+      if (opt(i, "action") === "remove") return reply(await removeGameChannels(lg.slug, pick));
+      return reply(await syncGameChannels(lg.slug, pick));
     }
     case "trade": {
       if (via !== "server") return reply("Run /trade in the league's own Discord server (linked with `/link`).");
