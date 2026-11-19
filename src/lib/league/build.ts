@@ -185,7 +185,7 @@ export function buildLeagueData(files: Raw): LeagueData {
     }
   }
 
-  draftClassYears(players, num(si?.calendarYear), phase.stage === OFFSEASON_STAGE);
+  draftClassYears(players, Number(si?.calendarYear) || 0, phase.stage === OFFSEASON_STAGE);
 
   // ---------- stat lines ----------
   const lines = new Map<string, StatLine>();

@@ -327,6 +327,11 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
     const up = await db.storage.from("league-data").upload(`${slug}/data.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
     if (up.error) { log(`- **Couldn't save the league data:** ${up.error.message}`); return null; }
     log(`- Built league data: ${data.teams.length} teams, ${data.players.length} players, ${data.games.length} games, ${data.lines.length} stat lines (${(gz.length / 1024).toFixed(0)} KB).${data.season.capYear ? ` Contracts are on ${data.season.capYear}.` : ""}`);
+    {
+      const rk = data.players.filter((p) => !p.gone && p.yearsPro === 0);
+      const cls = [...new Set(rk.map((p) => `${p.draft.year} (EA ${p.draft.ea ?? "?"})`))].slice(0, 4).join(", ");
+      log(`- Draft classes: season ${JSON.stringify(data.season.year)}, ${rk.length} at 0 years pro → ${cls || "none"}.`);
+    }
     await updateHistory(slug, prev, data, log);
     await updateSeasons(slug, data, log);
     return { prev, data };
