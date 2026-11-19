@@ -1,5 +1,6 @@
 // /set (Nick, 2026-11-19): admins force a result on a game from the game channel categories.
-//   /set force game:<this week's game channel> result:<Force Win | Force Loss | Force Sim> [team]
+//   /set force game:<game channel> result:<Force Win | Force Loss | Force Sim> [team] [activity]
+// activity (Nick, 2026-11-19): the team whose user gets credit for the game as played, not missed.
 //   /set remove game:<a forced game>
 // A forced game is stored in leagues.settings.forcedGames[year][gameId]. getLeagueData overlays it
 // (game.simmed = true, game.forced), so the site shows it as simmed, /audit games leaves it out
@@ -17,7 +18,7 @@ import type { LinkedLeague } from "./links";
 import { dc } from "./rest";
 
 export type ForceKind = "win" | "loss" | "sim";
-export type ForcedGame = { kind: ForceKind; team?: number; by: string; at: string };
+export type ForcedGame = { kind: ForceKind; team?: number; activity?: number; by: string; at: string };
 /** settings.forcedGames: season → game id → the forced result. */
 export type ForcedGames = Record<string, Record<string, ForcedGame>>;
 
@@ -37,9 +38,10 @@ export function channelNameFor(a: Team, h: Team, f?: { kind: ForceKind; team?: n
   return `${base}-force-${f.kind}${f.kind !== "sim" && who ? `-${slugName(who.name)}` : ""}`.slice(0, 100);
 }
 
-export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number }): string {
+export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number; activity?: number }): string {
   const t = d.teams.find((x) => x.id === f.team);
-  return f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`;
+  const act = f.activity != null ? d.teams.find((x) => x.id === f.activity) : undefined;
+  return `${f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`}${act ? ` (activity: ${act.abbr})` : ""}`;
 }
 
 const teamOf = (d: LeagueData, id: number) => d.teams.find((t) => t.id === id);
@@ -68,7 +70,7 @@ function candidates(lg: LinkedLeague, d: LeagueData): Pick[] {
 export function setChoices(lg: LinkedLeague, d: LeagueData, sub: string | undefined, focused: string, q: string, gameValue: unknown): { name: string; value: string }[] {
   const forced = forcedFor(lg.settings, d.season.year);
   const n = norm(q);
-  if (focused === "team") {
+  if (focused === "team" || focused === "activity") {
     const g = d.games.find((x) => String(x.id) === String(gameValue ?? ""));
     if (!g) return [];
     return [g.away, g.home].map((id) => teamOf(d, id)).filter((t): t is Team => Boolean(t))
@@ -133,7 +135,7 @@ async function saveForced(lg: LinkedLeague, year: number, gameId: number, f: For
   forgetLeagueData(lg.slug);
 }
 
-export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown; kind: unknown; team: unknown; by: string }): Promise<string> {
+export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown; kind: unknown; team: unknown; activity?: unknown; by: string }): Promise<string> {
   const pick = candidates(lg, d).find((x) => String(x.g.id) === String(a.game ?? ""));
   if (!pick) return "Pick a game from the list (it shows the games in your game channel categories; build one with /gamechannels).";
   const g = pick.g;
@@ -147,7 +149,13 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
     team = [away, home].find((t) => [t.abbr, t.name, `${t.city} ${t.name}`].some((x) => norm(x) === tv));
     if (!team) return `Pick ${away.name} or ${home.name}; they're the two teams in that game.`;
   }
-  const f: ForcedGame = { kind, team: team?.id, by: a.by, at: new Date().toISOString() };
+  const pickTeam = (v: unknown) => { const n = norm(String(v ?? "")); return n ? [away, home].find((t) => [t.abbr, t.name, `${t.city} ${t.name}`].some((x) => norm(x) === n)) : undefined; };
+  let act: Team | undefined;
+  if (String(a.activity ?? "").trim()) {
+    act = pickTeam(a.activity);
+    if (!act) return `For activity, pick ${away.name} or ${home.name}; they're the two teams in that game.`;
+  }
+  const f: ForcedGame = { kind, team: team?.id, ...(act ? { activity: act.id } : {}), by: a.by, at: new Date().toISOString() };
   const label = describeForce(d, f);
   const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
   await saveForced(lg, d.season.year, g.id, f);
@@ -157,12 +165,13 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
   if (ch) {
     const name = channelNameFor(away, home, f);
     note = renameNote(await rename(ch, name), ch, name);
-    if (!prev || prev.kind !== f.kind || prev.team !== f.team) {
-      await dc("POST", `/channels/${ch}/messages`, { content: `⚖️ An admin set **${label}** on this game. It's marked simmed on the site, so it doesn't count for bets (stakes come back) or audits.`, allowed_mentions: { parse: [] } });
+    if (!prev || prev.kind !== f.kind || prev.team !== f.team || prev.activity !== f.activity) {
+      const actLine = act ? ` It counts as a game played for **${act.city} ${act.name}**${act.user ? ` (${act.user})` : ""} for activity.` : "";
+      await dc("POST", `/channels/${ch}/messages`, { content: `⚖️ An admin set **${label}** on this game. It's marked simmed on the site, so it doesn't count for bets (stakes come back) or audits.${actLine}`, allowed_mentions: { parse: [] } });
     }
   }
   await settleNow(lg);
-  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${note} Undo with \`/set remove\`.`;
+  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${act ? ` Activity: counts as a game played for ${act.abbr}${act.user ? ` (${act.user})` : ""}.` : ""}${note} Undo with \`/set remove\`.`;
 }
 
 export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown }): Promise<string> {

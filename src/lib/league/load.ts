@@ -100,7 +100,7 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       // /set (Nick, 2026-11-19): a forced result counts as simmed everywhere (site, audits, bets).
       for (const g of data.games) {
         const f = forced?.[String(g.id)];
-        if (f && g.stage === 1) { g.forced = { kind: f.kind, team: f.team }; g.simmed = true; }
+        if (f && g.stage === 1) { g.forced = { kind: f.kind, team: f.team, ...(f.activity != null ? { activity: f.activity } : {}) }; g.simmed = true; }
       }
     }
     memo.set(slug, { at: Date.now(), data });
@@ -116,7 +116,7 @@ export function forgetLeagueData(slug: string) {
   memo.delete(slug);
 }
 
-type Forced = Record<string, { kind: "win" | "loss" | "sim"; team?: number }>;
+type Forced = Record<string, { kind: "win" | "loss" | "sim"; team?: number; activity?: number }>;
 /** From leagues.settings for this season: Madden's award winners a commissioner entered (awards[year])
  *  and the results admins forced with /set (forcedGames[year]). */
 async function leagueOverlays(slug: string, year: number): Promise<{ awards: Record<string, string> | null; forced: Forced | null }> {

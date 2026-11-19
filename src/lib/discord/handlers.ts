@@ -366,7 +366,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const who = i.member?.user || i.user;
       const by = who ? `${who.global_name || who.username} (discord ${who.id})` : "discord";
       if (f.sub === "remove") return reply(await removeForce(lg, d, { game: opt(f, "game") }));
-      if (f.sub === "force") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: opt(f, "result"), team: opt(f, "team"), by }));
+      if (f.sub === "force") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: opt(f, "result"), team: opt(f, "team"), activity: opt(f, "activity"), by }));
       return reply("Use `/set force` or `/set remove`.");
     }
     case "gamechannels": {

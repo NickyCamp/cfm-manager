@@ -28,7 +28,7 @@ export default async function BoxScore({ params }: Props) {
         <Link className="back" href={`/l/${slug}/scores?week=${weekKey(g.stage, g.week)}#past`}>{weekTitle(d, g.stage, g.week)} scores</Link>
         <div className="box-head">
           <Side team={away} score={g.as} won={g.final && g.as > g.hs} slug={slug} />
-          <div className="box-mid">{g.final ? "Final" : "Not played"}{g.simmed === true ? <div className="tag">Simmed</div> : null}{g.forced ? <div className="tag">{g.forced.kind === "sim" ? "Force Sim" : `Force ${g.forced.kind === "win" ? "Win" : "Loss"}: ${d.teams.find((t) => t.id === g.forced!.team)?.abbr ?? "?"}`}</div> : null}</div>
+          <div className="box-mid">{g.final ? "Final" : "Not played"}{g.simmed === true ? <div className="tag">Simmed</div> : null}{g.forced ? <div className="tag">{g.forced.kind === "sim" ? "Force Sim" : `Force ${g.forced.kind === "win" ? "Win" : "Loss"}: ${d.teams.find((t) => t.id === g.forced!.team)?.abbr ?? "?"}`}</div> : null}{g.forced?.activity != null ? <div className="tag">Activity: {d.teams.find((t) => t.id === g.forced!.activity)?.abbr ?? "?"}</div> : null}</div>
           <Side team={home} score={g.hs} won={g.final && g.hs > g.as} slug={slug} home />
         </div>
 

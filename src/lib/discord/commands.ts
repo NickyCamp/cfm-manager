@@ -185,6 +185,7 @@ export const COMMANDS = [
           { type: STRING, name: "game", description: "A game channel from your game channel categories (start typing a team)", required: true, autocomplete: true },
           { type: STRING, name: "result", description: "Force Win, Force Loss or Force Sim", required: true, choices: [{ name: "Force Win", value: "win" }, { name: "Force Loss", value: "loss" }, { name: "Force Sim", value: "sim" }] },
           { type: STRING, name: "team", description: "For Force Win/Loss: the team that gets the win or the loss", required: false, autocomplete: true },
+          { type: STRING, name: "activity", description: "The team whose user gets this counted as a game played (not missed)", required: false, autocomplete: true },
         ],
       },
       {

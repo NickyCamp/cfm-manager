@@ -94,7 +94,7 @@ export type Game = {
   final: boolean;
   simmed: boolean | null; // null = unknown
   gotw: boolean;
-  forced?: { kind: "win" | "loss" | "sim"; team?: number }; // an admin's /set (overlaid at load; simmed is true too)
+  forced?: { kind: "win" | "loss" | "sim"; team?: number; activity?: number }; // an admin's /set (overlaid at load; simmed is true too)
 };
 
 // One player's line in one game. Only the fields a line actually has are present.
