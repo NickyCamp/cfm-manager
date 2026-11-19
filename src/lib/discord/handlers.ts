@@ -871,6 +871,10 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   const best = [...roster].sort((a, b) => b.ovr - a.ovr).slice(0, 6).map((p) => `${p.pos} ${fullName(p)} **${p.ovr}**${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""}`);
   const next = d.games.find((g) => !g.final && (g.home === t.id || g.away === t.id) && g.home && g.away);
   const opp = next ? teamOf(d, next.home === t.id ? next.away : next.home) : undefined;
+  // Dev trait counts on the active roster (Nick, 2026-11-19). EA's data has rookies' real dev, not Madden's hidden one.
+  const devs = [0, 0, 0, 0];
+  for (const p of roster) devs[p.dev ?? 0]++;
+  const devLine = ["Normal", "Star", "Superstar", "X-Factor"].map((n, k) => `${n} **${devs[k]}**`).join(" · ");
   return {
     title: teamLabel(t), url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
     description: `${t.user ? `Run by **${t.user}**` : "CPU team"} · ${t.division} · ${t.ovr} OVR`,
@@ -878,6 +882,7 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
       { name: "Record", value: `${record(t)} (${streakText(t.rec.streak)})\nDiv ${recText(t.rec.divW, t.rec.divL, t.rec.divT)} · PF ${t.rec.pf} PA ${t.rec.pa}`, inline: true },
       { name: "Cap space", value: `${money(t.cap.available)}\n${roster.length} on the active roster`, inline: true },
       ...(next && opp ? [{ name: "Next game", value: `${weekTitle(d, next.stage, next.week)}: ${next.home === t.id ? "vs" : "@"} ${teamLabel(opp)}`, inline: true }] : []),
+      { name: "Dev traits", value: devLine },
       { name: "Best players", value: best.join("\n") || "—" },
     ],
   };
