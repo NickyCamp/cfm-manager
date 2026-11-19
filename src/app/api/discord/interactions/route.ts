@@ -12,7 +12,7 @@ import { refreshForMarket } from "@/lib/discord/marketChannels";
 import { leagueForGuild } from "@/lib/discord/links";
 import { packChannelProblem } from "@/lib/discord/packChannels";
 import { tradeVote } from "@/lib/discord/tradeChannels";
-import { findPlayerModal, tradeBuilderTap } from "@/lib/discord/tradeBuilder";
+import { findPlayerModal, pickSpotModal, tradeBuilderTap } from "@/lib/discord/tradeBuilder";
 import { helpAutocomplete, helpReply, webReply } from "@/lib/discord/help";
 
 export const runtime = "nodejs";
@@ -105,6 +105,7 @@ export async function POST(req: Request) {
   // /trade builder (private message): "Find player" opens a name box at once; every other tap and the
   // name box answer "deferred update", then edit the builder.
   if (i.type === COMPONENT && cid === "tb|find") return NextResponse.json(findPlayerModal());
+  if (i.type === COMPONENT && cid === "tb|spot") return NextResponse.json(pickSpotModal(i as ComponentInteraction));
   if ((i.type === COMPONENT || i.type === MODAL_SUBMIT) && cid.startsWith("tb|")) {
     after(async () => {
       try {

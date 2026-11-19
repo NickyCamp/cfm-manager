@@ -30,7 +30,8 @@ export type TradeTeam = {
   slots: number[];   // spot in each round (index = round 1-7): teams tied on record rotate between rounds
 };
 /** A draft pick: year, round, and (optional) its slot in the round, set by hand when the automatic one is wrong. */
-export type Pick = { y: number; r: number; s?: number };
+/** s: pick number in the round set by hand (1–32); u: spot set by hand as unknown (valued as mid-round). */
+export type Pick = { y: number; r: number; s?: number; u?: boolean };
 export type Side = { team: number | null; players: number[]; picks: Pick[] };
 
 export const DEV = ["Normal", "Star", "Superstar", "X-Factor"];
@@ -132,7 +133,8 @@ export function playerValue(p: { g: string; ur: number; age: number; dev: number
 export type PickOwner = { slot: number; slots?: number[] };
 const roundSlot = (o: PickOwner, r: number) => o.slots?.[r] || o.slot;
 
-export function pickSlot(k: Pick, owner: PickOwner, firstDraft: number): { slot: number; how: "set" | "order" | "projected" | "estimate" } {
+export function pickSlot(k: Pick, owner: PickOwner, firstDraft: number): { slot: number; how: "set" | "order" | "projected" | "estimate" | "unknown" } {
+  if (k.u) return { slot: 16, how: "unknown" };
   if (k.s && k.s >= 1 && k.s <= 32) return { slot: k.s, how: "set" };
   const later = k.y - firstDraft;
   if (later <= 0) return { slot: roundSlot(owner, k.r), how: "order" };
@@ -155,6 +157,7 @@ const ordinalNum = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" :
 export function pickSpotText(k: Pick, owner: PickOwner, firstDraft: number, orderFinal: boolean) {
   const { slot, how } = pickSlot(k, owner, firstDraft);
   const n = overallPick(k.r, slot);
+  if (how === "unknown") return "spot unknown (valued as mid-round)";
   if (how === "estimate") return `~#${slot} in the round (estimate)`;
   const tag = how === "set" ? "set by hand" : orderFinal ? "draft order" : "projected";
   return `#${slot}, ${ordinalNum(n)} overall (${tag})`;

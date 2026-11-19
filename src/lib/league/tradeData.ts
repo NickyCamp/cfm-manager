@@ -130,8 +130,10 @@ export function teamDraftSlots(d: LeagueData, firstDraft: number): { slots: Map<
 /** Parses the Trade Tool's query (?a=NYJ&b=PIT&pa=1,2&pb=3&ka=2028-1&kb=...) into sides. */
 export function parseTrade(td: Pick<TradeData, "teams" | "players">, q: Record<string, string | undefined>) {
   const ids = (s?: string) => (s || "").split(",").map(Number).filter((n) => n > 0);
-  const picks = (s?: string) => (s || "").split(",").map((x) => x.split("-").map(Number)).filter(([y, r]) => y > 2000 && r >= 1 && r <= 7)
-    .map(([y, r, n]) => (n >= 1 && n <= 32 ? { y, r, s: n } : { y, r }));
+  // "2028-1" automatic spot, "2028-1-12" set to #12 in the round, "2028-1-u" set as unknown.
+  const picks = (s?: string) => (s || "").split(",").map((x) => x.split("-")).map(([y, r, n]) => ({ y: Number(y), r: Number(r), n }))
+    .filter(({ y, r }) => y > 2000 && r >= 1 && r <= 7)
+    .map(({ y, r, n }) => (n === "u" ? { y, r, u: true } : Number(n) >= 1 && Number(n) <= 32 ? { y, r, s: Number(n) } : { y, r }));
   const a = td.teams.find((t) => t.abbr === q.a)?.id ?? null, b = td.teams.find((t) => t.abbr === q.b)?.id ?? null;
   const team = new Map(td.players.map((p) => [p.id, p.t]));
   return {

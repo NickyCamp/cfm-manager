@@ -46,6 +46,9 @@ function decode(msg: ComponentInteraction["message"]): St | null {
 }
 /** The Trade Tool's query for this trade. */
 const query = (s: St): Record<string, string> => ({ a: s.a, b: s.b, pa: s.pa.join(","), pb: s.pb.join(","), ka: s.ka.join(","), kb: s.kb.join(",") });
+/** Builder pick value → Pick: "2028-1" automatic, "2028-1-12" #12 in the round, "2028-1-u" unknown. */
+const pickOf = (x: string): Pick => { const [y, r, n] = x.split("-"); return n === "u" ? { y: +y, r: +r, u: true } : Number(n) ? { y: +y, r: +r, s: Number(n) } : { y: +y, r: +r }; };
+const baseKey = (x: string) => x.split("-").slice(0, 2).join("-");
 const sideOf = (s: St): "a" | "b" => (s.st === "b" || s.st === "B" ? "b" : "a");
 
 // ---------------------------------------------------------------- rendering
@@ -53,7 +56,6 @@ const sideOf = (s: St): "a" | "b" => (s.st === "b" || s.st === "B" ? "b" : "a");
 function render(lg: LinkedLeague, td: TradeData, s: St, note = ""): Message {
   const team = (abbr: string) => td.teams.find((t) => t.abbr === abbr);
   const byId = new Map(td.players.map((p) => [p.id, p]));
-  const pickOf = (x: string): Pick => { const [y, r, n] = x.split("-").map(Number); return n ? { y, r, s: n } : { y, r }; };
   const assets = (abbr: string, ids: number[], picks: string[]) => {
     const t = team(abbr);
     const lines = [
@@ -69,7 +71,7 @@ function render(lg: LinkedLeague, td: TradeData, s: St, note = ""): Message {
 
   const prompt: Record<Step, string> = {
     a: "**Step 1:** pick **Team 1**.",
-    A: `**Step 2:** add what the **${ta?.name || "Team 1"}** send: players and picks, as many as you like. Then tap **Next: Team 2**.`,
+    A: `**Step 2:** add what the **${ta?.name || "Team 1"}** send: players and picks, as many as you like. Picks get their spot automatically; use the pick-number menu to set #1–32 or unknown. Then tap **Next: Team 2**.`,
     b: "**Step 3:** pick **Team 2**.",
     B: `**Step 4:** add what the **${tb?.name || "Team 2"}** send. Then tap **Review**.`,
     r: "**Review.** Submit posts it in #trade-proposals for the admins to vote on.",
@@ -138,6 +140,13 @@ function components(td: TradeData, s: St, slug: string): unknown[] {
         options: pickOpts.map((k) => ({ label: `${k.y} ${ROUND[k.r]} round`, value: `${k.y}-${k.r}`, description: pickSpotText(k, t, td.firstDraft, td.orderFinal).slice(0, 100) })),
       }] });
     }
+    const sidePicks = side === "a" ? s.ka : s.kb;
+    if (sidePicks.length && t) {
+      rows.push({ type: 1, components: [{
+        type: 3, custom_id: "tb|spot", placeholder: "Set a pick's number in the round (1–32 or unknown)",
+        options: sidePicks.slice(0, 25).map((x) => { const k = pickOf(x); return { label: `${k.y} ${ROUND[k.r]} round pick`, value: baseKey(x), description: pickSpotText(k, t, td.firstDraft, td.orderFinal).slice(0, 100) }; }),
+      }] });
+    }
     const mine = [...(side === "a" ? s.pa : s.pb).map((id) => ({ v: `p:${id}`, l: td.players.find((p) => p.id === id)?.n || String(id) })), ...(side === "a" ? s.ka : s.kb).map((x) => ({ v: `k:${x}`, l: `${x.split("-")[0]} ${ROUND[Number(x.split("-")[1])]} round pick` }))];
     if (mine.length) {
       rows.push({ type: 1, components: [{ type: 3, custom_id: "tb|remove", placeholder: "Remove something", min_values: 1, max_values: mine.length, options: mine.slice(0, 25).map((x) => ({ label: x.l.slice(0, 100), value: x.v })) }] });
@@ -182,6 +191,18 @@ export function findPlayerModal(): unknown {
   return { type: 9, data: { custom_id: "tb|findm", title: "Find a player", components: [{ type: 1, components: [{ type: 4, custom_id: "name", label: "Player name (or part of it)", style: 1, min_length: 2, max_length: 40, required: true }] }] } };
 }
 
+/** "Set a pick's number" select: opens a box for 1–32 / unknown / blank (automatic). Answered at once from the message. */
+export function pickSpotModal(i: ComponentInteraction): unknown {
+  const key = String(i.data?.values?.[0] || "");
+  const s = decode(i.message);
+  const cur = s ? [...s.ka, ...s.kb].find((x) => baseKey(x) === key) : undefined;
+  const k = pickOf(cur || key);
+  return { type: 9, data: { custom_id: `tb|spotm|${key}`, title: `${k.y} ${ROUND[k.r]} round pick`.slice(0, 45), components: [{ type: 1, components: [{
+    type: 4, custom_id: "spot", label: "Pick # in the round: 1–32, or unknown", style: 1, max_length: 7, required: false,
+    placeholder: "e.g. 12, or unknown. Blank = automatic", value: k.u ? "unknown" : k.s ? String(k.s) : undefined,
+  }] }] } };
+}
+
 /** Any other tap or the name box: returns the updated builder (and maybe a private note). */
 export async function tradeBuilderTap(i: ComponentInteraction): Promise<BuilderAnswer> {
   const lg = i.guild_id ? await leagueForGuild(i.guild_id).catch(() => null) : null;
@@ -214,6 +235,21 @@ export async function tradeBuilderTap(i: ComponentInteraction): Promise<BuilderA
       const hits = td.players.filter((p) => p.t === t?.id && p.n.toLowerCase().includes(name) && !s[P].includes(p.id)).sort((x, y) => y.ovr - x.ovr);
       if (!hits.length) note = `No ${s[side]} player matches "${name}".`;
       else { s[P] = [...s[P], hits[0].id]; if (hits.length > 1) note = `Added ${hits[0].n}. Also matching: ${hits.slice(1, 6).map((p) => p.n).join(", ")}.`; }
+      break;
+    }
+    case "spotm": {
+      const key = String(i.data?.custom_id || "").split("|")[2] || "";
+      const raw = String(i.data?.components?.[0]?.components?.[0]?.value || "").trim().toLowerCase().replace(/^#/, "");
+      const n = Number(raw);
+      let val: string | null = null;
+      if (!raw || raw === "auto") val = key;
+      else if (["unknown", "u", "?", "tbd", "unk"].includes(raw)) val = `${key}-u`;
+      else if (Number.isInteger(n) && n >= 1 && n <= 32) val = `${key}-${n}`;
+      if (!val) { note = `"${raw}" isn't a pick number. Use 1–32, unknown, or leave it blank for automatic.`; break; }
+      if (!s[K].some((x) => baseKey(x) === key)) { note = "That pick isn't in this side of the trade any more."; break; }
+      s[K] = s[K].map((x) => (baseKey(x) === key ? val! : x));
+      const k = pickOf(val), t = td.teams.find((x) => x.abbr === s[side]);
+      note = `${k.y} ${ROUND[k.r]} round pick: ${t ? pickSpotText(k, t, td.firstDraft, td.orderFinal) : "updated"}.`;
       break;
     }
     case "team1": s.st = "a"; break;

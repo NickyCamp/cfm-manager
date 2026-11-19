@@ -133,8 +133,8 @@ function SidePicker({ label, side, setSide, other, teams, players, playerById, d
                     </span>
                     <label className="trade-pick-slot small" title="Pick number within the round. Leave it on the automatic number unless the real pick is different (e.g. a pick this team got from someone else).">
                       #
-                      <input type="number" min={1} max={32} inputMode="numeric" value={k.s ?? auto} onChange={(e) => setSlot(e.target.value)} aria-label={`${k.y} ${ROUND[k.r]} round pick number in the round`} />
-                      {k.s ? <button type="button" className="btn-link small" onClick={() => setSlot("")}>auto</button> : null}
+                      <input type="number" min={1} max={32} inputMode="numeric" value={k.u ? "" : k.s ?? auto} placeholder={k.u ? "?" : undefined} onChange={(e) => setSlot(e.target.value)} aria-label={`${k.y} ${ROUND[k.r]} round pick number in the round`} />
+                      {k.s || k.u ? <button type="button" className="btn-link small" onClick={() => setSlot("")}>auto</button> : null}
                     </label>
                     <button type="button" aria-label="Remove pick" onClick={() => setSide({ ...side, picks: side.picks.filter((x) => x !== k) })}>×</button>
                   </li>
@@ -295,7 +295,7 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
 }
 
 
-const pickParam = (k: Pick) => `${k.y}-${k.r}${k.s ? `-${k.s}` : ""}`;
+const pickParam = (k: Pick) => `${k.y}-${k.r}${k.u ? "-u" : k.s ? `-${k.s}` : ""}`;
 
 function describe(ps: TradePlayer[], picks: Pick[]) {
   const parts = [...ps.map((p) => p.n), ...picks.map((k) => `${k.y} ${ROUND[k.r]}`)];
