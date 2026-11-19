@@ -22,6 +22,7 @@ import { money } from "@/lib/league/format";
 import { discordOf, leagueBySlug, leagueForGuild, type LinkedLeague } from "./links";
 import { hexColor, type Embed } from "./api";
 import { channelGone, dc } from "./rest";
+import { adminRoleIds } from "./admin";
 import { renderTrade } from "./tradeImage";
 import { teamRoles } from "./gameChannels";
 import { isLeagueAdmin } from "./admin";
@@ -96,6 +97,15 @@ export async function botOnly(guildId: string) {
     { id: guildId, type: 0, deny: String(deny), allow: "0" },
     ...(me ? [{ id: me, type: 1, allow: String(allow), deny: "0" }] : []),
   ];
+}
+/** Like botOnly, but members with the server's "admin" role can post too (Nick, 2026-11-19, the Activity channels).
+ *  Returns how many admin roles were found (0 = the server has no role named "admin", so only the bot can post). */
+export async function botAndAdmins(guildId: string): Promise<{ lock: Awaited<ReturnType<typeof botOnly>>; adminRoles: number }> {
+  const lock = await botOnly(guildId);
+  const has = (await botGuildPerms(guildId)) ?? ~BigInt(0);
+  const allow = (VIEW | SEND | EMBED | ATTACH | HISTORY | PUB_THREADS | THREAD_SEND) & has;
+  const roles = (await adminRoleIds(guildId).catch(() => null)) || [];
+  return { lock: [...lock, ...roles.map((id) => ({ id, type: 0, allow: String(allow), deny: "0" }))], adminRoles: roles.length };
 }
 /** The smallest lock: @everyone can't send, the bot can view and send. A fallback when the full one is refused. */
 export async function minimalLock(guildId: string) {

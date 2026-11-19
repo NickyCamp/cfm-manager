@@ -25,7 +25,7 @@ import { BRAND, type Embed } from "./api";
 import { discordOf, leagueBySlug, type LinkedLeague } from "./links";
 import { withLeagueLock } from "./lock";
 import { dc, isGone, sleep } from "./rest";
-import { botOnly, makeChannel } from "./tradeChannels";
+import { botAndAdmins, makeChannel } from "./tradeChannels";
 import { postToChannel } from "./api";
 import { clearChannel } from "./marketChannels";
 import { missPct, renderActivity, type ActivityRow } from "./activityImage";
@@ -47,6 +47,8 @@ export type ActivityState = {
   wrapped: string[];
   /** Earlier seasons' totals: year → user → [played, missed]. */
   history?: Record<string, Record<string, [number, number]>>;
+  /** Channel lock version: 2 = the bot and the "admin" role can post. */
+  lock?: number;
   seasonChannelId?: string;
   cycleChannelId?: string;
   /** The seasons before the bot, from the league's sheet: each row's EA user is the team's user when it was loaded. */
@@ -151,6 +153,8 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
   if (!list.ok) return `Discord said ${list.status} listing the server's channels.`;
   const chans = (Array.isArray(list.data) ? list.data : []) as unknown as { id: string; name: string; type: number; parent_id?: string }[];
   const have = (id?: string) => Boolean(id && chans.some((c) => c.id === id));
+  // lock v2 (2026-11-19): bot + the "admin" role can post; channels made before get the new lock once
+  if (old && (old.lock || 0) < 2) repair = true;
   if (!repair && old && have(old.channelId) && have(old.seasonChannelId) && have(old.cycleChannelId)) return old;
 
   let cat = (old?.categoryId && chans.find((c) => c.id === old.categoryId && c.type === 4)?.id)
@@ -160,7 +164,7 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
     if (!r.ok) return r.status === 403 ? "The bot needs the Manage Channels permission to make the Activity category." : `Discord said ${r.status}: ${String(r.data.message || "")}`;
     cat = String(r.data.id);
   }
-  const locked = await botOnly(guildId);
+  const { lock: locked } = await botAndAdmins(guildId);
   const made: Record<string, boolean> = {};
   const one = async (known: string | undefined, name: string, topic: string): Promise<string> => {
     let id = (known && chans.find((c) => c.id === known)?.id) || chans.find((c) => c.type === 0 && c.parent_id === cat && c.name === name)?.id;
@@ -181,8 +185,8 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
   } catch (e) { return (e as Error).message; }
   const fresh = Boolean(made[CHANNEL]);
   const st: ActivityState = old
-    ? { ...old, categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: fresh ? null : old.totalsMessageId }
-    : { categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: null, season: d.season.year, start: wkOf(d.season.stage, d.season.week), games: {}, wrapped: [] };
+    ? { ...old, lock: 2, categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: fresh ? null : old.totalsMessageId }
+    : { lock: 2, categoryId: cat, channelId: ch, seasonChannelId: seasonCh, cycleChannelId: cycleCh, totalsMessageId: null, season: d.season.year, start: wkOf(d.season.stage, d.season.week), games: {}, wrapped: [] };
   // the league's sheet for the seasons before the bot (once)
   if (!st.seed) {
     const seed = seedFor(lg.slug, lg.name);

@@ -8,7 +8,7 @@ import { dc } from "./rest";
 const cache = new Map<string, { at: number; ids: string[] | null }>();
 
 /** Ids of the server's roles named "admin" (null = the server has none). Cached 5 minutes. */
-async function adminRoleIds(guildId: string): Promise<string[] | null> {
+export async function adminRoleIds(guildId: string): Promise<string[] | null> {
   const hit = cache.get(guildId);
   if (hit && Date.now() - hit.at < 5 * 60_000) return hit.ids;
   const r = await dc("GET", `/guilds/${guildId}/roles`);
