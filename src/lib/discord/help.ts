@@ -33,7 +33,7 @@ const GROUPS: [string, string[]][] = [
   ["🚀 Start here", ["help", "web", "myleague", "connect", "league"]],
   ["🏈 Players and teams", ["player", "contract", "team", "players", "rookie", "expiring"]],
   ["💰 Cap", ["cap"]],
-  ["📊 Games and stats", ["tws", "scores", "standings", "playoffs", "stats", "funfact", "sync"]],
+  ["📊 Games and stats", ["tws", "scores", "schedule", "standings", "playoffs", "stats", "funfact", "sync"]],
   ["🔁 Trades", ["trade", "tradeblock"]],
   ["🎟️ Markets", ["kickoff", "balance", "bets"]],
   ["🔎 Audits", ["audit"]],
@@ -67,6 +67,7 @@ const TIPS: Record<string, string> = {
   players: "Leave team empty for the league-wide top 25 (e.g. `/players group:WR rating:Speed`). Leave group empty for every position. Pick a rating (Overall, Speed, Throw Power…) and/or an order to sort best to worst or worst to best; a group also shows its league rank.",
   player: "Start typing and pick the name from the list. The reply is the player's card, front and back.",
   cap: "`/cap team:BUF year:2028` focuses that season. `/cap year:2028` with no team lists every team's projected space.",
+  schedule: "Leave it empty for this week's games (scores once they're final, kickoffs if set). Pick a team for its whole season, byes and playoffs included; ▶ marks this week.",
   tws: "Leave week empty for this week's matchup. Playoffs: week 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl.",
   stats: "Regular season only. Rate stats (completion %, passer rating, YPC, FG %, punt average) need a minimum number of attempts to qualify.",
   sync: "Pulls from EA now instead of waiting for the schedule. Once every 15 minutes per league; usually takes 2–4 minutes.",
@@ -86,7 +87,7 @@ const TOPIC_OF: Record<string, string> = {
   tradechannels: "trades", transactionchannels: "setup", auditchannels: "audits", packchannels: "packs", betcap: "markets",
   economy: "markets", payouts: "markets", verifykickoff: "markets", kickoff: "markets", balance: "markets", bets: "markets",
   trade: "trades", tradeblock: "trades", audit: "audits", pack: "packs", packs: "packs", myleague: "start", connect: "start",
-  league: "lookups", player: "lookups", cap: "lookups", tws: "lookups", stats: "lookups",
+  league: "lookups", schedule: "lookups", player: "lookups", cap: "lookups", tws: "lookups", stats: "lookups",
 };
 const topicLabel = (k: string) => HELP_TOPICS.find(([v]) => v === k)?.[1] ?? k;
 
@@ -171,7 +172,7 @@ function topicHelp(key: string): Embed | null {
       "• `/cap team year`: cap space now and in future seasons; `/cap year:2028` alone lists every team",
       "• `/tws team week`: this week's matchup or a past game. Playoff weeks: 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl",
       "• `/stats category team`: top 10 in a stat",
-      "• `/scores`, `/standings`, `/playoffs`, `/rookie`, `/expiring`, `/funfact`",
+      "• `/scores`, `/schedule`, `/standings`, `/playoffs`, `/rookie`, `/expiring`, `/funfact`",
       "**Another league?** `/league league:<pick> player:<name>` looks things up in any league you're in, from any Discord. Pick the league first, then fill one box.",
       "**Data looks old?** `/sync` pulls from EA now (once every 15 minutes).",
     ].join("\n"),

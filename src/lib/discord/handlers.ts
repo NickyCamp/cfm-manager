@@ -130,11 +130,11 @@ const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free ag
 
 // ---------- /league: the same commands for any league you're in ----------
 
-const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "pack", "packs", "sync", "info"]);
+const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "schedule", "pack", "packs", "sync", "info"]);
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -506,6 +506,19 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
+    case "schedule": {
+      // /schedule (Nick, 2026-11-19): empty = this week's games with scores; a team = its whole season.
+      const tv = opt(i, "team");
+      const kick = await closeTimes(lg.id, d.season.year).catch(() => new Map<number, { closeAt: string }>());
+      if (tv != null && tv !== "") {
+        const t = findTeam(d, tv);
+        return t ? { embeds: [teamScheduleEmbed(d, t, kick, url, footer)] } : reply("No team by that name.");
+      }
+      const w = Number(opt(i, "week"));
+      let pick = w ? { stage: 1, week: weekIndex(w) } : { stage: d.season.stage, week: d.season.week };
+      if (!w && !gamesForWeek(d, pick.stage, pick.week).some((g) => g.home && g.away)) pick = defaultScoresWeek(d);
+      return { embeds: [weekScheduleEmbed(d, pick.stage, pick.week, kick, url, footer)] };
+    }
     case "scores": {
       const w = Number(opt(i, "week"));
       const pick = w ? { stage: 1, week: w - 1 } : defaultScoresWeek(d);
@@ -1194,8 +1207,58 @@ function scoresEmbed(d: LeagueData, stage: number, week: number, url: Url, foote
   return { title: `Scores: ${weekTitle(d, stage, week)}`, url: url("/scores"), color: BRAND, footer, description: lines.join("\n") || "No games this week." };
 }
 
+// ---------- /schedule (Nick, 2026-11-19) ----------
+type Kickoffs = Map<number, { closeAt: string }>;
+
+/** One week: every game, the score once it's final, otherwise records and the kickoff on file. */
+function weekScheduleEmbed(d: LeagueData, stage: number, week: number, kick: Kickoffs, url: Url, footer: Footer): Embed {
+  const games = gamesForWeek(d, stage, week).filter((g) => g.home && g.away);
+  const lines = games.map((g) => {
+    const a = teamOf(d, g.away), h = teamOf(d, g.home);
+    const an = a?.abbr || "TBD", hn = h?.abbr || "TBD";
+    if (g.final) {
+      const awayWon = g.as > g.hs, tie = g.as === g.hs;
+      const x = `${an} ${g.as}`, y = `${hn} ${g.hs}`;
+      return `${awayWon ? `**${x}**` : x} @ ${!awayWon && !tie ? `**${y}**` : y} · final${g.simmed ? " (sim)" : ""}`;
+    }
+    const k = kick.get(g.id);
+    return `${an} (${a ? record(a) : "-"}) @ ${hn} (${h ? record(h) : "-"}) · ${k ? `⏰ ${fmtET(k.closeAt)}` : "no kickoff set"}`;
+  });
+  const done = games.filter((g) => g.final).length;
+  const head = games.length ? `${done} of ${games.length} game${games.length === 1 ? "" : "s"} final.` : "";
+  return { title: `Schedule: ${d.season.year} ${weekTitle(d, stage, week)}`, url: url("/scores"), color: BRAND, footer, description: [head, ...lines].filter(Boolean).join("\n") || "No games this week." };
+}
+
+/** One team's whole season: every regular-season week (byes included) and any playoff games, with results. */
+function teamScheduleEmbed(d: LeagueData, t: Team, kick: Kickoffs, url: Url, footer: Footer): Embed {
+  const mine = d.games.filter((g) => g.stage === 1 && g.home && g.away && (g.home === t.id || g.away === t.id));
+  const regWeeks = [...new Set(d.games.filter((g) => g.stage === 1 && g.week < 18).map((g) => g.week))].sort((a, b) => a - b);
+  const byWeek = new Map(mine.map((g) => [g.week, g]));
+  const weeks = [...new Set([...regWeeks, ...mine.map((g) => g.week)])].sort((a, b) => a - b);
+  const lines = weeks.map((wk) => {
+    const now = d.season.stage === 1 && d.season.week === wk ? "▶ " : "";
+    const label = wk < 18 ? `Wk ${wk + 1}` : weekTitle(d, 1, wk);
+    const g = byWeek.get(wk);
+    if (!g) return `${now}${label} · Bye`;
+    const home = g.home === t.id;
+    const opp = teamOf(d, home ? g.away : g.home);
+    const vs = `${home ? "vs" : "@"} ${opp?.abbr || "TBD"}`;
+    if (g.final) {
+      const us = home ? g.hs : g.as, them = home ? g.as : g.hs;
+      const res = us > them ? "W" : us < them ? "L" : "T";
+      return `${now}${label} · ${vs} · **${res} ${us}-${them}**${g.simmed ? " (sim)" : ""}`;
+    }
+    const k = kick.get(g.id);
+    return `${now}${label} · ${vs}${opp ? ` (${record(opp)})` : ""}${k ? ` · ⏰ ${fmtET(k.closeAt)}` : ""}`;
+  });
+  return {
+    title: `${t.city} ${t.name}: ${d.season.year} schedule`, url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
+    description: [`Record ${record(t)} · ${t.division}`, "", ...lines].join("\n").slice(0, 4000) || "No games on the schedule.",
+  };
+}
+
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
-export const _preview = { leaguePlayersEmbed, statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, autocompletePlayers: searchPlayers };
+export const _preview = { leaguePlayersEmbed, statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, weekScheduleEmbed, teamScheduleEmbed, autocompletePlayers: searchPlayers };
 
 // ---------- /kickoff: when betting closes on a game (Nick, 2026-11-13) ----------
 // The two teams' managers (linked with /connect) or an admin can set it; once it has

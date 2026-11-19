@@ -26,7 +26,7 @@ const team = (required: boolean) => ({ type: STRING, name: "team", description: 
 
 // /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
 export const LEAGUE_MORE: [string, string][] = [
-  ["standings", "Standings"], ["playoffs", "Playoff picture"], ["scores", "Scores (week box)"], ["cap", "League cap space (year box)"],
+  ["standings", "Standings"], ["playoffs", "Playoff picture"], ["scores", "Scores (week box)"], ["schedule", "Schedule (team or week box)"], ["cap", "League cap space (year box)"],
   ["rookie", "Top rookies (team box)"], ["expiring", "Expiring contracts (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
   ["packs", "Pack leaderboard"], ["sync", "Sync now (pull from EA)"], ["info", "League info and links"],
 ];
@@ -126,6 +126,16 @@ const PLAIN = [
   { name: "standings", description: "Division standings", ...ANYWHERE },
   { name: "playoffs", description: "Playoff picture with NFL tiebreakers", ...ANYWHERE },
   {
+    // /schedule (Nick, 2026-11-19): empty = this week's games (scores once final); a team = its whole season.
+    name: "schedule",
+    description: "This week's games and scores, or pick a team for its whole season schedule",
+    ...ANYWHERE,
+    options: [
+      team(false),
+      { type: INTEGER, name: "week", description: "Without a team: week 1-18; playoffs 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl", required: false, min_value: 1, max_value: 22 },
+    ],
+  },
+  {
     name: "scores",
     description: "Scores for a week (default: the latest week with a final)",
     ...ANYWHERE,
@@ -152,7 +162,7 @@ export const COMMANDS = [
       { type: STRING, name: "team", description: "A team's page (start typing a team); add the group box for one position group", required: false, autocomplete: true },
       { type: STRING, name: "cap", description: "A team's cap space by year (add the year box to focus a season)", required: false, autocomplete: true },
       { type: STRING, name: "contract", description: "What a player will likely ask for on his next deal", required: false, autocomplete: true },
-      { type: STRING, name: "more", description: "Standings, playoffs, scores, rookies, expiring deals, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
+      { type: STRING, name: "more", description: "Standings, playoffs, scores, schedule, rookies, expiring deals, fun fact, packs, league info", required: false, choices: LEAGUE_MORE.map(([value, name]) => ({ name, value })) },
       { ...group(false), description: "Players in one position group (OL, DL, DB…); with the team box, just that team" },
       { ...rating, description: "Sort players by a rating (start typing); add team or group to narrow it" },
       { ...order, description: "With rating: best to worst (default) or worst to best" },
