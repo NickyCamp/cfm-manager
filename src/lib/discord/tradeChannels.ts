@@ -200,6 +200,8 @@ export async function tradeChannelsCmd(slug: string, remove: boolean, admin?: st
     else {
       await updateLeagueSettings(lg.id, (s) => { const t = s.tradeChannels as TradeChannels | undefined; if (t) t.adminChannelId = admin; return s; });
       st.adminChannelId = admin;
+      const b = await backfillAdminCopies(slug).catch((e) => { console.error("trade admin backfill", e); return null; });
+      if (b && (b.posted || b.failed)) adminNote = `Copied ${b.posted} open proposal${b.posted === 1 ? "" : "s"} still waiting on votes into <#${admin}>${b.failed ? ` (${b.failed} couldn't be copied; their #trade-proposals post may be deleted)` : ""}.`;
     }
   }
   return [
@@ -316,6 +318,49 @@ export async function postTradeProposal(slug: string, query: Record<string, stri
     return set;
   });
   return `Posted in #trade-proposals${proposal.adminMessageId ? " and the admin channel" : ""} for the admins to vote on (${VOTES_NEEDED} approvals passes it): ${s.verdict}.${adminFail}`;
+}
+
+/**
+ * Copies every still-open proposal that has no admin copy yet into the admin channel, with its current
+ * votes and buttons (picture downloaded from the #trade-proposals post). Run when the admin channel is set.
+ */
+export async function backfillAdminCopies(slug: string): Promise<{ posted: number; failed: number }> {
+  const lg = await leagueBySlug(slug);
+  const st = lg ? stateOf(lg) : null;
+  if (!lg || !st?.adminChannelId) return { posted: 0, failed: 0 };
+  const guildId = discordOf(lg)!.guildId;
+  const open = Object.values(st.proposals || {}).filter((p) => p.status === "open" && p.messageId && !p.adminMessageId).sort((x, y) => x.at.localeCompare(y.at));
+  const made: Record<string, string> = {};
+  let failed = 0;
+  for (const p of open) {
+    const m = await dc("GET", `/channels/${st.channelId}/messages/${p.messageId}`);
+    if (!m.ok) { failed++; continue; }
+    const embeds = (m.data.embeds as Embed[] | undefined) || [];
+    const old = embeds[0] || {};
+    const att = ((m.data.attachments as { url: string; filename: string }[] | undefined) || []).find((x) => x.filename === "trade.png");
+    const png = att ? Buffer.from(await (await fetch(att.url)).arrayBuffer()) : null;
+    const embed: Embed = { ...old, fields: [...(old.fields || []).filter((f) => f.name !== "Admin votes"), voteField(p)], ...(png ? { image: { url: "attachment://trade.png" } } : {}) };
+    const publicUrl = `https://discord.com/channels/${guildId}/${st.channelId}/${p.messageId}`;
+    const by = /^\d{15,}$/.test(p.by) ? `<@${p.by}>` : `**${p.by}**`;
+    const payload = {
+      content: `🔒 Admin copy: **${p.a} ⇄ ${p.b}**, submitted by ${by}. Votes here and in [#trade-proposals](${publicUrl}) are the same count.`,
+      embeds: [embed], components: voteButtons(slug, p), allowed_mentions: { parse: [] as string[] },
+      ...(png ? { attachments: [{ id: 0, filename: "trade.png" }] } : {}),
+    };
+    const r = png ? await postWithImage(st.adminChannelId, payload, png) : await (async () => {
+      const x = await dc("POST", `/channels/${st.adminChannelId}/messages`, payload);
+      return { ok: x.ok, status: x.status, id: x.ok ? String(x.data.id) : null };
+    })();
+    if (r.ok && r.id) made[p.id] = r.id; else failed++;
+  }
+  if (Object.keys(made).length) {
+    await updateLeagueSettings(lg.id, (s) => {
+      const t = s.tradeChannels as TradeChannels | undefined;
+      for (const [id, mid] of Object.entries(made)) if (t?.proposals?.[id]) t.proposals[id].adminMessageId = mid;
+      return s;
+    });
+  }
+  return { posted: Object.keys(made).length, failed };
 }
 
 async function postWithImage(channelId: string, payload: object, png: Buffer): Promise<{ ok: boolean; status: number; id: string | null }> {
