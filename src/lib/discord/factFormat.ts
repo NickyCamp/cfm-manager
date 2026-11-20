@@ -116,6 +116,43 @@ export function resolveQuips(text: string, mem: QuipMemory = {}): { text: string
   if (out.includes(T_USER)) out = out.replace(T_USER, fill("u", AT_USER));
   return { text: out, used };
 }
+/** Wildcard closers from the Evil Insult Generator (evilinsult.com, free, no key). Nick, 2026-11-20:
+ *  ~10% of facts that would get a built-in closing jab get a random internet insult instead, framed as
+ *  fan mail. Any failure (slow, down, junk, too long, filtered) falls back to the built-in jabs. */
+const WILD_CHANCE = 10; // percent of facts that have a closing-jab slot
+const WILD_FRAMES = [
+  "Fan mail:", "Overheard in the stands:", "A season-ticket holder writes:", "Voicemail from the owner:",
+  "Left on the team bus windshield:", "Sign spotted in the crowd:", "Postgame presser question:",
+];
+// Keep the wildcards in line with the bot's own rules (no slurs, nothing sexual, no self-harm digs).
+const WILD_BLOCK = /\b(fag|retard|nigg|tranny|rape|kill yourself|kys|suicide|cancer|aids|incest|pedo|molest|cum|cock|dick|pussy|cunt|tits|anal|porn|dildo|sex|whore|slut|jew|muslim|gay|abort)/i;
+const decode = (s: string) => s
+  .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+  .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c))).replace(/\s+/g, " ").trim();
+async function wildInsult(): Promise<string | null> {
+  try {
+    const res = await fetch("https://evilinsult.com/generate_insult.php?lang=en&type=json", {
+      signal: AbortSignal.timeout(1500), cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { insult?: unknown };
+    const ins = typeof j.insult === "string" ? decode(j.insult) : "";
+    if (ins.length < 12 || ins.length > 170 || WILD_BLOCK.test(ins) || /https?:|<|@/.test(ins)) return null;
+    return `${pick(WILD_FRAMES)} \u201c${ins}\u201d`;
+  } catch { return null; }
+}
+/** Like resolveQuips, but now and then fills the closing-jab slot with a wildcard internet insult. */
+export async function resolveQuipsWild(text: string, mem: QuipMemory = {}): Promise<{ text: string; used: QuipMemory }> {
+  if (text.includes(T_TAIL) && randomInt(100) < WILD_CHANCE) {
+    const wild = await wildInsult();
+    if (wild) {
+      const r = resolveQuips(text.replace(T_TAIL, "\u0002W\u0002"), mem);
+      return { text: r.text.replace("\u0002W\u0002", wild), used: r.used };
+    }
+  }
+  return resolveQuips(text, mem);
+}
+
 /** Add the ids `used` to the memory (newest last, trimmed per kind). */
 export function mergeQuips(mem: QuipMemory | undefined, used: QuipMemory): QuipMemory {
   const next: QuipMemory = {};

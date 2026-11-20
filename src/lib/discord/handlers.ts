@@ -20,7 +20,7 @@ import { loadPackStats, savePackStats } from "./packStore";
 import { DISCORD_POS_GROUPS, findSortRating, groupStarters, sortRatingChoices, sortValue, type DiscordPosGroup, type PlayerSort } from "./posGroups";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
 import { pickFact, playerFacts, remember, teamFacts } from "./funfacts";
-import { mergeQuips, resolveQuips, type QuipMemory } from "./factFormat";
+import { mergeQuips, resolveQuipsWild, type QuipMemory } from "./factFormat";
 import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
 import { amnestyMoney, amnestyPlan, amnestyRecipe } from "@/lib/league/amnesty";
@@ -500,7 +500,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (f) {
         const next = remember(recentAll[subject] || [], f, facts.length);
         // Fill in the quips, skipping ones the league saw recently.
-        const q = resolveQuips(f.text, (lg.settings?.funfactQuips || {}) as QuipMemory);
+        const q = await resolveQuipsWild(f.text, (lg.settings?.funfactQuips || {}) as QuipMemory);
         f = { ...f, text: q.text };
         await updateLeagueSettings(lg.id, (s) => {
           s.funfactQuips = mergeQuips(s.funfactQuips as QuipMemory | undefined, q.used);
