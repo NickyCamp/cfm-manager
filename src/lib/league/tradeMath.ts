@@ -2,9 +2,9 @@
 // trade proposal (server). Pure: no server imports.
 //
 // Two parts:
-//  1. Cap impact (moved here from TradeTool.tsx, unchanged rules): the team trading a
-//     player away takes his whole release penalty as dead money this season; the team
-//     getting him pays only his salary (his bonus stays behind).
+//  1. Cap impact: the team trading a player away takes this season's share of his bonus
+//     as dead money now and the rest of his release penalty next season (deadSplit); the
+//     team getting him pays only his salary (his bonus stays behind).
 //  2. Trade score (Nick, 2026-11-17): a value for every asset that weighs what wins in a
 //     user league, with physical traits (speed, acceleration, agility, height, strength)
 //     counting far more than Madden's OVR does; then each team's needs: a player who
@@ -41,12 +41,24 @@ export const ROUND = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
 
 export type CapRow = { y: number; i: number; before: number; leaving: number; dead: number; arriving: number; change: number; after: number };
 
+/**
+ * Dead money a player leaves behind, split the way Madden charges it (2026-11-19): this
+ * season's bonus share now, everything else in his release penalty (later bonus shares,
+ * void-year bonus) next season. Checked on NCL: BUF trading Sergio Hail + Ben VanSumeren
+ * ($34.6M penalty) left BUF at +$410K in Madden, i.e. only $8.65M (a quarter, one year of
+ * a 4-year bonus) charged in 2028. Before this the tool put the whole $34.6M in 2028.
+ */
+export function deadSplit(p: TradePlayer): [number, number] {
+  const now = Math.min(p.pen, Math.max(0, p.bonus[0] || 0));
+  return [now, p.pen - now];
+}
+
 export function capRows(team: TradeTeam, out: TradePlayer[], inc: TradePlayer[], years: number[]): CapRow[] {
   return years.map((y, i) => {
     // Leaving: this season his whole cap hit comes off (then the penalty goes on);
     // later seasons, his cap hit and any void-year bonus (practice squad deals aren't counted there).
     const leaving = out.reduce((s, p) => s + (i === 0 ? p.hits[0] : p.ps ? 0 : p.hits[i] + p.dead[i]), 0);
-    const dead = i === 0 ? out.reduce((s, p) => s + p.pen, 0) : 0;
+    const dead = i <= 1 ? out.reduce((s, p) => s + deadSplit(p)[i], 0) : 0;
     const arriving = inc.reduce((s, p) => s + Math.max(0, p.hits[i] - p.bonus[i]), 0);
     const before = team.cap[i] - team.committed[i];
     const change = leaving - dead - arriving;

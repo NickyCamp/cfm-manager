@@ -81,9 +81,10 @@ function Column({ t, team, logo, byId }: { t: TeamScore; team: Team; logo?: stri
         )}
         {cap(`${t.capNow.y} cap space`, t.capNow.before, t.capNow.after)}
         {t.capNext && cap(`${t.capNext.y} (proj.)`, t.capNext.before, t.capNext.after)}
-        {t.capNow.dead > 0 && (
+        {t.capNow.dead + (t.capNext?.dead || 0) > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 19, fontWeight: 700, padding: "3px 0" }}>
-            <span style={{ color: SOFT }}>New dead money</span><span>{money(t.capNow.dead)}</span>
+            <span style={{ color: SOFT }}>New dead money</span>
+            <span>{money(t.capNow.dead)} {t.capNow.y}{t.capNext?.dead ? ` + ${money(t.capNext.dead)} ${t.capNext.y}` : ""}</span>
           </div>
         )}
         {t.needs.map((n) => (

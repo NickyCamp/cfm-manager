@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { money, onColor } from "@/lib/league/format";
-import { capRows, DEV, GROUP_NAME, pickSlot, pickSpotText, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
+import { capRows, deadSplit, DEV, GROUP_NAME, pickSlot, pickSpotText, ROUND, scoreTrade, type AssetScore, type Pick, type Side, type TeamScore, type TradePlayer, type TradeTeam } from "@/lib/league/tradeMath";
 
 export type { TradePlayer, TradeTeam };
 
@@ -62,8 +62,8 @@ export function TradeTool({ slug, year, firstDraft, orderFinal, draftYears, year
             <Impact team={teamById.get(b.team!)!} other={teamById.get(a.team!)!} sends={b} gets={a} playerById={playerById} years={years} capSet={capSet} slug={slug} />
           </div>
           <p className="hint">
-            How Madden handles a trade: the team trading a player away takes all of his bonus that hasn&apos;t been charged yet as dead money
-            this season (Madden&apos;s own &quot;dead if released&quot; number) and owes nothing on him after that. The team getting him pays only
+            How Madden handles a trade: the team trading a player away takes this season&apos;s share of his bonus as dead money now, and the rest
+            of his bonus that hasn&apos;t been charged yet (what&apos;s left of Madden&apos;s &quot;dead if released&quot; number) next season. After that it owes nothing on him. The team getting him pays only
             his salary; his bonus stays behind. {year} starts from each team&apos;s real cap numbers. Later years add up current contracts against
             a league cap that grows $15M a year, so they&apos;re projections. Madden won&apos;t accept a trade that puts either team over the cap this season.
           </p>
@@ -190,7 +190,7 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
   const activeOut = out.filter((p) => !p.ps).length;
   const rosterAfter = team.active - activeOut + inc.length;
   const over = now.after < 0;
-  const deadTotal = now.dead;
+  const deadTotal = now.dead + (rows[1]?.dead || 0);
 
   return (
     <section className="panel trade-impact" style={{ borderTop: `4px solid ${team.primary}` }}>
@@ -213,7 +213,7 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
         <div className="tile">
           <div className="tile-label">New dead money</div>
           <div className="tile-value">{money(deadTotal)}</div>
-          <div className="tile-sub">all in {now.y}</div>
+          <div className="tile-sub">{money(now.dead)} in {now.y}{rows[1]?.dead ? `, ${money(rows[1].dead)} in ${rows[1].y}` : ""}</div>
         </div>
         <div className="tile">
           <div className="tile-label">{rows[1]?.y ?? now.y} space after</div>
@@ -266,7 +266,7 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
                     <td><Link href={`/l/${slug}/players/${p.id}`}>{p.n}</Link> <span className="muted small">{p.pos}</span></td>
                     <td className="small muted">to {other.abbr}</td>
                     {years.map((y, i) => {
-                      const v = i === 0 ? p.pen - p.hits[0] : p.ps ? 0 : -(p.hits[i] + p.dead[i]);
+                      const v = (i <= 1 ? deadSplit(p)[i] : 0) - (i === 0 ? p.hits[0] : p.ps ? 0 : p.hits[i] + p.dead[i]);
                       return <td key={y} className={`num ${v < 0 ? "pos" : v > 0 ? "neg" : "muted"}`}>{v ? money(-v, { sign: true }) : "—"}</td>;
                     })}
                   </tr>
@@ -285,8 +285,8 @@ function Impact({ team, other, sends, gets, playerById, years, capSet, slug }: {
             </table>
           </div>
           <p className="hint">
-            Cap space each player adds (+) or takes (−) for the {team.name}. For a player leaving, {years[0]} is his cap hit coming off minus the dead money
-            going on. For a player arriving, it&apos;s his salary only; his bonus stays with {other.abbr}.
+            Cap space each player adds (+) or takes (−) for the {team.name}. For a player leaving, it&apos;s his cap hit coming off minus the dead money
+            going on ({years[0]}: this season&apos;s bonus share; {years[1]}: the rest). For a player arriving, it&apos;s his salary only; his bonus stays with {other.abbr}.
           </p>
         </details>
       )}
