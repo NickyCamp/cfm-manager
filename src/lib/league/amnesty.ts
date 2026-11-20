@@ -12,15 +12,15 @@
 //  - The target never re-derives the penalty. It is half of Madden's own number
 //    (EA's capReleasePenalty, the PENALTY column), which already includes every one
 //    of those cases. T = penalty / 2, rounded to $10K (Madden's money unit).
-//  - The rebuilt deal is 1 year, 1 year left, signing bonus T, the lowest salary the
-//    edit screen allows, no void years, no guaranteed years. Madden's rules (cap.ts,
+//  - The rebuilt deal is 1 year, 1 year left, signing bonus T, salary $0, no void years,
+//    no guaranteed years (2 years: same, half the bonus each season). Madden's rules (cap.ts,
 //    tradeMath.ts deadSplit): bonus spreads over min(length + void, 5) seasons = 1, so
 //    all of T is charged THIS season; dead-if-cut = bonus not yet charged (this
 //    season's share included) + guaranteed salary = T + 0 = T; and a cut charges this
 //    season's bonus share now and the rest next season = T now, 0 next.
-//  - So the post-edit contract card proves itself before anyone cuts: cap hit = S + T
+//  - So the post-edit contract card proves itself before anyone cuts: cap hit = T
 //    (if lower, void years are still spreading the bonus), PENALTY = T (if higher,
-//    guaranteed salary or old-deal money survived the edit), SAVINGS = S.
+//    guaranteed salary or old-deal money survived the edit).
 //
 // Not yet checked in Madden 27 (Nick to try on one player): exactly which fields the
 // edit screen offers and their names, the smallest bonus step, and whether an edit
@@ -118,13 +118,13 @@ export function amnestyRecipe(target: number, years: 1 | 2 = 1, year?: number) {
       { field: "Contract Length", value: years === 1 ? "1 year" : "2 years" },
       { field: "Contract Year / Years Left", value: years === 1 ? "1 (the deal's only year)" : "2 (first year of the deal)" },
       { field: "Signing Bonus", value: fmt(target) },
-      { field: "Total Salary", value: years === 1 ? "the lowest the slider allows (call it S)" : "the lowest the slider allows (this season's part is S)" },
+      { field: "Total Salary", value: "$0" },
       { field: "Void Years", value: "0 (if the screen has it)" },
       { field: "Guaranteed Years", value: "0 (if the screen has it)" },
     ],
     checks: [
       { label: "Length / years left", expect: years === 1 ? "1 / 1" : "2 / 2" },
-      { label: "Cap hit (this season)", expect: `S + ${years === 1 ? fmt(target) : halfText}` },
+      { label: "Cap hit (this season)", expect: years === 1 ? fmt(target) : halfText },
       { label: "Penalty (dead if cut)", expect: fmt(target) },
     ],
   };

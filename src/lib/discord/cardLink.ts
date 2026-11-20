@@ -40,3 +40,9 @@ export function checkCardLink(slug: string, key: string | number, exp: number, s
   const want = Buffer.from(sig(slug, String(key), exp)), got = Buffer.from(s || "");
   return want.length === got.length && timingSafeEqual(want, got);
 }
+
+/** The /amnesty picture for one player. */
+export function amnestyImageUrl(base: string, slug: string, playerId: number) {
+  const exp = expiry(), key = `a${playerId}`;
+  return `${base}/api/discord/amnesty?l=${encodeURIComponent(slug)}&p=${playerId}&e=${exp}&s=${sig(slug, key, exp)}`;
+}

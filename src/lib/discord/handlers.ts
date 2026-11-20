@@ -14,7 +14,7 @@ import { projectPlayer } from "@/lib/league/projection";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { standInArt } from "@/lib/league/headshots";
-import { cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
+import { amnestyImageUrl, cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { DISCORD_POS_GROUPS, findSortRating, groupStarters, sortRatingChoices, sortValue, type DiscordPosGroup, type PlayerSort } from "./posGroups";
@@ -294,7 +294,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "amnesty": {
       const p = findPlayer(d, opt(i, "player"));
-      return p ? { embeds: [amnestyEmbed(d, p, url, footer)] } : reply("No player by that name. Pick one from the list as you type.");
+      return p ? { embeds: [amnestyEmbed(d, p, url, footer, p.team ? amnestyImageUrl(base, lg.slug, p.id) : undefined)] } : reply("No player by that name. Pick one from the list as you type.");
     }
     case "contract": {
       const p = findPlayer(d, opt(i, "player"));
@@ -845,54 +845,29 @@ function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embe
  * costs exactly half of Madden's penalty today, as 1 year (all this season) or 2 years (half now,
  * half next season). Same math as Admin › Amnesty on the site (lib/league/amnesty.ts).
  */
-function amnestyEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed {
+function amnestyEmbed(d: LeagueData, p: Player, url: Url, footer: Footer, image?: string): Embed {
   const ad = buildAmnestyData(d);
   const ap = ad.players.find((x) => x.id === p.id);
   const t = teamOf(d, p.team);
-  const c = p.contract;
   const embed: Embed = {
     title: `${fullName(p)}: 50% amnesty`, url: url(`/admin/amnesty?player=${p.id}`), color: hexColor(t?.primary), footer,
-    description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR · Age ${p.age}`,
+    ...(image ? { image: { url: image } } : {}),
   };
-  if (!ap || !p.team) return { ...embed, description: `${embed.description}
-He's a free agent: nothing to amnesty.` };
-  const space = ad.teams.find((x) => x.id === p.team)?.space;
+  if (!ap || !p.team) return { ...embed, description: `${p.pos} · ${p.ovr} OVR · free agent: nothing to amnesty.` };
   const y0 = ad.year;
-  const plan = amnestyPlan(amnestyInput(ap), { space, year: y0 });
+  const plan = amnestyPlan(amnestyInput(ap), { year: y0 });
+  if (plan.pen <= 0) return { ...embed, description: `${p.pos} · ${teamLabel(t)}\n${plan.flags[0]?.text ?? "Nothing to amnesty."}` };
+  const r2 = amnestyRecipe(plan.target, 2, y0);
   const m = amnestyMoney;
-  const seasons = ad.years
-    .map((y, k) => {
-      const hit = ap.hits[k] || 0, dv = ap.dead[k] || 0;
-      if (!hit && !dv) return "";
-      return `${y}: ${hit ? `${money(hit)}${k ? " proj." : ""}` : ""}${dv ? `${hit ? " + " : ""}${money(dv)} void` : ""}`;
-    })
-    .filter(Boolean).join("\n");
-  const now = [
-    `**${c.length} yrs, ${c.yearsLeft} left** · ${money(c.salary + c.bonus)} total (${money(c.salary)} salary + ${money(c.bonus)} bonus)`,
-    `Cap hit ${y0}: **${money(c.capHit)}**`,
-    `Penalty if cut today: **${money(plan.pen)}** (${money(plan.normal[0])} ${y0}${plan.normal[1] > 0 ? ` + ${money(plan.normal[1])} ${y0 + 1}` : ""})`,
-    [plan.breakdown.voidBonus > 0 && `incl. ${money(plan.breakdown.voidBonus)} void-year bonus`, plan.breakdown.other > 0 && `incl. ${money(plan.breakdown.other)} guaranteed / older-deal money`].filter(Boolean).join(", "),
-  ].filter(Boolean).join("\n");
-  if (plan.pen <= 0) {
-    return { ...embed, fields: [{ name: "Current contract", value: now }, ...(seasons ? [{ name: "Cap hit by year", value: seasons, inline: true }] : []), { name: "Amnesty", value: plan.flags[0]?.text || "Nothing to amnesty." }] };
-  }
-  const option = (yrs: 1 | 2) => {
-    const r = amnestyRecipe(plan.target, yrs, y0);
-    const set = r.fields.filter((f) => !f.field.startsWith("Void") && !f.field.startsWith("Guaranteed")).map((f) => `${f.field}: **${f.value}**`);
-    const check = r.checks.map((x) => `${x.label} ${x.expect}`).join(" · ");
-    return { name: yrs === 1 ? `Option 1 · ${r.title}` : `Option 2 · ${r.title}`, value: [...set, "Void years 0 · Guaranteed years 0", `-# Before cutting, check: ${check}`].join("\n") };
-  };
-  const warn = plan.flags.filter((f) => f.kind === "moreNow" || f.kind === "overCap").map((f) => `⚠️ ${f.kind === "moreNow" ? `Option 1: ${f.text}` : f.text}`);
+  // The picture carries the detail; the text is the short version (and what notifications show).
   return {
     ...embed,
-    fields: [
-      { name: "Current contract", value: now },
-      ...(seasons ? [{ name: "Cap hit by year", value: seasons }] : []),
-      { name: "50% amnesty", value: `Team pays **${m(plan.target)}** (half of ${money(plan.pen)}), saves ${m(plan.savedVsCut)} vs a normal cut.${warn.length ? `\n${warn.join("\n")}` : ""}` },
-      option(1),
-      option(2),
-      { name: "How", value: "Commissioner: Roster › player › **Edit Player › Contract**, set the option above, save, check the card, then his manager cuts him. Full steps and fixes on the site (link above)." },
-    ],
+    description: [
+      `${p.pos} · ${teamLabel(t)} · dead if cut today **${money(plan.pen)}** → amnesty **${m(plan.target)}**`,
+      `**Option 1:** 1 yr, bonus ${m(plan.target)}, salary $0 → ${m(plan.target)} in ${y0}`,
+      `**Option 2:** 2 yrs, bonus ${m(plan.target)}, salary $0 → ${m(r2.split[0])} in ${y0} + ${m(r2.split[1])} in ${y0 + 1}`,
+      "-# Commissioner: Edit Player › Contract, check the card's penalty, then his manager cuts him.",
+    ].join("\n"),
   };
 }
 
