@@ -43,6 +43,8 @@ jobs:
             mkdir -p "/tmp/arts/$id" && unzip -q -o "/tmp/$id.zip" -d "/tmp/arts/$id" || true
           done < /tmp/ids.txt
       - name: Summarize
+        env:
+          SEASONS_URL: https://kdidrydhstmrdaulbbev.supabase.co/storage/v1/object/public/league-data/${{ inputs.league }}/seasons.json.gz
         run: npx tsx scripts/prev-season/summarize.ts "${{ inputs.league }}" "${{ inputs.year }}" /tmp/arts
       - name: Commit
         run: |
