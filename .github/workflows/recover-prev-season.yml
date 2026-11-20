@@ -39,7 +39,7 @@ jobs:
         run: |
           mkdir -p /tmp/arts
           gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100&name=league-data" \
-            -q '.artifacts[] | select(.expired == false) | .id' | head -${{ inputs.preview == 'true' && '1' || '40' }} > /tmp/ids.txt
+            -q '.artifacts[] | select(.expired == false) | .id' | head -${{ inputs.preview == 'true' && '10' || '40' }} > /tmp/ids.txt
           wc -l /tmp/ids.txt
           while read -r id; do
             gh api "repos/${{ github.repository }}/actions/artifacts/$id/zip" > "/tmp/$id.zip" || continue
