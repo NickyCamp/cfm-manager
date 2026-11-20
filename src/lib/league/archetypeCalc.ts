@@ -102,3 +102,116 @@ export function abilityEligibility(abilities: CalcAbility[], p: Input, nearMax =
 }
 
 export const tierRank = (t: CalcTierName | null | undefined) => (!t ? 0 : t === "Single" ? 4 : TIER_ORDER.indexOf(t) + 1);
+
+// ---- Fastest path -----------------------------------------------------------
+// Fewest rating points to reach an overall, an archetype rating or an ability tier.
+// Archetype ratings are linear in the ratings, so the cheapest way to raise one is to
+// spend points where its weight is highest. With several targets at once (an ability
+// needing two archetypes plus an overall), each point goes where it helps the unmet
+// targets most, then any point that isn't needed is taken back.
+
+/** Ratings the league store can't raise (NCL rules). */
+export const STORE_LOCKED = ["throwPowerRating", "speedRating", "accelRating", "agilityRating", "changeOfDirectionRating", "strengthRating", "jumpRating"];
+export type PathRules = { cap: number; locked: string[] };
+export type PathTarget =
+  | { kind: "ovr"; min: number }
+  | { kind: "arch"; name: string; min: number }
+  | { kind: "ability"; key: string; tier: CalcTierName };
+export type PathStep = { key: string; from: number; to: number };
+export type PathResult =
+  | { ok: true; ratings: number[]; steps: PathStep[]; points: number; via: string | null }
+  | { ok: false; reason: string };
+type PathInput = { arch: CalcArch; pos: string; dev: number; ratings: number[]; offset: number; slots: number[]; abilities: CalcAbility[]; labels: Record<string, string> };
+
+const EPS = 1e-9;
+const score = (f: CalcFormula, r: number[]) => Object.entries(f.w).reduce((a, [k, w]) => a + w * (r[idx(k)] ?? 0), f.b);
+
+function solve(start: number[], mins: Map<number, number>, cons: { f: CalcFormula; t: number }[], rules: PathRules, labels: Record<string, string>): { r: number[] } | { reason: string } {
+  const locked = new Set(rules.locked.map(idx));
+  const cap = (i: number) => (locked.has(i) ? start[i] : Math.max(start[i], rules.cap));
+  const r = [...start];
+  for (const [i, min] of mins) {
+    if (r[i] >= min) continue;
+    if (min > cap(i)) return { reason: `needs ${labels[RATING_KEYS[i]] || RATING_KEYS[i]} ${min}${locked.has(i) ? ", which the store can't raise" : `, above the ${rules.cap} cap`}` };
+    r[i] = min;
+  }
+  const weights = cons.map((c) => Object.entries(c.f.w).map(([k, w]) => [idx(k), w] as const).filter(([i, w]) => i >= 0 && w > 0));
+  const met = (rr: number[]) => cons.map((c) => score(c.f, rr) >= c.t - EPS);
+  for (let guard = 0; guard < 6000; guard++) {
+    const m = met(r);
+    if (m.every(Boolean)) break;
+    const gain = new Map<number, number>();
+    cons.forEach((_, ci) => { if (!m[ci]) for (const [i, w] of weights[ci]) if (r[i] < cap(i)) gain.set(i, (gain.get(i) || 0) + w); });
+    let best = -1, bg = 0;
+    for (const [i, g] of gain) if (g > bg) { bg = g; best = i; }
+    if (best < 0) return { reason: "can't get there: the ratings that feed it are maxed out" };
+    r[best]++;
+  }
+  // Take back points that turned out not to be needed (cheapest-weight ratings first).
+  const total = (i: number) => cons.reduce((a, c) => a + (c.f.w[RATING_KEYS[i]] || 0), 0);
+  const raised = r.map((v, i) => i).filter((i) => r[i] > start[i]).sort((a, b) => total(a) - total(b));
+  for (const i of raised) {
+    while (r[i] > start[i] && r[i] > (mins.get(i) ?? -1)) {
+      r[i]--;
+      if (!met(r).every(Boolean)) { r[i]++; break; }
+    }
+  }
+  return { r };
+}
+
+/** Cheapest ratings to hit the target from `p.ratings`, or why it can't be done. */
+export function fastestPath(target: PathTarget, p: PathInput, rules: PathRules): PathResult {
+  const group = p.arch.positions[p.pos];
+  const formulas = group ? p.arch.groups[group] : null;
+  if (!formulas) return { ok: false, reason: `no archetype formulas for ${p.pos}` };
+  const mins = new Map<number, number>();
+  const archMins = new Map<string, number>();
+  let ovrMin = 0;
+
+  if (target.kind === "ovr") ovrMin = target.min;
+  else if (target.kind === "arch") {
+    if (!formulas[target.name]) return { ok: false, reason: `${p.pos} has no ${target.name} archetype` };
+    archMins.set(target.name, target.min);
+  } else {
+    const a = p.abilities.find((x) => x.key === target.key);
+    const tiers = a?.tiers.filter((t) => t.pos.includes(p.pos)) || [];
+    if (!a || !tiers.length) return { ok: false, reason: `${p.pos}s can't get this ability` };
+    const xfactor = a.kind === "X-Factor";
+    if (xfactor && p.dev !== 3) return { ok: false, reason: "X-Factor abilities need X-Factor dev" };
+    if (p.dev < 2) return { ok: false, reason: "only Superstar and X-Factor players get ability slots" };
+    // A tier only counts once every tier below it is met, so take the requirements of the whole ladder.
+    const ladder = xfactor ? tiers : (TIER_ORDER.map((n) => tiers.find((t) => t.tier === n)).filter(Boolean) as CalcTier[]);
+    const upto = ladder.findIndex((t) => t.tier === target.tier);
+    if (upto < 0) return { ok: false, reason: `no ${target.tier} tier at ${p.pos}` };
+    const { xf, numbered } = numberSlots(p.slots, 0);
+    for (const t of ladder.slice(0, upto + 1)) {
+      for (const [type, key, min] of t.reqs) {
+        if (type === "ovr") ovrMin = Math.max(ovrMin, min);
+        else if (type === "rating") { const i = idx(key); if (i >= 0) mins.set(i, Math.max(mins.get(i) ?? 0, min)); }
+        else { if (!formulas[key]) return { ok: false, reason: `needs the ${key} archetype, which ${p.pos}s don't have` }; archMins.set(key, Math.max(archMins.get(key) ?? 0, min)); }
+      }
+      if (xfactor) { if (!xf) return { ok: false, reason: "no X-Factor slot" }; continue; }
+      const unlocks = numbered.filter((s) => (t.slots || []).includes(s.n)).map((s) => s.unlock);
+      if (!unlocks.length) return { ok: false, reason: `needs ability slot ${(t.slots || []).join(" or ")}, which he doesn't have` };
+      ovrMin = Math.max(ovrMin, Math.min(...unlocks));
+    }
+  }
+
+  const base = [...archMins].map(([name, min]) => ({ f: formulas[name], t: min - 0.5 }));
+  // Overall is the best archetype (plus calibration), so try reaching it through each one and keep the cheapest.
+  const routes: (string | null)[] = ovrMin > 0 ? Object.keys(formulas) : [null];
+  let best: { r: number[]; points: number; via: string | null } | null = null;
+  let reason = "can't get there";
+  for (const via of routes) {
+    const cons = via ? [...base, { f: formulas[via], t: ovrMin - p.offset - 0.5 }] : base;
+    const s = solve(p.ratings, mins, cons, rules, p.labels);
+    if ("reason" in s) { reason = s.reason; continue; }
+    const points = s.r.reduce((a, v, i) => a + v - p.ratings[i], 0);
+    if (!best || points < best.points) best = { r: s.r, points, via };
+  }
+  if (!best) return { ok: false, reason };
+  const steps = best.r.map((v, i) => ({ key: RATING_KEYS[i], from: p.ratings[i], to: v })).filter((s) => s.to !== s.from).sort((a, b) => b.to - b.from - (a.to - a.from));
+  // If the overall was already there, don't credit an archetype for it.
+  const startBest = Math.round(bestOf(Object.fromEntries(Object.entries(formulas).map(([n, f]) => [n, score(f, p.ratings)])))[1]) + p.offset;
+  return { ok: true, ratings: best.r, steps, points: best.points, via: ovrMin > startBest ? best.via : null };
+}

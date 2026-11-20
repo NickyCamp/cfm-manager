@@ -1686,6 +1686,14 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .tag.ac-new { color: var(--ok); border-color: currentColor; background: transparent; }
 .ac-lost a { color: var(--danger); text-decoration: line-through; }
 .ac-near { margin: 12px 0; }
+.ac-path-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin: 8px 0 12px; }
+.ac-path-form label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; }
+.ac-path-form label.ac-path-check { flex-direction: row; align-items: center; gap: 6px; }
+.ac-path-num { width: 4.5em; }
+.ac-path-msg { margin: 0; }
+.ac-path-sum { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.ac-path-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 16px; }
+.ac-path-steps li { display: grid; grid-template-columns: 1fr auto 2.6em; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
 .ac-near summary { cursor: pointer; font-weight: 700; }
 .tier-superstar { background: rgba(122,92,255,.18); color: #c9bbff; }
 @media (max-width: 900px) { .ac-grid { grid-template-columns: minmax(0, 1fr); } }

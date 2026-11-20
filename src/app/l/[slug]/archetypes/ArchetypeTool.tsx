@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 import { RATING_KEYS } from "@/lib/league/ratings";
 import { RATING_GROUPS } from "@/lib/league/ratingGroups";
 import {
-  abilityEligibility, archetypeScores, bestOf, numberSlots, slotLayout, tierRank,
-  type CalcAbility, type CalcArch, type CalcEligibility, type CalcShortfall, type CalcTierName,
+  abilityEligibility, archetypeScores, bestOf, fastestPath, numberSlots, slotLayout, STORE_LOCKED, tierRank,
+  type CalcAbility, type CalcArch, type CalcEligibility, type CalcShortfall, type CalcTierName, type PathTarget,
 } from "@/lib/league/archetypeCalc";
 
 export type CalcListPlayer = { id: number; n: string; pos: string; t: string; ovr: number };
@@ -204,6 +204,9 @@ function Calculator({ slug, p, arch, abilities, positions, labels }: {
         </ul>
       </div>
 
+      <FastestPath arch={arch} pos={pos} dev={dev} ratings={ratings} offset={sameGroup ? offset : 0} slots={layout.slots}
+        abilities={abilities} labels={labels} ovr={ovr} scores={scores} onApply={setRatings} />
+
       <div className="ac-grid">
         <section className="panel">
           <div className="ac-sec-head">
@@ -255,6 +258,84 @@ function Calculator({ slug, p, arch, abilities, positions, labels }: {
         </section>
       </div>
     </>
+  );
+}
+
+function FastestPath({ arch, pos, dev, ratings, offset, slots, abilities, labels, ovr, scores, onApply }: {
+  arch: CalcArch; pos: string; dev: number; ratings: number[]; offset: number; slots: number[]; abilities: CalcAbility[];
+  labels: Record<string, string>; ovr: number; scores: Record<string, number>; onApply: (r: number[]) => void;
+}) {
+  const [kind, setKind] = useState<PathTarget["kind"]>("ovr");
+  const [ovrGoal, setOvrGoal] = useState(Math.min(99, ovr + 1));
+  const archNames = useMemo(() => Object.keys(scores).sort(), [scores]);
+  const [archName, setArchName] = useState(() => bestOf(scores)[0]);
+  const [archGoal, setArchGoal] = useState(Math.min(99, Math.round(bestOf(scores)[1]) + 1));
+  const options = useMemo(() => abilities.filter((a) => a.tiers.some((t) => t.pos.includes(pos)) && (a.kind !== "X-Factor" || dev === 3))
+    .sort((a, b) => a.title.localeCompare(b.title)), [abilities, pos, dev]);
+  const [abilKey, setAbilKey] = useState("");
+  const ability = options.find((a) => a.key === abilKey) || options[0];
+  const tiers = ability ? ability.tiers.filter((t) => t.pos.includes(pos)).map((t) => t.tier) : [];
+  const [tier, setTier] = useState<CalcTierName>("Bronze");
+  const tierPick = tiers.includes(tier) ? tier : tiers[0];
+  const [store, setStore] = useState(false);
+
+  const name = archNames.includes(archName) ? archName : archNames[0];
+  const target: PathTarget | null = kind === "ovr" ? { kind, min: ovrGoal }
+    : kind === "arch" ? { kind, name, min: archGoal }
+    : ability && tierPick ? { kind, key: ability.key, tier: tierPick } : null;
+  const res = useMemo(() => target && fastestPath(target, { arch, pos, dev, ratings, offset, slots, abilities, labels }, store ? { cap: 91, locked: STORE_LOCKED } : { cap: 99, locked: [] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(target), arch, pos, dev, ratings, offset, slots, abilities, labels, store]);
+  const after = res?.ok ? archetypeScores(arch, pos, res.ratings) : null;
+  const afterOvr = after ? clamp(Math.round(bestOf(after)[1]) + offset) : null;
+  const num = (v: number, set: (n: number) => void) => (
+    <input type="number" inputMode="numeric" min={1} max={99} value={v} className="ac-path-num" onChange={(e) => set(clamp(Number(e.target.value || 0)))} />
+  );
+
+  return (
+    <div className="panel ac-path">
+      <h3 className="ac-h">Fastest path</h3>
+      <p className="muted small">The fewest rating points to hit a goal, starting from the ratings below.</p>
+      <div className="ac-path-form">
+        <label>Goal
+          <select value={kind} onChange={(e) => setKind(e.target.value as PathTarget["kind"])}>
+            <option value="ovr">Overall</option>
+            <option value="arch">Archetype rating</option>
+            <option value="ability">Ability</option>
+          </select>
+        </label>
+        {kind === "ovr" && <label>Overall {num(ovrGoal, setOvrGoal)}</label>}
+        {kind === "arch" && <>
+          <label>Archetype
+            <select value={name} onChange={(e) => setArchName(e.target.value)}>{archNames.map((n) => <option key={n} value={n}>{n} ({Math.round(scores[n])})</option>)}</select>
+          </label>
+          <label>Rating {num(archGoal, setArchGoal)}</label>
+        </>}
+        {kind === "ability" && (options.length ? <>
+          <label>Ability
+            <select value={ability?.key} onChange={(e) => setAbilKey(e.target.value)}>{options.map((a) => <option key={a.key} value={a.key}>{a.title}</option>)}</select>
+          </label>
+          <label>Tier
+            <select value={tierPick} onChange={(e) => setTier(e.target.value as CalcTierName)}>
+              {tiers.map((t) => <option key={t} value={t}>{t === "Single" ? (ability?.kind === "X-Factor" ? "X-Factor" : "Superstar") : t}</option>)}
+            </select>
+          </label>
+        </> : <span className="muted small">No abilities for {pos}s.</span>)}
+        <label className="ac-path-check"><input type="checkbox" checked={store} onChange={(e) => setStore(e.target.checked)} /> Store rules (max 91, no THP, SPD, ACC, AGI, COD, STR, JMP)</label>
+      </div>
+      {res && (!res.ok ? <p className="ac-path-msg">Can&apos;t get there: {res.reason}.</p>
+        : res.points === 0 ? <p className="ac-path-msg">Already there.</p>
+        : <div className="ac-path-out">
+          <div className="ac-path-sum">
+            <strong>+{res.points} rating point{res.points === 1 ? "" : "s"}</strong>
+            <span className="muted small">{afterOvr} OVR after ({signed(afterOvr! - ovr)}){res.via ? `, overall through ${res.via}` : ""}</span>
+            <button type="button" className="btn ac-btn-sm" onClick={() => onApply(res.ratings)}>Apply to ratings</button>
+          </div>
+          <ul className="ac-path-steps">
+            {res.steps.map((s) => <li key={s.key}><span>{labels[s.key] || s.key}</span><span className="muted">{s.from} → {s.to}</span><span className="ac-delta up">+{s.to - s.from}</span></li>)}
+          </ul>
+        </div>)}
+    </div>
   );
 }
 
