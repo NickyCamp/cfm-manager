@@ -67,5 +67,5 @@ import type { LeagueData } from "../../src/lib/league/types";
   ps[2].team = d.teams.find((t) => t.id !== ps[2].team)!.id; ps[3].contract = { ...ps[3].contract, bonus: ps[3].contract.bonus + 1 };
   prev.teams[0].cap = { ...prev.teams[0].cap, available: 5 };
   d.teams[0].cap = { ...d.teams[0].cap, available: -1_000_000 };
-  for (const m of leagueChanges(prev, d, slug.toUpperCase(), "https://example.test", slug)) console.log("\n----- update -----\n" + JSON.stringify(tidy(m).embeds![0], null, 1));
+  for (const m of leagueChanges(prev, d, slug.toUpperCase(), "https://example.test", slug)) console.log("\n----- update -----\n" + JSON.stringify(tidy(m), null, 1));
 })();
