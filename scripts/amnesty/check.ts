@@ -6,7 +6,7 @@
 // share now, the rest next season), then applies the amnesty recipe to the same model
 // and checks the cut charges exactly the target, all this season.
 // Run: npx tsx scripts/amnesty/check.ts
-import { amnestyPlan, amnestyTarget, MONEY_STEP } from "../../src/lib/league/amnesty";
+import { amnestyPlan, amnestyRecipe, amnestyTarget, MONEY_STEP } from "../../src/lib/league/amnesty";
 
 type Deal = { len: number; el: number; voids: number; salary: number[]; bonus: number; gtd: number; oldTail: number[] };
 const U = MONEY_STEP;
@@ -60,6 +60,11 @@ for (let len = 1; len <= 7; len++)
               if (rebuilt.pen !== plan.target) fail(`post-edit penalty ${rebuilt.pen} vs ${plan.target}`);
               if (now !== plan.target || next !== 0) fail(`post-edit split ${now}/${next}`);
               if (rebuilt.capHit !== S + plan.target) fail(`post-edit cap hit`);
+              // option 2: a 2-year deal with bonus T: penalty T, about half now and half next season
+              const two = charge({ len: 2, el: 0, voids: 0, salary: [S, S], bonus: plan.target, gtd: 0, oldTail: [] });
+              const [n2, x2] = cutSplit(two);
+              const r2 = amnestyRecipe(plan.target, 2);
+              if (two.pen !== plan.target || Math.abs(n2 - r2.split[0]) > U / 2 || Math.abs(x2 - r2.split[1]) > U / 2 || r2.split[0] + r2.split[1] !== plan.target) fail(`2-year ${n2}/${x2} vs ${r2.split}`);
               // the card checks catch an edit that kept void years or a guarantee
               if (plan.target > 0) {
                 const keptVoid = charge({ len: 1, el: 0, voids: 2, salary: [S], bonus: plan.target, gtd: 0, oldTail: [] });

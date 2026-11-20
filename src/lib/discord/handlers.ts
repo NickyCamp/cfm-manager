@@ -23,6 +23,8 @@ import { pickFact, playerFacts, remember, teamFacts } from "./funfacts";
 import { mergeQuips, resolveQuips, type QuipMemory } from "./factFormat";
 import { randomInt } from "node:crypto";
 import { currentGame, edges, gameInWeek, gameLeaders, gameTable, sideTable, teamStats, weekIndex } from "./matchup";
+import { amnestyMoney, amnestyPlan, amnestyRecipe } from "@/lib/league/amnesty";
+import { amnestyInput, buildAmnestyData } from "@/lib/league/amnestyData";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { betCaps, cancelValue, closeTimes, economyOf, isFutures, isMember, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamsOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
@@ -289,6 +291,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR ${DEV_LABEL[p.dev]}${flags ? ` · ${flags}` : ""}`,
         image: { url: cardImageUrl(base, lg.slug, p.id, "both") },
       }] };
+    }
+    case "amnesty": {
+      const p = findPlayer(d, opt(i, "player"));
+      return p ? { embeds: [amnestyEmbed(d, p, url, footer)] } : reply("No player by that name. Pick one from the list as you type.");
     }
     case "contract": {
       const p = findPlayer(d, opt(i, "player"));
@@ -834,6 +840,62 @@ function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embe
   };
 }
 
+/**
+ * /amnesty (Nick, 2026-11-20): his whole contract, then the contract the commissioner sets so a cut
+ * costs exactly half of Madden's penalty today, as 1 year (all this season) or 2 years (half now,
+ * half next season). Same math as Admin › Amnesty on the site (lib/league/amnesty.ts).
+ */
+function amnestyEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed {
+  const ad = buildAmnestyData(d);
+  const ap = ad.players.find((x) => x.id === p.id);
+  const t = teamOf(d, p.team);
+  const c = p.contract;
+  const embed: Embed = {
+    title: `${fullName(p)}: 50% amnesty`, url: url(`/admin/amnesty?player=${p.id}`), color: hexColor(t?.primary), footer,
+    description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR · Age ${p.age}`,
+  };
+  if (!ap || !p.team) return { ...embed, description: `${embed.description}
+He's a free agent: nothing to amnesty.` };
+  const space = ad.teams.find((x) => x.id === p.team)?.space;
+  const y0 = ad.year;
+  const plan = amnestyPlan(amnestyInput(ap), { space, year: y0 });
+  const m = amnestyMoney;
+  const seasons = ad.years
+    .map((y, k) => {
+      const hit = ap.hits[k] || 0, dv = ap.dead[k] || 0;
+      if (!hit && !dv) return "";
+      return `${y}: ${hit ? `${money(hit)}${k ? " proj." : ""}` : ""}${dv ? `${hit ? " + " : ""}${money(dv)} void` : ""}`;
+    })
+    .filter(Boolean).join("\n");
+  const now = [
+    `**${c.length} yrs, ${c.yearsLeft} left** · ${money(c.salary + c.bonus)} total (${money(c.salary)} salary + ${money(c.bonus)} bonus)`,
+    `Cap hit ${y0}: **${money(c.capHit)}**`,
+    `Penalty if cut today: **${money(plan.pen)}** (${money(plan.normal[0])} ${y0}${plan.normal[1] > 0 ? ` + ${money(plan.normal[1])} ${y0 + 1}` : ""})`,
+    [plan.breakdown.voidBonus > 0 && `incl. ${money(plan.breakdown.voidBonus)} void-year bonus`, plan.breakdown.other > 0 && `incl. ${money(plan.breakdown.other)} guaranteed / older-deal money`].filter(Boolean).join(", "),
+  ].filter(Boolean).join("\n");
+  if (plan.pen <= 0) {
+    return { ...embed, fields: [{ name: "Current contract", value: now }, ...(seasons ? [{ name: "Cap hit by year", value: seasons, inline: true }] : []), { name: "Amnesty", value: plan.flags[0]?.text || "Nothing to amnesty." }] };
+  }
+  const option = (yrs: 1 | 2) => {
+    const r = amnestyRecipe(plan.target, yrs, y0);
+    const set = r.fields.filter((f) => !f.field.startsWith("Void") && !f.field.startsWith("Guaranteed")).map((f) => `${f.field}: **${f.value}**`);
+    const check = r.checks.map((x) => `${x.label} ${x.expect}`).join(" · ");
+    return { name: yrs === 1 ? `Option 1 · ${r.title}` : `Option 2 · ${r.title}`, value: [...set, "Void years 0 · Guaranteed years 0", `-# Before cutting, check: ${check}`].join("\n") };
+  };
+  const warn = plan.flags.filter((f) => f.kind === "moreNow" || f.kind === "overCap").map((f) => `⚠️ ${f.kind === "moreNow" ? `Option 1: ${f.text}` : f.text}`);
+  return {
+    ...embed,
+    fields: [
+      { name: "Current contract", value: now },
+      ...(seasons ? [{ name: "Cap hit by year", value: seasons }] : []),
+      { name: "50% amnesty", value: `Team pays **${m(plan.target)}** (half of ${money(plan.pen)}), saves ${m(plan.savedVsCut)} vs a normal cut.${warn.length ? `\n${warn.join("\n")}` : ""}` },
+      option(1),
+      option(2),
+      { name: "How", value: "Commissioner: Roster › player › **Edit Player › Contract**, set the option above, save, check the card, then his manager cuts him. Full steps and fixes on the site (link above)." },
+    ],
+  };
+}
+
 /** A team's cap, focused on one season (this season by default). over: negative space that season. */
 function teamCapEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, year = capSeason(d)): { embed: Embed; over: boolean } {
   const pr = teamCapProjection(d, t);
@@ -1288,7 +1350,7 @@ function teamScheduleEmbed(d: LeagueData, t: Team, kick: Kickoffs, url: Url, foo
 }
 
 /** For scripts/discord/preview.ts: the embeds without Discord or the database. */
-export const _preview = { leaguePlayersEmbed, statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, weekScheduleEmbed, teamScheduleEmbed, autocompletePlayers: searchPlayers };
+export const _preview = { leaguePlayersEmbed, statsEmbed, twsEmbed, playerEmbed, contractEmbed, teamCapEmbed, leagueCapEmbed, teamEmbed, groupEmbed, standingsEmbed, playoffsEmbed, scoresEmbed, weekScheduleEmbed, teamScheduleEmbed, amnestyEmbed, autocompletePlayers: searchPlayers };
 
 // ---------- /kickoff: when betting closes on a game (Nick, 2026-11-13) ----------
 // The two teams' managers (linked with /connect) or an admin can set it; once it has

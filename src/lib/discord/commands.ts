@@ -84,6 +84,8 @@ const PLAIN = [
   },
   { name: "player", description: "A player's ratings, contract and cap hit by year", ...ANYWHERE, options: [player] },
   { name: "contract", description: "What a player will likely ask for on his next deal", ...ANYWHERE, options: [player] },
+  // /amnesty (Nick, 2026-11-20): his full contract, then the new contract that makes a cut cost exactly 50%.
+  { name: "amnesty", description: "50% amnesty: a player's contract and the rebuilt deal: 50% in 1 season, or 25% + 25% over 2", ...ANYWHERE, options: [player] },
   {
     name: "cap",
     description: "Cap space now and projected; pick a team for its breakdown and a season to focus on",

@@ -31,7 +31,7 @@ const byName = (n: string) => ALL.find((c) => c.name === n.replace(/^\//, "").tr
 // The overview's groups, in order. Commands missing from every group go under "Other".
 const GROUPS: [string, string[]][] = [
   ["🚀 Start here", ["help", "web", "myleague", "connect", "league"]],
-  ["🏈 Players and teams", ["player", "contract", "team", "players", "rookie", "expiring"]],
+  ["🏈 Players and teams", ["player", "contract", "amnesty", "team", "players", "rookie", "expiring"]],
   ["💰 Cap", ["cap"]],
   ["📊 Games and stats", ["tws", "scores", "schedule", "standings", "playoffs", "stats", "funfact", "sync"]],
   ["🔁 Trades", ["trade", "tradeblock"]],
@@ -170,6 +170,7 @@ function topicHelp(key: string): Embed | null {
       "**Names autocomplete.** Start typing a player or team and pick from the list; typed names that aren't picked often won't match.",
       "• `/player`: the player's card, front and back (ratings, stats, contract)",
       "• `/contract`: what he'll likely ask for on his next deal",
+      "• `/amnesty`: his full contract, then the new contract the commissioner sets so cutting him costs exactly 50% of today's penalty: all in one season, or 25% + 25% over two",
       "• `/team`: a team · `/players team group rating order`: players sorted by any rating, best to worst or worst to best. Leave team empty for the whole league (top 25)",
       "• `/cap team year`: cap space now and in future seasons; `/cap year:2028` alone lists every team",
       "• `/tws team week`: this week's matchup or a past game. Playoff weeks: 19 Wild Card, 20 Divisional, 21 Conference, 22 Super Bowl",

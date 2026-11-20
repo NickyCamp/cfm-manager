@@ -97,22 +97,35 @@ export function amnestyPlan(p: AmnestyInput, opts: { penalty?: number; space?: n
   return { pen, target, exactHalf: pen / 2, normal, breakdown: { bonusLeft: bonusLeftAll, voidBonus, other }, savedVsCut: pen - target, keepCost, cutDelta, amnestyDelta, flags };
 }
 
-/** The contract the commissioner enters before the cut, and what the card must show afterwards. */
-export function amnestyRecipe(target: number) {
+/**
+ * The contract the commissioner enters before the cut, and what the card must show afterwards.
+ * years 1: all of T this season. years 2 (Nick, 2026-11-20): a 2-year deal with bonus T spreads it
+ * over 2 seasons (bonus over min(2, 5) = 2), so dead if cut is still T, and a cut charges this
+ * season's share now and the rest next season: 25% of the original penalty now, 25% next season (to the nearest $10K).
+ */
+export function amnestyRecipe(target: number, years: 1 | 2 = 1, year?: number) {
+  const y = (k: number) => (year ? String(year + k) : k ? "next season" : "this season");
+  // Madden counts in $10K steps, so an odd number of steps can't split evenly: the extra $10K
+  // goes in one of the two seasons (shown in the second; Madden may put it in the first).
+  const first = Math.floor(target / 2 / MONEY_STEP) * MONEY_STEP, second = target - first;
+  const uneven = first !== second;
+  const halfText = fmt(first) + (uneven ? " (or " + fmt(second) + ")" : "");
   return {
+    years,
+    title: years === 1 ? `1 year: 50% in ${y(0)} (${fmt(target)})` : `2 years: 25% in ${y(0)} (${fmt(first)}) + 25% in ${y(1)} (${fmt(second)})`,
+    split: years === 1 ? [target, 0] : [first, second],
     fields: [
-      { field: "Contract Length", value: "1 year" },
-      { field: "Contract Year / Years Left", value: "1 (this is the deal's only year)" },
+      { field: "Contract Length", value: years === 1 ? "1 year" : "2 years" },
+      { field: "Contract Year / Years Left", value: years === 1 ? "1 (the deal's only year)" : "2 (first year of the deal)" },
       { field: "Signing Bonus", value: fmt(target) },
-      { field: "Total Salary", value: "the lowest the slider allows (call it S)" },
+      { field: "Total Salary", value: years === 1 ? "the lowest the slider allows (call it S)" : "the lowest the slider allows (this season's part is S)" },
       { field: "Void Years", value: "0 (if the screen has it)" },
       { field: "Guaranteed Years", value: "0 (if the screen has it)" },
     ],
     checks: [
-      { label: "Length / years left", expect: "1 / 1" },
-      { label: "Cap hit (this season)", expect: `S + ${fmt(target)}` },
+      { label: "Length / years left", expect: years === 1 ? "1 / 1" : "2 / 2" },
+      { label: "Cap hit (this season)", expect: `S + ${years === 1 ? fmt(target) : halfText}` },
       { label: "Penalty (dead if cut)", expect: fmt(target) },
-      { label: "Savings", expect: "S" },
     ],
   };
 }

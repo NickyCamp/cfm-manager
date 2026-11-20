@@ -358,6 +358,8 @@ details.panel[open] summary { margin-bottom: 8px; }
 .seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; margin-bottom: 14px; background: var(--paper); }
 .seg a { padding: 7px 14px; border-radius: 999px; text-decoration: none; font-weight: 700; color: var(--ink-soft); font-size: 0.95rem; }
 .seg a[aria-current="page"] { background: var(--field); color: #fff; }
+.seg button { padding: 7px 14px; border-radius: 999px; border: 0; background: transparent; font: inherit; font-weight: 700; color: var(--ink-soft); font-size: 0.95rem; cursor: pointer; min-height: 36px; }
+.seg button[aria-current="page"] { background: var(--field); color: #fff; }
 .proj { display: block; font-size: 0.7rem; font-weight: 600; opacity: 0.8; }
 .summary-tbl td, .summary-tbl th { padding-top: 11px; padding-bottom: 11px; }
 .seg { flex-wrap: wrap; max-width: 100%; }

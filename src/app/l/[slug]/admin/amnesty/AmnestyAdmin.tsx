@@ -14,6 +14,7 @@ export function AmnestyAdmin({ slug, year, years, players, teams, initial, synce
   const [q, setQ] = useState("");
   const [id, setId] = useState<number | null>(players.some((p) => p.id === initial) ? initial : null);
   const [override, setOverride] = useState("");
+  const [yrs, setYrs] = useState<1 | 2>(1);
   const p = id ? players.find((x) => x.id === id) ?? null : null;
 
   useEffect(() => {
@@ -34,7 +35,9 @@ export function AmnestyAdmin({ slug, year, years, players, teams, initial, synce
   const typed = Number(override.replace(/[^0-9.]/g, ""));
   const penOverride = override.trim() && typed > 0 ? Math.round((override.toLowerCase().includes("k") ? typed * 1e3 : typed < 1000 ? typed * 1e6 : typed)) : undefined;
   const plan = p ? amnestyPlan(input(p), { penalty: penOverride, space: team?.space, year }) : null;
-  const recipe = plan ? amnestyRecipe(plan.target) : null;
+  const recipe = plan ? amnestyRecipe(plan.target, yrs, year) : null;
+  // Cap space change vs keeping him under the chosen option (2 years: half now, half next season).
+  const optDelta = plan && recipe ? plan.keepCost.map((c, i) => c - (recipe.split[i] || 0)) : [];
   const n = p ? Math.max(p.c.yearsLeft, p.dead.reduce((m, x, i) => (x > 0 ? i + 1 : m), 0), 2) : 0;
   const shown = years.slice(0, Math.min(years.length, n));
 
@@ -110,13 +113,18 @@ export function AmnestyAdmin({ slug, year, years, players, teams, initial, synce
             <>
               <section className="panel amn-target">
                 <h4>Step 2 · The amnesty</h4>
-                <div className="stat-tiles">
-                  <Tile label={`Team pays (${year} only)`} value={amnestyMoney(plan.target)} sub={`50% of ${money(plan.pen)}`} />
-                  <Tile label="Dead money saved" value={amnestyMoney(plan.savedVsCut)} sub="vs a normal cut" />
-                  <Tile label={`${year} cap space`} value={signed(plan.amnestyDelta[0])} sub={`normal cut ${signed(plan.cutDelta[0])}`} />
-                  <Tile label={`${year + 1} cap space`} value={signed(plan.amnestyDelta[1])} sub={`normal cut ${signed(plan.cutDelta[1])}`} />
+                <div className="seg" role="tablist" aria-label="Spread">
+                  <button type="button" aria-current={yrs === 1 ? "page" : undefined} onClick={() => setYrs(1)}>1 year</button>
+                  <button type="button" aria-current={yrs === 2 ? "page" : undefined} onClick={() => setYrs(2)}>2 years</button>
                 </div>
-                {plan.flags.length > 0 && <ul className="amn-flags">{plan.flags.map((f) => <li key={f.kind} className={`amn-flag amn-${f.kind}`}>{f.text}</li>)}</ul>}
+                <p className="small strong">{recipe.title}</p>
+                <div className="stat-tiles">
+                  <Tile label="Team pays" value={amnestyMoney(plan.target)} sub={`50% of ${money(plan.pen)}${yrs === 2 ? `: 25% ${year} + 25% ${year + 1}` : `, all ${year}`}`} />
+                  <Tile label="Dead money saved" value={amnestyMoney(plan.savedVsCut)} sub="vs a normal cut" />
+                  <Tile label={`${year} cap space`} value={signed(optDelta[0])} sub={`normal cut ${signed(plan.cutDelta[0])}`} />
+                  <Tile label={`${year + 1} cap space`} value={signed(optDelta[1])} sub={`normal cut ${signed(plan.cutDelta[1])}`} />
+                </div>
+                {plan.flags.some((f) => yrs === 1 || f.kind !== "moreNow") && <ul className="amn-flags">{plan.flags.filter((f) => yrs === 1 || f.kind !== "moreNow").map((f) => <li key={f.kind} className={`amn-flag amn-${f.kind}`}>{f.text}</li>)}</ul>}
               </section>
 
               <section className="panel">
@@ -125,7 +133,9 @@ export function AmnestyAdmin({ slug, year, years, players, teams, initial, synce
                 <table className="tbl amn-recipe"><tbody>
                   {recipe.fields.map((f) => <tr key={f.field}><th scope="row">{f.field}</th><td className="strong">{f.value}</td></tr>)}
                 </tbody></table>
-                <p className="small">Save. A 1-year deal charges its whole bonus this season, so all of the {money(plan.target)} lands in {year} and nothing carries into {year + 1}.</p>
+                <p className="small">{yrs === 1
+                  ? <>Save. A 1-year deal charges its whole bonus this season, so all of the {amnestyMoney(plan.target)} lands in {year} and nothing carries into {year + 1}.</>
+                  : <>Save. A 2-year deal spreads the bonus over both seasons; cutting him charges this season&apos;s half now and the other half in {year + 1}. Nothing after {year + 1}.</>}</p>
               </section>
 
               <section className="panel">
@@ -137,7 +147,7 @@ export function AmnestyAdmin({ slug, year, years, players, teams, initial, synce
                 <details className="trade-detail">
                   <summary>If a number is off</summary>
                   <ul className="small">
-                    <li><strong>Cap hit lower than S + {amnestyMoney(plan.target)}:</strong> void years are still on the deal, spreading the bonus into later seasons. Set void years to 0 (or length 1 again) and save.</li>
+                    <li><strong>Cap hit lower than S + {amnestyMoney(recipe.split[0])}:</strong> void years are still on the deal, spreading the bonus into later seasons. Set void years to 0 (or the length again) and save.</li>
                     <li><strong>Penalty higher than {amnestyMoney(plan.target)}:</strong> guaranteed salary or an older deal&apos;s bonus survived the edit. Set guaranteed years to 0. If it&apos;s still high by X, lower the Signing Bonus by X so the penalty reads {amnestyMoney(plan.target)}, and note it, since that leftover may land in {year + 1}.</li>
                     <li><strong>The bonus slider won&apos;t land on {amnestyMoney(plan.target)}:</strong> use the closest value it allows and tell the league the difference.</li>
                     <li><strong>Madden crashes on the edit:</strong> a known Madden 27 bug with some very large contracts. Try once more; if it repeats, the league decides another way.</li>
@@ -147,7 +157,7 @@ export function AmnestyAdmin({ slug, year, years, players, teams, initial, synce
 
               <section className="panel">
                 <h4>Step 5 · The manager cuts him</h4>
-                <p className="small">Release screen: penalty {amnestyMoney(plan.target)}, all in {year}. After the next sync he shows in Transactions as a cut.</p>
+                <p className="small">Release screen: penalty {amnestyMoney(plan.target)}{yrs === 1 ? `, all in ${year}` : `: ${amnestyMoney(recipe.split[0])} in ${year}, ${amnestyMoney(recipe.split[1])} in ${year + 1}`}. After the next sync he shows in Transactions as a cut.</p>
               </section>
             </>
           )}
