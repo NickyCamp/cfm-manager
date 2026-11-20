@@ -2,18 +2,21 @@
 // pull. Only league advances post there (Nick, 2026-11-18); scores, moves and the
 // rest go to the Transactions channels.
 import type { LeagueData } from "../league/types";
-import { BRAND, type Message } from "./api";
+import type { Message } from "./api";
 
 export function leagueChanges(prev: LeagueData | null, next: LeagueData, leagueName: string, base: string, slug: string): Message[] {
   if (!prev) return [];
   const url = (path = "") => `${base}/l/${slug}${path}`;
   const out: Message[] = [];
-  const footer = { text: `${leagueName} · ${next.season.year} ${next.season.title}` };
-
   // The league advanced.
   const moved = prev.season.year !== next.season.year || prev.season.stage !== next.season.stage || prev.season.week !== next.season.week;
   if (moved) {
-    out.push({ event: "advance", embeds: [{ color: BRAND, title: `${leagueName} advanced to ${next.season.year} ${next.season.title}`, url: url(), footer }] });
+    // Nick (2026-11-20): a plain @everyone message with the week and the site link.
+    out.push({
+      event: "advance",
+      content: `@everyone **${leagueName}** has advanced to **${next.season.year} ${next.season.title}**!\n${url()}`,
+      allowed_mentions: { parse: ["everyone"] },
+    });
   }
   return out;
 }

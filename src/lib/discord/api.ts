@@ -58,7 +58,8 @@ export function tidy(msg: Message): Message {
   void _event; void _video; void _followUp;
   return {
     ...m,
-    allowed_mentions: { parse: [] },
+    // No pings unless a message opts in (e.g. the /notify advance post pings @everyone).
+    allowed_mentions: m.allowed_mentions ?? { parse: [] },
     content: m.content ? clip(m.content, 2000) : m.content,
     embeds: m.embeds?.slice(0, 10).map((e) => ({
       ...e,
