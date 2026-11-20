@@ -1704,3 +1704,19 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .audit-form .admin-row label { flex-direction: row; }
 .audit-form textarea { width: 100%; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px; background: var(--rail); color: inherit; border: 1px solid var(--line, rgba(255,255,255,.15)); border-radius: 6px; color-scheme: dark; }
 .audit-form .audit-wide { margin-bottom: 8px; }
+
+/* ---- Amnesty (team Cap tab + Admin › Amnesty) ---- */
+.chip-note { display: inline-block; margin: 0 4px 2px 0; padding: 1px 8px; border-radius: 999px; background: var(--rail); border: 1px solid var(--line); font-size: 0.75rem; font-weight: 600; white-space: nowrap; cursor: help; }
+.amn-search { position: relative; display: flex; flex-direction: column; gap: 4px; max-width: 520px; margin-bottom: 18px; }
+.amn-results { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--paper); max-height: 360px; overflow-y: auto; }
+.amn-results button { width: 100%; display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 12px; min-height: 44px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.amn-results li:last-child button { border-bottom: 0; }
+.amn-results button:hover, .amn-results button:focus-visible { background: var(--rail); }
+.league-page .panel h4 { margin: 0 0 10px; }
+.amn-override { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 520px; margin: 6px 0 10px; }
+.amn-override input { max-width: 200px; }
+.penalty-split { color: var(--ink-soft); }
+.amn-flags { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+.amn-flag.amn-moreNow, .amn-flag.amn-overCap { color: #b45309; font-weight: 600; }
+.amn-recipe { max-width: 560px; margin: 6px 0 10px; }
+.amn-recipe th { text-align: left; font-weight: 600; width: 46%; }

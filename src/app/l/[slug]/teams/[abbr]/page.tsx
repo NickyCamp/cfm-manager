@@ -22,6 +22,8 @@ import { priceIndex } from "@/lib/league/marketTypes";
 import { marketsForPage, teamBets } from "@/lib/marketStore";
 import { TeamBets } from "@/components/league/markets/TeamBets";
 import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
+import { amnestyPlan } from "@/lib/league/amnesty";
+import { amnestyInput, buildAmnestyData } from "@/lib/league/amnestyData";
 
 type Props = { params: Promise<{ slug: string; abbr: string }>; searchParams: Promise<{ tab?: string; view?: string; unit?: string; sort?: string; dir?: string }> };
 const TABS = [["roster", "Roster"], ["cap", "Cap"], ["schedule", "Schedule"], ["stats", "Stats"], ["markets", "Markets"]] as const;
@@ -68,7 +70,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
             <Link key={k} href={k === "roster" ? base : `${base}?tab=${k}`} aria-current={tab === k ? "page" : undefined}>{label}</Link>
           ))}
         </nav>
-        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" || view === "expiring" ? view : "years"} base={base} sort={sort} dir={dir} />
+        {tab === "cap" ? <CapTab d={d} team={team} roster={roster} slug={slug} view={view === "details" || view === "expiring" || view === "amnesty" ? view : "years"} base={base} sort={sort} dir={dir} />
           : tab === "schedule" ? <ScheduleTab d={d} team={team} slug={slug} />
           : tab === "stats" ? <StatsTab d={d} team={team} slug={slug} />
           : tab === "markets" ? <MarketsTab d={d} team={team} slug={slug} />
@@ -232,7 +234,7 @@ function sortContracts(list: Player[], key: ContractSort, dir: 1 | -1) {
   });
 }
 
-function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirParam }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details" | "expiring"; base: string; sort?: string; dir?: string }) {
+function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirParam }: { d: LeagueData; team: Team; roster: Player[]; slug: string; view: "years" | "details" | "expiring" | "amnesty"; base: string; sort?: string; dir?: string }) {
   const sort: ContractSort = isContractSort(sortParam) ? sortParam : "cap";
   const dir: 1 | -1 = dirParam === "asc" ? 1 : dirParam === "desc" ? -1 : CONTRACT_SORTS[sort].text ? 1 : -1;
   const sortHref = (k: ContractSort) => {
@@ -274,8 +276,9 @@ function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirPa
         <Link href={`${base}?tab=cap`} aria-current={view === "years" ? "page" : undefined}>Cap by year</Link>
         <Link href={`${base}?tab=cap&view=details`} aria-current={view === "details" ? "page" : undefined}>Contract details</Link>
         <Link href={`${base}?tab=cap&view=expiring`} aria-current={view === "expiring" ? "page" : undefined}>Expiring</Link>
+        <Link href={`${base}?tab=cap&view=amnesty`} aria-current={view === "amnesty" ? "page" : undefined}>Amnesty</Link>
       </div>
-      {view === "years" ? <CapByYear d={d} team={team} slug={slug} /> : view === "expiring" ? <ExpiringContracts d={d} team={team} expiring={expiring} slug={slug} /> : (
+      {view === "years" ? <CapByYear d={d} team={team} slug={slug} /> : view === "amnesty" ? <AmnestyView d={d} team={team} slug={slug} /> : view === "expiring" ? <ExpiringContracts d={d} team={team} expiring={expiring} slug={slug} /> : (
         <>
         <nav className="week-chips sort-chips" aria-label="Sort contracts">
           <span className="sort-label">Sort</span>
@@ -490,5 +493,65 @@ function Tile({ label, value, sub, neg }: { label: string; value: React.ReactNod
       <div className={`tile-value ${neg ? "neg" : ""}`}>{value}</div>
       {sub && <div className="tile-sub">{sub}</div>}
     </div>
+  );
+}
+
+// 50% amnesty (Nick, 2026-11-20): who on this roster it helps, and by how much. The rule:
+// the team takes half of Madden's cut penalty, all this season, and is free of the player.
+// The math is in lib/league/amnesty.ts; the commissioner's contract edit is on Admin › Amnesty.
+function AmnestyView({ d, team, slug }: { d: LeagueData; team: Team; slug: string }) {
+  const ad = buildAmnestyData(d);
+  const space = ad.teams.find((t) => t.id === team.id)?.space ?? team.cap.available;
+  const [y0, y1] = ad.years;
+  const rows = ad.players.filter((p) => p.t === team.id).map((p) => ({ p, plan: amnestyPlan(amnestyInput(p), { space, year: y0 }) }));
+  const live = rows.filter((r) => r.plan.pen > 0).sort((a, b) => b.plan.savedVsCut - a.plan.savedVsCut);
+  const none = rows.length - live.length;
+  const best = live[0];
+  const signed = (n: number) => (n > 0 ? "+" : n < 0 ? "−" : "") + money(Math.abs(n));
+  const tag: Record<string, string> = { lastYear: "last year", moreNow: `more in ${y0}`, void: "void years", other: "gtd / old deal", overCap: "over cap" };
+  if (!live.length) return <p className="hint">Nobody on {team.name}&apos;s roster carries dead money right now, so an amnesty wouldn&apos;t save anything.</p>;
+  return (
+    <>
+      <div className="stat-tiles">
+        <Tile label="Biggest saving" value={money(best.plan.savedVsCut)} sub={`${best.p.n} (${best.p.pos})`} />
+        <Tile label="Players with dead money" value={`${live.length}`} sub={none ? `${none} would cost nothing to cut` : "whole roster"} />
+        <Tile label={`Cap space ${y0}`} value={money(space)} neg={space < 0} sub="before any move" />
+      </div>
+      <div className="panel tbl-wrap">
+        <table className="tbl">
+          <caption>Amnesty at 50% <span className="muted">biggest saving first</span></caption>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th className="num" title="Madden's penalty for a normal cut today, split the way Madden charges it">Normal cut</th>
+              <th className="num" title={`Half of Madden's penalty, all in ${y0}`}>Amnesty ({y0})</th>
+              <th className="num hide-sm" title={`Cap space change in ${y0}: amnesty (normal cut below)`}>{y0} space</th>
+              <th className="num hide-sm" title={`Cap space change in ${y1}: amnesty (normal cut below)`}>{y1} space</th>
+              <th className="hide-sm">Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {live.map(({ p, plan }) => (
+              <tr key={p.id}>
+                <td className="cap-name"><PlayerLink slug={slug} player={d.players.find((x) => x.id === p.id)!} /> <span className="muted small">{p.pos} · {p.c.yearsLeft}/{p.c.length} yrs</span></td>
+                <td className="num">{money(plan.pen)}<div className="muted small">{money(plan.normal[0])} {y0}{plan.normal[1] > 0 ? ` + ${money(plan.normal[1])} ${y1}` : ""}</div></td>
+                <td className="num strong">{money(plan.target)}<div className="muted small">saves {money(plan.savedVsCut)}</div></td>
+                <td className="num hide-sm">{signed(plan.amnestyDelta[0])}<div className="muted small">cut {signed(plan.cutDelta[0])}</div></td>
+                <td className="num hide-sm">{signed(plan.amnestyDelta[1])}<div className="muted small">cut {signed(plan.cutDelta[1])}</div></td>
+                <td className="hide-sm small">{plan.flags.filter((f) => tag[f.kind]).map((f) => <span key={f.kind} className="chip-note" title={f.text}>{tag[f.kind]}</span>)}</td>
+                <td className="num"><Link href={`/l/${slug}/admin/amnesty?player=${p.id}`} className="small">How to</Link></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">
+        Amnesty = the team takes half of Madden&apos;s cut penalty, all in {y0}, and owes nothing after. &quot;Normal cut&quot; is Madden&apos;s full penalty, split the way Madden charges it
+        ({y0} gets this season&apos;s bonus share, {y1} the rest). &quot;Space&quot; columns are the change in cap space versus keeping him; a normal cut is shown underneath.
+        &quot;More in {y0}&quot; marks players where the amnesty costs more this season than a normal cut (it clears {y1} instead). Hover a note for details.
+        &quot;How to&quot; opens the contract edit the commissioner makes before the cut (commissioner only).
+      </p>
+    </>
   );
 }
