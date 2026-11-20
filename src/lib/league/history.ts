@@ -110,9 +110,13 @@ export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string
         if (!p.ps) ev("signed", p, { from: 0, to: p.team, ...deal });
       } else if (o.ps || p.ps) {
         if (!p.ps) ev("signed", p, { from: o.team, to: p.team, ...deal });
+      } else if (newDeal || moved) {
+        // A traded player keeps his contract exactly. A different deal on a team-to-team move means
+        // he was cut and signed elsewhere between two syncs (Nick, 2026-11-19: those read as trades).
+        ev("released", p, { from: o.team, to: 0, before: toC(oc) });
+        ev("signed", p, { from: 0, to: p.team, ...deal });
       } else {
         ev("trade", p, { from: o.team, to: p.team, ...deal });
-        if (newDeal || moved) ev("extended", p, { from: o.team, to: p.team, ...deal });
       }
       continue;
     }
