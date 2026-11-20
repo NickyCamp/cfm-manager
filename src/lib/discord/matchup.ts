@@ -84,9 +84,9 @@ export function weekIndex(n: number) {
   return { 19: 18, 20: 19, 21: 20, 22: 22 }[n] ?? n - 1;
 }
 
-/** The team's game in a given regular-season/playoff week (null on a bye). */
-export function gameInWeek(d: LeagueData, team: Team, week: number): Game | null {
-  return d.games.find((g) => g.stage === 1 && g.week === week && g.home && g.away && (g.home === team.id || g.away === team.id)) || null;
+/** The team's game in a given week (null on a bye). Stage 1 = regular season/playoffs, 0 = preseason. */
+export function gameInWeek(d: LeagueData, team: Team, week: number, stage = 1): Game | null {
+  return d.games.find((g) => g.stage === stage && g.week === week && g.home && g.away && (g.home === team.id || g.away === team.id)) || null;
 }
 
 /** Side-by-side team stats for one finished game. */

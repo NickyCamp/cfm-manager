@@ -136,7 +136,7 @@ const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players"
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week"], stats: ["team"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week", "preseason"], stats: ["team"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -345,8 +345,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "tws": {
       const t = findTeam(d, opt(i, "team"));
       if (!t) return reply("No team by that name.");
-      const w = Number(opt(i, "week")) || 0;
-      return { embeds: [twsEmbed(d, t, url, footer, w || undefined, { base, slug: lg.slug })] };
+      const w = Number(opt(i, "week")) || 0, pre = Number(opt(i, "preseason")) || 0;
+      if (w && pre) return reply("Pick either a week or a preseason week, not both.");
+      return { embeds: [twsEmbed(d, t, url, footer, w || undefined, { base, slug: lg.slug }, pre || undefined)] };
     }
     case "marketchannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");
@@ -1109,9 +1110,13 @@ function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Foot
 }
 
 /** pic: when given, the reply is a short caption plus the chart image (/api/discord/matchup) instead of text tables. */
-function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: number, pic?: { base: string; slug: string }): Embed {
+function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: number, pic?: { base: string; slug: string }, preWeek?: number): Embed {
   let game, bye = false;
-  if (weekNum) {
+  if (preWeek) {
+    // Preseason (Madden stage 0): week index = week - 1. Only games synced during the preseason are in the data.
+    game = gameInWeek(d, t, preWeek - 1, 0);
+    if (!game) return { title: `${teamLabel(t)}: ${weekTitle(d, 0, preWeek - 1)}`, color: hexColor(t.primary), footer, description: `No ${t.abbr} preseason game that week in the site's data (not scheduled, or not synced while the league was in the preseason).` };
+  } else if (weekNum) {
     const wi = weekIndex(weekNum);
     game = gameInWeek(d, t, wi);
     if (!game) return { title: `${teamLabel(t)}: ${weekTitle(d, 1, wi)}`, color: hexColor(t.primary), footer, description: `No ${t.abbr} game that week (a bye, or not scheduled yet).` };
