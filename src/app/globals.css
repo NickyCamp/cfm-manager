@@ -1722,3 +1722,26 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .amn-flag.amn-moreNow, .amn-flag.amn-overCap { color: #b45309; font-weight: 600; }
 .amn-recipe { max-width: 560px; margin: 6px 0 10px; }
 .amn-recipe th { text-align: left; font-weight: 600; width: 46%; }
+
+/* Team showcase picker (ShowcasePicker.tsx) */
+.top-hand .sc-open { display: block; margin: 8px auto 0; }
+.sc-picker { max-width: 560px; margin: 14px auto 0; padding: 16px; }
+.sc-head { margin-bottom: 10px; }
+.sc-picks { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.sc-picks li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.sc-picks li.empty { border-style: dashed; }
+.sc-n { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 700; font-size: .85rem; background: var(--line); flex: none; }
+.sc-picks .sc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-mini { background: none; border: 1px solid var(--line); color: inherit; border-radius: 6px; min-width: 32px; min-height: 32px; cursor: pointer; }
+.sc-mini:disabled { opacity: .35; cursor: default; }
+.sc-search { width: 100%; margin-bottom: 8px; }
+.sc-list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.sc-list li + li { border-top: 1px solid var(--line); }
+.sc-list button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 10px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.sc-list button:hover { background: rgba(255,255,255,.05); }
+.sc-list button.on { background: rgba(80,90,255,.16); }
+.sc-list .sc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-badge { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); display: inline-grid; place-items: center; font-size: .78rem; font-weight: 700; flex: none; }
+.sc-list button.on .sc-badge { background: var(--accent-grad, #505aff); border-color: transparent; color: #fff; }
+.sc-ovr { font-weight: 700; min-width: 2ch; text-align: right; }
+.sc-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; }

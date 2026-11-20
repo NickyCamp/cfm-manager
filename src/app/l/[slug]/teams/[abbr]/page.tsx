@@ -12,8 +12,10 @@ import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { CountUp } from "@/components/league/CountUp";
 import { StaticCard } from "@/components/league/CardFront";
 import { CardStack } from "@/components/league/CardStack";
+import { ShowcasePicker } from "@/components/league/ShowcasePicker";
+import { teamShowcase, SHOWCASE_SIZE } from "@/lib/showcaseStore";
 import { cardProps } from "@/lib/league/cardProps";
-import { canSeeCardArt, cardFramePath, signedCardArtFor } from "@/lib/cardArtStore";
+import { canSeeCardArt, cardArtAccess, cardFramePath, signedCardArtFor } from "@/lib/cardArtStore";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
 import { standInArt } from "@/lib/league/headshots";
 import { CapGauge } from "@/components/league/CapGauge";
@@ -118,14 +120,22 @@ async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: Leagu
   const avgAge = active.length ? active.reduce((a, p) => a + p.age, 0) / active.length : 0;
   // Card art shows to anyone signed in: uploaded photos first, NFL.com headshots, then EA portraits, as stand-ins.
   const viewer = await canSeeCardArt();
-  const [art, layouts] = await Promise.all([
+  const [art, layouts, savedShowcase, access] = await Promise.all([
     viewer ? signedCardArtFor(slug, roster.map((p) => p.id)) : Promise.resolve(new Map<number, string>()),
     leagueCardLayouts(slug),
+    teamShowcase(slug, team.id),
+    viewer ? cardArtAccess(slug, team.id) : Promise.resolve({ canEdit: false }),
   ]);
   const framed = roster.filter((p) => layouts.get(p.id)?.customFrame).map((p) => p.id);
   const frames = viewer && framed.length ? await signedCardArtFor(slug, framed, cardFramePath) : new Map<number, string>();
   const card = (p: Player) => ({ ...cardProps(d, slug, p, team, art.get(p.id) ?? (viewer ? standInArt(p) : undefined)), layout: layouts.get(p.id), frameArt: frames.get(p.id) });
-  const top = [...active].sort((a, b) => b.ovr - a.ovr).slice(0, 5);
+  // Showcase (Nick, 2026-11-20): the manager's picks in their order, skipping anyone no longer on the
+  // active roster; any open slots fill with the best remaining players by overall.
+  const byOvr = [...active].sort((a, b) => b.ovr - a.ovr);
+  const activeById = new Map(active.map((p) => [p.id, p]));
+  const picked = savedShowcase.map((id) => activeById.get(id)).filter((p): p is Player => !!p);
+  const custom = picked.length > 0;
+  const top = [...picked, ...byOvr.filter((p) => !picked.includes(p))].slice(0, SHOWCASE_SIZE);
   return (
     <>
       <div className="stat-tiles">
@@ -140,8 +150,12 @@ async function RosterTab({ d, team, roster, slug, list, unit, base }: { d: Leagu
       </div>
       {!list && top.length > 0 && (
         <div className="top-hand">
-          <h3>Top players <span className="muted small">swipe or tap a card</span></h3>
-          <CardStack label={`${team.name} top players`} items={top.map((p) => ({ href: `/l/${slug}/players/${p.id}`, card: card(p) }))} />
+          <h3>{custom ? "Showcase" : "Top players"} <span className="muted small">swipe or tap a card</span></h3>
+          <CardStack key={top.map((p) => p.id).join("-")} label={`${team.name} ${custom ? "showcase" : "top players"}`} items={top.map((p) => ({ href: `/l/${slug}/players/${p.id}`, card: card(p) }))} />
+          {access.canEdit && (
+            <ShowcasePicker slug={slug} teamId={team.id} saved={picked.map((p) => p.id)}
+              players={byOvr.map((p) => ({ id: p.id, name: `${p.first} ${p.last}`, pos: p.pos, ovr: p.ovr, dev: p.dev }))} />
+          )}
         </div>
       )}
       {!list ? (() => {
