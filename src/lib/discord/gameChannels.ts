@@ -206,14 +206,14 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
         embeds: [embed], allowed_mentions: { roles: tag.flatMap((x) => (x?.role ? [x.role] : [])), users: tag.flatMap((x) => (x?.user ? [x.user] : [])) },
       });
       gc.messageId = m.ok ? String(m.data.id) : null;
-      if (g.final) await postBoxScore(slug, d, g, gc); // already played: box score now, closes in 12 hours
+      if (g.final) await postBoxScore(slug, d, g, gc).catch(() => null); // already played: box score now, closes in 12 hours
       created++;
       await sleep(300);
     } else if (gc.messageId) {
       // Keep it current (kickoff, records, final score); the chart link is re-signed each time.
       const r = await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed], allowed_mentions: { parse: [] } });
       if (r.ok) updated++;
-      if (g.final && !gc.finalPostedAt) await postBoxScore(slug, d, g, gc);
+      if (g.final && !gc.finalPostedAt) await postBoxScore(slug, d, g, gc).catch(() => null);
     }
   }
   await saveState(lg.id, all);

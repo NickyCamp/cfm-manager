@@ -247,6 +247,7 @@ async function syncLeague(lg: League): Promise<string> {
   const staleHours = lg.last_synced_at ? (Date.now() - Date.parse(lg.last_synced_at)) / 3.6e6 : Infinity;
   if (MODE === "auto" && lg.last_sync_key === syncKey && staleHours < STALE_HOURS) {
     log("- No change since the last sync.");
+    await refreshGameChannels(lg, log); // box scores still owed from an earlier sync (a manual /sync should always post them)
     return finish("unchanged", syncKey);
   }
 

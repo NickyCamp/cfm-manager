@@ -90,20 +90,20 @@ export function boxScoreEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: 
   };
 }
 
-/** Posts the box score in a game channel and starts its 12-hour clock. Returns false if Discord refused. */
-export async function postBoxScore(slug: string, d: LeagueData, g: Game, gc: GameChannel): Promise<boolean> {
+/** Posts the box score in a game channel and starts its 12-hour clock. Returns null, or why Discord refused. */
+export async function postBoxScore(slug: string, d: LeagueData, g: Game, gc: GameChannel): Promise<string | null> {
   const teams = new Map(d.teams.map((t) => [t.id, t]));
   const a = teams.get(g.away), h = teams.get(g.home);
-  if (!a || !h) return false;
+  if (!a || !h) return "teams not found";
   const closeAt = Math.floor((Date.now() + CLOSE_AFTER_MS) / 1000);
   const r = await dc("POST", `/channels/${gc.channelId}/messages`, tidy({
     content: `🏁 **Final.** This channel closes <t:${closeAt}:R> (<t:${closeAt}:f>).`,
     embeds: [boxScoreEmbed(slug, d, g, a, h)],
   }));
-  if (!r.ok) return false;
+  if (!r.ok) return `Discord ${r.status}${r.data.message ? ` (${String(r.data.message)})` : ""}${r.data.errors ? ` ${JSON.stringify(r.data.errors).slice(0, 300)}` : ""}`;
   gc.final = true;
   gc.finalPostedAt = new Date().toISOString();
-  return true;
+  return null;
 }
 
 // ---------- after a sync, and the 15-minute cron ----------
@@ -143,7 +143,7 @@ export async function gameChannelFinals(slug: string, withData = true): Promise<
     const fresh = await leagueBySlug(slug);
     const state = readGameChannels(fresh?.settings?.gameChannels);
     const log: string[] = [];
-    let changed = false, posted = 0;
+    let changed = false, posted = 0, already = 0, open = 0, channels = 0;
     if (withData) {
       forgetLeagueData(slug);
       const d = await getLeagueData(slug);
@@ -152,12 +152,17 @@ export async function gameChannelFinals(slug: string, withData = true): Promise<
         for (const wk of Object.values(state.weeks)) {
           for (const [id, gc] of Object.entries(wk.games)) {
             const g = byId.get(id);
-            if (!g?.final || gc.finalPostedAt || gc.closedAt) continue;
-            if (await postBoxScore(slug, d, g, gc)) { posted++; changed = true; }
+            if (gc.closedAt) continue;
+            channels++;
+            if (!g?.final) { open++; continue; }
+            if (gc.finalPostedAt) { already++; continue; }
+            const err = await postBoxScore(slug, d, g, gc);
+            if (!err) { posted++; changed = true; }
             else {
               // channel deleted by hand: nothing to post in, so treat it as closed
               const c = await dc("GET", `/channels/${gc.channelId}`);
-              if (isGone(c)) { gc.closedAt = new Date().toISOString(); changed = true; }
+              if (isGone(c)) { gc.closedAt = new Date().toISOString(); changed = true; log.push(`game ${id}'s channel is gone`); }
+              else log.push(`couldn't post game ${id}'s box score: ${err}`);
             }
             await sleep(300);
           }
@@ -168,7 +173,8 @@ export async function gameChannelFinals(slug: string, withData = true): Promise<
     }
     if (await closeDue(state, log)) changed = true;
     if (changed) await saveState(lg.id, state);
-    return [posted ? `posted ${posted} box score${posted === 1 ? "" : "s"}` : "", ...log].filter(Boolean).join("; ") || "nothing to do";
+    const counts = withData ? `${channels} open channel${channels === 1 ? "" : "s"}: ${posted} box score${posted === 1 ? "" : "s"} posted, ${already} posted before, ${open} not played yet` : "";
+    return [counts, ...log].filter(Boolean).join("; ") || "nothing to do";
   }).catch((e) => `failed: ${(e as Error).message}`);
 }
 
