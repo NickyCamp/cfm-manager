@@ -190,6 +190,19 @@ async function refreshActivity(lg: League, log: (s: string) => void) {
   }
 }
 
+/** Asks the site to post box scores in the game channels of games that just went final (only if /gamechannels was run). */
+async function refreshGameChannels(lg: League, log: (s: string) => void) {
+  if (!lg.settings?.gameChannels || !process.env.EA_TOKEN_KEY) return;
+  try {
+    const { ts, sig } = signWorkerCall(lg.slug);
+    const res = await fetch(`${APP_URL}/api/leagues/${lg.slug}/discord/games`, { method: "POST", headers: { "x-cfm-ts": ts, "x-cfm-sig": sig } });
+    const j = (await res.json().catch(() => ({}))) as { result?: string; error?: string };
+    log(`- Discord game channels: ${j.result || j.error || `HTTP ${res.status}`}`);
+  } catch (e) {
+    log(`- Discord game channels refresh failed: ${(e as Error).message}`);
+  }
+}
+
 async function syncLeague(lg: League): Promise<string> {
   const report: string[] = [];
   const log = (s: string) => { console.log(`[${lg.slug}] ${s}`); report.push(s); };
@@ -263,6 +276,7 @@ async function syncLeague(lg: League): Promise<string> {
   if (built) await postTransactionChannels(lg, built.prev, built.data, log);
   if (built) await refreshMarketChannels(lg, log);
   if (built) await refreshActivity(lg, log);
+  if (built) await refreshGameChannels(lg, log);
   return finish(built ? "synced" : "failed", built ? syncKey : undefined);
 }
 

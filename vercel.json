@@ -1,3 +1,6 @@
 {
-  "crons": [{ "path": "/api/cron/sync", "schedule": "17 11 * * *" }]
+  "crons": [
+    { "path": "/api/cron/sync", "schedule": "17 11 * * *" },
+    { "path": "/api/cron/game-channels", "schedule": "*/15 * * * *" }
+  ]
 }

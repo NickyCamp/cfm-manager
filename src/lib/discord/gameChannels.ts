@@ -21,6 +21,7 @@ import { matchupImageUrl } from "./cardLink";
 import { weekIndex } from "./matchup";
 import { channelGone, dc, sleep } from "./rest";
 import { withLeagueLock } from "./lock";
+import { postBoxScore } from "./gameFinals";
 
 /** True only when Discord says the channel is gone. If Discord can't say (rate limit, outage), assume it's
  *  still there: recreating on a hiccup is what leaves duplicate channels behind. */
@@ -29,10 +30,12 @@ import type { Game, LeagueData, Team } from "@/lib/league/types";
 
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
 
-type GameChannel = { channelId: string; messageId: string | null; final?: boolean };
-type WeekChannels = { categoryId: string; name: string; games: Record<string, GameChannel> };
-/** One category per week built, keyed "year:stage:week". */
-export type GameChannels = { weeks: Record<string, WeekChannels> };
+/** finalPostedAt: when the box score went up (gameFinals.ts); closedAt: when the channel was deleted 12 hours later
+ *  (closedName keeps its last name for /set). Closed channels stay listed so /gamechannels never rebuilds them. */
+export type GameChannel = { channelId: string; messageId: string | null; final?: boolean; finalPostedAt?: string; closedAt?: string; closedName?: string };
+type WeekChannels = { categoryId: string; name: string; games: Record<string, GameChannel>; closedAt?: string };
+/** One category per week built, keyed "year:stage:week". finalsAt: the last after-sync box score pass. */
+export type GameChannels = { weeks: Record<string, WeekChannels>; finalsAt?: string };
 type LegacyGameChannels = { categoryId: string; weekKey: string; games: Record<string, GameChannel> };
 
 const keyOf = (year: number, stage: number, week: number) => `${year}:${stage}:${week}`;
@@ -42,7 +45,7 @@ const rank = (key: string) => { const [y, s, w] = key.split(":").map(Number); re
 export function readGameChannels(raw: unknown): GameChannels {
   const v = raw as Partial<GameChannels & LegacyGameChannels> | null | undefined;
   if (!v) return { weeks: {} };
-  if (v.weeks) return { weeks: { ...v.weeks } };
+  if (v.weeks) return { weeks: { ...v.weeks }, ...(v.finalsAt ? { finalsAt: v.finalsAt } : {}) };
   if (v.categoryId && v.weekKey) return { weeks: { [v.weekKey]: { categoryId: v.categoryId, name: "", games: v.games || {} } } };
   return { weeks: {} };
 }
@@ -152,8 +155,13 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
   const games = d.games.filter((g) => g.stage === stage && g.week === week && g.home && g.away);
   if (!games.length) return `There are no games on the schedule for ${d.season.year} ${title} yet.`;
 
-  // this week's category: reuse it if it's still there, otherwise make a new one
-  let state: WeekChannels | null = all.weeks[key] || null;
+  // Channels closed 12 hours after their box score (gameFinals.ts) stay closed.
+  const prev = all.weeks[key];
+  const closed = (g: Game) => Boolean(prev?.games[String(g.id)]?.closedAt);
+  if (games.every(closed)) return `Every ${title} game is final, and its channels were closed 12 hours after the box score was posted.`;
+
+  // this week's category: reuse it if it's still there, otherwise make a new one (keeping the closed games' records)
+  let state: WeekChannels | null = prev && !prev.closedAt ? prev : null;
   if (state) {
     const c = await dc("GET", `/channels/${state.categoryId}`);
     if (!c.ok) { if (await channelGone(state.categoryId)) state = null; } // throws if Discord can't say, so a hiccup doesn't start a second category
@@ -163,7 +171,8 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
   if (!state) {
     const cat = await dc("POST", `/guilds/${guildId}/channels`, { name: catName, type: 4 });
     if (!cat.ok) return cat.status === 403 ? "The bot needs the Manage Channels permission in this server to make game channels." : `Discord said ${cat.status}: ${String(cat.data.message || "")}`;
-    state = { categoryId: String(cat.data.id), name: catName, games: {} };
+    const keep = Object.fromEntries(Object.entries(prev?.games || {}).filter(([, gc]) => gc.closedAt));
+    state = { categoryId: String(cat.data.id), name: catName, games: keep };
   }
   state.name = catName;
   all.weeks[key] = state;
@@ -174,6 +183,7 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
 
   let created = 0, updated = 0;
   for (const g of games) {
+    if (closed(g)) continue;
     const a = teams.get(g.away)!, h = teams.get(g.home)!;
     let gc = state.games[String(g.id)];
     if (gc && (await surelyGone(gc.channelId))) gc = undefined as unknown as GameChannel;
@@ -196,17 +206,14 @@ async function syncGameChannelsNow(slug: string, pick?: { year?: number; week?: 
         embeds: [embed], allowed_mentions: { roles: tag.flatMap((x) => (x?.role ? [x.role] : [])), users: tag.flatMap((x) => (x?.user ? [x.user] : [])) },
       });
       gc.messageId = m.ok ? String(m.data.id) : null;
-      gc.final = g.final;
+      if (g.final) await postBoxScore(slug, d, g, gc); // already played: box score now, closes in 12 hours
       created++;
       await sleep(300);
     } else if (gc.messageId) {
       // Keep it current (kickoff, records, final score); the chart link is re-signed each time.
       const r = await dc("PATCH", `/channels/${gc.channelId}/messages/${gc.messageId}`, { embeds: [embed], allowed_mentions: { parse: [] } });
       if (r.ok) updated++;
-      if (g.final && !gc.final) {
-        gc.final = true;
-        await dc("POST", `/channels/${gc.channelId}/messages`, { content: `🏁 Final: **${a.abbr} ${g.as}, ${h.abbr} ${g.hs}**${g.simmed ? " (sim)" : ""}`, allowed_mentions: { parse: [] } });
-      }
+      if (g.final && !gc.finalPostedAt) await postBoxScore(slug, d, g, gc);
     }
   }
   await saveState(lg.id, all);
@@ -236,7 +243,7 @@ async function removeGameChannelsNow(slug: string, pick?: { year?: number; week?
     return `There's no game channel category for **${catName}**.${have.length ? ` Weeks with one: ${have.join(", ")}.` : ""}`;
   }
   let removed = 0;
-  for (const g of Object.values(state.games)) { const r = await dc("DELETE", `/channels/${g.channelId}`); if (r.ok) removed++; await sleep(250); }
+  for (const g of Object.values(state.games)) { if (g.closedAt) continue; const r = await dc("DELETE", `/channels/${g.channelId}`); if (r.ok) removed++; await sleep(250); }
   await dc("DELETE", `/channels/${state.categoryId}`);
   delete all.weeks[w.key];
   await saveState(lg.id, all);
@@ -245,5 +252,5 @@ async function removeGameChannelsNow(slug: string, pick?: { year?: number; week?
 
 /** Category names for the weeks that have one, oldest first. */
 export function listGameWeeks(all: GameChannels): string[] {
-  return Object.entries(all.weeks).sort(([a], [b]) => rank(a) - rank(b)).map(([k, v]) => v.name || k);
+  return Object.entries(all.weeks).filter(([, v]) => !v.closedAt).sort(([a], [b]) => rank(a) - rank(b)).map(([k, v]) => v.name || k);
 }

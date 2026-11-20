@@ -64,7 +64,7 @@ function candidates(lg: LinkedLeague, d: LeagueData): Pick[] {
   for (const [key, wk] of weeks) {
     for (const [id, gc] of Object.entries(wk.games)) {
       const g = byId.get(id);
-      if (g && g.home && g.away) out.push({ g, channelId: gc.channelId, category: wk.name || `${key.split(":")[0]} - ${weekTitle(d, g.stage, g.week)}` });
+      if (g && g.home && g.away) out.push({ g, channelId: gc.closedAt ? null : gc.channelId, category: wk.name || `${key.split(":")[0]} - ${weekTitle(d, g.stage, g.week)}` });
     }
   }
   if (out.length) return out;
@@ -119,6 +119,12 @@ export async function setGameChoicesFast(lg: LinkedLeague, sub: string | undefin
     const forced = forcedFor(lg.settings, Number(key.split(":")[0]));
     for (const [id, gc] of Object.entries(wk.games)) {
       if (sub === "remove" && !forced[id]) continue;
+      // closed 12 hours after its box score (gameFinals.ts): still pickable, e.g. to credit activity
+      if (gc.closedAt) {
+        const label = `${wk.name || key} · ${gc.closedName ? `#${gc.closedName}` : `game ${id}`} (closed)`.slice(0, 100);
+        if (!n || norm(label).includes(n)) out.push({ name: label, value: id });
+        continue;
+      }
       if (names.size && !names.has(gc.channelId)) continue; // channel was deleted in Discord
       const ch = names.get(gc.channelId);
       const label = `${wk.name || key} · ${ch ? `#${ch}` : `game ${id}`}`.slice(0, 100);
@@ -205,7 +211,7 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
   const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
   await saveForced(lg, d.season.year, g.id, f);
 
-  let note = " This game has no channel yet (/gamechannels).";
+  let note = " This game has no open channel (not made yet, or closed after its box score).";
   const ch = pick.channelId;
   if (ch) {
     const name = channelNameFor(away, home, f);
@@ -227,7 +233,7 @@ async function setDisconnect(lg: LinkedLeague, d: LeagueData, pick: Pick, by: st
   const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
   await saveForced(lg, d.season.year, g.id, f);
   const users = [away, home].filter((t) => t.user);
-  let note = " This game has no channel yet (/gamechannels).";
+  let note = " This game has no open channel (not made yet, or closed after its box score).";
   if (pick.channelId) {
     const name = channelNameFor(away, home, f);
     note = renameNote(await rename(pick.channelId, name), pick.channelId, name);
