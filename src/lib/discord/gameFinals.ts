@@ -7,13 +7,12 @@
 // once every channel in it is closed. Closed channels stay in the saved state (closedAt), so running
 // /gamechannels again for that week never brings them back, and /set can still pick those games.
 import { forgetLeagueData, getLeagueData } from "@/lib/league/load";
-import { boxScore } from "@/lib/league/derive";
-import { avg } from "@/lib/league/format";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
-import type { Game, LeagueData, Player, StatLine, Team, TeamGame } from "@/lib/league/types";
+import type { Game, LeagueData, Team } from "@/lib/league/types";
 import { BRAND, hexColor, tidy, type Embed } from "./api";
 import { leagueBySlug } from "./links";
+import { matchupImageUrl } from "./cardLink";
 import { dc, isGone, sleep } from "./rest";
 import { withLeagueLock } from "./lock";
 import type { GameChannel, GameChannels } from "./gameChannels";
@@ -25,67 +24,15 @@ const BUSY = "busy (someone is running /gamechannels); will try again on the nex
 
 // ---------- the box score post ----------
 
-const n = (x?: number) => x || 0;
-const short = (p: Player | undefined) => (p ? `${p.first.charAt(0)}. ${p.last}` : "Unknown");
-
-function teamStatsBlock(a: Team, h: Team, sa: TeamGame, sh: TeamGame): string {
-  const rows: [string, string, string][] = [
-    ["Total yards", `${sa.yds}`, `${sh.yds}`],
-    ["Passing", `${sa.passYds}`, `${sh.passYds}`],
-    ["Rushing", `${sa.rushYds}`, `${sh.rushYds}`],
-    ["First downs", `${sa.firstDowns}`, `${sh.firstDowns}`],
-    ["3rd down", `${sa.third[0]}/${sa.third[1]}`, `${sh.third[0]}/${sh.third[1]}`],
-    ["4th down", `${sa.fourth[0]}/${sa.fourth[1]}`, `${sh.fourth[0]}/${sh.fourth[1]}`],
-    ["Red zone", `${sa.redZone[0]}/${sa.redZone[1]}`, `${sh.redZone[0]}/${sh.redZone[1]}`],
-    ["Turnovers", `${sa.turnovers}`, `${sh.turnovers}`],
-    ["Sacks", `${sa.sacks}`, `${sh.sacks}`],
-    ["Penalties", `${sa.penalties}-${sa.penaltyYds}`, `${sh.penalties}-${sh.penaltyYds}`],
-  ];
-  const w = Math.max(...rows.map((r) => r[0].length));
-  const head = `${"".padEnd(w)}  ${a.abbr.padStart(6)}  ${h.abbr.padStart(6)}`;
-  return "```\n" + [head, ...rows.map(([l, x, y]) => `${l.padEnd(w)}  ${x.padStart(6)}  ${y.padStart(6)}`)].join("\n") + "\n```";
-}
-
-/** One team's leaders: top passer, 2 rushers, 3 receivers, 2 defenders, kicker. */
-function teamLeaders(lines: StatLine[], players: Map<number, Player>): string {
-  const top = (k: keyof StatLine, count: number) => lines.filter((l) => n(l[k] as number) > 0).sort((x, y) => n(y[k] as number) - n(x[k] as number)).slice(0, count);
-  const name = (l: StatLine) => short(players.get(l.p));
-  const td = (x: number, label = "TD") => (x ? `, ${x} ${label}` : "");
-  const out: string[] = [];
-  for (const l of top("pa", 1)) out.push(`**Pass** ${name(l)}: ${n(l.pc)}/${n(l.pa)}, ${n(l.py)} yds${td(n(l.ptd))}${td(n(l.pint), "INT")}`);
-  const rush = top("ra", 2).map((l) => `${name(l)} ${n(l.ra)}-${n(l.ry)} (${avg(n(l.ry), n(l.ra))})${td(n(l.rtd))}`);
-  if (rush.length) out.push(`**Rush** ${rush.join(" · ")}`);
-  const rec = top("rc", 3).map((l) => `${name(l)} ${n(l.rc)}-${n(l.rcy)}${td(n(l.rctd))}`);
-  if (rec.length) out.push(`**Rec** ${rec.join(" · ")}`);
-  const def = lines.filter((l) => n(l.tk) + n(l.sk) + n(l.int) + n(l.ff) > 0)
-    .sort((x, y) => n(y.int) * 10 + n(y.sk) * 3 + n(y.ff) * 3 + n(y.tk) - (n(x.int) * 10 + n(x.sk) * 3 + n(x.ff) * 3 + n(x.tk)))
-    .slice(0, 2)
-    .map((l) => [`${name(l)} ${n(l.tk)} TKL`, n(l.sk) ? `${n(l.sk)} SCK` : "", n(l.int) ? `${n(l.int)} INT` : "", n(l.ff) ? `${n(l.ff)} FF` : ""].filter(Boolean).join(", "));
-  if (def.length) out.push(`**Def** ${def.join(" · ")}`);
-  for (const l of top("fga", 1)) out.push(`**Kick** ${name(l)} ${n(l.fgm)}/${n(l.fga)} FG${n(l.fglng) ? ` (long ${n(l.fglng)})` : ""}`);
-  return out.join("\n") || "No player stats from EA.";
-}
-
+/** The box score as a picture: scoreboard, team stat bars and leaders (the /tws image for a finished game). */
 export function boxScoreEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: Team): Embed {
-  const players = new Map(d.players.map((p) => [p.id, p]));
-  const { lines, teamStats } = boxScore(d, g.id);
-  const sa = teamStats.find((s) => s.t === a.id), sh = teamStats.find((s) => s.t === h.id);
   const winner = g.as === g.hs ? null : g.as > g.hs ? a : h;
   const tags = [g.simmed ? "sim" : "", g.forced ? `forced ${g.forced.kind}` : "", g.disconnect ? "disconnect" : ""].filter(Boolean);
-  const fields: NonNullable<Embed["fields"]> = [];
-  if (lines.length) {
-    fields.push({ name: `${a.city} ${a.name}`, value: teamLeaders(lines.filter((l) => l.t === a.id), players) });
-    fields.push({ name: `${h.city} ${h.name}`, value: teamLeaders(lines.filter((l) => l.t === h.id), players) });
-  }
   return {
     title: `Final: ${a.abbr} ${g.as}, ${h.abbr} ${g.hs}${tags.length ? ` (${tags.join(", ")})` : ""}`,
     url: `${APP_URL}/l/${slug}/games/${g.id}`,
     color: hexColor((winner || h).primary) || BRAND,
-    description: [
-      `**${a.city} ${a.name}** ${g.as} @ **${h.city} ${h.name}** ${g.hs}`,
-      sa && sh ? teamStatsBlock(a, h, sa, sh) : "EA sent no team stats for this game.",
-    ].join("\n"),
-    fields,
+    image: { url: matchupImageUrl(APP_URL, slug, g.id) },
     footer: { text: "Full box score on the site (title link)" },
   };
 }

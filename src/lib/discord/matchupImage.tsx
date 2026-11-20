@@ -149,7 +149,9 @@ function Leaders({ d, g, away, home }: { d: LeagueData; g: Game; away: Team; hom
 export async function renderMatchup(d: LeagueData, g: Game, away: Team, home: Team, leagueName: string) {
   const logos = await Promise.all([logoOf(away), logoOf(home)]);
   const m = g.final ? null : matchupSides(d, away, home);
-  const height = g.final ? 150 + 9 * 40 + 26 + 230 + 50 : m ? 150 + 2 * (60 + 8 * 38) + 18 + 70 : 150 + 120;
+  // leaders boxes grow with the longest list (up to 4 players a side)
+  const nLeaders = g.final ? Math.max(1, ...[away, home].map((t) => gameLeaders(d, g, t).split("\n").length)) : 0;
+  const height = g.final ? 150 + 9 * 40 + 26 + 34 + 62 + nLeaders * 61 + 16 : m ? 150 + 2 * (60 + 8 * 38) + 18 + 70 : 150 + 120;
   const node = (
     <div style={{ width: W, height, display: "flex", flexDirection: "column", backgroundColor: BG, color: INK, fontFamily: "Barlow Condensed" }}>
       <Header d={d} g={g} away={away} home={home} logos={logos} final={g.final} />
