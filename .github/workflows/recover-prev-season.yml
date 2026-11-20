@@ -1,0 +1,54 @@
+name: Recover last season's stats
+
+# One-off (Nick, 2026-11-20): rebuilds a league's last-season per-player summary from the
+# league-data files the Sync run keeps for 3 days, and commits it to
+# src/lib/league/prev-seasons/<slug>-<year>.json (early-season player props use it).
+# Only uses this repo's own token: no league secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      league:
+        description: "League slug"
+        default: "ncl"
+      year:
+        description: "Season to recover"
+        default: "2027"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Download saved league data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/arts
+          gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100&name=league-data" \
+            -q '.artifacts[] | select(.expired == false) | .id' | head -40 > /tmp/ids.txt
+          wc -l /tmp/ids.txt
+          while read -r id; do
+            gh api "repos/${{ github.repository }}/actions/artifacts/$id/zip" > "/tmp/$id.zip" || continue
+            mkdir -p "/tmp/arts/$id" && unzip -q -o "/tmp/$id.zip" -d "/tmp/arts/$id" || true
+          done < /tmp/ids.txt
+      - name: Summarize
+        run: npx tsx scripts/prev-season/summarize.ts "${{ inputs.league }}" "${{ inputs.year }}" /tmp/arts
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/league/prev-seasons
+          git diff --cached --quiet && { echo "Nothing new"; exit 0; }
+          git commit -m "Recovered ${{ inputs.league }} ${{ inputs.year }} per-game stats for early-season props"
+          git push
