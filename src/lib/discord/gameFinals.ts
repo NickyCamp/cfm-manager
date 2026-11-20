@@ -17,6 +17,7 @@ import { dc, isGone, sleep } from "./rest";
 import { withLeagueLock } from "./lock";
 import type { GameChannel, GameChannels } from "./gameChannels";
 import { readGameChannels } from "./gameChannels";
+import { rename } from "./forceResult";
 
 export const CLOSE_AFTER_MS = 12 * 3_600_000;
 const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").replace(/\/$/, "");
@@ -37,6 +38,25 @@ export function boxScoreEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: 
   };
 }
 
+const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/** "eagles-31-at-saints-17", plus "-sim", "-force-win-eagles", "-force-sim" or "-disconnect" (Nick, 2026-11-20). */
+export function scoreChannelName(g: Game, a: Team, h: Team): string {
+  const f = g.forced, who = f?.team === a.id ? a : f?.team === h.id ? h : undefined;
+  const tag = g.disconnect ? "-disconnect"
+    : f ? `-force-${f.kind}${f.kind !== "sim" && who ? `-${slugName(who.name)}` : ""}`
+      : g.simmed ? "-sim" : "";
+  return `${slugName(a.name)}-${g.as}-at-${slugName(h.name)}-${g.hs}${tag}`.slice(0, 100);
+}
+
+/** Puts the final score in the channel name. Discord allows 2 renames per channel every 10 minutes, so a blocked
+ *  rename stays pending (scoreName set, renamed unset) and the 15-minute cron tries again. */
+async function renameToScore(gc: GameChannel): Promise<void> {
+  if (!gc.scoreName || gc.renamed || gc.closedAt) return;
+  const r = await rename(gc.channelId, gc.scoreName, "final score");
+  if (r === "ok" || r === "same" || r === "gone") gc.renamed = true;
+}
+
 /** Posts the box score in a game channel and starts its 12-hour clock. Returns null, or why Discord refused. */
 export async function postBoxScore(slug: string, d: LeagueData, g: Game, gc: GameChannel): Promise<string | null> {
   const teams = new Map(d.teams.map((t) => [t.id, t]));
@@ -50,6 +70,8 @@ export async function postBoxScore(slug: string, d: LeagueData, g: Game, gc: Gam
   if (!r.ok) return `Discord ${r.status}${r.data.message ? ` (${String(r.data.message)})` : ""}${r.data.errors ? ` ${JSON.stringify(r.data.errors).slice(0, 300)}` : ""}`;
   gc.final = true;
   gc.finalPostedAt = new Date().toISOString();
+  gc.scoreName = scoreChannelName(g, a, h);
+  await renameToScore(gc);
   return null;
 }
 
@@ -102,7 +124,13 @@ export async function gameChannelFinals(slug: string, withData = true): Promise<
             if (gc.closedAt) continue;
             channels++;
             if (!g?.final) { open++; continue; }
-            if (gc.finalPostedAt) { already++; continue; }
+            if (gc.finalPostedAt) {
+              already++;
+              // box score posted before channels were renamed: give it its score name too
+              const a = d.teams.find((t) => t.id === g.away), h = d.teams.find((t) => t.id === g.home);
+              if (!gc.scoreName && a && h) { gc.scoreName = scoreChannelName(g, a, h); changed = true; }
+              continue;
+            }
             const err = await postBoxScore(slug, d, g, gc);
             if (!err) { posted++; changed = true; }
             else {
@@ -117,6 +145,9 @@ export async function gameChannelFinals(slug: string, withData = true): Promise<
         state.finalsAt = new Date().toISOString();
         changed = true;
       }
+    }
+    for (const wk of Object.values(state.weeks)) for (const gc of Object.values(wk.games)) {
+      if (gc.scoreName && !gc.renamed && !gc.closedAt) { await renameToScore(gc); if (gc.renamed) changed = true; }
     }
     if (await closeDue(state, log)) changed = true;
     if (changed) await saveState(lg.id, state);
@@ -134,7 +165,8 @@ export async function gameChannelsCron(): Promise<Record<string, string>> {
     const st = readGameChannels((lg.settings as Record<string, unknown> | null)?.gameChannels);
     const synced = lg.last_synced_at ? Date.parse(lg.last_synced_at as string) : 0;
     const needFinals = !st.finalsAt || synced > Date.parse(st.finalsAt);
-    const due = Object.values(st.weeks).some((wk) => !wk.closedAt && Object.values(wk.games).some((gc) => !gc.closedAt && gc.finalPostedAt && Date.now() - Date.parse(gc.finalPostedAt) >= CLOSE_AFTER_MS));
+    const due = Object.values(st.weeks).some((wk) => !wk.closedAt && Object.values(wk.games).some((gc) => !gc.closedAt && gc.finalPostedAt
+      && (Date.now() - Date.parse(gc.finalPostedAt) >= CLOSE_AFTER_MS || (gc.scoreName && !gc.renamed))));
     if (!needFinals && !due) continue;
     out[lg.slug as string] = await gameChannelFinals(lg.slug as string, needFinals);
   }

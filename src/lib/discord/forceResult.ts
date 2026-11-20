@@ -137,13 +137,13 @@ export async function setGameChoicesFast(lg: LinkedLeague, sub: string | undefin
 
 /** One rename attempt. Discord allows about 2 renames per channel every 10 minutes; on that limit, say so
  *  instead of waiting it out (running /set again later renames it). */
-async function rename(channelId: string, name: string): Promise<"ok" | "same" | "limited" | "gone" | "failed"> {
+export async function rename(channelId: string, name: string, reason = "/set"): Promise<"ok" | "same" | "limited" | "gone" | "failed"> {
   const cur = await dc("GET", `/channels/${channelId}`);
   if (!cur.ok) return cur.status === 404 || cur.status === 403 ? "gone" : "failed";
   if (cur.data.name === name) return "same";
   const res = await fetch(`https://discord.com/api/v10/channels/${channelId}`, {
     method: "PATCH",
-    headers: { authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`, "content-type": "application/json", "x-audit-log-reason": "/set" },
+    headers: { authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`, "content-type": "application/json", "x-audit-log-reason": reason },
     body: JSON.stringify({ name }),
     signal: AbortSignal.timeout(10_000),
   }).catch(() => null);

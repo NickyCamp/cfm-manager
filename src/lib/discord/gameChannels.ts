@@ -32,7 +32,8 @@ const APP_URL = (process.env.APP_URL || "https://cfm-manager-delta.vercel.app").
 
 /** finalPostedAt: when the box score went up (gameFinals.ts); closedAt: when the channel was deleted 12 hours later
  *  (closedName keeps its last name for /set). Closed channels stay listed so /gamechannels never rebuilds them. */
-export type GameChannel = { channelId: string; messageId: string | null; final?: boolean; finalPostedAt?: string; closedAt?: string; closedName?: string };
+/** scoreName/renamed: the channel's final-score name and whether Discord took the rename yet. */
+export type GameChannel = { channelId: string; messageId: string | null; final?: boolean; finalPostedAt?: string; closedAt?: string; closedName?: string; scoreName?: string; renamed?: boolean };
 type WeekChannels = { categoryId: string; name: string; games: Record<string, GameChannel>; closedAt?: string };
 /** One category per week built, keyed "year:stage:week". finalsAt: the last after-sync box score pass. */
 export type GameChannels = { weeks: Record<string, WeekChannels>; finalsAt?: string };
