@@ -20,9 +20,11 @@ export type PrevSeason = { year: number; players: Record<string, PrevPlayer> };
 
 export const prevVal = (l: StatLine, k: PrevKey) => (k === "td" ? (l.rtd || 0) + (l.rctd || 0) : (l[k] as number | undefined) || 0);
 
-/** Summarises a season's regular-season lines (stage 1, final, weeks 0–17 as EA numbers them). Players with none of the stats are left out. */
+/** Summarises a season's regular-season lines (stage 1, weeks 0–17 as EA numbers them). Players with none of the stats are left out. */
 export function summarizeSeason(d: Pick<LeagueData, "season" | "games" | "lines">): PrevSeason {
-  const reg = new Set(d.games.filter((g) => g.stage === 1 && g.final && g.week <= 17 && !g.forced && !g.disconnect).map((g) => g.id));
+  // Not g.final: in the offseason EA's schedule shows last season's games as unplayed (NCL 2027), but a
+  // game with box-score lines was played.
+  const reg = new Set(d.games.filter((g) => g.stage === 1 && g.week <= 17 && !g.forced && !g.disconnect).map((g) => g.id));
   const acc = new Map<number, { n: number; teams: Map<number, number>; s: Record<string, number>; q: Record<string, number> }>();
   for (const l of d.lines) {
     if (!reg.has(l.g)) continue;
