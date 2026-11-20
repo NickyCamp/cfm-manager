@@ -98,6 +98,37 @@ export function setChoices(lg: LinkedLeague, d: LeagueData, sub: string | undefi
     .map(({ name, value }) => ({ name, value }));
 }
 
+/** The `game` box for /set, without loading the league data file (Nick, 2026-11-20: the Week 1 game channels
+ *  didn't show up). Discord gives autocomplete 3 seconds and a cold data load can take longer, which left the
+ *  list empty. This reads only the saved game channel categories and the server's channel names (one Discord
+ *  call), so it answers fast and lists every channel that exists. setForce still checks the pick against the
+ *  league data when the command runs. */
+export async function setGameChoicesFast(lg: LinkedLeague, sub: string | undefined, q: string): Promise<{ name: string; value: string }[] | null> {
+  const weeks = Object.entries(readGameChannels(lg.settings?.gameChannels).weeks)
+    .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }));
+  if (!weeks.length) return null; // no categories: the slow path offers this week's games
+  const guildId = (lg.settings?.discord as { guildId?: string } | undefined)?.guildId;
+  const names = new Map<string, string>();
+  if (guildId) {
+    const r = await dc("GET", `/guilds/${guildId}/channels`).catch(() => null);
+    if (r?.ok && Array.isArray(r.data)) for (const c of r.data as unknown as { id: string; name: string }[]) names.set(String(c.id), c.name);
+  }
+  const n = norm(q);
+  const out: { name: string; value: string }[] = [];
+  for (const [key, wk] of weeks) {
+    const forced = forcedFor(lg.settings, Number(key.split(":")[0]));
+    for (const [id, gc] of Object.entries(wk.games)) {
+      if (sub === "remove" && !forced[id]) continue;
+      if (names.size && !names.has(gc.channelId)) continue; // channel was deleted in Discord
+      const ch = names.get(gc.channelId);
+      const label = `${wk.name || key} · ${ch ? `#${ch}` : `game ${id}`}`.slice(0, 100);
+      if (n && !norm(label).includes(n)) continue;
+      out.push({ name: label, value: id });
+    }
+  }
+  return out.slice(0, 25);
+}
+
 /** One rename attempt. Discord allows about 2 renames per channel every 10 minutes; on that limit, say so
  *  instead of waiting it out (running /set again later renames it). */
 async function rename(channelId: string, name: string): Promise<"ok" | "same" | "limited" | "gone" | "failed"> {

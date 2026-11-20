@@ -35,7 +35,7 @@ import { AUDIT_KINDS, auditMessage, runAudit, type AuditKind } from "./audit";
 import { auditChannelsCmd, postAudit } from "./auditChannels";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
 import { removeGameChannels, syncGameChannels } from "./gameChannels";
-import { removeForce, setChoices, setForce } from "./forceResult";
+import { removeForce, setChoices, setForce, setGameChoicesFast } from "./forceResult";
 import { activityChannelsCmd } from "./activity";
 import { tradeChannelsCmd } from "./tradeChannels";
 import { txChannelsCmd } from "./txChannels";
@@ -199,6 +199,12 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
   }
   const lg = (await resolveLeague(i))?.lg;
   if (!lg) return [];
+  // /set's game box: answer from the saved game channels, not the (slow to load) league data.
+  if (i.data?.name === "set" && i.data.options?.find((o) => o.focused)?.name === "game") {
+    void getLeagueData(lg.slug).catch(() => null); // warm it for the team/activity boxes and the command
+    const fast = await setGameChoicesFast(lg, (i as { sub?: string }).sub, String(i.data.options.find((o) => o.focused)?.value ?? ""));
+    if (fast) return fast;
+  }
   const d = await getLeagueData(lg.slug);
   if (!d) return [];
   const focused = i.data?.options?.find((o) => o.focused);
