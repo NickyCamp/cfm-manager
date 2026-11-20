@@ -4,6 +4,8 @@
 
 export const DATA_VERSION = 1;
 
+import type { PrevSeason } from "./prevSeason";
+
 export type Week = { stage: number; week: number; title: string; games: number; played: number };
 
 export type Team = {
@@ -147,6 +149,9 @@ export type LeagueData = {
   blockKey?: string;
   /** Stat lines whose team didn't play in that game, put back on load (lineTeams.ts). */
   lineTeamFix?: { fixed: number; unresolved: number };
+  /** Last season's per-game numbers per player (prevSeason.ts): kept by the worker when the year changes,
+   *  or attached at load time from prev-seasons/ for leagues that rolled over before that. Early-season props use it. */
+  prevSeason?: PrevSeason;
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;

@@ -12,6 +12,7 @@ import { findAbility } from "./abilities";
 import { KNOWN_LEAGUE_CAPS } from "./cap";
 import { attachRestructures, type LeagueHistory } from "./history";
 import type { SeasonArchive } from "./seasons";
+import { PREV_SEEDS } from "./prev-seasons";
 
 export type LeagueRow = {
   id: string; slug: string; name: string; console: string;
@@ -90,6 +91,9 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
     if (data) {
       markXFactorAbilities(data);
       attachRestructures(data, hist);
+      // Last season's per-game numbers for early-season props: the worker keeps them from now on; leagues
+      // that rolled over before that use a recovered copy (prev-seasons/).
+      if (!data.prevSeason) { const seed = PREV_SEEDS[`${slug}-${data.season.year - 1}`]; if (seed) data.prevSeason = seed; }
       // Stat lines EA re-tagged with a player's new team go back to the team he played for (lineTeams.ts).
       const lt = fixLineTeams(data, hist);
       if (lt.fixed || lt.unresolved) data.lineTeamFix = lt;

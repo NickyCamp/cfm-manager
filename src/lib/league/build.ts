@@ -10,6 +10,7 @@
 
 import { eaPhase, OFFSEASON_STAGE } from "./phase";
 import { RATING_KEYS } from "./ratings";
+import { summarizeSeason } from "./prevSeason";
 import { DATA_VERSION, type Game, type LeagueData, type Player, type StatLine, type Team, type TeamGame, type Week } from "./types";
 
 // EA's injuryType 98 = healthy. EA doesn't clear injuryLength when a player heals,
@@ -279,7 +280,12 @@ function maddenAdmins(hub: Any, teams: Team[]): NonNullable<LeagueData["admins"]
 export function mergeHistory(prev: LeagueData | null, next: LeagueData): LeagueData {
   const capYear = detectCapYear(prev, next);
   if (capYear !== next.season.year) next = { ...next, season: { ...next.season, capYear } };
-  if (!prev || prev.season.year !== next.season.year) return next;
+  // A new year: EA's box scores start over, so keep last season's per-game numbers for early-season props.
+  if (prev && prev.season.year !== next.season.year) {
+    const sum = prev.season.year === next.season.year - 1 && prev.lines.length ? summarizeSeason(prev) : null;
+    return sum && Object.keys(sum.players).length ? { ...next, prevSeason: sum } : next;
+  }
+  if (!prev) return next;
   const lineKey = (l: StatLine) => `${l.g}:${l.p}`;
   const lines = new Map(prev.lines.map((l) => [lineKey(l), l]));
   // EA tags lines with a player's current team; keep the team he had in that game (lineTeams.ts).
@@ -301,6 +307,7 @@ export function mergeHistory(prev: LeagueData | null, next: LeagueData): LeagueD
   const gone = prev.players.filter((p) => !ids.has(p.id) && needed.has(p.id)).map((p) => ({ ...p, gone: true, team: 0 }));
   return {
     ...next,
+    ...(prev.prevSeason ? { prevSeason: prev.prevSeason } : {}),
     players: [...next.players, ...gone],
     games: [...games.values()].sort((a, b) => a.stage - b.stage || a.week - b.week || a.id - b.id),
     lines: [...lines.values()],
