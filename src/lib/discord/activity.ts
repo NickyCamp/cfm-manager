@@ -55,6 +55,9 @@ export type ActivityState = {
   seed?: { version?: number; seasons: string[]; gamesPerSeason: number; rows: { name: string; team: string; ea: string | null; misses: number[] }[];
     /** Team abbr → the name its games count under from now on, whoever's EA account runs it (a new user, e.g. NO → Lee). */
     teamNames?: Record<string, string> };
+  /** Team id → the last EA user seen running it. A forced game where the user played the other team's CPU
+   *  (Nick, 2026-11-21) can sync with that team showing no user; this still gives that user the miss. */
+  owners?: Record<string, string>;
 };
 
 const CHANNEL = "activity-tracker-week";
@@ -82,10 +85,29 @@ const label = (t: Team | undefined) => (t ? `${t.abbr} (${t.user || "CPU"})` : "
 const userTeams = (d: LeagueData, g: Game) => [g.away, g.home].map((id) => d.teams.find((t) => t.id === id)).filter((t): t is Team => Boolean(t?.user));
 const playedNow = (g: Game) => g.final && g.simmed === false && !g.forced;
 
+/** The user a team belongs to even while EA shows it as CPU: the name set for the team (seed teamNames),
+ *  the last EA user seen running it, or the sheet's EA user for it. */
+function ownerOf(st: ActivityState | null | undefined, t: Team): string {
+  return t.user || st?.seed?.teamNames?.[t.abbr] || st?.owners?.[String(t.id)] || st?.seed?.rows.find((r) => r.team === t.abbr && r.ea)?.ea || "";
+}
+/** Both users of a forced game. Forces are for user games, so a team EA shows as CPU (its user was
+ *  taken off so the other user could play its CPU, a common force-win setup) still counts for its user. */
+function forcedTeams(st: ActivityState | null | undefined, d: LeagueData, g: Game): Team[] {
+  return [g.away, g.home].map((id) => d.teams.find((t) => t.id === id)).filter((t): t is Team => Boolean(t))
+    .map((t) => ({ ...t, user: ownerOf(st, t) })).filter((t) => t.user);
+}
+/** Teams a game counts for: forced games include a user team EA shows as CPU (see forcedTeams). */
+const countedTeams = (st: ActivityState | null | undefined, d: LeagueData, g: Game) => (g.forced ? forcedTeams(st, d, g) : userTeams(d, g));
+
+/** Remembers each team's EA user, so a team that briefly shows as CPU still has one. */
+function noteOwners(st: ActivityState, d: LeagueData) {
+  for (const t of d.teams) if (t.user) (st.owners ||= {})[String(t.id)] = t.user;
+}
+
 /** How a game counts once its week is over (or now, for a game already played). */
-function judge(d: LeagueData, g: Game): Rec {
+function judge(d: LeagueData, g: Game, st?: ActivityState | null): Rec {
   const wk = wkOf(g.stage, g.week);
-  const users = userTeams(d, g);
+  const users = countedTeams(st, d, g);
   if (g.forced) {
     const act = new Set(activityTeams(g.forced));
     return { wk, how: "forced", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: act.has(t.id) ? "P" : "M" }])) };
@@ -108,13 +130,13 @@ function line(d: LeagueData, g: Game, r: Rec): string {
   const a = d.teams.find((t) => t.id === g.away), h = d.teams.find((t) => t.id === g.home);
   const who = (t: Team | undefined) => {
     const x = t ? r.by[String(t.id)] : undefined;
-    return x ? `${x.s === "P" ? "✅" : "❌"} ${t!.user} (${t!.abbr}) ${x.s === "P" ? "played" : "missed"}` : null;
+    return x ? `${x.s === "P" ? "✅" : "❌"} ${x.u} (${t!.abbr}) ${x.s === "P" ? "played" : "missed"}` : null;
   };
   const people = [who(a), who(h)].filter(Boolean).join(" · ");
   const match = `${a?.abbr ?? "?"} @ ${h?.abbr ?? "?"}`;
   if (r.how === "played") return `✅ ${label(a)} ${g.as} @ ${label(h)} ${g.hs} · ${Object.keys(r.by).length === 2 ? "both played" : `${people.replace(/^✅ /, "")}`}`;
   if (r.how === "disconnect") return `🔌 ${match} · disconnect, not replayed · ${people}`;
-  if (r.how === "forced") return `⚖️ ${match} · ${forceText(d, g)} · ${people || "no user teams"}`;
+  if (r.how === "forced") return `⚖️ ${g.final && g.simmed === false ? `${a?.abbr ?? "?"} ${g.as} @ ${h?.abbr ?? "?"} ${g.hs}` : match} · ${forceText(d, g)} · ${people || "no user teams"}`;
   if (r.how === "unknown") return `❓ ${label(a)} @ ${label(h)} · EA didn't say if this was played or simmed before the advance; not counted. An admin can settle it with \`/set force\` and \`activity\`.`;
   return `❌ ${match} · not played (sim) · ${people}`;
 }
@@ -322,6 +344,7 @@ async function postCharts(lg: LinkedLeague, st: ActivityState, d: LeagueData): P
 /** The work for one run: new played games, wrap-ups for finished weeks, the totals. */
 async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, redraw = false): Promise<string> {
   const notes: string[] = [];
+  noteOwners(st, d);
   // a new season: keep last season's totals, start over
   if (st.season !== d.season.year) {
     const done = Object.fromEntries([...totals(d, st)].map(([u, e]) => [u, [e.p, e.m] as [number, number]]));
@@ -334,14 +357,14 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
     redraw = true;
   }
   const cur = rankOf(wkOf(d.season.stage, d.season.week)), start = rankOf(st.start);
-  const tracked = d.games.filter((g) => g.stage === 1 && g.home && g.away && rankOf(wkOf(g.stage, g.week)) >= start && rankOf(wkOf(g.stage, g.week)) <= cur && userTeams(d, g).length);
+  const tracked = d.games.filter((g) => g.stage === 1 && g.home && g.away && rankOf(wkOf(g.stage, g.week)) >= start && rankOf(wkOf(g.stage, g.week)) <= cur && countedTeams(st, d, g).length);
   let changed = false;
 
   // games played since the last run (any tracked week), one post each
   const played: string[] = [];
   for (const g of tracked.sort((a, b) => a.week - b.week || a.id - b.id)) {
     if (st.games[String(g.id)] || !(playedNow(g) || (g.disconnect && g.final))) continue;
-    const r = judge(d, g);
+    const r = judge(d, g, st);
     st.games[String(g.id)] = r;
     played.push(`**${weekTitle(d, g.stage, g.week)}** · ${line(d, g, r)}`);
   }
@@ -357,7 +380,7 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
     for (const g of games) {
       const prev = st.games[String(g.id)];
       if ((prev?.how === "played" && !g.forced && !g.disconnect) || (prev?.how === "disconnect" && g.disconnect)) { if (prev.how === "played") nPlayed++; else forced.push(line(d, g, prev)); continue; }
-      const r = judge(d, g);
+      const r = judge(d, g, st);
       st.games[String(g.id)] = r;
       if (r.how === "played") nPlayed++;
       else if (r.how === "forced" || r.how === "disconnect") forced.push(line(d, g, r));
@@ -443,7 +466,7 @@ export async function activityAfterForce(slug: string, gameId: number): Promise<
     const prev = st.games[String(g.id)];
     if (!prev && !st.wrapped.includes(w)) return " Activity counts it in that week's wrap-up after the advance.";
     if (rankOf(w) < rankOf(st.start)) return "";
-    const next = judge(d, g);
+    const next = judge(d, g, st);
     // the week isn't over and the force was taken off: it isn't decided yet
     if (!st.wrapped.includes(w) && next.how !== "played" && !(next.how === "disconnect" && g.final)) { delete st.games[String(g.id)]; }
     else st.games[String(g.id)] = next;
@@ -457,4 +480,4 @@ export async function activityAfterForce(slug: string, gameId: number): Promise<
 }
 
 /** For tests. */
-export const _test = { judge, line, totalsEmbed, seasonRows, cycleRows };
+export const _test = { judge, line, countedTeams, totalsEmbed, seasonRows, cycleRows };
