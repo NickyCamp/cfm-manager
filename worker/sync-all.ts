@@ -34,7 +34,7 @@ import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
-import { tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
+import { approvedTradePlayers, tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
 import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState, type TxKey } from "../src/lib/discord/txPosts";
 import { maddenBlockChanges, type TradeBlockState } from "../src/lib/league/tradeBlock";
@@ -270,7 +270,7 @@ async function syncLeague(lg: League): Promise<string> {
     { contentType: "application/json", upsert: true },
   );
   log(`- Saved ${Object.keys(files).length} files (${(bundle.length / 1024).toFixed(0)} KB compressed).`);
-  const built = await buildAndSave(lg.slug, files, log);
+  const built = await buildAndSave(lg.slug, files, log, approvedTradePlayers(lg.settings?.tradeChannels));
   if (built) await postDiscordUpdates(lg, built.prev, built.data, log);
   if (built) await postTradeTransactions(lg, built.prev, built.data, log);
   if (built) await postTradeBlock(lg, built.prev, built.data, log);
@@ -330,7 +330,7 @@ async function moveRawToPrivate(slug: string, log: (s: string) => void) {
   }
 }
 
-async function buildAndSave(slug: string, files: Record<string, unknown>, log: (s: string) => void): Promise<{ prev: LeagueData | null; data: LeagueData } | null> {
+async function buildAndSave(slug: string, files: Record<string, unknown>, log: (s: string) => void, approved?: Set<number>): Promise<{ prev: LeagueData | null; data: LeagueData } | null> {
   try {
     const prevBuf = await download(`${slug}/data.json.gz`);
     let prev: LeagueData | null = null;
@@ -352,7 +352,7 @@ async function buildAndSave(slug: string, files: Record<string, unknown>, log: (
       const cls = [...new Set(rk.map((p) => `${p.draft.year} (EA ${p.draft.ea ?? "?"})`))].slice(0, 4).join(", ");
       log(`- Draft classes: season ${JSON.stringify(data.season.year)}, ${rk.length} at 0 years pro → ${cls || "none"}.`);
     }
-    await updateHistory(slug, prev, data, log);
+    await updateHistory(slug, prev, data, log, approved);
     await updateSeasons(slug, data, log);
     return { prev, data };
   } catch (e) {
@@ -382,7 +382,7 @@ async function updateSeasons(slug: string, data: LeagueData, log: (s: string) =>
 }
 
 /** Appends this sync's moves to league-data/<slug>/history.json.gz (the Transactions tab). Never fails the sync. */
-async function updateHistory(slug: string, prev: LeagueData | null, data: LeagueData, log: (s: string) => void) {
+async function updateHistory(slug: string, prev: LeagueData | null, data: LeagueData, log: (s: string) => void, approved?: Set<number>) {
   try {
     const buf = await download(`${slug}/history.json.gz`);
     let hist: LeagueHistory | null = null;
@@ -397,7 +397,7 @@ async function updateHistory(slug: string, prev: LeagueData | null, data: League
     }
     const healed = healRenumberedLog(hist, data);
     if (healed.dropped) { hist = healed.hist; log(`- Transaction log: dropped ${healed.dropped} fake trades from a team-id renumbering and moved ${healed.fixed} older moves onto the new team ids.`); }
-    const events = diffLeague(prev, data, data.pulledAt || new Date().toISOString());
+    const events = diffLeague(prev, data, data.pulledAt || new Date().toISOString(), { approved });
     hist = appendEvents(hist, events);
     if (events.length) {
       const n: Record<string, number> = {};

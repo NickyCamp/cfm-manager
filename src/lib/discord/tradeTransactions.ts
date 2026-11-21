@@ -1,24 +1,36 @@
 // #trade-transactions (Nick, 2026-11-17): after each sync, the trades that happened in Madden,
 // one post per trade, linked to the admin-approved proposal it matches (or flagged when none does).
-// A trade = players who moved directly between the same two teams since the last sync. EA's export
+// A trade = players who moved directly between the same two teams since the last sync, with their
+// contracts unchanged and neither side a practice squad (diffLeague decides). EA's export
 // has no draft-pick list, so picks only appear through the matched proposal. Pure: the worker posts.
 import type { LeagueData, Player } from "../league/types";
 import { DEV_LABEL } from "../league/types";
 import { money } from "../league/format";
 import { hexColor, type Message } from "./api";
 import type { TradeChannels, TradeProposal } from "./tradeChannels";
+import { diffLeague } from "../league/history";
 
 const ROUND = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
 
+/** Players in admin-approved trade proposals: diffLeague counts a one-way move of one of them as a trade. */
+export function approvedTradePlayers(st: TradeChannels | null | undefined): Set<number> {
+  const out = new Set<number>();
+  for (const p of Object.values(st?.proposals || {})) if (p.status === "approved") for (const id of [...p.pa, ...p.pb]) out.add(id);
+  return out;
+}
+
 export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData, st: TradeChannels, guildId: string | undefined, appUrl: string, slug: string): Message[] {
   if (!prev || prev.pulledAt === next.pulledAt) return [];
-  const before = new Map(prev.players.filter((p) => !p.gone).map((p) => [p.id, p]));
   const teams = new Map(next.teams.map((t) => [t.id, t]));
+  const players = new Map(next.players.map((p) => [p.id, p]));
   const groups = new Map<string, { a: number; b: number; toA: Player[]; toB: Player[] }>();
-  for (const p of next.players) {
-    const o = before.get(p.id);
-    if (p.gone || !o || !o.team || !p.team || o.team === p.team) continue;
-    const [a, b] = [o.team, p.team].sort((x, y) => x - y);
+  // Same rule as the Transactions tab (diffLeague): practice-squad claims and cut-then-signed
+  // moves are signings, not trades (Nick, 2026-11-19).
+  for (const e of diffLeague(prev, next, next.pulledAt, { approved: approvedTradePlayers(st) })) {
+    if (e.kind !== "trade" || !e.from || !e.to) continue;
+    const p = players.get(e.p!);
+    if (!p) continue;
+    const [a, b] = [e.from, e.to].sort((x, y) => x - y);
     const key = `${a}-${b}`;
     if (!groups.has(key)) groups.set(key, { a, b, toA: [], toB: [] });
     const g = groups.get(key)!;

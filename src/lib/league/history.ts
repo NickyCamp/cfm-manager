@@ -59,7 +59,7 @@ const weekOf = (d: LeagueData): TxWeek => ({ year: d.season.year, stage: d.seaso
 export const weekOrder = (w: TxWeek) => w.year * 10_000 + w.stage * 100 + w.week;
 
 /** What changed between two builds of a league. */
-export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string): TxEvent[] {
+export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string, opts: { approved?: Set<number> } = {}): TxEvent[] {
   if (!prev || prev.pulledAt === next.pulledAt) return []; // nothing new (a rebuild of the same pull)
   const wk = weekOf(next);
   const before = new Map(prev.players.filter((p) => !p.gone).map((p) => [p.id, p]));
@@ -82,6 +82,8 @@ export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string
     id: `${at}:${kind}:${p.id}`, kind, at, wk, p: p.id, name: `${p.first} ${p.last}`, pos: p.pos, age: p.age, ovr: p.ovr, dev: p.dev, ...extra,
   });
   const seen = new Set<number>();
+  // Possible trades, decided after the loop: a team-to-team move with the contract untouched.
+  const maybe: { p: Player; from: number; to: number; deal: Partial<TxEvent>; before: C }[] = [];
 
   for (const p of next.players) {
     if (p.gone) continue;
@@ -110,9 +112,13 @@ export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string
         if (!p.ps) ev("signed", p, { from: 0, to: p.team, ...deal });
       } else if (o.ps || p.ps) {
         if (!p.ps) ev("signed", p, { from: o.team, to: p.team, ...deal });
+      } else if (newDeal || moved) {
+        // A traded player keeps his contract exactly. A different deal on a team-to-team move means
+        // he was cut and signed elsewhere between two syncs (Nick, 2026-11-19: those read as trades).
+        ev("released", p, { from: o.team, to: 0, before: toC(oc) });
+        ev("signed", p, { from: 0, to: p.team, ...deal });
       } else {
-        ev("trade", p, { from: o.team, to: p.team, ...deal });
-        if (newDeal || moved) ev("extended", p, { from: o.team, to: p.team, ...deal });
+        maybe.push({ p, from: o.team, to: p.team, deal, before: toC(oc) });
       }
       continue;
     }
@@ -121,6 +127,25 @@ export function diffLeague(prev: LeagueData | null, next: LeagueData, at: string
     if (moved) {
       const totalSame = Math.abs(c.salary + c.bonus - (oc.salary + oc.bonus)) <= Math.max(50_000, 0.005 * (oc.salary + oc.bonus));
       ev(totalSame && c.bonus > oc.bonus ? "restructured" : "extended", p, { to: p.team, ...deal });
+    }
+  }
+  // Which of those were trades? A player cut and signed elsewhere between two syncs can come back on
+  // the very same deal (a 1-year minimum vet at cutdown), so an unchanged contract isn't enough
+  // (Nick, 2026-11-21: still seeing non-trades as trades). A pair of teams counts as a trade when
+  // players went both ways, a player was mid-contract (a fresh signing always has years left =
+  // length), or a player is in an admin-approved trade proposal. Otherwise: cut + signed.
+  const pairs = new Map<string, typeof maybe>();
+  for (const m of maybe) {
+    const k = [m.from, m.to].sort((a, b) => a - b).join("-");
+    if (!pairs.has(k)) pairs.set(k, []);
+    pairs.get(k)!.push(m);
+  }
+  for (const g of pairs.values()) {
+    const twoWay = new Set(g.map((m) => m.to)).size > 1;
+    const real = twoWay || g.some((m) => m.p.contract.yearsLeft < m.p.contract.length || opts.approved?.has(m.p.id));
+    for (const m of g) {
+      if (real) ev("trade", m.p, { from: m.from, to: m.to, ...m.deal });
+      else { ev("released", m.p, { from: m.from, to: 0, before: m.before }); ev("signed", m.p, { from: 0, to: m.to, ...m.deal }); }
     }
   }
   for (const o of before.values()) {

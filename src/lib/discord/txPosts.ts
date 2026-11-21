@@ -9,7 +9,7 @@ import { weekTitle } from "../league/derive";
 import { RATING_KEYS, RATING_SHORT } from "../league/ratings";
 import { diffLeague, tradeKey, weekKey, weekOrder, type C, type LeagueHistory, type TradePicks, type TxEvent } from "../league/history";
 import { BRAND, type Message } from "./api";
-import { tradeTransactionPosts } from "./tradeTransactions";
+import { approvedTradePlayers, tradeTransactionPosts } from "./tradeTransactions";
 import type { TradeChannels } from "./tradeChannels";
 
 export const TX_CHANNELS = [
@@ -182,7 +182,7 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
   if (pos.length) out.positions = list("positions", pos);
 
   // Cuts and extensions come from the same diff as the site's Transactions tab, so they agree.
-  const events = diffLeague(prev, next, next.pulledAt);
+  const events = diffLeague(prev, next, next.pulledAt, { approved: approvedTradePlayers(o.trade) });
   const cuts: { ovr: number; line: string }[] = [];
   const ext: { ovr: number; line: string }[] = [];
   const signed: { ovr: number; line: string }[] = [];
