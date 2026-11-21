@@ -331,6 +331,7 @@ function FastestPath({ arch, pos, dev, ratings, offset, slots, abilities, labels
             <span className="muted small">{afterOvr} OVR after ({signed(afterOvr! - ovr)}){res.via ? `, overall through ${res.via}` : ""}</span>
             <button type="button" className="btn ac-btn-sm" onClick={() => onApply(res.ratings)}>Apply to ratings</button>
           </div>
+          {res.capped.length > 0 && <p className="muted small">{res.capped.map((k) => labels[k] || k).join(", ")} at the 91 cap, so the rest goes into Awareness (it raises every archetype).</p>}
           <ul className="ac-path-steps">
             {res.steps.map((s) => <li key={s.key}><span>{labels[s.key] || s.key}</span><span className="muted">{s.from} → {s.to}</span><span className="ac-delta up">+{s.to - s.from}</span></li>)}
           </ul>

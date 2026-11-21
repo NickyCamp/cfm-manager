@@ -109,6 +109,8 @@ export const tierRank = (t: CalcTierName | null | undefined) => (!t ? 0 : t === 
 // spend points where its weight is highest. With several targets at once (an ability
 // needing two archetypes plus an overall), each point goes where it helps the unmet
 // targets most, then any point that isn't needed is taken back.
+// With store rules, once a better rating is stuck at the 91 cap, the next points go to
+// Awareness first: it feeds every archetype, so it's the spillover rating.
 
 /** Ratings the league store can't raise (NCL rules). */
 export const STORE_LOCKED = ["throwPowerRating", "speedRating", "accelRating", "agilityRating", "changeOfDirectionRating", "strengthRating", "jumpRating"];
@@ -119,17 +121,22 @@ export type PathTarget =
   | { kind: "ability"; key: string; tier: CalcTierName };
 export type PathStep = { key: string; from: number; to: number };
 export type PathResult =
-  | { ok: true; ratings: number[]; steps: PathStep[]; points: number; via: string | null }
+  | { ok: true; ratings: number[]; steps: PathStep[]; points: number; via: string | null; capped: string[] }
   | { ok: false; reason: string };
 type PathInput = { arch: CalcArch; pos: string; dev: number; ratings: number[]; offset: number; slots: number[]; abilities: CalcAbility[]; labels: Record<string, string> };
 
 const EPS = 1e-9;
 const score = (f: CalcFormula, r: number[]) => Object.entries(f.w).reduce((a, [k, w]) => a + w * (r[idx(k)] ?? 0), f.b);
 
-function solve(start: number[], mins: Map<number, number>, cons: { f: CalcFormula; t: number }[], rules: PathRules, labels: Record<string, string>): { r: number[] } | { reason: string } {
+const AWR = idx("awareRating");
+/** Awareness takes over from a capped rating only when it's at least this share as useful per point (keeps it out of e.g. TE Blocking, where it barely counts). */
+const AWR_MIN_SHARE = 0.5;
+
+function solve(start: number[], mins: Map<number, number>, cons: { f: CalcFormula; t: number }[], rules: PathRules, labels: Record<string, string>): { r: number[]; capped: number[] } | { reason: string } {
   const locked = new Set(rules.locked.map(idx));
   const cap = (i: number) => (locked.has(i) ? start[i] : Math.max(start[i], rules.cap));
   const r = [...start];
+  const capped = new Set<number>();
   for (const [i, min] of mins) {
     if (r[i] >= min) continue;
     if (min > cap(i)) return { reason: `needs ${labels[RATING_KEYS[i]] || RATING_KEYS[i]} ${min}${locked.has(i) ? ", which the store can't raise" : `, above the ${rules.cap} cap`}` };
@@ -141,10 +148,17 @@ function solve(start: number[], mins: Map<number, number>, cons: { f: CalcFormul
     const m = met(r);
     if (m.every(Boolean)) break;
     const gain = new Map<number, number>();
-    cons.forEach((_, ci) => { if (!m[ci]) for (const [i, w] of weights[ci]) if (r[i] < cap(i)) gain.set(i, (gain.get(i) || 0) + w); });
+    const all = new Map<number, number>();
+    cons.forEach((_, ci) => { if (!m[ci]) for (const [i, w] of weights[ci]) { all.set(i, (all.get(i) || 0) + w); if (r[i] < cap(i)) gain.set(i, (gain.get(i) || 0) + w); } });
     let best = -1, bg = 0;
     for (const [i, g] of gain) if (g > bg) { bg = g; best = i; }
     if (best < 0) return { reason: "can't get there: the ratings that feed it are maxed out" };
+    // A better rating is at the cap (not store-locked): spill into Awareness instead.
+    const ag = gain.get(AWR) || 0;
+    if (rules.cap < 99 && best !== AWR && ag > 0 && ag >= AWR_MIN_SHARE * bg) {
+      const stuck = [...all].filter(([i, g]) => i !== AWR && !locked.has(i) && r[i] >= cap(i) && g > ag).map(([i]) => i);
+      if (stuck.length) { best = AWR; stuck.forEach((i) => capped.add(i)); }
+    }
     r[best]++;
   }
   // Take back points that turned out not to be needed (cheapest-weight ratings first).
@@ -156,7 +170,7 @@ function solve(start: number[], mins: Map<number, number>, cons: { f: CalcFormul
       if (!met(r).every(Boolean)) { r[i]++; break; }
     }
   }
-  return { r };
+  return { r, capped: r[AWR] > start[AWR] ? [...capped] : [] };
 }
 
 /** Cheapest ratings to hit the target from `p.ratings`, or why it can't be done. */
@@ -200,18 +214,18 @@ export function fastestPath(target: PathTarget, p: PathInput, rules: PathRules):
   const base = [...archMins].map(([name, min]) => ({ f: formulas[name], t: min - 0.5 }));
   // Overall is the best archetype (plus calibration), so try reaching it through each one and keep the cheapest.
   const routes: (string | null)[] = ovrMin > 0 ? Object.keys(formulas) : [null];
-  let best: { r: number[]; points: number; via: string | null } | null = null;
+  let best: { r: number[]; points: number; via: string | null; capped: number[] } | null = null;
   let reason = "can't get there";
   for (const via of routes) {
     const cons = via ? [...base, { f: formulas[via], t: ovrMin - p.offset - 0.5 }] : base;
     const s = solve(p.ratings, mins, cons, rules, p.labels);
     if ("reason" in s) { reason = s.reason; continue; }
     const points = s.r.reduce((a, v, i) => a + v - p.ratings[i], 0);
-    if (!best || points < best.points) best = { r: s.r, points, via };
+    if (!best || points < best.points) best = { r: s.r, points, via, capped: s.capped };
   }
   if (!best) return { ok: false, reason };
   const steps = best.r.map((v, i) => ({ key: RATING_KEYS[i], from: p.ratings[i], to: v })).filter((s) => s.to !== s.from).sort((a, b) => b.to - b.from - (a.to - a.from));
   // If the overall was already there, don't credit an archetype for it.
   const startBest = Math.round(bestOf(Object.fromEntries(Object.entries(formulas).map(([n, f]) => [n, score(f, p.ratings)])))[1]) + p.offset;
-  return { ok: true, ratings: best.r, steps, points: best.points, via: ovrMin > startBest ? best.via : null };
+  return { ok: true, ratings: best.r, steps, points: best.points, via: ovrMin > startBest ? best.via : null, capped: best.capped.map((i) => RATING_KEYS[i]) };
 }
