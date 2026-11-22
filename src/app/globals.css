@@ -1753,3 +1753,16 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .sc-list button.on .sc-badge { background: var(--accent-grad, #505aff); border-color: transparent; color: #fff; }
 .sc-ovr { font-weight: 700; min-width: 2ch; text-align: right; }
 .sc-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+
+/* Live tab (2026-11-22): embedded streams */
+.live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 16px; margin-bottom: 20px; }
+.live-grid.one { grid-template-columns: minmax(0, 960px); }
+.live-card { background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--line); border-radius: var(--radius-panel); overflow: hidden; }
+.live-frame { position: relative; aspect-ratio: 16 / 9; background: #000; }
+.live-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.live-frame-empty { position: absolute; inset: 0; display: grid; place-items: center; }
+.live-meta { padding: 10px 14px 12px; display: grid; gap: 4px; }
+.live-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.live-right { margin-left: auto; font-size: 0.85rem; }
+.live-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-pill { color: #d4202a; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }

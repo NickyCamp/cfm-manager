@@ -8,6 +8,7 @@ const TABS = [
   ["", "Home"],
   ["standings", "Standings"],
   ["scores", "Scores"],
+  ["live", "Live"],
   ["teams", "Teams"],
   ["players", "Players"],
   ["cap", "Cap"],
