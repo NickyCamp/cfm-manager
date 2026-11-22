@@ -13,6 +13,7 @@ import { KNOWN_LEAGUE_CAPS } from "./cap";
 import { attachRestructures, type LeagueHistory } from "./history";
 import type { SeasonArchive } from "./seasons";
 import { PREV_SEEDS } from "./prev-seasons";
+import { applySimSeen } from "./simSeen";
 
 export type LeagueRow = {
   id: string; slug: string; name: string; console: string;
@@ -99,13 +100,17 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       if (lt.fixed || lt.unresolved) data.lineTeamFix = lt;
       const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > (data.season.capYear ?? data.season.year)));
       if (Object.keys(known).length) data.knownCaps = known;
-      const { awards, forced } = await leagueOverlays(slug, data.season.year);
+      const { awards, forced, simSeen } = await leagueOverlays(slug, data.season.year);
       if (awards) data.awardResults = awards;
+      // played vs simmed EA said live for games the data file has as unknown (simSeen.ts)
+      applySimSeen(data.games, simSeen);
       // /set (Nick, 2026-11-19): a forced result counts as simmed everywhere (site, audits, bets).
       for (const g of data.games) {
         const f = forced?.[String(g.id)];
         // /set disconnect: both users get a game played (activity) and its bets are voided; EA's result is kept as is
         if (f && g.stage === 1 && f.kind === "dc") { g.disconnect = true; if (f.team != null) g.disconnectWinner = f.team; }
+        // /set played (Nick, 2026-11-22): EA never said, but both users played it; bets and audits treat it as played
+        else if (f && g.stage === 1 && f.kind === "played") g.simmed = false;
         else if (f && g.stage === 1) { g.forced = { kind: f.kind as "win" | "loss" | "sim", team: f.team, ...(f.activity != null ? { activity: f.activity } : {}) }; g.simmed = true; }
       }
     }
@@ -122,17 +127,17 @@ export function forgetLeagueData(slug: string) {
   memo.delete(slug);
 }
 
-type Forced = Record<string, { kind: "win" | "loss" | "sim" | "dc"; team?: number; activity?: number | number[] }>;
+type Forced = Record<string, { kind: "win" | "loss" | "sim" | "dc" | "played"; team?: number; activity?: number | number[] }>;
 /** From leagues.settings for this season: Madden's award winners a commissioner entered (awards[year])
  *  and the results admins forced with /set (forcedGames[year]). */
-async function leagueOverlays(slug: string, year: number): Promise<{ awards: Record<string, string> | null; forced: Forced | null }> {
+async function leagueOverlays(slug: string, year: number): Promise<{ awards: Record<string, string> | null; forced: Forced | null; simSeen?: unknown }> {
   if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { awards: null, forced: null };
   try {
     const { data } = await supabaseAdmin().from("leagues").select("settings").eq("slug", slug).maybeSingle();
-    const s = data?.settings as { awards?: Record<string, Record<string, string>>; forcedGames?: Record<string, Forced> } | null;
+    const s = data?.settings as { awards?: Record<string, Record<string, string>>; forcedGames?: Record<string, Forced>; simSeen?: unknown } | null;
     const r = s?.awards?.[String(year)];
     const f = s?.forcedGames?.[String(year)];
-    return { awards: r && Object.keys(r).length ? r : null, forced: f && Object.keys(f).length ? f : null };
+    return { awards: r && Object.keys(r).length ? r : null, forced: f && Object.keys(f).length ? f : null, simSeen: s?.simSeen };
   } catch (e) {
     console.error("league overlays load failed", slug, (e as Error).message);
     return { awards: null, forced: null };

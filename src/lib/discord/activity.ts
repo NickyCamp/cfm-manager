@@ -137,7 +137,7 @@ function line(d: LeagueData, g: Game, r: Rec): string {
   if (r.how === "played") return `✅ ${label(a)} ${g.as} @ ${label(h)} ${g.hs} · ${Object.keys(r.by).length === 2 ? "both played" : `${people.replace(/^✅ /, "")}`}`;
   if (r.how === "disconnect") return `🔌 ${match} · disconnect, not replayed · ${people}`;
   if (r.how === "forced") return `⚖️ ${g.final && g.simmed === false ? `${a?.abbr ?? "?"} ${g.as} @ ${h?.abbr ?? "?"} ${g.hs}` : match} · ${forceText(d, g)} · ${people || "no user teams"}`;
-  if (r.how === "unknown") return `❓ ${label(a)} @ ${label(h)} · EA didn't say if this was played or simmed before the advance; not counted. An admin can settle it with \`/set force\` and \`activity\`.`;
+  if (r.how === "unknown") return `❓ ${label(a)} @ ${label(h)} · EA didn't say if this was played or simmed before the advance; not counted. If both users played it, an admin can run \`/set played\` on it.`;
   return `❌ ${match} · not played (sim) · ${people}`;
 }
 
