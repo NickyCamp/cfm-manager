@@ -133,6 +133,26 @@ const PLAIN = [
   { name: "standings", description: "Division standings", ...ANYWHERE },
   { name: "playoffs", description: "Playoff picture with NFL tiebreakers", ...ANYWHERE },
   {
+    // Streams (Nick, 2026-11-22): /streamlink links yours, /live posts yours, /redzone lists who's live.
+    name: "streamlink",
+    description: "Link your stream (Twitch, Kick or YouTube) to your Discord; empty shows yours",
+    ...ANYWHERE,
+    options: [
+      { type: STRING, name: "link", description: "e.g. twitch.tv/yourname, kick.com/yourname, youtube.com/@you; \"remove\" clears it", required: false },
+      { ...team(false), description: "Admins: set or check a team's stream instead" },
+    ],
+  },
+  {
+    name: "live",
+    description: "Post your stream in the channel (link it first with /streamlink)",
+    ...ANYWHERE,
+  },
+  {
+    name: "redzone",
+    description: "Everyone in the league who's live and streaming right now",
+    ...ANYWHERE,
+  },
+  {
     // /schedule (Nick, 2026-11-19): empty = this week's games (scores once final); a team = its whole season.
     name: "schedule",
     description: "This week's games and scores, or pick a team for its whole season schedule",

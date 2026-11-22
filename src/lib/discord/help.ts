@@ -33,7 +33,7 @@ const GROUPS: [string, string[]][] = [
   ["🚀 Start here", ["help", "web", "myleague", "connect", "league"]],
   ["🏈 Players and teams", ["player", "contract", "amnesty", "team", "players", "rookie", "expiring"]],
   ["💰 Cap", ["cap"]],
-  ["📊 Games and stats", ["tws", "scores", "schedule", "standings", "playoffs", "stats", "funfact", "sync"]],
+  ["📊 Games and stats", ["tws", "scores", "schedule", "streamlink", "live", "redzone", "standings", "playoffs", "stats", "funfact", "sync"]],
   ["🔁 Trades", ["trade", "tradeblock"]],
   ["🎟️ Markets", ["kickoff", "balance", "bets"]],
   ["🔎 Audits", ["audit"]],
@@ -60,6 +60,9 @@ const optLine = (o: Opt) => `• \`${o.name}\`${o.required ? " (required)" : ""}
 
 // Extra tips for commands where the one-line description isn't enough.
 const TIPS: Record<string, string> = {
+  streamlink: "`/streamlink link:twitch.tv/yourname` links your stream to your Discord (Kick and YouTube @handle links work too); `link:remove` clears it. If your Discord is linked with /connect, it also shows on your team's row on the site's Live tab. Admins can add `team:` to set a team's.",
+  live: "Posts your stream link in the channel, saying whether you're live. Link it first with /streamlink.",
+  redzone: "Lists everyone in the league streaming right now with links. The site's Live tab has them all embedded.",
   help: "`/help topic:Getting started` is the place to begin. `/help command:cap` explains one command.",
   myleague: "Use the part after /l/ in your league's web address, e.g. `/myleague league:ncl`. Run it with no league to see or clear yours. A linked server always uses its own league instead.",
   connect: "Open the link while signed in to the site. Linking lets you use /league, bet in the Markets, and manage your own team's trade block and nicknames.",

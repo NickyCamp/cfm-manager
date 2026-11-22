@@ -40,7 +40,7 @@ export async function editableStreamTeams(slug: string, d?: LeagueData | null): 
   return { teams: new Set(userTeams.filter((t) => mine.has(norm(t.user))).map((t) => t.id)), admin: false };
 }
 
-/** Saves (or with "" removes) a team's stream link. Returns the saved link, or an error to show. */
+/** Saves (or with "" removes) a team's stream link for the signed-in site visitor. */
 export async function saveStreamLink(slug: string, teamId: number, url: string): Promise<{ link?: StreamLink | null; error?: string; status?: number }> {
   const d = await getLeagueData(slug).catch(() => null);
   const team = d?.teams.find((t) => t.id === teamId);
@@ -48,7 +48,14 @@ export async function saveStreamLink(slug: string, teamId: number, url: string):
   if (!team.user) return { error: "That's a CPU team, so there's no one to stream it.", status: 400 };
   const { teams } = await editableStreamTeams(slug, d);
   if (!teams.has(teamId)) return { error: "Only the person running this team (or a league admin) can set its stream.", status: 403 };
+  return writeStreamLink(slug, d, teamId, url);
+}
 
+/** Saves (or with "" removes) a team's stream link. No permission check: callers decide who may (site route, Discord /live). */
+export async function writeStreamLink(slug: string, d: LeagueData, teamId: number, url: string): Promise<{ link?: StreamLink | null; error?: string; status?: number }> {
+  const team = d.teams.find((t) => t.id === teamId);
+  if (!team) return { error: "Team not found.", status: 404 };
+  if (!team.user) return { error: "That's a CPU team, so there's no one to stream it.", status: 400 };
   let link: StreamLink | null = null;
   if (url.trim()) {
     const p = parseStreamUrl(url);
@@ -70,4 +77,38 @@ export async function saveStreamLink(slug: string, teamId: number, url: string):
   if (!res.ok) return { error: res.error || "Couldn't save. Try again.", status: 502 };
   clearLiveCache(slug);
   return { link };
+}
+
+// ---------- links saved from Discord (/streamlink), keyed by Discord account (Nick, 2026-11-22) ----------
+// leagues.settings.streamsDiscord = { "<discordUserId>": DiscordStream }. Works for people the bot can't match to a
+// team yet; when it can, /streamlink also saves the team's link (the site's Live tab rows) with writeStreamLink.
+export type DiscordStream = StreamLink & { name: string; teamId?: number };
+
+export function discordStreams(settings: Record<string, unknown> | null | undefined): Map<string, DiscordStream> {
+  const raw = (settings?.streamsDiscord || {}) as Record<string, DiscordStream>;
+  return new Map(Object.entries(raw).filter(([, l]) => l && l.platform && l.channel));
+}
+
+/** Parses a pasted link into a stream (YouTube @handles looked up). */
+export async function parseLink(url: string): Promise<{ link?: Pick<StreamLink, "platform" | "channel" | "ytId">; error?: string }> {
+  const p = parseStreamUrl(url);
+  if (!p) return { error: "Paste the channel link, like twitch.tv/yourname, kick.com/yourname or youtube.com/@yourhandle." };
+  if (p.platform !== "youtube") return { link: p };
+  const id = await youtubeChannelId(p.channel).catch(() => null);
+  if (!id && process.env.YOUTUBE_API_KEY) return { error: "Couldn't find that YouTube channel. Check the @handle." };
+  return { link: id ? { ...p, ytId: id } : p };
+}
+
+/** Saves (or with null removes) one Discord account's stream. */
+export async function writeDiscordStream(slug: string, discordId: string, entry: DiscordStream | null): Promise<{ error?: string }> {
+  const row = await leagueSettingsBySlug(slug);
+  if (!row) return { error: "League not found." };
+  const res = await updateLeagueSettings(row.id, (s) => {
+    const all = { ...((s.streamsDiscord || {}) as Record<string, DiscordStream>) };
+    if (entry) all[discordId] = entry; else if (all[discordId]) delete all[discordId]; else return null;
+    return { ...s, streamsDiscord: all };
+  });
+  if (!res.ok) return { error: res.error || "Couldn't save. Try again." };
+  clearLiveCache(slug);
+  return {};
 }

@@ -27,12 +27,14 @@ import { amnestyMoney, amnestyPlan, amnestyRecipe } from "@/lib/league/amnesty";
 import { amnestyInput, buildAmnestyData } from "@/lib/league/amnestyData";
 import { ALERT_EVENTS, BRAND, EPHEMERAL, MAX_VIDEO_BYTES, appOwnerIds, hexColor, postToChannel, type AlertEvent, type Embed, type Message } from "./api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { betCaps, cancelValue, closeTimes, economyOf, isFutures, isMember, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamsOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
+import { betCaps, cancelValue, closeTimes, economyOf, isCommissioner, isFutures, isMember, fmtET, kickoffPermission, marketsForDiscord, marketsShared, memberNames, setCloseTime, teamsOfUser, ticketsAvailable, verifyKickoff } from "@/lib/marketStore";
 import { marketBook, withAwardPlayers } from "@/lib/league/markets";
 import { kickoffProblem, parseKickoff, parseKickoffPast, teamGameThisWeek, TIMEZONES } from "@/lib/kickoff";
 import { bookKey, discordOfUser, makeLinkToken, ticketsConfig, userForDiscord } from "@/lib/tickets";
 import { postPayoutsNow, rebuildMarketChannels, refreshGame, syncMarketChannels } from "./marketChannels";
 import { isLeagueAdmin, NOT_ADMIN } from "./admin";
+import { discordStreams, parseLink, writeDiscordStream, writeStreamLink } from "@/lib/streamStore";
+import { activeLinks, liveStatus, PLATFORM_NAME, streamUrl, type LiveInfo, type StreamLink } from "@/lib/streams";
 import { AUDIT_KINDS, auditMessage, runAudit, type AuditKind } from "./audit";
 import { auditChannelsCmd, postAudit } from "./auditChannels";
 import { updateLeagueSettings } from "@/lib/leagueSettings";
@@ -546,6 +548,9 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
     case "playoffs": return { embeds: [playoffsEmbed(d, url, footer)] };
+    case "streamlink": return streamLinkCmd(i, lg, d, url);
+    case "live": return liveCmd(i, lg, d);
+    case "redzone": return redzoneCmd(lg, d, url, footer);
     case "schedule": {
       // /schedule (Nick, 2026-11-19): empty = this week's games with scores; a team = its whole season.
       const tv = opt(i, "team");
@@ -1584,4 +1589,123 @@ async function syncCmd(i: Interaction, lg: LinkedLeague, base: string): Promise<
       return { content: `${started}\nStill running; the site updates when it's done. ${url}` };
     },
   };
+}
+
+// ---------- /streamlink, /live, /redzone: league members' streams (Nick, 2026-11-22; see src/lib/streams.ts) ----------
+// /streamlink link:…  links your stream to your Discord (and your team's row on the site, if the bot knows your team).
+// /live               posts your own stream for everyone (live or not).
+// /redzone            everyone in the league who's streaming right now.
+
+/** The caller's team, from the site account their Discord is linked to (/connect). */
+async function callerTeam(i: Interaction, lg: LinkedLeague, d: LeagueData): Promise<{ siteUser: string | null; team?: Team }> {
+  const siteUser = await userForDiscord(userId(i)).catch(() => null);
+  const mine = siteUser ? await teamsOfUser(lg.id, siteUser).catch(() => [] as string[]) : [];
+  return { siteUser, team: d.teams.find((x) => x.user && mine.some((a) => a.toLowerCase() === x.abbr.toLowerCase())) };
+}
+const discordName = (i: Interaction) => { const w = i.member?.user || i.user; return w?.global_name || w?.username || "Discord user"; };
+
+/** /streamlink [link] [team]: save, "remove", or (empty) show your stream link. Admins can add team: to set a team's. */
+async function streamLinkCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (p?: string) => string): Promise<Message> {
+  const raw = String(opt(i, "link") ?? "").trim();
+  const removing = /^(remove|none|clear|delete)$/i.test(raw);
+  const tv = opt(i, "team");
+  const { siteUser, team: myTeam } = await callerTeam(i, lg, d);
+
+  // an admin setting a team's link
+  if (tv != null && tv !== "") {
+    const t = findTeam(d, tv);
+    if (!t) return reply("No team by that name.");
+    const current = activeLinks(lg.settings, d.teams).get(t.id);
+    if (!raw) return reply(current ? `**${t.city} ${t.name}** stream: ${streamUrl(current)}` : `**${t.city} ${t.name}** has no stream link yet.`);
+    const admin = (await isLeagueAdmin(i).catch(() => false)) || (siteUser ? await isCommissioner(lg.id, siteUser).catch(() => false) : false);
+    if (t.id !== myTeam?.id && !admin) return reply("Only league admins can set another team's stream. To link your own, leave the team empty.");
+    const r = await writeStreamLink(lg.slug, d, t.id, removing ? "" : raw);
+    if (r.error) return reply(r.error);
+    return reply(r.link ? `✅ **${t.city} ${t.name}** streams at ${streamUrl(r.link)}.` : `Removed the stream link for **${t.city} ${t.name}**.`);
+  }
+
+  const id = userId(i);
+  const current = discordStreams(lg.settings).get(id) ?? (myTeam ? activeLinks(lg.settings, d.teams).get(myTeam.id) : undefined);
+  if (!raw) return reply(current ? `Your stream: ${streamUrl(current)}. Change it with \`/streamlink link:…\`, or \`/streamlink link:remove\`.` : "You haven't linked a stream yet. Use `/streamlink link:twitch.tv/yourname` (Kick and YouTube @handle links work too).");
+  if (removing) {
+    const r = await writeDiscordStream(lg.slug, id, null);
+    if (r.error) return reply(r.error);
+    if (myTeam) await writeStreamLink(lg.slug, d, myTeam.id, "");
+    return reply("Removed your stream link.");
+  }
+  const p = await parseLink(raw);
+  if (!p.link) return reply(p.error!);
+  const entry = { ...p.link, name: discordName(i), user: myTeam?.user || "", teamId: myTeam?.id, setAt: new Date().toISOString() };
+  const r = await writeDiscordStream(lg.slug, id, entry);
+  if (r.error) return reply(r.error);
+  if (myTeam) await writeStreamLink(lg.slug, d, myTeam.id, raw);
+  return reply(`✅ Linked ${streamUrl(entry)} (${PLATFORM_NAME[entry.platform]}) to your Discord${myTeam ? ` and the **${myTeam.city} ${myTeam.name}**` : ""}. Post it any time with \`/live\`; \`/redzone\` shows everyone who's live.`
+    + (myTeam ? ` It's on the site's Live tab too: ${url("/live")}` : " Run `/connect` too, so it shows on your team's row on the site."));
+}
+
+/** The game a team plays this week, as "vs KC" / "at KC". */
+function weekLabel(d: LeagueData, teamId: number | undefined): string {
+  if (!teamId) return "";
+  const g = d.games.find((x) => x.stage === d.season.stage && x.week === d.season.week && x.home && x.away && (x.home === teamId || x.away === teamId));
+  const opp = g && d.teams.find((t) => t.id === (g.home === teamId ? g.away : g.home));
+  return opp ? `${g!.home === teamId ? "vs" : "at"} ${opp.abbr}` : "";
+}
+const watchUrl = (l: StreamLink, info?: LiveInfo) => (l.platform === "youtube" && info?.videoId ? `https://youtube.com/watch?v=${info.videoId}` : streamUrl(l));
+
+/** /live: posts the caller's own stream in the channel (plain link, so Discord shows its preview). */
+async function liveCmd(i: Interaction, lg: LinkedLeague, d: LeagueData): Promise<Message> {
+  const { team } = await callerTeam(i, lg, d);
+  const mine = discordStreams(lg.settings).get(userId(i));
+  const l: StreamLink | undefined = mine ?? (team ? activeLinks(lg.settings, d.teams).get(team.id) : undefined);
+  if (!l) return reply("Link your stream first: `/streamlink link:twitch.tv/yourname` (Kick and YouTube @handle links work too).");
+  const teamId = mine?.teamId ?? team?.id;
+  const t = teamId ? d.teams.find((x) => x.id === teamId) : undefined;
+  const info = (await liveStatus(lg.slug, new Map([[-1, l]]))).get(-1);
+  const who = `**${discordName(i)}**${t ? ` (${t.abbr}${weekLabel(d, t.id) ? ` ${weekLabel(d, t.id)}` : ""})` : ""}`;
+  const link = watchUrl(l, info);
+  if (info?.live) {
+    const watch = info.viewers != null ? ` · ${info.viewers.toLocaleString()} watching` : "";
+    return { content: `🔴 ${who} is live on ${PLATFORM_NAME[l.platform]}${watch}${info.title ? `\n> ${info.title.slice(0, 150)}` : ""}\n${link}` };
+  }
+  return { content: `📺 ${who}'s stream on ${PLATFORM_NAME[l.platform]}${info?.checked ? " (not live right now)" : ""}:\n${link}` };
+}
+
+/** /redzone: everyone in the league streaming right now (public). Team rows from the site plus Discord-linked streams. */
+async function redzoneCmd(lg: LinkedLeague, d: LeagueData, url: (p?: string) => string, footer: Footer): Promise<Message> {
+  type Row = { link: StreamLink; label: string; teamId?: number };
+  const rows = new Map<number, Row>();
+  const seen = new Set<string>();
+  for (const [teamId, l] of activeLinks(lg.settings, d.teams)) {
+    const t = d.teams.find((x) => x.id === teamId)!;
+    rows.set(teamId, { link: l, label: `${t.abbr} · ${t.user}`, teamId });
+    seen.add(`${l.platform}:${l.channel}`);
+  }
+  let n = 0;
+  for (const [, l] of discordStreams(lg.settings)) {
+    if (seen.has(`${l.platform}:${l.channel}`)) continue;
+    seen.add(`${l.platform}:${l.channel}`);
+    const t = l.teamId ? d.teams.find((x) => x.id === l.teamId) : undefined;
+    rows.set(-(++n), { link: l, label: t ? `${t.abbr} · ${l.name}` : l.name, teamId: t?.id });
+  }
+  if (!rows.size) return reply("Nobody has linked a stream yet. Link yours with `/streamlink link:twitch.tv/yourname`.", false);
+  const live = await liveStatus(lg.slug, new Map([...rows].map(([k, r]) => [k, r.link])));
+  const lines: string[] = [];
+  for (const [k, r] of rows) {
+    const info = live.get(k);
+    if (!info?.live) continue;
+    const vs = weekLabel(d, r.teamId);
+    const watch = info.viewers != null ? ` · ${info.viewers.toLocaleString()} watching` : "";
+    lines.push(`🔴 **${r.label}**${vs ? ` (${vs})` : ""}: [${PLATFORM_NAME[r.link.platform]}](${watchUrl(r.link, info)})${watch}${info.title ? `\n> ${info.title.slice(0, 100)}` : ""}`);
+  }
+  const unchecked = [...live.values()].filter((x) => !x.checked).length;
+  const embed: Embed = {
+    title: lines.length ? `🚨 Red Zone: ${lines.length} live now` : "Red Zone: nobody's live right now",
+    url: url("/live"),
+    color: lines.length ? 0xd4202a : BRAND,
+    description: (lines.length ? lines.join("\n").slice(0, 3900) : `${rows.size} stream${rows.size === 1 ? "" : "s"} linked. Check back when games kick off.`)
+      + (unchecked ? `\n\n_${unchecked} stream${unchecked === 1 ? "" : "s"} couldn't be checked._` : "")
+      + `\nWatch them all on the site: ${url("/live")}`,
+    footer,
+  };
+  return { embeds: [embed] };
 }
