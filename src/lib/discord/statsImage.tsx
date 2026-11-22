@@ -87,7 +87,9 @@ export async function renderTeamStats(d: LeagueData, cat: StatCat, mark: Team | 
           const len = r.raw > 0 ? Math.max(8, Math.round((r.raw / top) * BAR)) : 0;
           return (
             <div key={r.team} style={{ display: "flex", alignItems: "center", height: R, borderBottom: `1px solid ${LINE}`,
-              backgroundColor: on ? "rgba(122,92,255,.18)" : "transparent", borderLeft: on ? `4px solid ${t?.primary || "#7a5cff"}` : "4px solid transparent", paddingLeft: 6 }}>
+              backgroundColor: on ? "rgba(122,92,255,.18)" : "transparent" }}>
+              {/* Accent bar for the highlighted team. A mixed per-side border (borderLeft + borderBottom) made Satori take ~6 s for 32 rows, too slow for Discord. */}
+              <div style={{ width: 4, height: R - 14, marginRight: 6, borderRadius: 2, backgroundColor: on ? t?.primary || "#7a5cff" : "transparent" }} />
               <div style={{ width: 38, height: 38, borderRadius: 19, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, fontWeight: 800,
                 backgroundColor: MEDAL[r.rank - 1] || "rgba(255,255,255,.07)", color: r.rank <= 3 ? "#1a1406" : INK }}>{r.rank}</div>
               <div style={{ width: 56, display: "flex", justifyContent: "center" }}>{t && <Badge t={t} logo={logos.get(t.id)} size={36} />}</div>
