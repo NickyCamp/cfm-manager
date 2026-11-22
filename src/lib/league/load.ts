@@ -105,7 +105,7 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       for (const g of data.games) {
         const f = forced?.[String(g.id)];
         // /set disconnect: both users get a game played (activity) and its bets are voided; EA's result is kept as is
-        if (f && g.stage === 1 && f.kind === "dc") g.disconnect = true;
+        if (f && g.stage === 1 && f.kind === "dc") { g.disconnect = true; if (f.team != null) g.disconnectWinner = f.team; }
         else if (f && g.stage === 1) { g.forced = { kind: f.kind as "win" | "loss" | "sim", team: f.team, ...(f.activity != null ? { activity: f.activity } : {}) }; g.simmed = true; }
       }
     }

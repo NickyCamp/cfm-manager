@@ -194,7 +194,11 @@ export const COMMANDS = [
       {
         // Nick, 2026-11-19: "the game disconnected but both users who played get credit for playing even if the game sims"
         type: SUB_COMMAND, name: "disconnect", description: "The game disconnected and won't be replayed: both users get credit for playing it",
-        options: [{ type: STRING, name: "game", description: "A game channel from your game channel categories (start typing a team)", required: true, autocomplete: true }],
+        options: [
+          { type: STRING, name: "game", description: "A game channel from your game channel categories (start typing a team)", required: true, autocomplete: true },
+          // Nick, 2026-11-22: optional, for tracking the winner admins set in game; both users still get credit
+          { type: STRING, name: "winner", description: "Optional: the team admins set to win in game (tracking only; both users still get credit)", required: false, autocomplete: true },
+        ],
       },
       {
         type: SUB_COMMAND, name: "remove", description: "Remove a Force or Disconnect set earlier on a game",

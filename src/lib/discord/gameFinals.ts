@@ -43,7 +43,8 @@ const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
 /** "eagles-31-at-saints-17", plus "-sim", "-force-win-eagles", "-force-sim" or "-disconnect" (Nick, 2026-11-20). */
 export function scoreChannelName(g: Game, a: Team, h: Team): string {
   const f = g.forced, who = f?.team === a.id ? a : f?.team === h.id ? h : undefined;
-  const tag = g.disconnect ? "-disconnect"
+  const dw = g.disconnectWinner === a.id ? a : g.disconnectWinner === h.id ? h : undefined;
+  const tag = g.disconnect ? `-disconnect${dw ? `-win-${slugName(dw.name)}` : ""}`
     : f ? `-force-${f.kind}${f.kind !== "sim" && who ? `-${slugName(who.name)}` : ""}`
       : g.simmed ? "-sim" : "";
   return `${slugName(a.name)}-${g.as}-at-${slugName(h.name)}-${g.hs}${tag}`.slice(0, 100);
