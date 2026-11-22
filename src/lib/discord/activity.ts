@@ -104,12 +104,25 @@ function noteOwners(st: ActivityState, d: LeagueData) {
   for (const t of d.teams) if (t.user) (st.owners ||= {})[String(t.id)] = t.user;
 }
 
+/** Teams whose users get a game played on a forced game: the `activity` pick, or with none picked
+ *  (Nick, 2026-11-22: "clear force win lions" counted both users as missed) the team the force went to:
+ *  Force Win → that team, Force Loss → the other team. Force Sim with no pick credits nobody. */
+export function creditedTeams(g: Pick<Game, "home" | "away" | "forced">): number[] {
+  const f = g.forced;
+  if (!f) return [];
+  const picked = activityTeams(f);
+  if (picked.length || f.team == null) return picked;
+  if (f.kind === "win") return [f.team];
+  if (f.kind === "loss") return [f.team === g.home ? g.away : g.home];
+  return [];
+}
+
 /** How a game counts once its week is over (or now, for a game already played). */
 function judge(d: LeagueData, g: Game, st?: ActivityState | null): Rec {
   const wk = wkOf(g.stage, g.week);
   const users = countedTeams(st, d, g);
   if (g.forced) {
-    const act = new Set(activityTeams(g.forced));
+    const act = new Set(creditedTeams(g));
     return { wk, how: "forced", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: act.has(t.id) ? "P" : "M" }])) };
   }
   // /set disconnect: both users played, even if EA simmed it
@@ -370,6 +383,19 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
   }
   for (let k = 0; k < played.length; k += 15) { await post(st.channelId, { content: played.slice(k, k + 15).join("\n") }); await sleep(250); }
   if (played.length) { changed = true; notes.push(`${played.length} game${played.length === 1 ? "" : "s"} played`); }
+
+  // forced games in weeks already wrapped up: recount if how they count changed (e.g. the default credit
+  // for a Force Win/Loss with no activity pick, added 2026-11-22, or a /set made while this was busy)
+  for (const g of tracked) {
+    const w = wkOf(g.stage, g.week), prev = st.games[String(g.id)];
+    if (!g.forced || !st.wrapped.includes(w) || !prev) continue;
+    const next = judge(d, g, st);
+    if (JSON.stringify(prev) === JSON.stringify(next)) continue;
+    st.games[String(g.id)] = next;
+    await post(st.channelId, { content: `✏️ **Recounted** · ${weekTitle(d, g.stage, g.week)} · ${line(d, g, next)}` });
+    changed = true; redraw = true;
+    notes.push(`recounted ${label(d.teams.find((t) => t.id === g.away))} @ ${label(d.teams.find((t) => t.id === g.home))}`);
+  }
 
   // weeks that are over (the league advanced past them): wrap-up of forces and misses
   const weeks = [...new Set(tracked.map((g) => wkOf(g.stage, g.week)))].filter((w) => rankOf(w) < cur && !st.wrapped.includes(w)).sort((a, b) => rankOf(a) - rankOf(b));
