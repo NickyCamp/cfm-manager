@@ -9,11 +9,15 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { decryptJson, encryptJson } from "@/lib/crypto";
 import { blazeLogin, leagueHub, refreshToken, type EaToken } from "@/lib/ea/client";
 import { eaPhase } from "@/lib/league/phase";
+import { mergeSimSeen } from "@/lib/league/simSeen";
+import { updateLeagueSettings } from "@/lib/leagueSettings";
+import { requestSync } from "@/lib/sync";
 
 export type LiveWeek = {
   at: number;
   played: Set<number>;          // scheduleIds of this week's games EA says are played
   week: { type: number; week: number } | null; // EA's current seasonWeekType / seasonWeek
+  newPlayed: number;            // finished games EA reported that hadn't been recorded in settings.simSeen yet
 };
 
 const memo = new Map<string, { at: number; v: LiveWeek | null; pending?: Promise<LiveWeek | null> }>();
@@ -21,7 +25,7 @@ const TTL = 60_000;
 
 async function fetchLive(slug: string): Promise<LiveWeek | null> {
   const admin = supabaseAdmin();
-  const { data: lg } = await admin.from("leagues").select("ea_league_id, ea_connection_id").eq("slug", slug).maybeSingle();
+  const { data: lg } = await admin.from("leagues").select("id, ea_league_id, ea_connection_id").eq("slug", slug).maybeSingle();
   if (!lg?.ea_connection_id) return null;
   const { data: conn } = await admin.from("ea_connections").select("id, token_ciphertext").eq("id", lg.ea_connection_id).maybeSingle();
   if (!conn) return null;
@@ -33,10 +37,28 @@ async function fetchLive(slug: string): Promise<LiveWeek | null> {
   const s = await blazeLogin(tok);
   const hub = await leagueHub(tok, s, Number(lg.ea_league_id));
   const played = new Set<number>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const g of hub?.gameScheduleHubInfo?.leagueSchedule || []) if (g?.seasonGameInfo?.isGamePlayed) played.add(Number(g.seasonGameKey));
+  const simmed = new Map<number, boolean>();
+  for (const g of hub?.gameScheduleHubInfo?.leagueSchedule || []) {
+    const sg = g?.seasonGameInfo;
+    if (!sg?.isGamePlayed) continue;
+    played.add(Number(g.seasonGameKey));
+    simmed.set(Number(g.seasonGameKey), (Number(sg.numberTimesPlayed) || 0) === 0);
+  }
   const si = hub?.careerHubInfo?.seasonInfo;
-  return { at: Date.now(), played, week: si ? { type: Number(si.seasonWeekType), week: Number(si.seasonWeek) } : null };
+  // Remember played vs simmed while EA still says it (only for the current week): a game finished after
+  // the last sync but before an advance would otherwise come through unknown (simSeen.ts).
+  let newPlayed = 0;
+  const ph = si ? eaPhase(si) : null;
+  if (ph && !ph.offseason && simmed.size) {
+    await updateLeagueSettings(lg.id as string, (s) => {
+      const m = mergeSimSeen(s.simSeen, simmed, ph.stage, ph.week);
+      if (!m) return null;
+      newPlayed = m.added;
+      s.simSeen = m.next;
+      return s;
+    }).catch((e) => console.error("simSeen save", slug, (e as Error).message));
+  }
+  return { at: Date.now(), played, week: si ? { type: Number(si.seasonWeekType), week: Number(si.seasonWeek) } : null, newPlayed };
 }
 
 const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("EA took too long")), ms))]);
@@ -102,4 +124,28 @@ export function refreshLiveWeek(slug: string) {
   if (hit && (hit.pending || Date.now() - hit.at < TTL)) return;
   try { after(() => liveWeek(slug).then(() => {}, () => {})); }
   catch { void liveWeek(slug).catch(() => {}); } // outside a request (scripts)
+}
+
+/**
+ * Every 15 minutes (the game-channels cron): asks EA about this week in each league that tracks activity
+ * or has game channels. That records played vs simmed for every finished game (simSeen.ts) while EA still
+ * says it, and starts a sync when a game was played since the last check, so the site and Discord catch up
+ * without waiting for the 3-hourly run (Nick, 2026-11-22: a Week 1 game played just before the advance
+ * showed as unknown).
+ */
+export async function liveCheckCron(): Promise<Record<string, string>> {
+  if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return {};
+  const { data } = await supabaseAdmin().from("leagues").select("slug, settings").not("ea_connection_id", "is", null);
+  const out: Record<string, string> = {};
+  for (const lg of data || []) {
+    const st = (lg.settings || {}) as Record<string, unknown>;
+    if (!st.activity && !st.gameChannels && !st.marketChannels) continue;
+    const slug = lg.slug as string;
+    const live = await liveWeek(slug, { fresh: true });
+    if (!live) { out[slug] = "EA check failed"; continue; }
+    if (!live.newPlayed) { out[slug] = "nothing new"; continue; }
+    const r = await requestSync(slug, { minGapMs: 10 * 60_000, mode: "auto", by: "live-check" }).catch(() => null);
+    out[slug] = `${live.newPlayed} newly finished game${live.newPlayed === 1 ? "" : "s"} recorded${r?.started ? "; sync started" : ""}`;
+  }
+  return out;
 }

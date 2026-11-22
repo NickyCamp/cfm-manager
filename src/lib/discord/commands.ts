@@ -207,7 +207,12 @@ export const COMMANDS = [
         ],
       },
       {
-        type: SUB_COMMAND, name: "remove", description: "Remove a Force or Disconnect set earlier on a game",
+        // Nick, 2026-11-22: a game played after the last sync but before the advance showed as unknown in activity
+        type: SUB_COMMAND, name: "played", description: "EA didn't report it before the advance: both users played this game (bets stand)",
+        options: [{ type: STRING, name: "game", description: "A game channel from your game channel categories (start typing a team)", required: true, autocomplete: true }],
+      },
+      {
+        type: SUB_COMMAND, name: "remove", description: "Remove a Force, Disconnect or Played mark set earlier on a game",
         options: [{ type: STRING, name: "game", description: "A game with a Force on it", required: true, autocomplete: true }],
       },
     ],

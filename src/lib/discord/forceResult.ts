@@ -21,12 +21,15 @@ import { activityAfterForce, activityTeams } from "./activity";
 // "dc" (/set disconnect, Nick 2026-11-19): the game disconnected and the users won't replay it, so both
 // get a game played even if it sims. Its bets are voided like a force's (Nick: "Disconnects should also void
 // bets"); the result shown is EA's, and it isn't marked simmed by the bot.
-export type ForceKind = "win" | "loss" | "sim" | "dc";
+// "played" (/set played, Nick 2026-11-22): EA never said whether the game was played or simmed (it finished
+// after the last sync but before the advance), but both users played it. It counts as played everywhere
+// (activity, audits); bets stand, the result is EA's, and the channel keeps its name.
+export type ForceKind = "win" | "loss" | "sim" | "dc" | "played";
 export type ForcedGame = { kind: ForceKind; team?: number; activity?: number | number[]; by: string; at: string };
 /** settings.forcedGames: season → game id → the forced result. */
 export type ForcedGames = Record<string, Record<string, ForcedGame>>;
 
-const KIND_LABEL: Record<ForceKind, string> = { win: "Force Win", loss: "Force Loss", sim: "Force Sim", dc: "Disconnect" };
+const KIND_LABEL: Record<ForceKind, string> = { win: "Force Win", loss: "Force Loss", sim: "Force Sim", dc: "Disconnect", played: "Played" };
 const slugName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -37,7 +40,7 @@ export function forcedFor(settings: Record<string, unknown> | null | undefined, 
 /** "eagles-at-saints", plus "-force-win-eagles" / "-force-loss-saints" / "-force-sim" when forced. */
 export function channelNameFor(a: Team, h: Team, f?: { kind: ForceKind; team?: number }): string {
   const base = slugName(`${a.name}-at-${h.name}`);
-  if (!f) return base.slice(0, 100);
+  if (!f || f.kind === "played") return base.slice(0, 100);
   const who = f.team === a.id ? a : f.team === h.id ? h : undefined;
   // disconnect winner (Nick, 2026-11-22): eagles-at-saints-disconnect-win-eagles
   if (f.kind === "dc") return `${base}-disconnect${who ? `-win-${slugName(who.name)}` : ""}`.slice(0, 100);
@@ -47,6 +50,7 @@ export function channelNameFor(a: Team, h: Team, f?: { kind: ForceKind; team?: n
 export function describeForce(d: LeagueData, f: { kind: ForceKind; team?: number; activity?: number | number[] }): string {
   const t = d.teams.find((x) => x.id === f.team);
   if (f.kind === "dc") return `Disconnect (both users played)${t ? `, winner set: ${t.city} ${t.name}` : ""}`;
+  if (f.kind === "played") return "Played (both users)";
   const act = activityTeams(f).map((id) => d.teams.find((x) => x.id === id)?.abbr ?? "?");
   return `${f.kind === "sim" ? "Force Sim" : `${KIND_LABEL[f.kind]}: ${t ? `${t.city} ${t.name}` : "?"}`}${act.length ? ` (activity: ${act.join(" + ")})` : ""}`;
 }
@@ -188,6 +192,7 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
   const kind = String(a.kind ?? "") as ForceKind;
   if (!(kind in KIND_LABEL)) return "Pick Force Win, Force Loss or Force Sim.";
   if (kind === "dc") return setDisconnect(lg, d, pick, a.by, a.team);
+  if (kind === "played") return setPlayed(lg, d, pick, a.by);
   const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
   let team: Team | undefined;
   if (kind !== "sim") {
@@ -257,6 +262,25 @@ async function setDisconnect(lg: LinkedLeague, d: LeagueData, pick: Pick, by: st
   return `**Disconnect** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}${winner ? `, winner ${winner.abbr}` : ""}. Both users get a game played for activity, even if it sims, and its bets are voided (stakes back).${prev && prev.kind !== "dc" ? ` Replaced the ${describeForce(d, prev)}.` : ""}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
 }
 
+/** /set played: the game was played by both users but EA never said so before the advance (activity showed it
+ *  as unknown). Counts as played for both users and for /audit; bets stand (nothing is voided). */
+async function setPlayed(lg: LinkedLeague, d: LeagueData, pick: Pick, by: string): Promise<string> {
+  const g = pick.g;
+  const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
+  if (!g.final) return `${away.abbr} @ ${home.abbr} isn't final in the last sync yet. Once a sync shows its score, run this again if it still isn't counted as played.`;
+  const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
+  if (prev?.kind === "played") return `${away.abbr} @ ${home.abbr} is already marked as played.${await activityAfterForce(lg.slug, g.id)}`;
+  const f: ForcedGame = { kind: "played", by, at: new Date().toISOString() };
+  await saveForced(lg, d.season.year, g.id, f);
+  let note = "";
+  if (pick.channelId) {
+    if (prev) { const name = channelNameFor(away, home); note = renameNote(await rename(pick.channelId, name), pick.channelId, name); }
+    await dc("POST", `/channels/${pick.channelId}/messages`, { content: `✅ An admin marked this game as **played** by both users (EA didn't report it before the advance). Bets on it stand.${prev ? ` (Replaces the ${describeForce(d, prev)}.)` : ""}`, allowed_mentions: { parse: [] } });
+  }
+  const users = [away, home].filter((t) => t.user).map((t) => `${t.abbr} (${t.user})`);
+  return `**Played** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} ${g.as} @ ${home.abbr} ${g.hs}. It counts as a game played${users.length ? ` for ${users.join(" and ")}` : ""} and /audit includes it; bets stand.${prev ? ` Replaced the ${describeForce(d, prev)} (bets it voided stay refunded).` : ""}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
+}
+
 export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: unknown }): Promise<string> {
   const forced = forcedFor(lg.settings, d.season.year);
   const g = d.games.find((x) => String(x.id) === String(a.game ?? ""));
@@ -264,7 +288,7 @@ export async function removeForce(lg: LinkedLeague, d: LeagueData, a: { game: un
   if (!g || !f) {
     const list = Object.keys(forced).map((id) => d.games.find((x) => String(x.id) === id)).filter((x): x is Game => Boolean(x))
       .map((x) => `${teamOf(d, x.away)?.abbr} @ ${teamOf(d, x.home)?.abbr} (${describeForce(d, forced[String(x.id)])})`);
-    return `That game doesn't have a force or disconnect.${list.length ? ` Forced this season: ${list.join(", ")}.` : ""}`;
+    return `That game doesn't have a force, disconnect or played mark.${list.length ? ` Forced this season: ${list.join(", ")}.` : ""}`;
   }
   const away = teamOf(d, g.away)!, home = teamOf(d, g.home)!;
   await saveForced(lg, d.season.year, g.id, null);
