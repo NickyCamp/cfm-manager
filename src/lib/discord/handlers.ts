@@ -138,7 +138,7 @@ const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players"
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week", "preseason"], stats: ["team"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week", "preseason"], stats: ["team", "by"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -529,6 +529,13 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const v = opt(i, "team");
       const t = v != null && v !== "" ? findTeam(d, v) : undefined;
       if (v != null && v !== "" && !t) return reply("No team by that name.");
+      // by:Teams (2026-11-22): every team ranked by its season total; the team box just highlights that team.
+      if (opt(i, "by") === "teams") {
+        return { embeds: [{
+          title: `Team leaders: ${cat.label}`, url: url("/leaders"), color: t ? hexColor(t.primary) : BRAND, footer,
+          image: { url: statsImageUrl(base, lg.slug, cat.key, t?.id, true) },
+        }] };
+      }
       // The chart picture carries the list; the text version stays as the caption-less fallback for preview.ts.
       const scope = t ? `${t.city} ${t.name}` : "League";
       return { embeds: [{

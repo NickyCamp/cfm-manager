@@ -1,8 +1,8 @@
 // /stats category [team]: the top 10 in one stat (Nick, 2026-11-13: "like /stats passing yards
 // or interceptions thrown, for all those types of stats"). Regular season, from the same
 // season totals as the site's Leaders page. Discord allows 25 choices, so this list stays ≤ 25.
-import { passerRating, seasonTotals, type Totals } from "../league/derive";
-import type { LeagueData, Player } from "../league/types";
+import { passerRating, REG_SEASON_LAST_WEEK, seasonTotals, type Totals } from "../league/derive";
+import type { LeagueData, Player, StatLine } from "../league/types";
 
 type T = Totals & { team: number };
 export type StatCat = {
@@ -72,4 +72,54 @@ export function statLeaders(d: LeagueData, cat: StatCat, teamId?: number, limit 
     rows.push({ rank, player: ps.get(x.id), team: x.t.team, value: (cat.fmt || n)(x.v), raw: x.v, detail: cat.detail?.(x.t) });
   });
   return { rows, total: list.length };
+}
+
+// /stats by:Teams (Nick, 2026-11-22: "if I used the stat to pull up sacks it would list the team with
+// the most total sacks at 1 and so on"). Every player line is credited to the team he played that game
+// for, so traded players' numbers stay with the right team. Rate stats are the team's own rate
+// (team completion %, team YPC…), so no minimums; every team that played is ranked.
+const MAX_KEYS = new Set(["plng", "rlng", "rclng", "fglng", "pntlng"]);
+
+export function teamTotals(d: LeagueData): Map<number, T> {
+  const games = new Map(d.games.map((g) => [g.id, g]));
+  const out = new Map<number, T>();
+  const seen = new Map<number, Set<number>>();
+  for (const l of d.lines) {
+    const g = games.get(l.g);
+    if (!g || g.stage !== 1 || g.week > REG_SEASON_LAST_WEEK) continue;
+    let t = out.get(l.t);
+    if (!t) { t = { ...ZERO_T, team: l.t }; out.set(l.t, t); seen.set(l.t, new Set()); }
+    const gs = seen.get(l.t)!;
+    if (!gs.has(l.g)) { gs.add(l.g); t.gp++; }
+    for (const [k, v] of Object.entries(l as StatLine)) {
+      if (k === "g" || k === "p" || k === "t" || typeof v !== "number") continue;
+      const key = k as keyof Totals;
+      if (MAX_KEYS.has(k)) t[key] = Math.max(t[key], v);
+      else t[key] += v;
+    }
+  }
+  return out;
+}
+const ZERO_T: T = {
+  gp: 0, pa: 0, pc: 0, py: 0, ptd: 0, pint: 0, plng: 0, psk: 0, ra: 0, ry: 0, rtd: 0, rlng: 0, rfum: 0, rbt: 0,
+  rc: 0, rcy: 0, rctd: 0, rclng: 0, rcdrop: 0, rcyac: 0, tk: 0, sk: 0, int: 0, ff: 0, fr: 0, dtd: 0, pd: 0, sfty: 0,
+  fga: 0, fgm: 0, fglng: 0, xpa: 0, xpm: 0, pnt: 0, pnty: 0, pntnet: 0, pnt20: 0, pntlng: 0, team: 0,
+};
+
+export type TeamStatRow = { rank: number; team: number; value: string; raw: number; detail: string };
+
+/** Every team ranked in one category, most first (ties share a rank). Teams at zero still show, at the bottom. */
+export function teamStatLeaders(d: LeagueData, cat: StatCat): TeamStatRow[] {
+  const totals = teamTotals(d);
+  const list = d.teams
+    .map((tm) => ({ id: tm.id, t: totals.get(tm.id) || { ...ZERO_T, team: tm.id } }))
+    .map((x) => ({ ...x, v: cat.value(x.t) }))
+    .sort((a, b) => b.v - a.v);
+  const rows: TeamStatRow[] = [];
+  list.forEach((x, i) => {
+    const rank = i > 0 && Math.abs(list[i - 1].v - x.v) < 1e-9 ? rows[i - 1].rank : i + 1;
+    const gp = `${x.t.gp} ${x.t.gp === 1 ? "game" : "games"}`;
+    rows.push({ rank, team: x.id, value: (cat.fmt || n)(x.v), raw: x.v, detail: cat.detail ? `${cat.detail(x.t)} · ${gp}` : gp });
+  });
+  return rows;
 }

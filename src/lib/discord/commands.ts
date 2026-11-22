@@ -5,6 +5,7 @@
 
 import { ALERT_EVENTS } from "./api";
 import { STAT_CATS } from "./stats";
+
 import { DISCORD_POS_GROUPS } from "./posGroups";
 import { AUDIT_KINDS } from "./audit";
 import { HELP_TOPICS } from "./helpTopics";
@@ -23,6 +24,9 @@ const group = (required: boolean) => ({ type: STRING, name: "group", description
 const rating = { type: STRING, name: "rating", description: "Sort by a rating: Overall, Speed, Throw Power… (start typing)", required: false, autocomplete: true };
 const order = { type: STRING, name: "order", description: "Best to worst (default) or worst to best", required: false, choices: [{ name: "Best to worst", value: "desc" }, { name: "Worst to best", value: "asc" }] };
 const team = (required: boolean) => ({ type: STRING, name: "team", description: "Start typing a team", required, autocomplete: true });
+// /stats by (Nick, 2026-11-22): rank teams by their season total instead of players.
+const STATS_BY = { type: STRING, name: "by", description: "Players (top 10, default) or Teams (every team ranked by its total)", required: false,
+  choices: [{ name: "Players", value: "players" }, { name: "Teams", value: "teams" }] };
 
 // /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
 export const LEAGUE_MORE: [string, string][] = [
@@ -117,11 +121,12 @@ const PLAIN = [
   },
   {
     name: "stats",
-    description: "Top 10 in a stat this regular season (passing yards, INTs thrown, sacks…), league-wide or one team",
+    description: "Stat leaders this regular season (passing yards, sacks…): top 10 players, or every team ranked",
     ...ANYWHERE,
     options: [
       { type: STRING, name: "category", description: "Which stat", required: true, choices: STAT_CATS.map((c) => ({ name: c.label, value: c.key })) },
-      team(false),
+      { ...team(false), description: "Players: just this team's players. Teams: highlight this team in the ranking" },
+      STATS_BY,
     ],
   },
   { name: "sync", description: "Pull the latest league data from EA now (once every 15 minutes per league)", ...ANYWHERE },
@@ -168,6 +173,7 @@ export const COMMANDS = [
       { ...group(false), description: "Players in one position group (OL, DL, DB…); with the team box, just that team" },
       { ...rating, description: "Sort players by a rating (start typing); add team or group to narrow it" },
       { ...order, description: "With rating: best to worst (default) or worst to best" },
+      { ...STATS_BY, description: "For stats: Players (top 10, default) or Teams (every team ranked by its total)" },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: INTEGER, name: "preseason", description: "For tws: a preseason week (1-4) instead of a regular-season week", required: false, min_value: 1, max_value: 4 },
       { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028; for rookies: draft class year", required: false, min_value: 2000, max_value: 2100 },

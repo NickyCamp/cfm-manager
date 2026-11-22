@@ -29,9 +29,9 @@ export function matchupImageUrl(base: string, slug: string, gameId: number) {
 }
 
 /** The /stats chart: a category, league-wide or one team. */
-export function statsImageUrl(base: string, slug: string, cat: string, teamId?: number) {
-  const exp = expiry(), key = `s${cat}-${teamId ?? ""}`;
-  return `${base}/api/discord/stats?l=${encodeURIComponent(slug)}&c=${cat}${teamId != null ? `&t=${teamId}` : ""}&e=${exp}&s=${sig(slug, key, exp)}`;
+export function statsImageUrl(base: string, slug: string, cat: string, teamId?: number, byTeam = false) {
+  const exp = expiry(), key = `s${cat}-${teamId ?? ""}${byTeam ? "-T" : ""}`;
+  return `${base}/api/discord/stats?l=${encodeURIComponent(slug)}&c=${cat}${teamId != null ? `&t=${teamId}` : ""}${byTeam ? "&b=t" : ""}&e=${exp}&s=${sig(slug, key, exp)}`;
 }
 
 /** key: the player id, or the pack's ids joined with "-". */
