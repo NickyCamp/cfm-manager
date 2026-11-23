@@ -194,12 +194,13 @@ async function checkYouTube(channels: { channel: string; ytId?: string }[]): Pro
 const cache = new Map<string, { at: number; result: Map<number, LiveInfo> }>();
 const CACHE_MS = 60_000;
 
-/** Live status for each team with a link (teamId → LiveInfo). Never throws: a failed platform reads "not checked". */
-export async function liveStatus(slug: string, links: Map<number, StreamLink>): Promise<Map<number, LiveInfo>> {
+/** Live status for each team with a link (teamId → LiveInfo). Never throws: a failed platform reads "not checked".
+ *  fresh: skip the 1-minute cache (Discord /live and /redzone check at the moment they're typed). */
+export async function liveStatus(slug: string, links: Map<number, StreamLink>, opts: { fresh?: boolean } = {}): Promise<Map<number, LiveInfo>> {
   const sig = [...links].map(([t, l]) => `${t}:${l.platform}:${l.channel}`).sort().join("|");
   const key = `${slug}|${sig}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_MS) return hit.result;
+  if (hit && !opts.fresh && Date.now() - hit.at < CACHE_MS) return hit.result;
 
   const by = (p: Platform) => [...links.values()].filter((l) => l.platform === p);
   const run = async <T,>(p: Platform, f: () => Promise<Map<string, T>>) => {

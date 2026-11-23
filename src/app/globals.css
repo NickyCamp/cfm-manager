@@ -1766,3 +1766,19 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .live-right { margin-left: auto; font-size: 0.85rem; }
 .live-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .live-pill { color: #d4202a; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+
+/* RedZone (2026-11-22): big player + strip of the other live games */
+.rz { margin-bottom: 20px; }
+.rz-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.rz-badge { background: #d4202a; color: #fff; font-weight: 800; padding: 2px 10px; border-radius: 4px; letter-spacing: 0.02em; }
+.rz-tools { margin-left: auto; display: flex; gap: 14px; }
+.rz-hint { margin: 0 0 8px; }
+.rz-main { background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--line); border-radius: var(--radius-panel); overflow: hidden; max-width: 1100px; }
+.rz-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 240px); gap: 10px; overflow-x: auto; padding: 10px 0 4px; }
+.rz-tile { background: var(--paper); border: 1px solid var(--line); border-top: 3px solid var(--line); border-radius: 6px; overflow: hidden; }
+.rz-tile.on { outline: 2px solid #d4202a; }
+.rz-tile iframe { pointer-events: none; }
+.rz-pick { position: absolute; inset: 0; background: transparent; border: 0; color: transparent; cursor: pointer; font-weight: 700; }
+.rz-pick:hover, .rz-pick:focus-visible { background: rgba(0, 0, 0, 0.45); color: #fff; }
+.rz-onair { color: #fff; font-weight: 700; }
+.rz-cap { padding: 6px 8px; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

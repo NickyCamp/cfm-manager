@@ -11,15 +11,15 @@ export type LiveItem = {
   game?: { id: number; label: string; final: boolean };
 };
 
-const NAME: Record<Platform, string> = { twitch: "Twitch", kick: "Kick", youtube: "YouTube" };
+export const NAME: Record<Platform, string> = { twitch: "Twitch", kick: "Kick", youtube: "YouTube" };
 
-function embedSrc(i: LiveItem, host: string) {
-  if (i.platform === "twitch") return `https://player.twitch.tv/?channel=${encodeURIComponent(i.channel)}&parent=${encodeURIComponent(host)}&muted=true&autoplay=true`;
-  if (i.platform === "kick") return `https://player.kick.com/${encodeURIComponent(i.channel)}?muted=true&autoplay=true`;
-  return i.videoId ? `https://www.youtube.com/embed/${i.videoId}?autoplay=1&mute=1` : "";
+export function embedSrc(i: Pick<LiveItem, "platform" | "channel" | "videoId">, host: string, muted = true) {
+  if (i.platform === "twitch") return `https://player.twitch.tv/?channel=${encodeURIComponent(i.channel)}&parent=${encodeURIComponent(host)}&muted=${muted}&autoplay=true`;
+  if (i.platform === "kick") return `https://player.kick.com/${encodeURIComponent(i.channel)}?muted=${muted}&autoplay=true`;
+  return i.videoId ? `https://www.youtube.com/embed/${i.videoId}?autoplay=1&mute=${muted ? 1 : 0}` : "";
 }
 
-function since(iso?: string) {
+export function since(iso?: string) {
   if (!iso) return "";
   const mins = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
   return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;

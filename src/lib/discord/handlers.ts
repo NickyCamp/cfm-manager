@@ -1660,7 +1660,7 @@ async function liveCmd(i: Interaction, lg: LinkedLeague, d: LeagueData): Promise
   if (!l) return reply("Link your stream first: `/streamlink link:twitch.tv/yourname` (Kick and YouTube @handle links work too).");
   const teamId = mine?.teamId ?? team?.id;
   const t = teamId ? d.teams.find((x) => x.id === teamId) : undefined;
-  const info = (await liveStatus(lg.slug, new Map([[-1, l]]))).get(-1);
+  const info = (await liveStatus(lg.slug, new Map([[-1, l]]), { fresh: true })).get(-1);
   const who = `**${discordName(i)}**${t ? ` (${t.abbr}${weekLabel(d, t.id) ? ` ${weekLabel(d, t.id)}` : ""})` : ""}`;
   const link = watchUrl(l, info);
   if (info?.live) {
@@ -1688,7 +1688,7 @@ async function redzoneCmd(lg: LinkedLeague, d: LeagueData, url: (p?: string) => 
     rows.set(-(++n), { link: l, label: t ? `${t.abbr} · ${l.name}` : l.name, teamId: t?.id });
   }
   if (!rows.size) return reply("Nobody has linked a stream yet. Link yours with `/streamlink link:twitch.tv/yourname`.", false);
-  const live = await liveStatus(lg.slug, new Map([...rows].map(([k, r]) => [k, r.link])));
+  const live = await liveStatus(lg.slug, new Map([...rows].map(([k, r]) => [k, r.link])), { fresh: true });
   const lines: string[] = [];
   for (const [k, r] of rows) {
     const info = live.get(k);
