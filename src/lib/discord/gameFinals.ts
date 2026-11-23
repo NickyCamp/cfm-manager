@@ -4,7 +4,7 @@
 // After every sync (the worker calls /api/leagues/<slug>/discord/games) each game channel whose game EA now
 // reports final gets one box score post, and the time is saved on that channel (finalPostedAt). A cron every
 // 15 minutes (/api/cron/game-channels) deletes channels whose box score is 12+ hours old, and a week's category
-// once every channel in it is closed. Closed channels stay in the saved state (closedAt), so running
+// once every channel in it is closed. After an advance, every earlier week's category is deleted outright. Closed channels stay in the saved state (closedAt), so running
 // /gamechannels again for that week never brings them back, and /set can still pick those games.
 import { forgetLeagueData, getLeagueData } from "@/lib/league/load";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -105,6 +105,26 @@ async function closeDue(state: GameChannels, log: string[]): Promise<boolean> {
   return changed;
 }
 
+/** Deletes a whole week: every open channel in it, then its category. Channels keep their closed records (closedAt,
+ *  closedName) so /set can still pick those games and /gamechannels never rebuilds them. */
+async function closeWeek(wk: GameChannels["weeks"][string]): Promise<boolean> {
+  let ok = true;
+  for (const gc of Object.values(wk.games)) {
+    if (gc.closedAt) continue;
+    const ch = await dc("GET", `/channels/${gc.channelId}`);
+    if (ch.ok) gc.closedName = String(ch.data.name || "");
+    const r = ch.ok ? await dc("DELETE", `/channels/${gc.channelId}`) : ch;
+    if (!r.ok && !isGone(r)) { ok = false; continue; }
+    gc.closedAt = new Date().toISOString();
+    await sleep(250);
+  }
+  if (!ok) return false;
+  const r = await dc("DELETE", `/channels/${wk.categoryId}`);
+  if (!r.ok && !isGone(r)) return false;
+  wk.closedAt = new Date().toISOString();
+  return true;
+}
+
 /** Posts box scores for games that went final, then closes what's due. `withData` false = closing only (no data load). */
 export async function gameChannelFinals(slug: string, withData = true): Promise<string> {
   const lg = await leagueBySlug(slug);
@@ -145,6 +165,15 @@ export async function gameChannelFinals(slug: string, withData = true): Promise<
         }
         state.finalsAt = new Date().toISOString();
         changed = true;
+        // After an advance (Nick, 2026-11-22: "delete the previous week/s category when we advance"): every week
+        // category before the league's current week goes, open channels and all.
+        const now = d.season.year * 1000 + d.season.stage * 100 + d.season.week;
+        for (const [key, wk] of Object.entries(state.weeks)) {
+          if (wk.closedAt) continue;
+          const [y, st, w] = key.split(":").map(Number);
+          if ((y || 0) * 1000 + (st || 0) * 100 + (w || 0) >= now) continue;
+          log.push(await closeWeek(wk) ? `deleted ${wk.name || key} (league advanced)` : `couldn't fully delete ${wk.name || key}; will retry`);
+        }
       }
     }
     for (const wk of Object.values(state.weeks)) for (const gc of Object.values(wk.games)) {
