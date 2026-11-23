@@ -117,6 +117,16 @@ export function creditedTeams(g: Pick<Game, "home" | "away" | "forced">): number
   return [];
 }
 
+/** Whether two records count a game the same way. Compared field by field, not as JSON text: Postgres jsonb
+ *  stores object keys in its own order, so a saved record never stringifies like a fresh one (that made every
+ *  sync "recount" the same forced games, Nick 2026-11-23). */
+function sameRec(a: Rec | undefined, b: Rec | undefined): boolean {
+  if (!a || !b) return a === b;
+  if (a.how !== b.how || a.wk !== b.wk) return false;
+  const ka = Object.keys(a.by || {}), kb = Object.keys(b.by || {});
+  return ka.length === kb.length && ka.every((k) => b.by[k] && a.by[k].u === b.by[k].u && a.by[k].s === b.by[k].s);
+}
+
 /** How a game counts once its week is over (or now, for a game already played). */
 function judge(d: LeagueData, g: Game, st?: ActivityState | null): Rec {
   const wk = wkOf(g.stage, g.week);
@@ -392,7 +402,7 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
     const w = wkOf(g.stage, g.week), prev = st.games[String(g.id)];
     if (!g.forced || !st.wrapped.includes(w) || !prev) continue;
     const next = judge(d, g, st);
-    if (JSON.stringify(prev) === JSON.stringify(next)) continue;
+    if (sameRec(prev, next)) continue;
     st.games[String(g.id)] = next;
     await post(st.channelId, { content: `✏️ **Recounted** · ${weekTitle(d, g.stage, g.week)} · ${line(d, g, next)}` });
     changed = true; redraw = true;
@@ -499,7 +509,7 @@ export async function activityAfterForce(slug: string, gameId: number): Promise<
     // the week isn't over and the force was taken off: it isn't decided yet
     if (!st.wrapped.includes(w) && next.how !== "played" && !(next.how === "disconnect" && g.final)) { delete st.games[String(g.id)]; }
     else st.games[String(g.id)] = next;
-    if (JSON.stringify(prev) === JSON.stringify(st.games[String(g.id)])) return "";
+    if (sameRec(prev, st.games[String(g.id)])) return "";
     await post(st.channelId, { content: `✏️ **Updated after /set** · ${weekTitle(d, g.stage, g.week)} · ${st.games[String(g.id)] ? line(d, g, next) : `${label(d.teams.find((t) => t.id === g.away))} @ ${label(d.teams.find((t) => t.id === g.home))}: counted again in this week's wrap-up after the advance`}` });
     await refreshTotals(st, d);
     if (st.wrapped.includes(w)) await postCharts(fresh, st, d).catch(() => {});
