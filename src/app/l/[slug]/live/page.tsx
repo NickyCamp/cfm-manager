@@ -3,8 +3,8 @@ import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { gamesForWeek, indexes, weekTitle } from "@/lib/league/derive";
 import { NoData, TeamBadge } from "@/components/league/bits";
-import { LiveGrid, type LiveItem } from "@/components/league/LiveGrid";
-import { RedZone } from "@/components/league/RedZone";
+import type { LiveItem } from "@/components/league/LiveGrid";
+import { MultiView } from "@/components/league/MultiView";
 import { StreamLinkEditor } from "@/components/league/StreamLinkEditor";
 import { CheckAgain } from "@/components/league/CheckAgain";
 import { editableStreamTeams, leagueStreamLinks } from "@/lib/streamStore";
@@ -61,7 +61,7 @@ export default async function Live({ params, searchParams }: Props) {
           <div className="muted">{d.season.year} {weekTitle(d, d.season.stage, d.season.week)} · checked when you open this page · <CheckAgain /></div>
         </div>
 
-        {items.length >= 2 ? <RedZone slug={slug} items={items} admin={edit.admin} /> : items.length ? <LiveGrid items={items} /> : (
+        {items.length ? <MultiView items={items} /> : (
           <div className="panel muted">Nobody in the league is live right now.{links.size ? "" : " Add your stream link below so your games show up here."}</div>
         )}
 
