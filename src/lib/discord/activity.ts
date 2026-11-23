@@ -3,8 +3,8 @@
 //  - Every sync: each newly played user game posts there, and both users get a game played.
 //  - After an advance, the week that ended gets a wrap-up: first the games an admin forced with
 //    /set (the result, and the team picked with `activity`, whose user gets a game played, not a
-//    miss; the other user gets a miss), then the games nobody played, which count as a sim with a
-//    miss for both users.
+//    miss; the other user gets a miss), then every other finished game, which counts as played for both users
+//    (Nick, 2026-11-22), even if EA simmed it. Admins give both users a miss with /set force Force Sim.
 //  - EA only says whether a game was played or simmed while its week is current, so a game finished
 //    after the last sync but before the advance comes through "unknown". Those aren't counted;
 //    the wrap-up flags them for an admin to settle with /set force … activity.
@@ -127,8 +127,10 @@ function judge(d: LeagueData, g: Game, st?: ActivityState | null): Rec {
   }
   // /set disconnect: both users played, even if EA simmed it
   if (g.disconnect) return { wk, how: "disconnect", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "P" as Status }])) };
-  if (playedNow(g)) return { wk, how: "played", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "P" as Status }])) };
-  if (g.final && g.simmed == null) return { wk, how: "unknown", by: {} };
+  // Every finished game counts as played for both users unless an admin forces it (Nick, 2026-11-22: "assume every
+  // game is played unless it is marked with /set sim and in that case both users are marked with a miss"), even
+  // when EA says it was simmed. A Force Sim (no activity pick) is the way to give both users a miss.
+  if (g.final) return { wk, how: "played", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "P" as Status }])) };
   return { wk, how: "missed", by: Object.fromEntries(users.map((t) => [String(t.id), { u: t.user, s: "M" as Status }])) };
 }
 
@@ -260,7 +262,7 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
     };
   }
   if (fresh) {
-    await post(ch, { content: `**User activity.** Every user game played posts here after each sync. After each advance, the week that ended gets a wrap-up: games an admin set with \`/set\` first (the team picked for \`activity\` gets a game played, not a miss), then games nobody played, which count as a sim with a miss for both users. Season totals are in the next message and stay up to date.` });
+    await post(ch, { content: `**User activity.** Every user game played posts here after each sync. After each advance, the week that ended gets a wrap-up: games an admin set with \`/set\` first (the team picked for \`activity\` gets a game played, not a miss), then every other game, which counts as played for both users unless an admin sets Force Sim on it with \`/set force\` (a miss for both). Season totals are in the next message and stay up to date.` });
   }
   await save(lg, st);
   return st;
@@ -401,14 +403,14 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
   const weeks = [...new Set(tracked.map((g) => wkOf(g.stage, g.week)))].filter((w) => rankOf(w) < cur && !st.wrapped.includes(w)).sort((a, b) => rankOf(a) - rankOf(b));
   for (const w of weeks) {
     const games = tracked.filter((g) => wkOf(g.stage, g.week) === w);
-    const forced: string[] = [], missed: string[] = [], unknown: string[] = [];
+    const forced: string[] = [], missed: string[] = [], unknown: string[] = [], assumed: string[] = [];
     let nPlayed = 0;
     for (const g of games) {
       const prev = st.games[String(g.id)];
       if ((prev?.how === "played" && !g.forced && !g.disconnect) || (prev?.how === "disconnect" && g.disconnect)) { if (prev.how === "played") nPlayed++; else forced.push(line(d, g, prev)); continue; }
       const r = judge(d, g, st);
       st.games[String(g.id)] = r;
-      if (r.how === "played") nPlayed++;
+      if (r.how === "played") { nPlayed++; assumed.push(`${label(d.teams.find((t) => t.id === g.away))} ${g.as} @ ${label(d.teams.find((t) => t.id === g.home))} ${g.hs}${g.simmed === true ? " · EA says simmed" : g.simmed == null ? " · EA didn't say" : ""}`); }
       else if (r.how === "forced" || r.how === "disconnect") forced.push(line(d, g, r));
       else if (r.how === "unknown") unknown.push(line(d, g, r));
       else missed.push(line(d, g, r));
@@ -418,7 +420,8 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
       forced.length ? `**Set by admins**\n${forced.join("\n")}` : "",
       missed.length ? `**Not played: counted as a sim, a miss for each user**\n${missed.join("\n")}` : "",
       unknown.length ? `**Not counted**\n${unknown.join("\n")}` : "",
-      `${nPlayed} user game${nPlayed === 1 ? "" : "s"} played this week${forced.length || missed.length ? "" : ", no misses"}.`,
+      assumed.length ? `**Counted as played (no /set)**: if any of these weren't played, an admin runs \`/set force\` Force Sim on it and both users get a miss\n${assumed.join("\n")}` : "",
+      `${nPlayed} user game${nPlayed === 1 ? "" : "s"} played this week${forced.some((x) => x.includes("missed")) || missed.length ? "" : ", no misses"}.`,
     ].filter(Boolean);
     await post(st.channelId, { embeds: [{ title: `📋 ${d.season.year} ${weekTitle(d, s, wk)}: activity wrap-up`, color: BRAND, description: parts.join("\n\n").slice(0, 4000) }] });
     st.wrapped.push(w);
@@ -470,7 +473,7 @@ export async function activityChannelsCmd(slug: string, remove: boolean): Promis
     return [
       isNew ? `Activity tracking is on: <#${st.channelId}>, <#${st.seasonChannelId}> and <#${st.cycleChannelId}> (bot-only). Counting starts with ${d.season.year} ${weekTitle(d, ...(st.start.split(":").map(Number) as [number, number]))}; preseason never counts.` : `<#${st.channelId}>, <#${st.seasonChannelId}> and <#${st.cycleChannelId}> repaired and up to date.`,
       st.seed ? `The all-seasons chart starts from the league's sheet (${st.seed.seasons.join(", ")}): ${st.seed.rows.filter((r) => !r.ea).length ? `couldn't match ${st.seed.rows.filter((r) => !r.ea).map((r) => r.name).join(", ")} to a team with a user` : "every row matched to its team's user"}.` : "",
-      "It updates after every sync: played games right away, and after each advance a wrap-up with admin forces (/set, with the `activity` team getting a game played) and misses for games nobody played.",
+      "It updates after every sync: played games right away, and after each advance a wrap-up with admin forces (/set, with the `activity` team getting a game played) and every other game counted as played unless an admin sets Force Sim (a miss for both users).",
       res,
     ].filter(Boolean).join("\n");
   }).catch((e) => `Activity failed: ${(e as Error).message}`);
