@@ -6,25 +6,27 @@ import { NoData, TeamBadge } from "@/components/league/bits";
 import { LiveGrid, type LiveItem } from "@/components/league/LiveGrid";
 import { RedZone } from "@/components/league/RedZone";
 import { StreamLinkEditor } from "@/components/league/StreamLinkEditor";
-import { AutoRefresh } from "@/components/league/AutoRefresh";
+import { CheckAgain } from "@/components/league/CheckAgain";
 import { editableStreamTeams, leagueStreamLinks } from "@/lib/streamStore";
 import { liveStatus, platformReady, PLATFORM_NAME, streamUrl, type Platform } from "@/lib/streams";
 
 export const metadata: Metadata = { title: "Live" };
 export const dynamic = "force-dynamic";
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ check?: string }> };
 
 /**
  * Live (Nick, 2026-11-22): every user streams their games. Each team's manager saves a Twitch, Kick
  * or YouTube link below; whoever is live right now is embedded at the top, matched to this week's game.
  */
-export default async function Live({ params }: Props) {
+export default async function Live({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { check } = await searchParams;
   const d = await getLeagueData(slug);
   if (!d) return <NoData />;
   const { teams } = indexes(d);
   const [links, edit] = await Promise.all([leagueStreamLinks(slug, d), editableStreamTeams(slug, d)]);
-  const live = await liveStatus(slug, links);
+  // "Check again" (?check=…) asks the platforms fresh; a plain visit may reuse a check from the last minute
+  const live = await liveStatus(slug, links, { fresh: Boolean(check) });
 
   // this week's game for each team, so a stream can be shown as "BUF at KC"
   const week = gamesForWeek(d, d.season.stage, d.season.week).filter((g) => g.home && g.away);
@@ -53,11 +55,10 @@ export default async function Live({ params }: Props) {
 
   return (
     <main className="page league-page">
-      <AutoRefresh seconds={60} />
       <div className="wrap">
         <div className="week-title" style={{ marginBottom: 12 }}>
           <h2>Live now</h2>
-          <div className="muted">{d.season.year} {weekTitle(d, d.season.stage, d.season.week)} · checks every minute</div>
+          <div className="muted">{d.season.year} {weekTitle(d, d.season.stage, d.season.week)} · checked when you open this page · <CheckAgain /></div>
         </div>
 
         {items.length >= 2 ? <RedZone slug={slug} items={items} admin={edit.admin} /> : items.length ? <LiveGrid items={items} /> : (

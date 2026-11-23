@@ -8,7 +8,6 @@ const TABS = [
   ["", "Home"],
   ["standings", "Standings"],
   ["scores", "Scores"],
-  ["live", "Live"],
   ["teams", "Teams"],
   ["players", "Players"],
   ["cap", "Cap"],
@@ -19,6 +18,7 @@ const TABS = [
 
 // League-wide tools: shown up by the league name instead of in the main tab row.
 const TOOLS = [
+  ["live", "Live"],
   ["playoffs", "Playoffs"],
   ["draft", "Draft"],
   ["dev", "Dev tracker"],
