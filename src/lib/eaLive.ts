@@ -127,7 +127,7 @@ export function refreshLiveWeek(slug: string) {
 }
 
 /**
- * Every 15 minutes (the game-channels cron): asks EA about this week in each league that tracks activity
+ * Hourly (the first game-channels cron run each hour): asks EA about this week in each league that tracks activity
  * or has game channels. That records played vs simmed for every finished game (simSeen.ts) while EA still
  * says it, and starts a sync when a game was played since the last check, so the site and Discord catch up
  * without waiting for the 3-hourly run (Nick, 2026-11-22: a Week 1 game played just before the advance
@@ -135,6 +135,9 @@ export function refreshLiveWeek(slug: string) {
  */
 export async function liveCheckCron(): Promise<Record<string, string>> {
   if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return {};
+  // Hourly, not every 15 minutes (Nick, 2026-11-22: "check hourly"): only the cron run in the first quarter
+  // of each hour asks EA. Bets still check EA live on their own.
+  if (new Date().getUTCMinutes() >= 15) return { skipped: "hourly check (runs in the first 15 minutes of each hour)" };
   const { data } = await supabaseAdmin().from("leagues").select("slug, settings").not("ea_connection_id", "is", null);
   const out: Record<string, string> = {};
   for (const lg of data || []) {

@@ -1,6 +1,6 @@
 // GET /api/cron/game-channels — Vercel cron every 15 minutes (vercel.json). Deletes game channels 12 hours
 // after their box score went up, and posts any box scores a sync's own call missed (src/lib/discord/gameFinals.ts).
-// Also asks EA about the current week (liveCheckCron in src/lib/eaLive.ts): records played vs simmed while EA
+// Once an hour it also asks EA about the current week (liveCheckCron in src/lib/eaLive.ts): records played vs simmed while EA
 // still says it, and starts a sync when a game has been played.
 import { NextResponse } from "next/server";
 import { gameChannelsCron } from "@/lib/discord/gameFinals";
