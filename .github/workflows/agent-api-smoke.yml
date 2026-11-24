@@ -1,0 +1,48 @@
+name: Agent API check
+
+# Runs every agent-API tool (src/lib/agent) on the newest saved sync files and prints the answers.
+# Only uses this repo's own token: no league secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      league:
+        description: "League slug"
+        default: "ncl"
+      full:
+        description: "Tool name to print in full (optional)"
+        default: ""
+  push:
+    branches: [agent-api]
+    paths: ["src/lib/agent/**", "scripts/agent-api/**", ".github/workflows/agent-api-smoke.yml"]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Download saved league data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/arts
+          gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100&name=league-data" \
+            -q '.artifacts[] | select(.expired == false) | .id' | head -30 > /tmp/ids.txt
+          while read -r id; do
+            gh api "repos/${{ github.repository }}/actions/artifacts/$id/zip" > "/tmp/$id.zip" || continue
+            mkdir -p "/tmp/arts/$id" && unzip -q -o "/tmp/$id.zip" -d "/tmp/arts/$id" || true
+          done < /tmp/ids.txt
+      - name: Run the tools
+        env:
+          FULL: ${{ inputs.full || 'week_digest' }}
+        run: npx tsx scripts/agent-api/smoke.ts "${{ inputs.league || 'ncl' }}" /tmp/arts
