@@ -33,7 +33,7 @@ export function boxScoreEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: 
     title: `Final: ${a.abbr} ${g.as}, ${h.abbr} ${g.hs}${tags.length ? ` (${tags.join(", ")})` : ""}`,
     url: `${APP_URL}/l/${slug}/games/${g.id}`,
     color: hexColor((winner || h).primary) || BRAND,
-    image: { url: matchupImageUrl(APP_URL, slug, g.id) },
+    image: { url: matchupImageUrl(APP_URL, slug, g.id, d.pulledAt) },
     footer: { text: "Full box score on the site (title link)" },
   };
 }
