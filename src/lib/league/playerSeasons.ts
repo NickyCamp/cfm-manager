@@ -22,7 +22,7 @@ export const seasonLabel = (s: StatSeason, league: string) => (s.kind === "nfl" 
 export async function playerSeasons(slug: string, d: LeagueData, p: Player): Promise<StatSeason[]> {
   const years = await pastYears(slug, d);
   const past = (await Promise.all(years.map((y) => getPastSeason(slug, y)))).filter((x): x is LeagueData => Boolean(x));
-  const real = realLog(p);
+  const real = await realLog(p);
   return [
     { kind: "league", year: d.season.year, d, past: false },
     ...past.map((x) => ({ kind: "league" as const, year: x.season.year, d: x, past: true })),

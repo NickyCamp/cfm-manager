@@ -4,22 +4,24 @@
 // file (names, birth dates for matching, see realStats.ts) and the schedule (scores).
 // Run: node scripts/real-stats/update.mjs
 // Real seasons stop at 2025 (Nick, 2026-11-24): NCL's league cycle starts in 2026, so real 2026 games
-// would overlap the league's own 2026 season. 2025 is final, so there's no scheduled refresh.
+// would overlap the league's own 2026 season. Then (same day) whole careers back to 2004, for players
+// who were still in the NFL in 2024 or later (e.g. Jared Goff since 2016). All final, so no scheduled refresh.
 //
-// Writes src/lib/league/real-stats.json:
-//   updated  - ISO time
-//   games    - [gameId, season, week, "R"|"P", away, awayScore, home, homeScore]
-//   players  - [names, born, college, rookieYear, posGroup, gsisId, lastName] (headshots.json row shape)
-//   logs     - { gsisId: [[gameIndex, team, line], ...] }, line uses StatLine's short keys (types.ts)
-import { writeFileSync } from "node:fs";
+// Writes src/lib/league/real-stats/:
+//   players.json - { updated, players: [names, born, college, rookieYear, posGroup, gsisId, lastName, seasons[]] }
+//                  (headshots.json row shape, plus the seasons he has games in)
+//   <year>.json  - { games: [gameId, week, "R"|"P", away, awayScore, home, homeScore][],
+//                    logs: { gsisId: [[gameIndex, team, line], ...] } }, line uses StatLine's short keys (types.ts)
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { normName } from "../headshots/norm.mjs";
 
-const FIRST_SEASON = 2025;
+const FIRST_SEASON = 2004; // the oldest active-in-2024 player's rookie year (Philip Rivers)
+const ACTIVE_SINCE = 2024; // players whose last NFL season is this or later
 const LAST_SEASON = 2025;
 const REL = "https://github.com/nflverse/nflverse-data/releases/download";
-const OUT = fileURLToPath(new URL("../../src/lib/league/real-stats.json", import.meta.url));
+const OUT = fileURLToPath(new URL("../../src/lib/league/real-stats/", import.meta.url));
 
 function parseCsv(text) {
   const rows = [];
@@ -51,27 +53,33 @@ const n = (x) => {
   return Number.isFinite(v) ? v : 0;
 };
 
+// ---------- players still around (only they can be on a Madden roster) ----------
+const people = parseCsv(await get(`${REL}/players/players.csv`) || "").filter((p) => Number(p.last_season) >= ACTIVE_SINCE);
+const active = new Set(people.map((p) => p.gsis_id));
+
 // ---------- schedule ----------
 const sched = parseCsv(await get(`${REL}/schedules/games.csv`) || "");
 if (!sched.length) throw new Error("nflverse schedule: no rows");
-const games = [];
-const gameIdx = new Map();
-for (const g of sched) {
-  if (n(g.season) < FIRST_SEASON || n(g.season) > LAST_SEASON || g.away_score === "" || g.away_score === "NA") continue;
-  gameIdx.set(g.game_id, games.length);
-  games.push([g.game_id, n(g.season), n(g.week), g.game_type === "REG" ? "R" : "P", g.away_team, n(g.away_score), g.home_team, n(g.home_score)]);
-}
 
-// ---------- weekly stats ----------
-const logs = {};
+mkdirSync(OUT, { recursive: true });
+for (const f of readdirSync(OUT)) rmSync(OUT + f);
+const seasonsOf = {};
 let rowsKept = 0;
 for (let season = FIRST_SEASON; season <= LAST_SEASON; season++) {
+  const games = [];
+  const gameIdx = new Map();
+  for (const g of sched) {
+    if (n(g.season) !== season || g.away_score === "" || g.away_score === "NA") continue;
+    gameIdx.set(g.game_id, games.length);
+    games.push([g.game_id, n(g.week), g.game_type === "REG" ? "R" : "P", g.away_team, n(g.away_score), g.home_team, n(g.home_score)]);
+  }
   const text = await get(`${REL}/stats_player/stats_player_week_${season}.csv.gz`, true);
-  if (!text) { console.log(`${season}: no weekly stats yet`); continue; }
+  if (!text) { console.log(`${season}: no weekly stats`); continue; }
+  const logs = {};
   const rows = parseCsv(text);
   for (const r of rows) {
     const gi = gameIdx.get(r.game_id);
-    if (gi === undefined || !r.player_id) continue;
+    if (gi === undefined || !active.has(r.player_id)) continue;
     const line = {
       pa: n(r.attempts), pc: n(r.completions), py: n(r.passing_yards), ptd: n(r.passing_tds), pint: n(r.passing_interceptions), psk: n(r.sacks_suffered),
       ra: n(r.carries), ry: n(r.rushing_yards), rtd: n(r.rushing_tds), rfum: n(r.rushing_fumbles_lost),
@@ -83,17 +91,18 @@ for (let season = FIRST_SEASON; season <= LAST_SEASON; season++) {
     };
     for (const k of Object.keys(line)) if (!line[k]) delete line[k];
     (logs[r.player_id] ||= []).push([gi, r.team, line]);
+    (seasonsOf[r.player_id] ||= new Set()).add(season);
     rowsKept++;
   }
-  console.log(`${season}: ${rows.length} player-games`);
+  for (const l of Object.values(logs)) l.sort((a, b) => a[0] - b[0]);
+  writeFileSync(`${OUT}${season}.json`, JSON.stringify({ games, logs }) + "\n");
+  console.log(`${season}: ${games.length} games, ${Object.keys(logs).length} players`);
 }
-for (const l of Object.values(logs)) l.sort((a, b) => a[0] - b[0]);
 
 // ---------- players (only those with a game) ----------
-const people = parseCsv(await get(`${REL}/players/players.csv`) || "");
 const players = [];
 for (const p of people) {
-  if (!logs[p.gsis_id]) continue;
+  if (!seasonsOf[p.gsis_id]) continue;
   const names = new Set();
   for (const first of [p.first_name, p.common_first_name, p.football_name]) {
     if (first && p.last_name) names.add(normName(`${first} ${p.last_name}`));
@@ -101,11 +110,8 @@ for (const p of people) {
   if (p.display_name) names.add(normName(p.display_name));
   names.delete("");
   if (!names.size) continue;
-  players.push([[...names], p.birth_date || "", p.college_name || "", n(p.rookie_season) || n(p.draft_year), p.position_group || "", p.gsis_id, normName(p.last_name)]);
+  players.push([[...names], p.birth_date || "", p.college_name || "", n(p.rookie_season) || n(p.draft_year), p.position_group || "", p.gsis_id, normName(p.last_name), [...seasonsOf[p.gsis_id]].sort()]);
 }
-const named = new Set(players.map((p) => p[5]));
-for (const id of Object.keys(logs)) if (!named.has(id)) delete logs[id];
 players.sort((a, b) => a[0][0].localeCompare(b[0][0]));
-
-writeFileSync(OUT, JSON.stringify({ updated: new Date().toISOString(), games, players, logs }) + "\n");
-console.log(`real-stats.json: ${games.length} games, ${players.length} players, ${rowsKept} player-games`);
+writeFileSync(`${OUT}players.json`, JSON.stringify({ updated: new Date().toISOString(), players }) + "\n");
+console.log(`real-stats: ${players.length} players, ${rowsKept} player-games, ${FIRST_SEASON}-${LAST_SEASON}`);

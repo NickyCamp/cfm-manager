@@ -3,7 +3,7 @@
 import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore";
 import { getLeagueHistory, pastYears } from "@/lib/league/load";
 import { leagueShort, playerSeasons, seasonKey, seasonLabel, seasonLog, seasonRow, seasonsWithGames, totalsText, type SeasonRow } from "@/lib/league/playerSeasons";
-import { realLog, realSeasons } from "@/lib/league/realStats";
+import { realSeasonList } from "@/lib/league/realStats";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
 import {
@@ -144,7 +144,7 @@ async function gamelogYears(lg: LinkedLeague, d: LeagueData, player: unknown, q:
   const league = leagueShort(lg.name, lg.slug);
   const years = [d.season.year, ...(await pastYears(lg.slug, d))];
   const out = years.map((y) => ({ name: `${y} ${league}`, value: String(y) }));
-  if (p) for (const y of realSeasons(realLog(p))) out.push({ name: `${y} NFL (real games)`, value: `nfl-${y}` });
+  if (p) for (const y of realSeasonList(p)) out.push({ name: `${y} NFL (real games)`, value: `nfl-${y}` });
   const n = norm(q);
   return out.filter((c) => !n || norm(c.name).includes(n)).slice(0, 25);
 }
