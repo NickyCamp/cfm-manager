@@ -121,7 +121,7 @@ function gameEmbed(slug: string, d: LeagueData, g: Game, a: Team, h: Team, ids: 
     url: `${APP_URL}/l/${slug}/games/${g.id}`,
     color: hexColor(h.primary) || BRAND,
     description: lines.join("\n"),
-    image: { url: matchupImageUrl(APP_URL, slug, g.id) },
+    image: { url: matchupImageUrl(APP_URL, slug, g.id, d.pulledAt) },
     footer: { text: `${a.abbr} @ ${h.abbr} · ${d.season.year} season` },
   };
 }

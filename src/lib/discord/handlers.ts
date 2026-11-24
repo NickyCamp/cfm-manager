@@ -196,7 +196,7 @@ export async function gameLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, yea
       url: url(`/players/${p.id}?tab=log&season=${seasonKey(s)}`),
       color: hexColor(t?.primary),
       description: otherSeasons.length ? `Other seasons: ${otherSeasons.join(", ")}` : undefined,
-      image: { url: logImageUrl(base, lg.slug, p.id, seasonKey(s)) },
+      image: { url: logImageUrl(base, lg.slug, p.id, seasonKey(s), d.pulledAt) },
       footer,
     }] };
   }
@@ -221,7 +221,7 @@ export async function yearLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, url
       url: url(`/players/${p.id}?tab=log`),
       color: hexColor(t?.primary),
       description: "Use `/gamelog` for any season's games.",
-      image: { url: logImageUrl(base, lg.slug, p.id, "career") },
+      image: { url: logImageUrl(base, lg.slug, p.id, "career", d.pulledAt) },
       footer,
     }] };
   }
@@ -397,7 +397,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       return { embeds: [{
         title: fullName(p), url: url(`/players/${p.id}`), color: hexColor(t?.primary), footer,
         description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR ${DEV_LABEL[p.dev]}${flags ? ` · ${flags}` : ""}`,
-        image: { url: cardImageUrl(base, lg.slug, p.id, "both") },
+        image: { url: cardImageUrl(base, lg.slug, p.id, "both", `${d.pulledAt}|${p.nick ?? ""}`) },
       }] };
     }
     case "gamelog":
@@ -408,7 +408,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     }
     case "amnesty": {
       const p = findPlayer(d, opt(i, "player"));
-      return p ? { embeds: [amnestyEmbed(d, p, url, footer, p.team ? amnestyImageUrl(base, lg.slug, p.id) : undefined)] } : reply("No player by that name. Pick one from the list as you type.");
+      return p ? { embeds: [amnestyEmbed(d, p, url, footer, p.team ? amnestyImageUrl(base, lg.slug, p.id, d.pulledAt) : undefined)] } : reply("No player by that name. Pick one from the list as you type.");
     }
     case "contract": {
       const p = findPlayer(d, opt(i, "player"));
@@ -650,14 +650,14 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (opt(i, "by") === "teams") {
         return { embeds: [{
           title: `Team leaders: ${cat.label}`, url: url("/leaders"), color: t ? hexColor(t.primary) : BRAND, footer,
-          image: { url: statsImageUrl(base, lg.slug, cat.key, t?.id, true) },
+          image: { url: statsImageUrl(base, lg.slug, cat.key, t?.id, true, d.pulledAt) },
         }] };
       }
       // The chart picture carries the list; the text version stays as the caption-less fallback for preview.ts.
       const scope = t ? `${t.city} ${t.name}` : "League";
       return { embeds: [{
         title: `${scope} leaders: ${cat.label}`, url: url("/leaders"), color: t ? hexColor(t.primary) : BRAND, footer,
-        image: { url: statsImageUrl(base, lg.slug, cat.key, t?.id) },
+        image: { url: statsImageUrl(base, lg.slug, cat.key, t?.id, false, d.pulledAt) },
       }] };
     }
     case "standings": return { embeds: [standingsEmbed(d, url, footer)] };
@@ -1326,7 +1326,7 @@ function twsEmbed(d: LeagueData, t: Team, url: Url, footer: Footer, weekNum?: nu
       const e = ts && os ? edges(t, ts, opp, os) : [];
       if (e.length) caption.push(e.join("\n"));
     }
-    return { ...embed, url: url(`/games/${game.id}`), description: caption.join("\n"), image: { url: matchupImageUrl(pic.base, pic.slug, game.id) } };
+    return { ...embed, url: url(`/games/${game.id}`), description: caption.join("\n"), image: { url: matchupImageUrl(pic.base, pic.slug, game.id, d.pulledAt) } };
   }
   // A finished game: the box score instead of the season matchup.
   if (game.final) {

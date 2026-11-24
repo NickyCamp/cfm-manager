@@ -149,7 +149,7 @@ function Cells({ groups, t, strong }: { groups: Group[]; t: L; strong?: boolean 
 }
 
 const done = async (node: React.ReactElement, height: number) =>
-  new ImageResponse(node, { width: W, height, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=600" } });
+  new ImageResponse(node, { width: W, height, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=3600" } });
 
 const shortWeek = (w: string) => w.replace(/^Preseason Week /, "PRE ").replace(/^Week /, "WK ").replace("Conference Championship", "CONF").replace("Conference", "CONF")
   .replace("Wild Card", "WC").replace("Wildcard", "WC").replace("Divisional", "DIV").replace("Super Bowl", "SB");

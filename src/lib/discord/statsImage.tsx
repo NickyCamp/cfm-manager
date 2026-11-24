@@ -60,7 +60,7 @@ export async function renderStats(d: LeagueData, cat: StatCat, team: Team | unde
       </div>
     </div>
   );
-  return new ImageResponse(node, { width: W, height, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=600" } });
+  return new ImageResponse(node, { width: W, height, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=3600" } });
 }
 
 /** /stats by:Teams: every team ranked in one category (the team box, if given, is highlighted). */
@@ -113,5 +113,5 @@ export async function renderTeamStats(d: LeagueData, cat: StatCat, mark: Team | 
       </div>
     </div>
   );
-  return new ImageResponse(node, { width: W, height, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=600" } });
+  return new ImageResponse(node, { width: W, height, fonts: await cardFonts(), headers: { "cache-control": "public, max-age=600, s-maxage=3600" } });
 }

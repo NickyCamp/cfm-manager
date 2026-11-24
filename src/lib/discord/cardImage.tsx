@@ -348,7 +348,7 @@ export async function renderCard(p: PlayerCardProps, art?: string, cutout = fals
   p = await withLogo(p);
   return new ImageResponse(side === "both" ? cardPairNode(p, art, cutout) : cardNode(p, art, cutout), {
     ...size, fonts: await cardFonts(),
-    headers: { "cache-control": "public, max-age=3600, s-maxage=3600" },
+    headers: { "cache-control": "public, max-age=600, s-maxage=600" },
   });
 }
 
