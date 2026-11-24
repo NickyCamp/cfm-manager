@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Scores" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ season?: string; week?: string; team?: string }> };
 
 const short = (title: string) => title.replace("Preseason Week ", "P").replace("Week ", "").replace(" Playoff", "").replace("Wildcard", "WC").replace("Wild Card", "WC")
-  .replace("Divisional", "Div").replace("Conference", "Conf").replace("Super Bowl", "SB");
+  .replace("Divisional", "Div").replace("Conference", "Conf").replace(" Championship", "").replace("Super Bowl", "SB");
 
 /**
  * Scores (reworked 2026-11-16, Nick): the current week's games up top, then a table of
