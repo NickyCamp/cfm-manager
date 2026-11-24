@@ -4,6 +4,7 @@
 // Images go to the private card-art bucket.
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { forgetStorageObject } from "@/lib/storageCache";
 import { CARD_ART_BUCKET, cardArtAccess, cardArtPath, ensureCardArtBucket } from "@/lib/cardArtStore";
 import { getLeagueData } from "@/lib/league/load";
 
@@ -35,6 +36,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const { error } = await supabaseAdmin().storage.from(CARD_ART_BUCKET)
     .upload(cardArtPath(g.slug, g.id), await file.arrayBuffer(), { contentType: file.type, upsert: true, cacheControl: "60" });
   if (error) return NextResponse.json({ error: "Couldn't save the image. Try again." }, { status: 502 });
+  forgetStorageObject(CARD_ART_BUCKET, cardArtPath(g.slug, g.id));
   return NextResponse.json({ ok: true });
 }
 
@@ -42,5 +44,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   await supabaseAdmin().storage.from(CARD_ART_BUCKET).remove([cardArtPath(g.slug, g.id)]);
+  forgetStorageObject(CARD_ART_BUCKET, cardArtPath(g.slug, g.id));
   return NextResponse.json({ ok: true });
 }

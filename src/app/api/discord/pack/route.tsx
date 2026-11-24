@@ -7,8 +7,8 @@ import { cardFonts, cardNode, preloadOvrArt, withLogo, xfGems } from "@/lib/disc
 import { cardArtFor } from "@/lib/discord/cardArtLoad";
 import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore";
 import { leagueCardLayouts } from "@/lib/cardLayoutStore";
-import { cardFramePath, signedCardArt } from "@/lib/cardArtStore";
-import { cardFrameData, imageDataUrl } from "@/lib/discord/cardImage";
+import { cardArtData, cardFramePath } from "@/lib/cardArtStore";
+import { cardFrameData } from "@/lib/discord/cardImage";
 import { cardProps } from "@/lib/league/cardProps";
 
 export const runtime = "nodejs";
@@ -27,10 +27,7 @@ export async function GET(req: Request) {
   const [arts, layouts] = await Promise.all([Promise.all(players.map((p) => cardArtFor(slug, p))), leagueCardLayouts(slug)]);
   const n = players.length;
   await Promise.all([xfGems(), preloadOvrArt(players.map((p) => ({ ovr: p.ovr, pos: p.pos })))]);
-  const frameOf = (id: number) => cardFrameData(layouts.get(id), async () => {
-    const u = await signedCardArt(slug, id, 300, cardFramePath);
-    return u ? (await imageDataUrl(u)) ?? undefined : undefined;
-  });
+  const frameOf = (id: number) => cardFrameData(layouts.get(id), () => cardArtData(slug, id, cardFramePath));
   const props = await Promise.all(players.map(async (p) => withLogo({ ...cardProps(d, slug, p, d.teams.find((t) => t.id === p.team)), layout: layouts.get(p.id), frameArt: await frameOf(p.id) })));
   return new ImageResponse(
     (
