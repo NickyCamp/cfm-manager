@@ -17,7 +17,7 @@ import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { standInArt } from "@/lib/league/headshots";
-import { amnestyImageUrl, cardImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
+import { amnestyImageUrl, cardImageUrl, logImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { DISCORD_POS_GROUPS, findSortRating, groupStarters, sortRatingChoices, sortValue, type DiscordPosGroup, type PlayerSort } from "./posGroups";
@@ -165,7 +165,7 @@ function fitLines(lines: string[]) {
   return out.join("\n");
 }
 
-export async function gameLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, year: unknown, url: (path?: string) => string, footer: Embed["footer"]): Promise<Message> {
+export async function gameLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, year: unknown, url: (path?: string) => string, footer: Embed["footer"], base?: string): Promise<Message> {
   const seasons = await playerSeasons(lg.slug, d, p);
   const league = leagueShort(lg.name, lg.slug);
   const want = String(year ?? "").trim().toLowerCase();
@@ -188,6 +188,18 @@ export async function gameLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, yea
     "",
   ].filter((x, k) => x || k === 2);
   const lines = log.map((r) => `**${shortWeek(r.week)}** ${r.opp} · ${r.result}${r.simmed ? " (sim)" : ""} · ${r.line}`);
+  const otherSeasons = withGames.filter((x) => x !== s).map((x) => seasonLabel(x, league));
+  // The picture (logImage.tsx); the text version stays for tests and if there's no base URL.
+  if (base) {
+    return { embeds: [{
+      title: `${fullName(p)} · ${seasonLabel(s, league)} game log`,
+      url: url(`/players/${p.id}?tab=log&season=${seasonKey(s)}`),
+      color: hexColor(t?.primary),
+      description: otherSeasons.length ? `Other seasons: ${otherSeasons.join(", ")}` : undefined,
+      image: { url: logImageUrl(base, lg.slug, p.id, seasonKey(s)) },
+      footer,
+    }] };
+  }
   return { embeds: [{
     title: `${fullName(p)} · ${seasonLabel(s, league)} game log`,
     url: url(`/players/${p.id}?tab=log&season=${seasonKey(s)}`),
@@ -197,12 +209,22 @@ export async function gameLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, yea
   }] };
 }
 
-export async function yearLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, url: (path?: string) => string, footer: Embed["footer"]): Promise<Message> {
+export async function yearLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, url: (path?: string) => string, footer: Embed["footer"], base?: string): Promise<Message> {
   const seasons = await playerSeasons(lg.slug, d, p);
   const league = leagueShort(lg.name, lg.slug);
   const rows = seasons.map((s) => seasonRow(s, p)).filter((r): r is SeasonRow => Boolean(r));
   if (!rows.length) return reply(`${fullName(p)} has no regular-season games logged yet.`);
   const t = teamOf(d, p.team);
+  if (base) {
+    return { embeds: [{
+      title: `${fullName(p)} · stats by year`,
+      url: url(`/players/${p.id}?tab=log`),
+      color: hexColor(t?.primary),
+      description: "Use `/gamelog` for any season's games.",
+      image: { url: logImageUrl(base, lg.slug, p.id, "career") },
+      footer,
+    }] };
+  }
   const lines = rows.flatMap((r) => [
     `**${seasonLabel(r.s, league)}**${r.team ? ` · ${r.team}` : ""} · ${r.t.gp} GP${r.note ? " · _partial season_" : ""}`,
     totalsText(r.t),
@@ -382,7 +404,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
     case "yearlog": {
       const p = findPlayer(d, opt(i, "player"));
       if (!p) return reply("No player by that name. Pick one from the list as you type.");
-      return name === "gamelog" ? gameLogCmd(lg, d, p, opt(i, "year"), url, footer) : yearLogCmd(lg, d, p, url, footer);
+      return name === "gamelog" ? gameLogCmd(lg, d, p, opt(i, "year"), url, footer, base) : yearLogCmd(lg, d, p, url, footer, base);
     }
     case "amnesty": {
       const p = findPlayer(d, opt(i, "player"));

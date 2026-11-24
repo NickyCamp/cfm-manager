@@ -46,3 +46,9 @@ export function amnestyImageUrl(base: string, slug: string, playerId: number) {
   const exp = expiry(), key = `a${playerId}`;
   return `${base}/api/discord/amnesty?l=${encodeURIComponent(slug)}&p=${playerId}&e=${exp}&s=${sig(slug, key, exp)}`;
 }
+
+/** The /gamelog (season key "2027" / "nfl-2025") or /yearlog ("career") picture for one player. */
+export function logImageUrl(base: string, slug: string, playerId: number, season: string) {
+  const exp = expiry(), key = `log${playerId}-${season}`;
+  return `${base}/api/discord/log?l=${encodeURIComponent(slug)}&p=${playerId}&y=${encodeURIComponent(season)}&e=${exp}&s=${sig(slug, key, exp)}`;
+}

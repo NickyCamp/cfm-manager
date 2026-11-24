@@ -84,7 +84,7 @@ for (let season = FIRST_SEASON; season <= LAST_SEASON; season++) {
       pa: n(r.attempts), pc: n(r.completions), py: n(r.passing_yards), ptd: n(r.passing_tds), pint: n(r.passing_interceptions), psk: n(r.sacks_suffered),
       ra: n(r.carries), ry: n(r.rushing_yards), rtd: n(r.rushing_tds), rfum: n(r.rushing_fumbles_lost),
       rc: n(r.receptions), rcy: n(r.receiving_yards), rctd: n(r.receiving_tds), rcyac: n(r.receiving_yards_after_catch), tgt: n(r.targets),
-      tk: n(r.def_tackles_solo) + n(r.def_tackles_with_assist), sk: n(r.def_sacks), int: n(r.def_interceptions), ff: n(r.def_fumbles_forced),
+      tk: n(r.def_tackles_solo) + n(r.def_tackle_assists), sk: n(r.def_sacks), int: n(r.def_interceptions), ff: n(r.def_fumbles_forced),
       fr: n(r.fumble_recovery_opp), dtd: n(r.def_tds), pd: n(r.def_pass_defended), sfty: n(r.def_safeties), tfl: n(r.def_tackles_for_loss),
       fga: n(r.fg_att), fgm: n(r.fg_made), fglng: n(r.fg_long), xpa: n(r.pat_att), xpm: n(r.pat_made),
       pnt: n(r.pt_att), pnty: n(r.pt_yards), pntnet: n(r.pt_net_yards), pnt20: n(r.pt_inside_20), pntlng: n(r.pt_long),
