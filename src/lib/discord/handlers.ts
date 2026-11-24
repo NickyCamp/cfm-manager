@@ -384,8 +384,10 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       if (f.sub === "remove") return reply(await removeForce(lg, d, { game: opt(f, "game") }));
       if (f.sub === "disconnect") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: "dc", team: opt(f, "winner"), by }));
       if (f.sub === "played") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: "played", team: null, by }));
+      // /set sim (Nick, 2026-11-24): the game won't be played; a Force Sim with no activity, so both users get a miss
+      if (f.sub === "sim") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: "sim", team: null, by }));
       if (f.sub === "force") return reply(await setForce(lg, d, { game: opt(f, "game"), kind: opt(f, "result"), team: opt(f, "team"), activity: opt(f, "activity"), by }));
-      return reply("Use `/set force`, `/set disconnect`, `/set played` or `/set remove`.");
+      return reply("Use `/set force`, `/set sim`, `/set disconnect`, `/set played` or `/set remove`.");
     }
     case "gamechannels": {
       if (via !== "server") return reply("Run this in the league's own Discord server (linked with `/link`).");

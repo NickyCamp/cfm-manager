@@ -1,6 +1,7 @@
 // /set (Nick, 2026-11-19): admins force a result on a game from the game channel categories.
 //   /set force game:<game channel> result:<Force Win | Force Loss | Force Sim> [team] [activity]
 // activity (Nick, 2026-11-19): the team whose user gets credit for the game as played, not missed.
+//   /set sim game:<game channel> (Nick, 2026-11-24): shortcut for a Force Sim with no activity, so both users get a miss.
 //   /set remove game:<a forced game>
 // A forced game is stored in leagues.settings.forcedGames[year][gameId]. getLeagueData overlays it
 // (game.simmed = true, game.forced), so the site shows it as simmed, /audit games leaves it out
@@ -215,6 +216,10 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
   const f: ForcedGame = { kind, team: team?.id, ...(acts.length ? { activity: acts.length === 1 ? acts[0].id : acts.map((t) => t.id) } : {}), by: a.by, at: new Date().toISOString() };
   const label = describeForce(d, f);
   const prev = forcedFor(lg.settings, d.season.year)[String(g.id)];
+  // Force Sim with no activity pick (/set sim, Nick 2026-11-24): the game isn't played, both users get a miss
+  const userTeams = [away, home].filter((t) => t.user);
+  const missWho = userTeams.length ? userTeams.map((t) => `**${t.user}** (${t.abbr})`).join(" and ") : "both users";
+  const missLine = kind === "sim" && !acts.length ? ` Activity: a miss for ${missWho.replace(/\*\*/g, "")}.` : "";
   await saveForced(lg, d.season.year, g.id, f);
 
   let note = " This game has no open channel (not made yet, or closed after its box score).";
@@ -223,12 +228,13 @@ export async function setForce(lg: LinkedLeague, d: LeagueData, a: { game: unkno
     const name = channelNameFor(away, home, f);
     note = renameNote(await rename(ch, name), ch, name);
     if (!prev || prev.kind !== f.kind || prev.team !== f.team || JSON.stringify(prev.activity) !== JSON.stringify(f.activity)) {
-      const actLine = acts.length ? ` For activity it counts as a game played for ${acts.map((t) => `**${t.city} ${t.name}**${t.user ? ` (${t.user})` : ""}`).join(" and ")}.` : "";
+      const actLine = acts.length ? ` For activity it counts as a game played for ${acts.map((t) => `**${t.city} ${t.name}**${t.user ? ` (${t.user})` : ""}`).join(" and ")}.`
+        : kind === "sim" ? ` It won't be played: for activity it's a miss for ${missWho}.` : "";
       await dc("POST", `/channels/${ch}/messages`, { content: `⚖️ An admin set **${label}** on this game. It's marked simmed on the site, so it doesn't count for bets (stakes come back) or audits.${actLine}`, allowed_mentions: { parse: [] } });
     }
   }
   await settleNow(lg);
-  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${acts.length ? ` Activity: a game played for ${acts.map((t) => `${t.abbr}${t.user ? ` (${t.user})` : ""}`).join(" and ")}.` : ""}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
+  return `**${label}** set on ${d.season.year} ${weekTitle(d, g.stage, g.week)}: ${away.abbr} @ ${home.abbr}. It's marked simmed on the site: its bets are voided (stakes back) and /audit leaves it out.${acts.length ? ` Activity: a game played for ${acts.map((t) => `${t.abbr}${t.user ? ` (${t.user})` : ""}`).join(" and ")}.` : missLine}${note}${await activityAfterForce(lg.slug, g.id)} Undo with \`/set remove\`.`;
 }
 
 /** /set disconnect: both users get a game played; the result stands as EA reports it. Replaces a force on the game.
