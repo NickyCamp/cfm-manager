@@ -1,11 +1,12 @@
 // Loads a league's row and its data file for the league pages.
 // The data file lives in public storage (league-data/<slug>/data.json.gz) and
-// is cached in memory for a minute per server instance.
+// is kept in memory and re-checked at most once a minute (storageCache.ts).
 
 import { fixLineTeams } from "./lineTeams";
 import { cache } from "react";
 import { gunzipSync } from "node:zlib";
 import fs from "node:fs";
+import { storageObject } from "@/lib/storageCache";
 import { supabaseAdmin, supabaseUser } from "@/lib/supabase/server";
 import type { LeagueData } from "./types";
 import { findAbility } from "./abilities";
@@ -45,10 +46,11 @@ async function fetchJson<T>(slug: string, file: string): Promise<T | null> {
     const f = `${local}/${slug}${file === "data" ? "" : `.${file}`}.json`;
     return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null;
   }
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/league-data/${encodeURIComponent(slug)}/${file}.json.gz`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return null;
-  const buf = Buffer.from(await res.arrayBuffer());
+  // Kept in memory and re-checked once a minute with If-Modified-Since (storageCache.ts), so an
+  // unchanged file isn't downloaded again: these re-downloads used up Supabase's free egress.
+  const obj = await storageObject("league-data", `${slug}/${file}.json.gz`, { public: true });
+  if (!obj) return null;
+  const buf = obj.buf;
   // Storage may already have undone the gzip on the way out; handle both.
   const text = buf[0] === 0x1f && buf[1] === 0x8b ? gunzipSync(buf).toString("utf8") : buf.toString("utf8");
   return JSON.parse(text) as T;

@@ -5,6 +5,7 @@
 // Stored next to the art in the private card-art bucket; the card's layout gets customFrame on/off.
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { forgetStorageObject } from "@/lib/storageCache";
 import { CARD_ART_BUCKET, cardArtAccess, cardFramePath, ensureCardArtBucket } from "@/lib/cardArtStore";
 import { cardLayout, saveCardLayout } from "@/lib/cardLayoutStore";
 import { DEFAULT_LAYOUT } from "@/lib/league/cardLayout";
@@ -45,6 +46,7 @@ export async function POST(req: Request, ctx: Ctx) {
     console.error("save card layout", g.slug, g.id, e);
     return NextResponse.json({ error: "The border was uploaded but the card couldn't be updated. Try again." }, { status: 502 });
   }
+  forgetStorageObject(CARD_ART_BUCKET, cardFramePath(g.slug, g.id));
   return NextResponse.json({ ok: true });
 }
 
@@ -59,5 +61,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     console.error("save card layout", g.slug, g.id, e);
     return NextResponse.json({ error: "Couldn't update the card. Try again." }, { status: 502 });
   }
+  forgetStorageObject(CARD_ART_BUCKET, cardFramePath(g.slug, g.id));
   return NextResponse.json({ ok: true });
 }

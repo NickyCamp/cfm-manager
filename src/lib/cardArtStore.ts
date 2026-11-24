@@ -1,13 +1,14 @@
 // Card art uploaded by league members. Kept in a PRIVATE Supabase Storage bucket
 // because photos of real players are usually someone else's copyrighted work:
 // they're only ever shown to signed-in members of that league, through
-// short-lived signed URLs. Object path: <league slug>/<player id>.jpg
+// signed links to our own image route (cardArtLink). Object path: <league slug>/<player id>.jpg
 import { currentUser, supabaseAdmin } from "@/lib/supabase/server";
 import { getLeagueData } from "@/lib/league/load";
 import { isMaddenAdmin } from "@/lib/marketStore";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { storageObject } from "@/lib/storageCache";
 
 export const CARD_ART_BUCKET = "card-art";
-const URL_TTL_SECONDS = 60 * 60;
 
 let bucketReady: Promise<void> | null = null;
 /** Creates the private bucket the first time it's needed. */
@@ -85,12 +86,54 @@ export async function cardArtAccess(slug: string, playerTeamId: number | undefin
   return { canEdit: false, why: notYours };
 }
 
-/** Signed URL for a player's uploaded art, or undefined if there is none. Call only for members. */
-export async function signedCardArt(slug: string, playerId: number, ttlSeconds = URL_TTL_SECONDS, path = cardArtPath): Promise<string | undefined> {
+// Pages show uploaded art through our own route (/api/leagues/<slug>/card-art/<id>/img), not
+// Supabase signed URLs (2026-11-24): a signed URL changed on every page view, so browsers never kept
+// the image and every view downloaded it from Supabase again. The route's links are signed with
+// EA_TOKEN_KEY and stay the same for a day, so browsers keep the image; the route keeps the file in
+// memory (storageCache.ts), so Supabase is only asked whether it changed, about once a minute.
+const DAY = 86400;
+function artSig(slug: string, playerId: number, frame: boolean, exp: number) {
+  const k = process.env.EA_TOKEN_KEY?.trim();
+  if (!k) throw new Error("EA_TOKEN_KEY is not set.");
+  return createHmac("sha256", `card-art:${k}`).update(`${slug}/${playerId}/${frame ? "f" : "a"}/${exp}`).digest("base64url").slice(0, 22);
+}
+
+/** Link to a player's uploaded art (or custom border) for the site. Works for a day or two; the same all day. */
+export function cardArtLink(slug: string, playerId: number, frame = false) {
+  const exp = (Math.floor(Date.now() / 1000 / DAY) + 2) * DAY;
+  return `/api/leagues/${encodeURIComponent(slug)}/card-art/${playerId}/img?${frame ? "f=1&" : ""}e=${exp}&s=${artSig(slug, playerId, frame, exp)}`;
+}
+
+export function checkCardArtLink(slug: string, playerId: number, frame: boolean, exp: number, s: string) {
+  if (!slug || !(playerId > 0) || !exp || exp * 1000 < Date.now()) return false;
+  const want = Buffer.from(artSig(slug, playerId, frame, exp)), got = Buffer.from(s || "");
+  return want.length === got.length && timingSafeEqual(want, got);
+}
+
+/** The uploaded art (or border) file itself, from memory when checked in the last minute. */
+export function cardArtFile(slug: string, playerId: number, path = cardArtPath) {
+  return storageObject(CARD_ART_BUCKET, path(slug, playerId));
+}
+
+/** Uploaded art as a data URL for the Discord card images (PNG/JPEG only), or undefined if there is none. */
+export async function cardArtData(slug: string, playerId: number, path = cardArtPath): Promise<string | undefined> {
+  try {
+    const f = await cardArtFile(slug, playerId, path);
+    if (!f || !/^image\/(png|jpeg)$/.test(f.type)) return undefined;
+    return `data:${f.type};base64,${f.buf.toString("base64")}`;
+  } catch (e) {
+    console.error("card art data", slug, playerId, e);
+    return undefined;
+  }
+}
+
+/** Link to a player's uploaded art for the site, or undefined if there is none. Call only for members. */
+export async function signedCardArt(slug: string, playerId: number, path = cardArtPath): Promise<string | undefined> {
   try {
     await ensureCardArtBucket();
-    const { data } = await supabaseAdmin().storage.from(CARD_ART_BUCKET).createSignedUrl(path(slug, playerId), ttlSeconds);
-    return data?.signedUrl;
+    // Signing only checks the file exists (no download); the page gets our own link.
+    const { data } = await supabaseAdmin().storage.from(CARD_ART_BUCKET).createSignedUrl(path(slug, playerId), 60);
+    return data?.signedUrl ? cardArtLink(slug, playerId, path === cardFramePath) : undefined;
   } catch (e) {
     console.error("card art url", slug, playerId, e);
     return undefined;
@@ -98,11 +141,11 @@ export async function signedCardArt(slug: string, playerId: number, ttlSeconds =
 }
 
 /**
- * Signed URLs for whichever of these players have uploaded art (members only).
+ * Links for whichever of these players have uploaded art (members only).
  * Signs each player's path directly rather than listing the folder: the old
  * folder listing failed silently on the live site, so team pages showed
  * headshots even where art had been uploaded. Paths with no file come back
- * without a URL and are skipped.
+ * without a URL and are skipped. Signing is only the existence check.
  */
 export async function signedCardArtFor(slug: string, playerIds: number[], path = cardArtPath): Promise<Map<number, string>> {
   const out = new Map<number, string>();
@@ -113,9 +156,9 @@ export async function signedCardArtFor(slug: string, playerIds: number[], path =
     const store = supabaseAdmin().storage.from(CARD_ART_BUCKET);
     for (let i = 0; i < ids.length; i += 100) {
       const chunk = ids.slice(i, i + 100);
-      const { data, error } = await store.createSignedUrls(chunk.map((id) => path(slug, id)), URL_TTL_SECONDS);
+      const { data, error } = await store.createSignedUrls(chunk.map((id) => path(slug, id)), 60);
       if (error) { console.error("card art urls", slug, error.message); continue; }
-      (data || []).forEach((r, k) => { if (r.signedUrl && !r.error) out.set(chunk[k], r.signedUrl); });
+      (data || []).forEach((r, k) => { if (r.signedUrl && !r.error) out.set(chunk[k], cardArtLink(slug, chunk[k], path === cardFramePath)); });
     }
   } catch (e) {
     console.error("card art urls", slug, e);

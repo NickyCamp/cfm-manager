@@ -64,7 +64,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   const onBlock = Boolean(p.team && !p.gone && (p.block || manualBlock));
   const [uploaded, layout] = await Promise.all([viewer ? signedCardArt(slug, p.id) : Promise.resolve(undefined), cardLayout(slug, p.id)]);
   // An uploaded custom border follows the same visibility as uploaded art (signed in).
-  const frameArt = viewer && layout?.customFrame ? await signedCardArt(slug, p.id, undefined, cardFramePath) : undefined;
+  const frameArt = viewer && layout?.customFrame ? await signedCardArt(slug, p.id, cardFramePath) : undefined;
   const art = uploaded ?? (viewer ? standInArt(p) : undefined);
 
   return (

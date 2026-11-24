@@ -34,6 +34,8 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+// Skipped: API callers with no session (agents, Discord) and card art images, so a team page's
+// dozens of images don't each ask Supabase who's signed in.
 export const config = {
-  matcher: ["/((?!api/mcp|api/v1/|_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js|.*\\.(?:png|svg|jpg|ico)$).*)"],
+  matcher: ["/((?!api/mcp|api/v1/|api/discord/|api/leagues/[^/]+/card-art/[^/]+/img|_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js|.*\\.(?:png|svg|jpg|ico)$).*)"],
 };
