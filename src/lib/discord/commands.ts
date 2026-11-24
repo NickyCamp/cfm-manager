@@ -91,7 +91,7 @@ const PLAIN = [
   // /gamelog + /yearlog (Nick, 2026-11-24): the player page's Stats tab in Discord.
   {
     name: "gamelog",
-    description: "A player's game-by-game log for a season (league seasons, or real NFL seasons from 2025)",
+    description: "A player's game-by-game log for a season (league seasons, or his real 2025 NFL season)",
     ...ANYWHERE,
     options: [player, { type: STRING, name: "year", description: "Season (pick after the player; default: his latest)", required: false, autocomplete: true }],
   },

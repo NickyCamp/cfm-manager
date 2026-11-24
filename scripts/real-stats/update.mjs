@@ -2,7 +2,9 @@
 // life years like 2025 onward for the existing players that played in those years").
 // Source: nflverse (https://github.com/nflverse/nflverse-data): weekly player stats, the players
 // file (names, birth dates for matching, see realStats.ts) and the schedule (scores).
-// Run: node scripts/real-stats/update.mjs   (a weekly GitHub Action runs it during the season)
+// Run: node scripts/real-stats/update.mjs
+// Real seasons stop at 2025 (Nick, 2026-11-24): NCL's league cycle starts in 2026, so real 2026 games
+// would overlap the league's own 2026 season. 2025 is final, so there's no scheduled refresh.
 //
 // Writes src/lib/league/real-stats.json:
 //   updated  - ISO time
@@ -15,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { normName } from "../headshots/norm.mjs";
 
 const FIRST_SEASON = 2025;
+const LAST_SEASON = 2025;
 const REL = "https://github.com/nflverse/nflverse-data/releases/download";
 const OUT = fileURLToPath(new URL("../../src/lib/league/real-stats.json", import.meta.url));
 
@@ -54,7 +57,7 @@ if (!sched.length) throw new Error("nflverse schedule: no rows");
 const games = [];
 const gameIdx = new Map();
 for (const g of sched) {
-  if (n(g.season) < FIRST_SEASON || g.away_score === "" || g.away_score === "NA") continue;
+  if (n(g.season) < FIRST_SEASON || n(g.season) > LAST_SEASON || g.away_score === "" || g.away_score === "NA") continue;
   gameIdx.set(g.game_id, games.length);
   games.push([g.game_id, n(g.season), n(g.week), g.game_type === "REG" ? "R" : "P", g.away_team, n(g.away_score), g.home_team, n(g.home_score)]);
 }
@@ -62,7 +65,7 @@ for (const g of sched) {
 // ---------- weekly stats ----------
 const logs = {};
 let rowsKept = 0;
-for (let season = FIRST_SEASON; season <= new Date().getUTCFullYear(); season++) {
+for (let season = FIRST_SEASON; season <= LAST_SEASON; season++) {
   const text = await get(`${REL}/stats_player/stats_player_week_${season}.csv.gz`, true);
   if (!text) { console.log(`${season}: no weekly stats yet`); continue; }
   const rows = parseCsv(text);

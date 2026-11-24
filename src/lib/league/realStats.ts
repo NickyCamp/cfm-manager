@@ -17,7 +17,7 @@ const match = rowMatcher(file.players);
 
 export const realStatsUpdated = file.updated;
 
-/** Every real NFL game the player has a line in (2025 on), oldest first; [] if he isn't a real player. */
+/** Every real NFL game the player has a line in (2025), oldest first; [] if he isn't a real player. */
 export function realLog(p: Player): RealEntry[] {
   if (p.archived) return [];
   const r = match(p);
