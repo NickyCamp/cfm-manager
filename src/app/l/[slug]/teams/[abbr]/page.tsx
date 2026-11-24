@@ -5,7 +5,7 @@ import { getLeagueData } from "@/lib/league/load";
 import {
   indexes, inferredDeadCap, passerRating, record, rosterGroups, seasonTotals, streakText, teamCapProjection, teamPlayers, teamSchedule, weekTitle,
 } from "@/lib/league/derive";
-import { CAP_GROWTH_PER_YEAR } from "@/lib/league/cap";
+import { CAP_GROWTH_PER_YEAR, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
@@ -323,18 +323,19 @@ function CapTab({ d, team, roster, slug, view, base, sort: sortParam, dir: dirPa
 }
 
 // Players in the last year of their deal, with what they'll likely ask for next.
-// "Projected ask" is the same market-based recommendation as the Contract tool;
+// "Projected ask" is the same extension-based recommendation as the Contract tool;
 // "Madden's ask" is the game's own number when the export has it (often only near the end of a deal).
 function ExpiringContracts({ d, team, expiring, slug }: { d: LeagueData; team: Team; expiring: Player[]; slug: string }) {
   const market: MarketPlayer[] = d.players.filter((x) => !x.gone).map((x) => ({
-    id: x.id, n: `${x.first} ${x.last}`, pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
+    id: x.id, n: `${x.first} ${x.last}`, pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro, dev: x.dev,
     c: [x.contract.length, x.contract.yearsLeft, x.contract.salary, x.contract.bonus, x.contract.capHit],
   }));
   const byId = new Map(market.map((m) => [m.id, m]));
   const rows = expiring
     .map((p) => {
-      const r = recommend(byId.get(p.id)!, market);
-      return { p, r, hits: r ? askCapHits(r, (d.season.capYear ?? d.season.year) + p.contract.yearsLeft) : [] };
+      const start = (d.season.capYear ?? d.season.year) + p.contract.yearsLeft;
+      const r = recommend(byId.get(p.id)!, market, d.askCal, projectedLeagueCap(leagueCap(d.teams), d.season.capYear ?? d.season.year, start, d.knownCaps));
+      return { p, r, hits: r ? askCapHits(r, start) : [] };
     })
     .sort((a, b) => (b.r?.apy ?? 0) - (a.r?.apy ?? 0) || b.p.ovr - a.p.ovr);
   const capYear = d.season.capYear ?? d.season.year;

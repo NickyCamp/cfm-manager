@@ -9,7 +9,8 @@ import fs from "node:fs";
 import { supabaseAdmin, supabaseUser } from "@/lib/supabase/server";
 import type { LeagueData } from "./types";
 import { findAbility } from "./abilities";
-import { KNOWN_LEAGUE_CAPS } from "./cap";
+import { KNOWN_LEAGUE_CAPS, leagueCap, projectedLeagueCap, CAP_GROWTH_PER_YEAR } from "./cap";
+import { askCalibration, loggedExtensions } from "./recommend";
 import { attachRestructures, type LeagueHistory } from "./history";
 import type { SeasonArchive } from "./seasons";
 import { pastSeasonData, type SeasonStats } from "./seasonStats";
@@ -134,6 +135,12 @@ export const getLeagueData = cache(async (slug: string): Promise<LeagueData | nu
       if (lt.fixed || lt.unresolved) data.lineTeamFix = lt;
       const known = Object.fromEntries(Object.entries(KNOWN_LEAGUE_CAPS[slug] || {}).filter(([y]) => Number(y) > (data.season.capYear ?? data.season.year)));
       if (Object.keys(known).length) data.knownCaps = known;
+      // Contract asks follow what this league's players were actually extended at (recommend.ts, 2026-11-24).
+      try {
+        const cy = data.season.capYear ?? data.season.year, base = leagueCap(data.teams);
+        const capAt = (y: number) => (y >= cy ? projectedLeagueCap(base, cy, y, data.knownCaps) : base - CAP_GROWTH_PER_YEAR * (cy - y));
+        data.askCal = askCalibration(loggedExtensions(hist?.events), capAt);
+      } catch (e) { console.error("ask calibration failed", slug, e); }
       const { awards, forced, simSeen } = await leagueOverlays(slug, data.season.year);
       if (awards) data.awardResults = awards;
       // played vs simmed EA said live for games the data file has as unknown (simSeen.ts)

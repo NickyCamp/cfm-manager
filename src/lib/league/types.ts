@@ -142,6 +142,8 @@ export type LeagueData = {
   admins?: { user: string; team: string; level: "owner" | "admin" }[];
   /** Coming seasons' league caps Madden has already set (added on load, see KNOWN_LEAGUE_CAPS). */
   knownCaps?: Record<number, number>;
+  /** The league's logged extensions and how far they sit from the contract-ask model (recommend.ts); added on load. */
+  askCal?: AskCalibration;
   /** Madden's award winners for this season, entered by a commissioner (Admin page): market key →
    *  player id (team id for award-coy). Added on load from leagues.settings.awards[year]. */
   awardResults?: Record<string, string>;
@@ -159,3 +161,17 @@ export type LeagueData = {
 };
 
 export const DEV_LABEL = ["Normal", "Star", "Superstar", "X-Factor"] as const;
+
+/** One in-game extension/re-signing from the transaction log, new money only (recommend.ts loggedExtensions). */
+export type LoggedExtension = {
+  id: number; n: string; pos: string; t: number; age: number; ovr: number; dev: number;
+  len: number; apy: number; bs: number; year: number; when: string;
+};
+/** A league's adjustment to the contract-ask model from its own extensions (recommend.ts askCalibration). */
+export type AskCalibration = {
+  n: number;                       // extensions behind it
+  overall: number;                 // log multiplier, shrunk toward 0 while n is small
+  groups: Record<string, number>;  // extra log multiplier per position group, shrunk the same way
+  bonusShare: number;              // median bonus share of the league's extensions (0.47 with fewer than 6)
+  exts: LoggedExtension[];         // newest first (for "recent extensions" comps)
+};

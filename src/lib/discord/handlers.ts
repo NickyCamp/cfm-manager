@@ -13,6 +13,7 @@ import {
 } from "@/lib/league/derive";
 import { money } from "@/lib/league/format";
 import { projectPlayer } from "@/lib/league/projection";
+import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { standInArt } from "@/lib/league/headshots";
@@ -928,10 +929,11 @@ function playerEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed 
 function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed {
   const market = marketOf(d);
   const me = market.find((m) => m.id === p.id)!;
-  const r = recommend(me, market);
+  const r = recommend(me, market, d.askCal, askCapFor(d, capSeason(d) + p.contract.yearsLeft));
   const t = teamOf(d, p.team);
   const embed: Embed = { title: `${fullName(p)}: next contract`, url: url(`/contracts?player=${p.id}`), color: hexColor(t?.primary), footer };
-  if (!r) return { ...embed, description: `Not enough signed ${p.pos}s near ${p.ovr} OVR to price a deal.` };
+  if (!r) return { ...embed, description: `No contract model for ${p.pos}.` };
+  const comps = r.comps.map((x) => `${x.n} (${x.ovr}, age ${x.age}) ${x.len} yr${x.len === 1 ? "" : "s"}, ${money(x.apy)}/yr`).join("\n");
   const peers = r.peers.slice(0, 4).map((m) => `${m.n} (${m.ovr}, age ${m.age}) ${money((m.c[2] + m.c[3]) / m.c[0])}/yr`).join("\n");
   return {
     ...embed,
@@ -939,7 +941,8 @@ function contractEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embe
     fields: [
       { name: "Likely ask", value: `**${r.length} yrs, ${money(r.total)}**\n${money(r.apy)}/yr · ${money(r.bonus)} bonus`, inline: true },
       ...(p.desired?.salary ? [{ name: "Madden's in-game ask", value: `${p.desired.length} yrs, ${money(p.desired.salary + p.desired.bonus)}`, inline: true }] : []),
-      { name: `Market (${r.tierLabel})`, value: peers + (r.keepsOwn ? "\n-# He won't take less per year than his current deal." : "") },
+      ...(comps ? [{ name: "Recent extensions like his", value: comps }] : []),
+      ...(peers ? [{ name: "Current deals at his level", value: peers }] : []),
     ],
   };
 }
@@ -1185,20 +1188,23 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url:
   };
 }
 
+/** League cap for the season a new deal starts (contract asks scale with it). */
+const askCapFor = (d: LeagueData, year: number) => projectedLeagueCap(leagueCap(d.teams), capSeason(d), year, d.knownCaps);
+
 const marketOf = (d: LeagueData): MarketPlayer[] => d.players.filter((x) => !x.gone).map((x) => ({
-  id: x.id, n: fullName(x), pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro,
+  id: x.id, n: fullName(x), pos: x.pos, t: x.team, age: x.age, ovr: x.ovr, ps: x.ps, yp: x.yearsPro, dev: x.dev,
   c: [x.contract.length, x.contract.yearsLeft, x.contract.salary, x.contract.bonus, x.contract.capHit],
 }));
 
 /** /expiring team: the team's 10 best players (by OVR) in the last year of their deal, with the projected ask
- *  (same market recommendation as /contract and the Contract tool) and Madden's in-game ask when exported. */
+ *  (same extension-based recommendation as /contract and the Contract tool) and Madden's in-game ask when exported. */
 function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   const all = d.players.filter((p) => p.team === t.id && !p.gone && !p.ps && p.contract.yearsLeft <= 1);
   const top = [...all].sort((a, b) => b.ovr - a.ovr || b.contract.capHit - a.contract.capHit).slice(0, 10);
   const market = marketOf(d);
   const byId = new Map(market.map((m) => [m.id, m]));
   const lines = top.map((p, k) => {
-    const r = recommend(byId.get(p.id)!, market);
+    const r = recommend(byId.get(p.id)!, market, d.askCal, askCapFor(d, capSeason(d) + p.contract.yearsLeft));
     const head = `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}** · age ${p.age}${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · now ${money(p.contract.capHit)}`;
     const ds = p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0
       ? ` · Madden: ${money((p.desired.salary + p.desired.bonus) / p.desired.length)}/yr, ${p.desired.length} yrs` : "";

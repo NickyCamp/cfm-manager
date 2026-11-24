@@ -48,7 +48,7 @@ export default async function ContractsPage({ params, searchParams }: Props) {
       <div className="wrap">
         <h2>Contract tool</h2>
         <p className="muted" style={{ maxWidth: "68ch" }}>Look up any player&apos;s deal year by year, build an offer, and see what it does to a team&apos;s cap.</p>
-        <ContractTool slug={slug} year={year} years={years} leagueCaps={years.map((y) => projectedLeagueCap(baseCap, year, y, d.knownCaps))} capSet={years.map((y) => isCapSet(year, y, d.knownCaps))} players={players} teams={teams} initialPlayer={player ? Number(player) : null} />
+        <ContractTool slug={slug} year={year} years={years} leagueCaps={years.map((y) => projectedLeagueCap(baseCap, year, y, d.knownCaps))} capSet={years.map((y) => isCapSet(year, y, d.knownCaps))} players={players} teams={teams} initialPlayer={player ? Number(player) : null} askCal={d.askCal ?? null} />
       </div>
     </main>
   );
