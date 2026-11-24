@@ -31,7 +31,7 @@ const STATS_BY = { type: STRING, name: "by", description: "Players (top 10, defa
 // /league's "more" box: the commands that don't have a box of their own (they read the player/team/week/year boxes).
 export const LEAGUE_MORE: [string, string][] = [
   ["standings", "Standings"], ["playoffs", "Playoff picture"], ["scores", "Scores (week box)"], ["schedule", "Schedule (team or week box)"], ["cap", "League cap space (year box)"],
-  ["rookie", "Top rookies (team box)"], ["expiring", "Expiring contracts (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
+  ["gamelog", "Game log (player box, year box)"], ["yearlog", "Stats by year (player box)"], ["rookie", "Top rookies (team box)"], ["expiring", "Expiring contracts (team box)"], ["funfact", "Fun fact (player or team box)"], ["pack", "Open a pack"],
   ["packs", "Pack leaderboard"], ["sync", "Sync now (pull from EA)"], ["info", "League info and links"],
 ];
 
@@ -88,6 +88,14 @@ const PLAIN = [
   },
   { name: "player", description: "A player's ratings, contract and cap hit by year", ...ANYWHERE, options: [player] },
   { name: "contract", description: "What a player will likely ask for on his next deal", ...ANYWHERE, options: [player] },
+  // /gamelog + /yearlog (Nick, 2026-11-24): the player page's Stats tab in Discord.
+  {
+    name: "gamelog",
+    description: "A player's game-by-game log for a season (league seasons, or real NFL seasons from 2025)",
+    ...ANYWHERE,
+    options: [player, { type: STRING, name: "year", description: "Season (pick after the player; default: his latest)", required: false, autocomplete: true }],
+  },
+  { name: "yearlog", description: "A player's stats year by year: every league season, then real NFL seasons", ...ANYWHERE, options: [player] },
   // /amnesty (Nick, 2026-11-20): his full contract, then the new contract that makes a cut cost exactly 50%.
   { name: "amnesty", description: "50% amnesty: a player's contract and the rebuilt deal: 50% in 1 season, or 25% + 25% over 2", ...ANYWHERE, options: [player] },
   {
@@ -196,7 +204,7 @@ export const COMMANDS = [
       { ...STATS_BY, description: "For stats: Players (top 10, default) or Teams (every team ranked by its total)" },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: INTEGER, name: "preseason", description: "For tws: a preseason week (1-4) instead of a regular-season week", required: false, min_value: 1, max_value: 4 },
-      { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028; for rookies: draft class year", required: false, min_value: 2000, max_value: 2100 },
+      { type: INTEGER, name: "year", description: "For cap: season, e.g. 2028; rookies: draft class; game log: season", required: false, min_value: 2000, max_value: 2100 },
     ],
   },
 

@@ -1,7 +1,9 @@
 // What each slash command answers. Everything reads the same league data file
 // and helpers the website uses, so the bot and the site always agree.
 import { getLeagueDataWithNicknames as getLeagueData } from "@/lib/nicknameStore";
-import { getLeagueHistory } from "@/lib/league/load";
+import { getLeagueHistory, pastYears } from "@/lib/league/load";
+import { leagueShort, playerSeasons, seasonKey, seasonLabel, seasonLog, seasonRow, seasonsWithGames, totalsText, type SeasonRow } from "@/lib/league/playerSeasons";
+import { realLog, realSeasons } from "@/lib/league/realStats";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
 import {
@@ -134,13 +136,93 @@ function findTeam(d: LeagueData, value: unknown): Team | undefined {
 const teamOf = (d: LeagueData, id: number) => d.teams.find((t) => t.id === id);
 const teamLabel = (t: Team | undefined) => (t ? `${t.city} ${t.name}` : "Free agent");
 
+// ---------- /gamelog, /yearlog (Nick, 2026-11-24) ----------
+
+/** The year box: this league's seasons (current + kept past ones), then his real NFL seasons. Cheap: no stat files. */
+async function gamelogYears(lg: LinkedLeague, d: LeagueData, player: unknown, q: string) {
+  const p = player ? findPlayer(d, player) : undefined;
+  const league = leagueShort(lg.name, lg.slug);
+  const years = [d.season.year, ...(await pastYears(lg.slug, d))];
+  const out = years.map((y) => ({ name: `${y} ${league}`, value: String(y) }));
+  if (p) for (const y of realSeasons(realLog(p))) out.push({ name: `${y} NFL (real games)`, value: `nfl-${y}` });
+  const n = norm(q);
+  return out.filter((c) => !n || norm(c.name).includes(n)).slice(0, 25);
+}
+
+const shortWeek = (w: string) => w.replace(/^Preseason Week /, "Pre ").replace(/^Week /, "Wk ").replace("Conference Championship", "Conf").replace("Conference", "Conf");
+const MAX_DESC = 3900;
+
+/** Fits lines into an embed description, noting how many were left off. */
+function fitLines(lines: string[]) {
+  const out: string[] = [];
+  let len = 0;
+  for (const [k, l] of lines.entries()) {
+    if (len + l.length + 1 > MAX_DESC) { out.push(`…and ${lines.length - k} more on the site`); break; }
+    out.push(l);
+    len += l.length + 1;
+  }
+  return out.join("\n");
+}
+
+export async function gameLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, year: unknown, url: (path?: string) => string, footer: Embed["footer"]): Promise<Message> {
+  const seasons = await playerSeasons(lg.slug, d, p);
+  const league = leagueShort(lg.name, lg.slug);
+  const want = String(year ?? "").trim().toLowerCase();
+  const withGames = seasonsWithGames(seasons, p);
+  // A typed or /league year: a league season with that year first, else his real NFL season.
+  const s = want
+    ? seasons.find((x) => seasonKey(x) === want) ?? seasons.find((x) => seasonKey(x) === `nfl-${want.replace(/\D/g, "")}`)
+      ?? seasons.find((x) => String(x.year) === want.replace(/\D/g, ""))
+    : withGames[0];
+  const t = teamOf(d, p.team);
+  const others = withGames.map((x) => seasonLabel(x, league)).join(", ");
+  if (!s || !withGames.includes(s)) {
+    return reply(`${fullName(p)} has no games logged${want ? ` in ${want.startsWith("nfl-") ? `${want.slice(4)} NFL` : want}` : ""}.${others ? ` Seasons with games: ${others}.` : ""}`);
+  }
+  const log = seasonLog(s, p);
+  const row = seasonRow(s, p);
+  const head = [
+    row ? `**Regular season:** ${row.t.gp} GP${row.team ? ` (${row.team})` : ""} · ${totalsText(row.t)}` : "",
+    s.kind === "nfl" ? "_Real NFL games (nflverse)._" : s.d.partialStats ? `_${s.d.partialStats}_` : "",
+    "",
+  ].filter((x, k) => x || k === 2);
+  const lines = log.map((r) => `**${shortWeek(r.week)}** ${r.opp} · ${r.result}${r.simmed ? " (sim)" : ""} · ${r.line}`);
+  return { embeds: [{
+    title: `${fullName(p)} · ${seasonLabel(s, league)} game log`,
+    url: url(`/players/${p.id}?tab=log&season=${seasonKey(s)}`),
+    color: hexColor(t?.primary),
+    description: fitLines([...head, ...lines]),
+    footer: { text: `${footer?.text ?? ""}${withGames.length > 1 ? ` · other seasons: ${withGames.filter((x) => x !== s).map((x) => seasonLabel(x, league)).join(", ")}` : ""}`.slice(0, 2000) },
+  }] };
+}
+
+export async function yearLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, url: (path?: string) => string, footer: Embed["footer"]): Promise<Message> {
+  const seasons = await playerSeasons(lg.slug, d, p);
+  const league = leagueShort(lg.name, lg.slug);
+  const rows = seasons.map((s) => seasonRow(s, p)).filter((r): r is SeasonRow => Boolean(r));
+  if (!rows.length) return reply(`${fullName(p)} has no regular-season games logged yet.`);
+  const t = teamOf(d, p.team);
+  const lines = rows.flatMap((r) => [
+    `**${seasonLabel(r.s, league)}**${r.team ? ` · ${r.team}` : ""} · ${r.t.gp} GP${r.note ? " · _partial season_" : ""}`,
+    totalsText(r.t),
+    "",
+  ]);
+  return { embeds: [{
+    title: `${fullName(p)} · stats by year`,
+    url: url(`/players/${p.id}?tab=log`),
+    color: hexColor(t?.primary),
+    description: fitLines([`_Regular season. ${league} seasons first, then real NFL seasons. \`/gamelog\` for any season's games._`, "", ...lines]),
+    footer,
+  }] };
+}
+
 // ---------- /league: the same commands for any league you're in ----------
 
-const LEAGUE_PICK_CMDS = new Set(["player", "contract", "cap", "team", "players", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "schedule", "pack", "packs", "sync", "info"]);
+const LEAGUE_PICK_CMDS = new Set(["player", "gamelog", "yearlog", "contract", "cap", "team", "players", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "schedule", "pack", "packs", "sync", "info"]);
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week", "preseason"], stats: ["team", "by"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"] };
+const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week", "preseason"], stats: ["team", "by"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"], gamelog: ["player", "year"], yearlog: ["player"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -214,6 +296,7 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
   const focused = i.data?.options?.find((o) => o.focused);
   const q = String(focused?.value ?? "");
   if (i.data?.name === "set") return setChoices(lg, d, (i as { sub?: string }).sub, focused?.name || "", q, opt(i, "game"));
+  if (focused?.name === "year" && i.data?.name === "gamelog") return gamelogYears(lg, d, opt(i, "player"), q);
   if (focused?.name === "team") {
     const n = norm(q);
     return [...d.teams]
@@ -293,6 +376,12 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR ${DEV_LABEL[p.dev]}${flags ? ` · ${flags}` : ""}`,
         image: { url: cardImageUrl(base, lg.slug, p.id, "both") },
       }] };
+    }
+    case "gamelog":
+    case "yearlog": {
+      const p = findPlayer(d, opt(i, "player"));
+      if (!p) return reply("No player by that name. Pick one from the list as you type.");
+      return name === "gamelog" ? gameLogCmd(lg, d, p, opt(i, "year"), url, footer) : yearLogCmd(lg, d, p, url, footer);
     }
     case "amnesty": {
       const p = findPlayer(d, opt(i, "player"));

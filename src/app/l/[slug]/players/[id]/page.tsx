@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLeagueData, getLeagueRow, getPastSeason, pastYears } from "@/lib/league/load";
-import { realLog, realSeasons } from "@/lib/league/realStats";
-import { PlayerStats, type StatSeason } from "@/components/league/PlayerStats";
+import { getLeagueData, getLeagueRow } from "@/lib/league/load";
+import { leagueShort, playerSeasons } from "@/lib/league/playerSeasons";
+import { PlayerStats } from "@/components/league/PlayerStats";
 import { capSeason, indexes } from "@/lib/league/derive";
 import { heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
@@ -194,16 +194,8 @@ function RatingsTab({ p }: { p: Player }) {
 
 /** Every season he has stats in: this one, the league's past seasons, real NFL seasons (PlayerStats.tsx). */
 async function StatsTab({ d, p, slug, base, pick }: { d: LeagueData; p: Player; slug: string; base: string; pick?: string }) {
-  const [years, row] = await Promise.all([pastYears(slug, d), getLeagueRow(slug).catch(() => null)]);
-  const past = (await Promise.all(years.map((y) => getPastSeason(slug, y)))).filter((x): x is LeagueData => Boolean(x));
-  const real = realLog(p);
-  const seasons: StatSeason[] = [
-    { kind: "league", year: d.season.year, d, past: false },
-    ...past.map((x) => ({ kind: "league" as const, year: x.season.year, d: x, past: true })),
-    ...realSeasons(real).map((year) => ({ kind: "nfl" as const, year, log: real })),
-  ];
-  const league = row?.name && row.name.length <= 8 ? row.name : slug.length <= 6 ? slug.toUpperCase() : "League";
-  return <PlayerStats slug={slug} p={p} league={league} seasons={seasons} pick={pick} base={base} />;
+  const [seasons, row] = await Promise.all([playerSeasons(slug, d, p), getLeagueRow(slug).catch(() => null)]);
+  return <PlayerStats slug={slug} p={p} league={leagueShort(row?.name, slug)} seasons={seasons} pick={pick} base={base} />;
 }
 
 function ContractTab({ d, p, slug }: { d: LeagueData; p: Player; slug: string }) {
