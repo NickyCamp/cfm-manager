@@ -106,13 +106,13 @@ export default async function Scores({ params, searchParams }: Props) {
               </select>
               <button type="submit" className="btn btn-quiet">Show</button>
             </form>
-            <span className="muted small">{rows.length} game{rows.length === 1 ? "" : "s"}{!isCurrent ? " · box scores are kept for the current season only" : ""}</span>
+            <span className="muted small">{rows.length} game{rows.length === 1 ? "" : "s"}</span>
           </div>
 
           {rows.length ? (
             <div className="panel tbl-wrap">
               <table className="tbl scores-tbl">
-                <thead><tr><th>Week</th><th>Away</th><th className="num">Score</th><th>Home</th><th className="hide-sm"></th>{isCurrent && <th></th>}</tr></thead>
+                <thead><tr><th>Week</th><th>Away</th><th className="num">Score</th><th>Home</th><th className="hide-sm"></th><th></th></tr></thead>
                 <tbody>
                   {rows.map((g) => {
                     const a = teamOf.get(g.away), h = teamOf.get(g.home);
@@ -124,7 +124,7 @@ export default async function Scores({ params, searchParams }: Props) {
                         <td className="num nw"><span className={aw ? "strong" : "muted"}>{g.as}</span> – <span className={hw ? "strong" : "muted"}>{g.hs}</span></td>
                         <td className={hw ? "strong" : ""}>{isCurrent ? <TeamBadge team={teams.get(g.home)} size={20} /> : <Mini t={h} />} {h?.name ?? "TBD"}</td>
                         <td className="hide-sm">{g.forced ? <span className="tag">Sim (forced)</span> : g.simmed === true ? <span className="tag">Sim</span> : g.simmed === false ? <span className="tag">Played</span> : null}</td>
-                        {isCurrent && <td><Link className="small" href={`/l/${slug}/games/${g.id}`}>Box score</Link></td>}
+                        <td><Link className="small" href={`/l/${slug}/games/${g.id}${isCurrent ? "" : `?season=${year}`}`}>Box score</Link></td>
                       </tr>
                     );
                   })}

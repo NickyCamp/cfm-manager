@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLeagueData } from "@/lib/league/load";
-import { capSeason, indexes, passerRating, seasonTotals, weekTitle } from "@/lib/league/derive";
-import { avg, heightText, money, onColor, pct } from "@/lib/league/format";
+import { getLeagueData, getLeagueRow, getPastSeason, pastYears } from "@/lib/league/load";
+import { realLog, realSeasons } from "@/lib/league/realStats";
+import { PlayerStats, type StatSeason } from "@/components/league/PlayerStats";
+import { capSeason, indexes } from "@/lib/league/derive";
+import { heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
-import { DEV_LABEL, type LeagueData, type Player, type StatLine } from "@/lib/league/types";
+import { DEV_LABEL, type LeagueData, type Player } from "@/lib/league/types";
 import { ratingGroups } from "@/lib/league/ratingGroups";
 import { isCapSet, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
@@ -24,8 +26,8 @@ import { NICKNAME_MAX, leagueNicknames, withNicknames } from "@/lib/nicknameStor
 import { standInArt } from "@/lib/league/headshots";
 import { CountUp } from "@/components/league/CountUp";
 
-type Props = { params: Promise<{ slug: string; id: string }>; searchParams?: Promise<{ tab?: string }> };
-const TABS = [["ratings", "Ratings"], ["abilities", "Abilities"], ["log", "Game log"], ["contract", "Contract"]] as const;
+type Props = { params: Promise<{ slug: string; id: string }>; searchParams?: Promise<{ tab?: string; season?: string }> };
+const TABS = [["ratings", "Ratings"], ["abilities", "Abilities"], ["log", "Stats"], ["contract", "Contract"]] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, id } = await params;
@@ -35,7 +37,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PlayerPage({ params, searchParams }: Props) {
   const { slug, id } = await params;
-  const tabParam = (await searchParams)?.tab;
+  const sp = await searchParams;
+  const tabParam = sp?.tab;
   const tab = TABS.some(([k]) => k === tabParam) ? tabParam! : "ratings";
   const base = `/l/${slug}/players/${id}`;
   const raw = await getLeagueData(slug);
@@ -102,7 +105,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               ))}
             </nav>
             {tab === "abilities" ? (p.gone ? <p className="muted">No longer in the league.</p> : <AbilitiesPanel slug={slug} p={p} />)
-              : tab === "log" ? <GameLogTab d={d} p={p} slug={slug} />
+              : tab === "log" ? <StatsTab d={d} p={p} slug={slug} base={base} pick={sp?.season} />
               : tab === "contract" ? <ContractTab d={d} p={p} slug={slug} />
               : <RatingsTab p={p} />}
           </div>
@@ -110,18 +113,6 @@ export default async function PlayerPage({ params, searchParams }: Props) {
       </div>
     </main>
   );
-}
-
-function lineText(l: StatLine) {
-  const parts: string[] = [];
-  const n = (x?: number) => x || 0;
-  if (n(l.pa)) parts.push(`${n(l.pc)}/${n(l.pa)}, ${n(l.py)} yds, ${n(l.ptd)} TD, ${n(l.pint)} INT`);
-  if (n(l.ra)) parts.push(`${n(l.ra)} car, ${n(l.ry)} yds${n(l.rtd) ? `, ${l.rtd} TD` : ""}`);
-  if (n(l.rc)) parts.push(`${n(l.rc)} rec, ${n(l.rcy)} yds${n(l.rctd) ? `, ${l.rctd} TD` : ""}`);
-  if (n(l.tk) || n(l.sk) || n(l.int)) parts.push(`${n(l.tk)} tkl${n(l.sk) ? `, ${l.sk} sck` : ""}${n(l.int) ? `, ${l.int} INT` : ""}`);
-  if (n(l.fga) || n(l.xpa)) parts.push(`FG ${n(l.fgm)}/${n(l.fga)}, XP ${n(l.xpm)}/${n(l.xpa)}`);
-  if (n(l.pnt)) parts.push(`${l.pnt} punts, ${avg(n(l.pnty), n(l.pnt))} avg`);
-  return parts.join("; ") || "Played";
 }
 
 function AbilitiesPanel({ slug, p }: { slug: string; p: import("@/lib/league/types").Player }) {
@@ -201,53 +192,18 @@ function RatingsTab({ p }: { p: Player }) {
   );
 }
 
-function GameLogTab({ d, p, slug }: { d: LeagueData; p: Player; slug: string }) {
-  const { teams, games } = indexes(d);
-  const t = seasonTotals(d, (l) => l.p === p.id).get(p.id);
-  const log = d.lines.filter((l) => l.p === p.id).map((l) => ({ l, g: games.get(l.g)! })).filter((x) => x.g)
-    .sort((a, b) => a.g.stage - b.g.stage || a.g.week - b.g.week);
-  if (!t && !log.length) return <p className="muted">No games logged this season.</p>;
-  return (
-    <>
-      {t && (
-        <div className="panel tbl-wrap">
-          <table className="tbl">
-            <caption>{d.season.year} regular season</caption>
-            <thead><tr><th className="num">GP</th>{t.pa > 0 && <><th className="num">PASS</th><th className="num">TD-INT</th><th className="num">RTG</th></>}{t.ra > 0 && <><th className="num">RUSH</th><th className="num">AVG</th></>}{t.rc > 0 && <><th className="num">REC</th><th className="num">YDS</th></>}{(t.tk + t.sk) > 0 && <><th className="num">TKL</th><th className="num">SCK</th><th className="num">INT</th></>}{t.fga > 0 && <th className="num">FG</th>}</tr></thead>
-            <tbody><tr>
-              <td className="num">{t.gp}</td>
-              {t.pa > 0 && <><td className="num">{t.pc}/{t.pa}, {t.py} yds ({pct(t.pc, t.pa)}%)</td><td className="num">{t.ptd}-{t.pint}</td><td className="num">{passerRating(t).toFixed(1)}</td></>}
-              {t.ra > 0 && <><td className="num">{t.ra} for {t.ry}, {t.rtd} TD</td><td className="num">{avg(t.ry, t.ra)}</td></>}
-              {t.rc > 0 && <><td className="num">{t.rc}</td><td className="num">{t.rcy}, {t.rctd} TD</td></>}
-              {(t.tk + t.sk) > 0 && <><td className="num">{t.tk}</td><td className="num">{t.sk}</td><td className="num">{t.int}</td></>}
-              {t.fga > 0 && <td className="num">{t.fgm}/{t.fga}</td>}
-            </tr></tbody>
-          </table>
-        </div>
-      )}
-      {log.length > 0 && (
-        <div className="panel tbl-wrap">
-          <table className="tbl">
-            <caption>Game log</caption>
-            <thead><tr><th>Week</th><th>Opp</th><th>Line</th></tr></thead>
-            <tbody>
-              {log.map(({ l, g }) => {
-                const home = g.home === l.t;
-                const opp = teams.get(home ? g.away : g.home);
-                return (
-                  <tr key={l.g}>
-                    <td className="muted nw">{weekTitle(d, g.stage, g.week)}</td>
-                    <td className="nw">{home ? "vs" : "at"} {opp?.abbr ?? "TBD"}</td>
-                    <td><Link href={`/l/${slug}/games/${g.id}`}>{lineText(l)}</Link></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
-  );
+/** Every season he has stats in: this one, the league's past seasons, real NFL seasons (PlayerStats.tsx). */
+async function StatsTab({ d, p, slug, base, pick }: { d: LeagueData; p: Player; slug: string; base: string; pick?: string }) {
+  const [years, row] = await Promise.all([pastYears(slug, d), getLeagueRow(slug).catch(() => null)]);
+  const past = (await Promise.all(years.map((y) => getPastSeason(slug, y)))).filter((x): x is LeagueData => Boolean(x));
+  const real = realLog(p);
+  const seasons: StatSeason[] = [
+    { kind: "league", year: d.season.year, d, past: false },
+    ...past.map((x) => ({ kind: "league" as const, year: x.season.year, d: x, past: true })),
+    ...realSeasons(real).map((year) => ({ kind: "nfl" as const, year, log: real })),
+  ];
+  const league = row?.name && row.name.length <= 8 ? row.name : slug.length <= 6 ? slug.toUpperCase() : "League";
+  return <PlayerStats slug={slug} p={p} league={league} seasons={seasons} pick={pick} base={base} />;
 }
 
 function ContractTab({ d, p, slug }: { d: LeagueData; p: Player; slug: string }) {

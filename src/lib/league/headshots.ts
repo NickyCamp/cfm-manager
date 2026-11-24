@@ -9,7 +9,8 @@ import data from "./headshots.json";
 import type { Player } from "./types";
 import { eaPortraitUrl, isEaPortraitUrl } from "./portraits";
 
-type Row = [names: string[], born: string, college: string, rookie: number, group: string, img: string, last: string];
+/** One nflverse player: also the row shape of real-stats.json (with the gsis id in place of img). */
+export type Row = [names: string[], born: string, college: string, rookie: number, group: string, img: string, last: string];
 
 const HOST = "https://static.www.nfl.com/image/";
 // Crop the landscape original to the card's 5:7 shape around the face, 750x1050 like uploads.
@@ -27,17 +28,18 @@ export function normName(s: string) {
     .join(" ");
 }
 
-let index: { names: Map<string, Row[]>; lasts: Map<string, Row[]> } | null = null;
-function lookup() {
-  if (index) return index;
+type Index = { names: Map<string, Row[]>; lasts: Map<string, Row[]> };
+function makeIndex(rows: Row[]): Index {
   const add = (m: Map<string, Row[]>, k: string, r: Row) => { const l = m.get(k); if (l) l.push(r); else m.set(k, [r]); };
-  index = { names: new Map(), lasts: new Map() };
-  for (const row of data as Row[]) {
+  const index: Index = { names: new Map(), lasts: new Map() };
+  for (const row of rows) {
     for (const n of row[0]) add(index.names, n, row);
     if (row[6]) add(index.lasts, row[6], row);
   }
   return index;
 }
+let index: Index | null = null;
+const lookup = () => (index ??= makeIndex(data as Row[]));
 
 const DAY = 86_400_000;
 /** Days between two "YYYY-MM-DD" dates. */
@@ -84,7 +86,16 @@ function score(p: Player, r: Row) {
 
 /** The nflverse row for a league player, or undefined if there's no confident match. */
 export function headshotRow(p: Player): Row | undefined {
-  const { names, lasts } = lookup();
+  return matchRow(p, lookup());
+}
+
+/** A matcher over other nflverse rows in the same shape (real-stats.json uses it). */
+export function rowMatcher(rows: Row[]) {
+  let idx: Index | null = null;
+  return (p: Player) => matchRow(p, (idx ??= makeIndex(rows)));
+}
+
+function matchRow(p: Player, { names, lasts }: Index): Row | undefined {
   const cands = names.get(normName(`${p.first} ${p.last}`));
   if (cands?.length) {
     const scored = cands.map((r) => ({ r, s: score(p, r) })).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s);

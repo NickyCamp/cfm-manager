@@ -91,6 +91,21 @@ const ZERO: Totals = {
 };
 const MAX_FIELDS = new Set(["plng", "rlng", "rclng", "fglng", "pntlng"]);
 
+/** A blank set of totals. */
+export const zeroTotals = (): Totals => ({ ...ZERO });
+
+/** Adds one game line to running totals (longest-play fields keep the max). */
+export function addLine(t: Totals, l: Partial<Record<string, number>>) {
+  t.gp++;
+  for (const [k, v] of Object.entries(l)) {
+    if (k === "g" || k === "p" || k === "t" || typeof v !== "number" || !(k in ZERO) || k === "gp") continue;
+    const key = k as keyof Totals;
+    if (MAX_FIELDS.has(k)) t[key] = Math.max(t[key], v);
+    else t[key] += v;
+  }
+  return t;
+}
+
 /** Regular-season totals per player (playoffs and preseason excluded). */
 export function seasonTotals(d: LeagueData, filter?: (l: StatLine) => boolean): Map<number, Totals & { team: number }> {
   const games = new Map(d.games.map((g) => [g.id, g]));

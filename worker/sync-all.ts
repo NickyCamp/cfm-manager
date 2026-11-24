@@ -29,7 +29,8 @@ import { fullPull, getHub, leagueKey } from "./pull";
 import { buildLeagueData, mergeHistory } from "../src/lib/league/build";
 import { healRenumberedLog, remapLeagueTeams, teamIdMap } from "../src/lib/league/teamIds";
 import { appendEvents, diffLeague, seedHistory, type LeagueHistory, type TradePicks } from "../src/lib/league/history";
-import { archiveSeason, type SeasonArchive } from "../src/lib/league/seasons";
+import { archiveSeason, mergeArchived, type SeasonArchive } from "../src/lib/league/seasons";
+import { mergeSeasonStats, mergeStatsFiles, seedSeason, type SeasonSeed, type SeasonStats } from "../src/lib/league/seasonStats";
 import fs from "node:fs";
 import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
@@ -366,16 +367,44 @@ function keepCopy(name: string, buf: Buffer) {
   try { fs.mkdirSync("out", { recursive: true }); fs.writeFileSync(`out/${name}`, buf); } catch { /* best effort */ }
 }
 
-/** Keeps every season's scores in league-data/<slug>/seasons.json.gz (EA only returns this season's). */
+/**
+ * Keeps every season: scores in league-data/<slug>/seasons.json.gz and player stats in
+ * stats-<year>.json.gz (EA only returns this season's). Also applies a league's one-time seeds
+ * (scripts/season-seeds/<slug>-<year>.json.gz: seasons played before CFM Manager kept them).
+ */
 async function updateSeasons(slug: string, data: LeagueData, log: (s: string) => void) {
+  const readGz = async <T,>(file: string): Promise<T | null> => {
+    const buf = await download(`${slug}/${file}`);
+    try { return buf ? (JSON.parse(gunzipSync(buf).toString("utf8")) as T) : null; } catch { return null; }
+  };
+  const save = async (file: string, value: unknown) => {
+    const gz = gzipSync(Buffer.from(JSON.stringify(value)));
+    const up = await db.storage.from("league-data").upload(`${slug}/${file}`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
+    if (up.error) throw new Error(`${file}: ${up.error.message}`);
+  };
   try {
-    const buf = await download(`${slug}/seasons.json.gz`);
-    let arc: SeasonArchive | null = null;
-    try { arc = buf ? JSON.parse(gunzipSync(buf).toString("utf8")) : null; } catch { arc = null; }
+    let arc = await readGz<SeasonArchive>("seasons.json.gz");
+    arc = arc ?? { version: 1, seasons: {} };
+    // One-time seeds for seasons played before this kept them.
+    const seedDir = "scripts/season-seeds";
+    const seeds = fs.existsSync(seedDir) ? fs.readdirSync(seedDir).filter((f) => f.startsWith(`${slug}-`) && f.endsWith(".json.gz")) : [];
+    for (const f of seeds) {
+      const year = Number(f.slice(slug.length + 1, -".json.gz".length));
+      if (!year || year === data.season.year || arc.seeded?.includes(year)) continue;
+      const seed = JSON.parse(gunzipSync(fs.readFileSync(`${seedDir}/${f}`)).toString("utf8")) as SeasonSeed;
+      const { season, stats, matched, total } = seedSeason(seed, data, data.pulledAt);
+      // The seed is the whole season, checked against the old site: it goes on top of what was saved.
+      arc.seasons[String(year)] = mergeArchived(arc.seasons[String(year)], season);
+      await save(`stats-${year}.json.gz`, mergeStatsFiles(stats, await readGz<SeasonStats>(`stats-${year}.json.gz`)));
+      arc.seeded = [...(arc.seeded ?? []), year];
+      log(`- Past season ${year} loaded from ${f}: ${season.games.length} games, ${stats.lines.length} player lines; ${matched} of ${total} players matched to this league's rosters.`);
+    }
     arc = archiveSeason(arc, data);
-    const gz = gzipSync(Buffer.from(JSON.stringify(arc)));
-    const up = await db.storage.from("league-data").upload(`${slug}/seasons.json.gz`, gz, { contentType: "application/gzip", upsert: true, cacheControl: "60" });
-    if (up.error) log(`- Couldn't save past seasons: ${up.error.message}`);
+    await save("seasons.json.gz", arc);
+    if (data.lines.length) {
+      const file = `stats-${data.season.year}.json.gz`;
+      await save(file, mergeSeasonStats(await readGz<SeasonStats>(file), data));
+    }
   } catch (e) {
     log(`- Past seasons update failed: ${(e as Error).message}`);
   }

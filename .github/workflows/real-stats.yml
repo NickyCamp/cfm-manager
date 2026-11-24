@@ -1,0 +1,37 @@
+name: Refresh real NFL stats
+
+# Weekly (Tuesdays, after Monday Night Football): re-pulls nflverse's weekly player stats so player
+# pages' real NFL game logs (src/lib/league/real-stats.json, realStats.ts) pick up the new week.
+# Commits only when something changed (the push redeploys the app on Vercel).
+
+on:
+  schedule:
+    - cron: "23 10 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/real-stats/update.mjs
+      - name: Commit if changed
+        run: |
+          # The file's "updated" time always changes; only commit when the games or lines did.
+          git show HEAD:src/lib/league/real-stats.json > /tmp/old.json || echo '{}' > /tmp/old.json
+          if node -e 'const f=require("fs");const a=JSON.parse(f.readFileSync("/tmp/old.json"));const b=JSON.parse(f.readFileSync("src/lib/league/real-stats.json"));delete a.updated;delete b.updated;process.exit(JSON.stringify(a)===JSON.stringify(b)?1:0)'; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/lib/league/real-stats.json
+            git commit -m "Refresh real NFL stats (nflverse)"
+            git pull --rebase -q && git push
+          else
+            echo "No new games"
+          fi

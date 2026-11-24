@@ -28,6 +28,7 @@ export function TeamLink({ slug, team, showRecord = false }: { slug: string; tea
 
 export function PlayerLink({ slug, player }: { slug: string; player: Player | undefined }) {
   if (!player) return <span>Unknown</span>;
+  if (player.archived) return <span title="No longer in the league">{player.first[0] ? `${player.first[0]}. ` : ""}{player.last}</span>;
   return <Link href={`/l/${slug}/players/${player.id}`}>{player.first[0]}. {player.last}</Link>;
 }
 

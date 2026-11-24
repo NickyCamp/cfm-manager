@@ -12,6 +12,7 @@ import { findAbility } from "./abilities";
 import { KNOWN_LEAGUE_CAPS } from "./cap";
 import { attachRestructures, type LeagueHistory } from "./history";
 import type { SeasonArchive } from "./seasons";
+import { pastSeasonData, type SeasonStats } from "./seasonStats";
 import { PREV_SEEDS } from "./prev-seasons";
 import { applySimSeen } from "./simSeen";
 
@@ -66,6 +67,39 @@ export const getLeagueSeasons = cache(async (slug: string): Promise<SeasonArchiv
     console.error("league seasons load failed", slug, e);
     return hit?.data ?? null;
   }
+});
+
+const statsMemo = new Map<string, { at: number; data: SeasonStats | null }>();
+
+/** One season's player stats (league-data/<slug>/stats-<year>.json.gz, seasonStats.ts), cached a minute. */
+export const getSeasonStats = cache(async (slug: string, year: number): Promise<SeasonStats | null> => {
+  const k = `${slug}:${year}`;
+  const hit = statsMemo.get(k);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
+  try {
+    const data = await fetchJson<SeasonStats>(slug, `stats-${year}`);
+    statsMemo.set(k, { at: Date.now(), data });
+    return data;
+  } catch (e) {
+    console.error("league season stats load failed", slug, year, e);
+    return hit?.data ?? null;
+  }
+});
+
+/** The years with saved scores or stats other than the current season, newest first. */
+export async function pastYears(slug: string, d: LeagueData): Promise<number[]> {
+  const arc = await getLeagueSeasons(slug);
+  return Object.keys(arc?.seasons ?? {}).map(Number).filter((y) => y && y !== d.season.year).sort((a, b) => b - a);
+}
+
+/** A past season shaped like the current one (box scores, game logs, totals), or null if nothing was kept. */
+export const getPastSeason = cache(async (slug: string, year: number): Promise<LeagueData | null> => {
+  const [d, arc, stats] = await Promise.all([getLeagueData(slug), getLeagueSeasons(slug), getSeasonStats(slug, year)]);
+  const season = arc?.seasons[String(year)];
+  if (!d || !season || year === d.season.year) return null;
+  const past = pastSeasonData(d, season, stats);
+  if (stats?.partial) past.partialStats = stats.partial;
+  return past;
 });
 
 const histMemo = new Map<string, { at: number; data: LeagueHistory | null }>();

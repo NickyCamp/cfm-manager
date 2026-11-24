@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLeagueData } from "@/lib/league/load";
+import { getLeagueData, getPastSeason } from "@/lib/league/load";
 import { boxScore, indexes, weekKey, weekTitle } from "@/lib/league/derive";
 import { avg } from "@/lib/league/format";
 import { NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
@@ -9,12 +9,17 @@ import { MatchupChart } from "@/components/league/MatchupChart";
 import type { LeagueData, StatLine, Team, TeamGame } from "@/lib/league/types";
 
 export const metadata: Metadata = { title: "Box score" };
-type Props = { params: Promise<{ slug: string; id: string }> };
+type Props = { params: Promise<{ slug: string; id: string }>; searchParams?: Promise<{ season?: string }> };
 
-export default async function BoxScore({ params }: Props) {
+export default async function BoxScore({ params, searchParams }: Props) {
   const { slug, id } = await params;
-  const d = await getLeagueData(slug);
-  if (!d) return <NoData />;
+  // ?season=2027: a past season's game (EA reuses game ids every season, seasonStats.ts).
+  const year = Number((await searchParams)?.season) || 0;
+  const cur = await getLeagueData(slug);
+  if (!cur) return <NoData />;
+  const past = year && year !== cur.season.year ? await getPastSeason(slug, year) : null;
+  if (year && year !== cur.season.year && !past) notFound();
+  const d = past ?? cur;
   const { teams, players, games } = indexes(d);
   const g = games.get(Number(id));
   if (!g) notFound();
@@ -25,7 +30,7 @@ export default async function BoxScore({ params }: Props) {
   return (
     <main className="page league-page">
       <div className="wrap">
-        <Link className="back" href={`/l/${slug}/scores?week=${weekKey(g.stage, g.week)}#past`}>{weekTitle(d, g.stage, g.week)} scores</Link>
+        <Link className="back" href={`/l/${slug}/scores?${past ? `season=${year}&` : ""}week=${weekKey(g.stage, g.week)}#past`}>{past ? `${year} ` : ""}{weekTitle(d, g.stage, g.week)} scores</Link>
         <div className="box-head">
           <Side team={away} score={g.as} won={g.final && g.as > g.hs} slug={slug} />
           <div className="box-mid">{g.final ? "Final" : "Not played"}{g.simmed === true ? <div className="tag">Simmed</div> : null}{g.forced ? <div className="tag">{g.forced.kind === "sim" ? "Force Sim" : `Force ${g.forced.kind === "win" ? "Win" : "Loss"}: ${d.teams.find((t) => t.id === g.forced!.team)?.abbr ?? "?"}`}</div> : null}{g.forced?.activity != null ? <div className="tag">Activity: {[g.forced.activity].flat().map((id) => d.teams.find((t) => t.id === id)?.abbr ?? "?").join(" + ")}</div> : null}</div>
@@ -33,9 +38,9 @@ export default async function BoxScore({ params }: Props) {
         </div>
 
         {away && home && ts(away.id) && ts(home.id) && <TeamCompare away={away} home={home} a={ts(away.id)!} h={ts(home.id)!} />}
-        {!g.final && away && home && <MatchupChart d={d} away={away} home={home} />}
+        {!g.final && !past && away && home && <MatchupChart d={d} away={away} home={home} />}
 
-        {g.final && !lines.length && <p className="muted">EA has no player stats for this game{g.stage === 0 ? " (it doesn't keep them for preseason games)" : ""}.</p>}
+        {g.final && !lines.length && <p className="muted">{past ? "No player stats were saved for this game." : <>EA has no player stats for this game{g.stage === 0 ? " (it doesn't keep them for preseason games)" : ""}.</>}</p>}
         {g.final && <div className="box-teams">
           {[away, home].map((t) => t && (
             <TeamLines key={t.id} slug={slug} team={t} lines={lines.filter((l) => l.t === t.id)} players={players} />
