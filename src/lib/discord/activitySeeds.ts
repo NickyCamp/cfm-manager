@@ -58,10 +58,13 @@ const NCL: Seed = {
 /** EML's sheet (Nick, 2026-11-25: "This is their season 1 and 2, the 49ers user left in the offseason so the
  *  current ones tracking is correct through 2 weeks"). The sheet only has totals over both seasons (34 games
  *  for a full-time user; fewer for users who joined partway), so it's one "Seasons 1–2" column. No 49ers row:
- *  that user left, and the new one is tracked by the bot from this season. */
+ *  that user left (Mega is the new one). No Rams row: CPU team. */
 const r = (name: string, team: string, misses: number, games = 34): SeedRow => ({ name, team, misses: [misses], games: [games] });
 const EML: Seed = {
   version: 1,
+  // 2026-11-25 (Nick): "add mega as SF" (new 49ers user, starting at 0; every 49ers game this season counts for
+  // him). The Rams are a CPU team with no user, so their games count for no one.
+  teamNames: { "49ers": "Mega" },
   seasons: ["Seasons 1–2"],
   count: 2,
   gamesPerSeason: 17,
