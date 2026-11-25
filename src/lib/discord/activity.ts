@@ -407,9 +407,12 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
   // for a Force Win/Loss with no activity pick, added 2026-11-22, or a /set made while this was busy)
   for (const g of tracked) {
     const w = wkOf(g.stage, g.week), prev = st.games[String(g.id)];
-    if (!g.forced || !st.wrapped.includes(w) || !prev) continue;
+    // also a game a wrap-up left "unknown" (EA never said played or simmed) from before every finished game
+    // counted as played (2026-11-22): it counts as played now (EML 2028 Week 1 MIA @ BUF had no games for either user)
+    // (or one with no record at all in a wrapped week)
+    if (!st.wrapped.includes(w) || !(prev ? g.forced || (prev.how === "unknown" && g.final) : g.final)) continue;
     const next = judge(d, g, st);
-    if (sameRec(prev, next)) continue;
+    if (prev && sameRec(prev, next)) continue;
     st.games[String(g.id)] = next;
     await post(st.channelId, { content: `✏️ **Recounted** · ${weekTitle(d, g.stage, g.week)} · ${line(d, g, next)}` });
     changed = true; redraw = true;
