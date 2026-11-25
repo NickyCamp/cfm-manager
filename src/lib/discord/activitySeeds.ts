@@ -6,8 +6,10 @@
 // left: the user is gone; his numbers stay under his name and never grow.
 // teamNames: a new user on a team, starting at 0; every game of that team from now on counts for him,
 // whatever EA account runs it. Bump `version` after a change so a league already set up picks it up.
-export type SeedRow = { name: string; team: string; misses: number[]; left?: boolean };
-export type Seed = { version: number; seasons: string[]; gamesPerSeason: number; rows: SeedRow[]; teamNames?: Record<string, string> };
+// games: per column, when a column isn't one full season each (users who joined partway).
+// count: how many league seasons the columns cover, when it isn't one column per season.
+export type SeedRow = { name: string; team: string; misses: number[]; games?: number[]; left?: boolean };
+export type Seed = { version: number; seasons: string[]; count?: number; gamesPerSeason: number; rows: SeedRow[]; teamNames?: Record<string, string> };
 
 /** misses: [Season 1, Season 2] */
 const NCL: Seed = {
@@ -53,8 +55,31 @@ const NCL: Seed = {
   ],
 };
 
+/** EML's sheet (Nick, 2026-11-25: "This is their season 1 and 2, the 49ers user left in the offseason so the
+ *  current ones tracking is correct through 2 weeks"). The sheet only has totals over both seasons (34 games
+ *  for a full-time user; fewer for users who joined partway), so it's one "Seasons 1–2" column. No 49ers row:
+ *  that user left, and the new one is tracked by the bot from this season. */
+const r = (name: string, team: string, misses: number, games = 34): SeedRow => ({ name, team, misses: [misses], games: [games] });
+const EML: Seed = {
+  version: 1,
+  seasons: ["Seasons 1–2"],
+  count: 2,
+  gamesPerSeason: 17,
+  rows: [
+    r("MATT", "Bears", 0), r("MIKE", "Jets", 0), r("AUSTIN", "Ravens", 0), r("CHRIS FRAZ", "Browns", 0),
+    r("GENE", "Chiefs", 0), r("LINK", "Raiders", 0), r("KRIS", "Falcons", 0), r("SAMMY", "Bills", 0, 12),
+    r("BISHOP", "Cardinals", 1), r("DJFC", "Bengals", 1), r("VIBE", "Broncos", 2), r("BLUTO", "Packers", 2),
+    r("MAYHEM", "Seahawks", 2), r("BRYCE", "Texans", 2), r("JORDAN", "Vikings", 2, 24), r("CODY", "Eagles", 3),
+    r("ORDO", "Patriots", 3), r("CHARON", "Commanders", 3), r("SHON", "Saints", 4), r("SUPE", "Chargers", 4),
+    r("SAM", "Colts", 4), r("GENZY", "Giants", 5), r("JOEY", "Jaguars", 5), r("DECK", "Dolphins", 5),
+    r("MAINE", "Panthers", 6), r("TRAW", "Buccaneers", 6), r("RED", "Cowboys", 6, 29), r("KENNY", "Lions", 8),
+    r("SAL", "Steelers", 10, 32), r("YUNGLAW", "Titans", 6, 19),
+  ],
+};
+
 /** The seed for a league, by slug (or a league name with NCL in it). */
 export function seedFor(slug: string, name: string): Seed | null {
   if (slug === "ncl" || /\bncl\b/i.test(name)) return NCL;
+  if (/^eml/i.test(slug) || /\beml/i.test(name)) return EML;
   return null;
 }
