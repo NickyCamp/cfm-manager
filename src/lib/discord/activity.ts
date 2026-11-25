@@ -60,6 +60,8 @@ export type ActivityState = {
   /** Team id → the last EA user seen running it. A forced game where the user played the other team's CPU
    *  (Nick, 2026-11-21) can sync with that team showing no user; this still gives that user the miss. */
   owners?: Record<string, string>;
+  /** The seed version whose backfill (pre-/set results, activitySeeds.ts) has been applied. */
+  backfilled?: number;
 };
 
 const CHANNEL = "activity-tracker-week";
@@ -451,6 +453,37 @@ async function runActivity(lg: LinkedLeague, st: ActivityState, d: LeagueData, r
   return notes.length ? `Activity: ${notes.join("; ")}.` : "Activity: nothing new.";
 }
 
+/** The league's results from before it used /set (seed backfill, e.g. EML 2028 Week 1): saved as /set forces
+ *  (so the game overlays, channels and audits agree) and counting moved back to the earliest of those weeks.
+ *  Once per seed version. True when something changed. */
+async function applyBackfill(lg: LinkedLeague, st: ActivityState, d: LeagueData): Promise<boolean> {
+  const seed = seedFor(lg.slug, lg.name);
+  if (!seed?.backfill?.length || (st.backfilled || 0) >= seed.version || st.season !== d.season.year) return false;
+  const byNick = (n: string) => d.teams.find((t) => t.name.toLowerCase() === n.toLowerCase());
+  const forces: Record<string, { kind: "win" | "sim"; team?: number; activity?: number; by: string; at: string }> = {};
+  let earliest = rankOf(st.start);
+  for (const b of seed.backfill) {
+    const [a, h] = b.teams.map(byNick);
+    const g = a && h ? d.games.find((x) => x.stage === 1 && x.week === b.week - 1 && ((x.home === a.id && x.away === h.id) || (x.home === h.id && x.away === a.id))) : undefined;
+    if (!g) { console.error("activity backfill: no game", lg.slug, JSON.stringify(b)); continue; }
+    const win = b.winner ? byNick(b.winner) : undefined;
+    forces[String(g.id)] = { kind: b.kind, ...(win ? { team: win.id, activity: win.id } : {}), by: "league sheet (backfill)", at: new Date().toISOString() };
+    earliest = Math.min(earliest, rankOf(wkOf(1, b.week - 1)));
+  }
+  await updateLeagueSettings(lg.id, (s) => {
+    const all = { ...((s.forcedGames as Record<string, Record<string, unknown>> | undefined) || {}) };
+    all[String(d.season.year)] = { ...(all[String(d.season.year)] || {}), ...forces };
+    s.forcedGames = all;
+    return s;
+  });
+  // count from that week again: it isn't wrapped yet, so the next run posts its wrap-up (everyone else played)
+  const startWas = st.start;
+  if (earliest < rankOf(st.start)) st.start = wkOf(Math.floor(earliest / 100), earliest % 100);
+  st.backfilled = seed.version;
+  await save(lg, st);
+  return Object.keys(forces).length > 0 || st.start !== startWas;
+}
+
 /** After every sync (and from /activitychannels): only if /activitychannels has been run. */
 export async function syncActivity(slug: string): Promise<string> {
   const lg = await leagueBySlug(slug);
@@ -463,8 +496,10 @@ export async function syncActivity(slug: string): Promise<string> {
     const seedWas = readActivity(fresh)?.seed?.version;
     const st = await ensureChannel(fresh, d, false);
     if (typeof st === "string") return st;
+    const back = await applyBackfill(fresh, st, d);
+    const d2 = back ? (forgetLeagueData(slug), await getLeagueData(slug)) || d : d;
     // a league's sheet just loaded (or changed): redraw the all-seasons chart now, not at the next advance
-    return runActivity(fresh, st, d, st.seed?.version !== seedWas);
+    return runActivity(fresh, st, d2, back || st.seed?.version !== seedWas);
   }).catch((e) => `Activity failed: ${(e as Error).message}`);
 }
 
