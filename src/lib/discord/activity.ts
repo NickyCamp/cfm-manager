@@ -52,7 +52,9 @@ export type ActivityState = {
   seasonChannelId?: string;
   cycleChannelId?: string;
   /** The seasons before the bot, from the league's sheet: each row's EA user is the team's user when it was loaded. */
-  seed?: { version?: number; seasons: string[]; gamesPerSeason: number; rows: { name: string; team: string; ea: string | null; misses: number[] }[];
+  seed?: { version?: number; seasons: string[]; gamesPerSeason: number; rows: { name: string; team: string; ea: string | null; misses: number[]; games?: number[] }[];
+    /** League seasons the sheet covers when its columns aren't one per season (EML: one "Seasons 1–2" total). */
+    count?: number;
     /** Team abbr → the name its games count under from now on, whoever's EA account runs it (a new user, e.g. NO → Lee). */
     teamNames?: Record<string, string> };
   /** Team id → the last EA user seen running it. A forced game where the user played the other team's CPU
@@ -262,11 +264,11 @@ async function ensureChannel(lg: LinkedLeague, d: LeagueData, repair: boolean): 
   if (seed && (!st.seed || (st.seed.version || 1) < seed.version)) {
     const teamOf = (nick: string) => d.teams.find((x) => x.name.toLowerCase() === nick.toLowerCase());
     st.seed = {
-      version: seed.version, seasons: seed.seasons, gamesPerSeason: seed.gamesPerSeason,
+      version: seed.version, seasons: seed.seasons, gamesPerSeason: seed.gamesPerSeason, count: seed.count,
       rows: seed.rows.map((r) => {
         const t = teamOf(r.team);
         // a user who has left keeps his sheet numbers under his name, tied to no EA account
-        return { name: r.name, team: t?.abbr || r.team, ea: r.left ? null : (t?.user || null), misses: r.misses };
+        return { name: r.name, team: t?.abbr || r.team, ea: r.left ? null : (t?.user || null), misses: r.misses, ...(r.games ? { games: r.games } : {}) };
       }),
       teamNames: Object.fromEntries(Object.entries(seed.teamNames || {}).map(([nick, name]) => [teamOf(nick)?.abbr || nick, name])),
     };
@@ -311,7 +313,8 @@ function seasonRows(d: LeagueData, st: ActivityState): ActivityRow[] {
 
 /** Every season: the sheet's seasons, then each season the bot counted (this one included). */
 function cycleRows(d: LeagueData, st: ActivityState): { rows: ActivityRow[]; labels: string[] } {
-  const seedN = st.seed?.seasons.length || 0;
+  const seedN = st.seed?.count || st.seed?.seasons.length || 0;
+  const seedCols = st.seed?.seasons.length || 0;
   // this season gets a column once anything counts (or the season is under way), not while it's an empty offseason
   const live = Object.keys(st.games).length > 0 || d.season.stage <= 1;
   const years = [...Object.keys(st.history || {}).map(Number), ...(live ? [st.season] : [])].filter((y, i, a) => a.indexOf(y) === i).sort((a, b) => a - b);
@@ -326,7 +329,8 @@ function cycleRows(d: LeagueData, st: ActivityState): { rows: ActivityRow[]; lab
     ea ? getKey(ea.toLowerCase(), displayName(st, ea), abbr) : getKey(`sheet:${fallback}`.toLowerCase(), fallback, abbr);
   for (const r of st.seed?.rows || []) {
     const p = get(r.ea, r.name, r.team);
-    r.misses.forEach((m, k) => { p.per[k] = { p: st.seed!.gamesPerSeason - m, m }; });
+    // games: that column's games when it isn't a full season each (EML's sheet: both seasons in one total)
+    r.misses.forEach((m, k) => { p.per[k] = { p: (r.games?.[k] ?? st.seed!.gamesPerSeason) - m, m }; });
   }
   const cur = totals(d, st);
   years.forEach((y, i) => {
@@ -335,13 +339,14 @@ function cycleRows(d: LeagueData, st: ActivityState): { rows: ActivityRow[]; lab
       const key = k.toLowerCase();
       const abbr = key.startsWith("name:") ? Object.entries(st.seed?.teamNames || {}).find(([, n]) => `name:${n.toLowerCase()}` === key)?.[0] || "" : "";
       const p = getKey(key, nameOfKey(st, key), abbr);
-      p.per[seedN + i] = { p: pl, m: mi };
+      p.per[seedCols + i] = { p: pl, m: mi };
     }
   });
   const rows: ActivityRow[] = [...people.values()].map((p) => {
     const t = p.key.startsWith("name:") ? d.teams.find((x) => x.abbr === p.teamAbbr) : d.teams.find((x) => x.user && x.user.toLowerCase() === p.key);
     const played = p.per.reduce((s, x) => s + (x?.p || 0), 0), missed = p.per.reduce((s, x) => s + (x?.m || 0), 0);
-    const seasons = p.per.filter((x) => x && x.p + x.m > 0).length;
+    // the sheet's columns count as games / a season's games (EML's sheet: 12 games = 0.7), the bot's seasons as 1 each
+    const seasons = p.per.reduce((s, x, k) => s + (!x || x.p + x.m <= 0 ? 0 : k < seedCols ? (x.p + x.m) / (st.seed!.gamesPerSeason || 17) : 1), 0);
     // newest season first, like the sheet
     return { user: p.name, team: t, teamAbbr: t?.abbr || p.teamAbbr || "—", played, missed, seasons, perSeason: [...p.per].reverse().map((x) => (x ? x.m : null)) };
   }).filter((r) => r.played + r.missed > 0 || r.team);
@@ -455,9 +460,11 @@ export async function syncActivity(slug: string): Promise<string> {
     forgetLeagueData(slug);
     const d = await getLeagueData(slug);
     if (!fresh || !d) return "No league data yet.";
+    const seedWas = readActivity(fresh)?.seed?.version;
     const st = await ensureChannel(fresh, d, false);
     if (typeof st === "string") return st;
-    return runActivity(fresh, st, d);
+    // a league's sheet just loaded (or changed): redraw the all-seasons chart now, not at the next advance
+    return runActivity(fresh, st, d, st.seed?.version !== seedWas);
   }).catch((e) => `Activity failed: ${(e as Error).message}`);
 }
 
