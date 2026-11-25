@@ -9,7 +9,11 @@
 // games: per column, when a column isn't one full season each (users who joined partway).
 // count: how many league seasons the columns cover, when it isn't one column per season.
 export type SeedRow = { name: string; team: string; misses: number[]; games?: number[]; left?: boolean };
-export type Seed = { version: number; seasons: string[]; count?: number; gamesPerSeason: number; rows: SeedRow[]; teamNames?: Record<string, string> };
+// backfill: results the league set before it used /set, for weeks of the current season the bot didn't count
+// (week is 1-based, regular season; teams by nickname). Applied once per version: each becomes a /set force
+// on the game, and counting starts back at the earliest of these weeks, so that week gets a wrap-up.
+export type Backfill = { week: number; teams: [string, string]; kind: "win" | "sim"; winner?: string };
+export type Seed = { version: number; seasons: string[]; count?: number; gamesPerSeason: number; rows: SeedRow[]; teamNames?: Record<string, string>; backfill?: Backfill[] };
 
 /** misses: [Season 1, Season 2] */
 const NCL: Seed = {
@@ -62,7 +66,13 @@ const NCL: Seed = {
  *  the new one). No Rams row: CPU team. */
 const r = (name: string, team: string, s1: number, s2: number, games: [number, number] = [17, 17]): SeedRow => ({ name, team, misses: [s1, s2], games });
 const EML: Seed = {
-  version: 1,
+  version: 2,
+  // v2 2026-11-25 (Nick): "fix EMLs Season 3 Week 1 tracking because they did not use the bot initially, every
+  // other game besides the below was played by users": Week 1 counts, everything played except these two.
+  backfill: [
+    { week: 1, teams: ["Panthers", "Rams"], kind: "win", winner: "Panthers" }, // Maine played the Rams' CPU
+    { week: 1, teams: ["Steelers", "Dolphins"], kind: "sim" }, // Sal and Deck: a miss each
+  ],
   // 2026-11-25 (Nick): "add mega as SF" (new 49ers user, starting at 0; every 49ers game this season counts for
   // him). The Rams are a CPU team with no user, so their games count for no one.
   teamNames: { "49ers": "Mega" },
