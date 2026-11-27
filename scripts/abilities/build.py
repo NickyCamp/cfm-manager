@@ -146,6 +146,19 @@ out = {
 }
 json.dump(out, open(os.path.join(OUT, 'abilities-data.json'), 'w'), separators=(',', ':'))
 arch = json.load(open(os.path.join(IN, 'archetypes.json')))
+# Madden's key ratings per archetype (madden.tools): the ratings an in-game archetype
+# upgrade raises. Stored as "k" next to each fitted formula.
+mt = json.load(open(os.path.join(IN, 'mt_attrs.json')))
+KEY_NAME = {norm(k): v for k, v in RATING.items() if v != 'OVR'}
+KEY_NAME.update({norm(k): v for k, v in {
+    'Throw Accuracy Short': 'throwAccShortRating', 'Throw Accuracy Medium': 'throwAccMidRating', 'Throw Accuracy Deep': 'throwAccDeepRating',
+    'Lead Blocking': 'leadBlockRating', 'Run Blocking': 'runBlockRating', 'Pass Blocking': 'passBlockRating'}.items()})
+for g, archs in arch['groups'].items():
+    for name, f in archs.items():
+        keys = mt.get(g, {}).get(name, [])
+        missing = [k for k in keys if norm(k) not in KEY_NAME]
+        if missing: problems.append(f'{g} {name}: unknown key ratings {missing}')
+        f['k'] = [KEY_NAME[norm(k)] for k in keys if norm(k) in KEY_NAME]
 json.dump(arch, open(os.path.join(OUT, 'archetypes.json'), 'w'), separators=(',', ':'))
 print(len(abilities), 'abilities;', sum(1 for a in abilities.values() if a['tiers']), 'with requirements;',
       sum(1 for a in abilities.values() if a.get('effects')), 'with mechanics;', 'problems:', problems[:5])

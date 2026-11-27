@@ -1683,6 +1683,8 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 .ac-abils li { padding: 8px 0; border-top: 1px solid var(--line); }
 .ac-abils li:first-child { border-top: 0; }
 .ac-abils a { font-weight: 700; }
+.tag.ac-rtag { font-size: 0.68rem; font-weight: 600; padding: 0 6px; vertical-align: 1px; }
+.tag.ac-rare { opacity: .7; }
 .tag.ac-new { color: var(--ok); border-color: currentColor; background: transparent; }
 .ac-lost a { color: var(--danger); text-decoration: line-through; }
 .ac-near { margin: 12px 0; }

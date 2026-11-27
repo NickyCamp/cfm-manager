@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { RATING_KEYS } from "@/lib/league/ratings";
 import { RATING_GROUPS } from "@/lib/league/ratingGroups";
 import {
-  abilityEligibility, archetypeScores, bestOf, fastestPath, numberSlots, slotLayout, STORE_LOCKED, tierRank,
+  abilityEligibility, archetypeScores, bestOf, fastestPath, numberSlots, slotLayout, STORE_LOCKED, tierRank, upgradeLocked,
   type CalcAbility, type CalcArch, type CalcEligibility, type CalcShortfall, type CalcTierName, type PathTarget,
 } from "@/lib/league/archetypeCalc";
 
@@ -99,13 +99,20 @@ function Calculator({ slug, p, arch, abilities, positions, labels }: {
   const lost = before.eligible.filter((e) => !nowKeys.has(e.ability.key));
   const held = new Map(p.held.map((h) => [keyOf(h.title), h.tier]));
 
-  // Ratings that feed this position's archetypes, biggest weight in the best archetype first.
+  // Ratings that feed this position's archetypes: the best archetype's key ratings (what an
+  // in-game archetype upgrade raises) first, then the rest, each by weight in the best archetype.
+  const upKeys = useMemo(() => new Set(formulas[bestName]?.k || []), [formulas, bestName]);
+  const rareUp = useMemo(() => new Set(upgradeLocked(arch, pos)), [arch, pos]);
   const keyRatings = useMemo(() => {
     const max: Record<string, number> = {};
-    for (const f of Object.values(formulas)) for (const [k, w] of Object.entries(f.w)) max[k] = Math.max(max[k] || 0, w);
+    for (const f of Object.values(formulas)) {
+      for (const [k, w] of Object.entries(f.w)) max[k] = Math.max(max[k] || 0, w);
+      for (const k of f.k || []) max[k] = Math.max(max[k] || 0, 0.01);
+    }
+    const w = (k: string) => formulas[bestName]?.w[k] || 0;
     return Object.keys(max).filter((k) => max[k] >= 0.01)
-      .sort((a, b) => (formulas[bestName]?.w[b] || 0) - (formulas[bestName]?.w[a] || 0) || max[b] - max[a]);
-  }, [formulas, bestName]);
+      .sort((a, b) => Number(upKeys.has(b)) - Number(upKeys.has(a)) || w(b) - w(a) || max[b] - max[a]);
+  }, [formulas, bestName, upKeys]);
   const keySet = useMemo(() => new Set(keyRatings), [keyRatings]);
   // Ratings named in ability requirements for this position (not already key ratings).
   const abilityRatings = useMemo(() => {
@@ -128,7 +135,9 @@ function Calculator({ slug, p, arch, abilities, positions, labels }: {
     const w = formulas[bestName]?.w[k] || 0;
     return (
       <div className="ac-rating" key={k}>
-        <label htmlFor={`r-${k}`}>{labels[k] || k}</label>
+        <label htmlFor={`r-${k}`}>{labels[k] || k}
+          {upKeys.has(k) ? <span className="tag ac-rtag" title={`One of ${bestName}'s key ratings: archetype upgrades raise it`}>upgrade</span>
+            : rareUp.has(k) ? <span className="tag ac-rtag ac-rare" title="Counts toward the overall, but in-game upgrades rarely raise it">rarely upgrades</span> : null}</label>
         <div className="ac-stepper">
           <button type="button" onClick={() => set(i, v - 1)} aria-label={`Lower ${labels[k]}`}>−</button>
           <input id={`r-${k}`} type="number" inputMode="numeric" min={0} max={99} value={v}
@@ -216,7 +225,7 @@ function Calculator({ slug, p, arch, abilities, positions, labels }: {
               <button type="button" className="btn btn-quiet ac-btn-sm" onClick={() => bump(1)}>All +1</button>
             </div>
           </div>
-          <p className="muted small">Sorted by weight in {bestName}. &quot;/pt&quot; is how much one point moves that archetype.</p>
+          <p className="muted small">{bestName}&apos;s key ratings (the ones an in-game archetype upgrade raises) first, then the rest, each sorted by weight. &quot;/pt&quot; is how much one point moves {bestName}. Physical ratings like Speed count toward the overall but rarely go up in game.</p>
           <div className="ac-ratings">{keyRatings.map(row)}</div>
           {abilityRatings.length > 0 && <>
             <h4 className="ac-sub">Used by ability requirements</h4>
@@ -278,14 +287,23 @@ function FastestPath({ arch, pos, dev, ratings, offset, slots, abilities, labels
   const [tier, setTier] = useState<CalcTierName>("Bronze");
   const tierPick = tiers.includes(tier) ? tier : tiers[0];
   const [store, setStore] = useState(false);
-
+  const [upgrades, setUpgrades] = useState(true);
   const name = archNames.includes(archName) ? archName : archNames[0];
+  // An archetype goal only gets that archetype's upgrades (e.g. Throw Power only through Strong Arm).
+  const upLocked = useMemo(() => upgradeLocked(arch, pos, kind === "arch" ? name : undefined), [arch, pos, kind, name]);
+  const rules = useMemo(() => {
+    const why: Record<string, string> = {};
+    if (upgrades) for (const k of upLocked) why[k] = "in-game upgrades rarely raise";
+    if (store) for (const k of STORE_LOCKED) why[k] = "the store can't raise";
+    return { cap: store ? 91 : 99, locked: Object.keys(why), why };
+  }, [upgrades, upLocked, store]);
+
   const target: PathTarget | null = kind === "ovr" ? { kind, min: ovrGoal }
     : kind === "arch" ? { kind, name, min: archGoal }
     : ability && tierPick ? { kind, key: ability.key, tier: tierPick } : null;
-  const res = useMemo(() => target && fastestPath(target, { arch, pos, dev, ratings, offset, slots, abilities, labels }, store ? { cap: 91, locked: STORE_LOCKED } : { cap: 99, locked: [] }),
+  const res = useMemo(() => target && fastestPath(target, { arch, pos, dev, ratings, offset, slots, abilities, labels }, rules),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(target), arch, pos, dev, ratings, offset, slots, abilities, labels, store]);
+    [JSON.stringify(target), arch, pos, dev, ratings, offset, slots, abilities, labels, rules]);
   const after = res?.ok ? archetypeScores(arch, pos, res.ratings) : null;
   const afterOvr = after ? clamp(Math.round(bestOf(after)[1]) + offset) : null;
   const num = (v: number, set: (n: number) => void) => (
@@ -321,6 +339,7 @@ function FastestPath({ arch, pos, dev, ratings, offset, slots, abilities, labels
             </select>
           </label>
         </> : <span className="muted small">No abilities for {pos}s.</span>)}
+        <label className="ac-path-check" title="Leaves out ratings Madden's archetype upgrades rarely raise"><input type="checkbox" checked={upgrades} onChange={(e) => setUpgrades(e.target.checked)} /> In-game upgrades (no {upLocked.map((k) => SHORT[k] || labels[k] || k).join(", ")})</label>
         <label className="ac-path-check"><input type="checkbox" checked={store} onChange={(e) => setStore(e.target.checked)} /> Store rules (max 91, no THP, SPD, ACC, AGI, COD, STR, JMP)</label>
       </div>
       {res && (!res.ok ? <p className="ac-path-msg">Can&apos;t get there: {res.reason}.</p>
@@ -339,6 +358,8 @@ function FastestPath({ arch, pos, dev, ratings, offset, slots, abilities, labels
     </div>
   );
 }
+
+const SHORT: Record<string, string> = { speedRating: "SPD", accelRating: "ACC", agilityRating: "AGI", changeOfDirectionRating: "COD", strengthRating: "STR", jumpRating: "JMP", throwPowerRating: "THP" };
 
 const fmtMiss = (m: CalcShortfall) => (m.key === "slot" ? m.label : `${m.label} ${m.min}${m.have != null ? ` (has ${m.have})` : ""}`);
 

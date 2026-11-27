@@ -4,7 +4,8 @@
 // the server-side source for the Abilities pages.
 import { RATING_KEYS } from "./ratings";
 
-export type CalcFormula = { w: Record<string, number>; b: number };
+/** w/b: fitted score formula. k: Madden's key ratings for the archetype (what an in-game archetype upgrade raises). */
+export type CalcFormula = { w: Record<string, number>; b: number; k?: string[] };
 export type CalcArch = { positions: Record<string, string>; groups: Record<string, Record<string, CalcFormula>> };
 export type CalcTierName = "Bronze" | "Silver" | "Gold" | "Single";
 export type CalcReq = [type: "arch" | "rating" | "ovr", key: string, min: number];
@@ -114,7 +115,29 @@ export const tierRank = (t: CalcTierName | null | undefined) => (!t ? 0 : t === 
 
 /** Ratings the league store can't raise (NCL rules). */
 export const STORE_LOCKED = ["throwPowerRating", "speedRating", "accelRating", "agilityRating", "changeOfDirectionRating", "strengthRating", "jumpRating"];
-export type PathRules = { cap: number; locked: string[] };
+/**
+ * Ratings in-game archetype upgrades (almost) never raise. The fitted formulas still
+ * weight them heavily, since they matter for the overall, but a path built on them
+ * isn't one you can follow in game.
+ */
+export const UPGRADE_LOCKED = ["speedRating", "accelRating", "agilityRating", "changeOfDirectionRating"];
+/** Physical ratings that only move in game where they're one of the archetype's key ratings (e.g. STR for O-line pass protectors, JMP for man corners, THP for strong-arm QBs). */
+const UPGRADE_PHYSICAL = ["strengthRating", "jumpRating", "throwPowerRating"];
+
+/** Madden's key ratings for one archetype, or for every archetype at the position. */
+export function upgradeRatings(arch: CalcArch, pos: string, name?: string): string[] {
+  const f = arch.groups[arch.positions[pos]] || {};
+  return [...new Set((name ? [f[name]] : Object.values(f)).flatMap((x) => x?.k || []))];
+}
+
+/** Ratings the "In-game upgrades" path won't touch at this position (or when upgrading one archetype, if named). */
+export function upgradeLocked(arch: CalcArch, pos: string, name?: string): string[] {
+  const keys = new Set(upgradeRatings(arch, pos, name));
+  return [...UPGRADE_LOCKED, ...UPGRADE_PHYSICAL.filter((k) => !keys.has(k))];
+}
+
+/** cap: highest a rating may go. locked: ratings that can't move; why[key] says why (default: the store can't raise it). */
+export type PathRules = { cap: number; locked: string[]; why?: Record<string, string> };
 export type PathTarget =
   | { kind: "ovr"; min: number }
   | { kind: "arch"; name: string; min: number }
@@ -139,7 +162,7 @@ function solve(start: number[], mins: Map<number, number>, cons: { f: CalcFormul
   const capped = new Set<number>();
   for (const [i, min] of mins) {
     if (r[i] >= min) continue;
-    if (min > cap(i)) return { reason: `needs ${labels[RATING_KEYS[i]] || RATING_KEYS[i]} ${min}${locked.has(i) ? ", which the store can't raise" : `, above the ${rules.cap} cap`}` };
+    if (min > cap(i)) return { reason: `needs ${labels[RATING_KEYS[i]] || RATING_KEYS[i]} ${min}${locked.has(i) ? `, which ${rules.why?.[RATING_KEYS[i]] || "the store can't raise"}` : `, above the ${rules.cap} cap`}` };
     r[i] = min;
   }
   const weights = cons.map((c) => Object.entries(c.f.w).map(([k, w]) => [idx(k), w] as const).filter(([i, w]) => i >= 0 && w > 0));
