@@ -5,7 +5,7 @@
 //    /tradeblock action:Add|Remove player:<name> [note]: the team's manager (linked with /connect) or an admin.
 // The list itself lives in src/lib/league/tradeBlock.ts so the site and the bot agree.
 import type { LeagueData, Player } from "@/lib/league/types";
-import { DEV_LABEL } from "@/lib/league/types";
+import { devMark } from "./devEmoji";
 import { fullName } from "@/lib/league/derive";
 import { money } from "@/lib/league/format";
 import { gradePlayers } from "@/lib/league/tradeData";
@@ -26,7 +26,7 @@ const yrs = (n: number) => `${n} yr${n === 1 ? "" : "s"}`;
 export function blockLine(d: LeagueData, p: Player, slug: string, ur?: number, showTeam = true) {
   const c = p.contract;
   return `${p.pos} [${fullName(p)}](${APP_URL}/l/${slug}/players/${p.id})${showTeam ? ` · ${teamAbbr(d, p.team)}` : ""} · **${p.ovr}**`
-    + `${ur ? ` · UR ${ur}` : ""}${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age} · ${money(c.capHit)}, ${yrs(c.yearsLeft)} left`
+    + `${ur ? ` · UR ${ur}` : ""}${devMark(p.dev)} · age ${p.age} · ${money(c.capHit)}, ${yrs(c.yearsLeft)} left`
     + `${p.ir ? " · IR" : p.injury > 0 ? ` · inj ${p.injury} wk` : ""}`;
 }
 

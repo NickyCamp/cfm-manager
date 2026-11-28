@@ -4,7 +4,7 @@
 // contracts unchanged and neither side a practice squad (diffLeague decides). EA's export
 // has no draft-pick list, so picks only appear through the matched proposal. Pure: the worker posts.
 import type { LeagueData, Player } from "../league/types";
-import { DEV_LABEL } from "../league/types";
+import { devMark } from "./devEmoji";
 import { money } from "../league/format";
 import { hexColor, type Message } from "./api";
 import type { TradeChannels, TradeProposal } from "./tradeChannels";
@@ -37,7 +37,7 @@ export function tradeTransactionPosts(prev: LeagueData | null, next: LeagueData,
     (p.team === a ? g.toA : g.toB).push(p);
   }
   const approved = Object.values(st.proposals || {}).filter((p) => p.status === "approved").sort((x, y) => (y.decidedAt || "").localeCompare(x.decidedAt || ""));
-  const line = (p: Player) => `${p.pos} **${p.first} ${p.last}** · ${p.ovr} OVR${p.dev ? ` ${DEV_LABEL[p.dev]}` : ""} · ${money(p.contract.capHit)}${p.contract.yearsLeft ? `, ${p.contract.yearsLeft} yr${p.contract.yearsLeft === 1 ? "" : "s"}` : ""}`;
+  const line = (p: Player) => `${p.pos} **${p.first} ${p.last}** · ${p.ovr} OVR${devMark(p.dev, " ")} · ${money(p.contract.capHit)}${p.contract.yearsLeft ? `, ${p.contract.yearsLeft} yr${p.contract.yearsLeft === 1 ? "" : "s"}` : ""}`;
 
   const out: Message[] = [];
   for (const g of groups.values()) {

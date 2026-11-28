@@ -6,6 +6,7 @@ import { leagueShort, playerSeasons, seasonKey, seasonLabel, seasonLog, seasonRo
 import { realSeasonList } from "@/lib/league/realStats";
 import type { LeagueData, Player, Team } from "@/lib/league/types";
 import { DEV_LABEL } from "@/lib/league/types";
+import { devMark, devName, loadDevEmojis } from "@/lib/discord/devEmoji";
 import {
   capSeason,
   capYears, fullName, gamesForWeek, inferredDeadCap, record, seasonTotals, standings, streakText,
@@ -337,6 +338,7 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
 // ---------- commands ----------
 
 export async function runCommand(i: Interaction, base: string): Promise<Message> {
+  await loadDevEmojis(i.application_id);
   const w = unwrapLeague(i);
   if (w) {
     // /league league:<pick> command:<cmd> … (any league you're in, from any Discord)
@@ -396,7 +398,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
       const flags = [p.ps && "practice squad", p.ir && "IR", p.injury > 0 && `injured ${p.injury} wk`].filter(Boolean).join(" · ");
       return { embeds: [{
         title: fullName(p), url: url(`/players/${p.id}`), color: hexColor(t?.primary), footer,
-        description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR ${DEV_LABEL[p.dev]}${flags ? ` · ${flags}` : ""}`,
+        description: `${p.pos} · ${teamLabel(t)} · ${p.ovr} OVR · ${devName(p.dev)}${flags ? ` · ${flags}` : ""}`,
         image: { url: cardImageUrl(base, lg.slug, p.id, "both", `${d.pulledAt}|${p.nick ?? ""}`) },
       }] };
     }
@@ -887,7 +889,7 @@ async function packsLeaderboard(i: Interaction, lg: LinkedLeague, d: LeagueData,
   const me = stats.users[uid];
   const myPlace = top.findIndex((t) => t.uid === uid) + 1;
   const counts = [0, 1, 2, 3].map((dev) => d.players.filter((p) => !p.gone && p.team && !p.ps && p.dev === dev).length);
-  const odds = RARITY.map((r, k) => `${r.emoji} ${r.name} (${DEV_LABEL[k]}): ${(ODDS[k] / 10).toFixed(0)}% per card · ${r.points} pts · ${counts[k]} in the set`).join("\n");
+  const odds = RARITY.map((r, k) => `${r.emoji} ${r.name} (${devName(k)}): ${(ODDS[k] / 10).toFixed(0)}% per card · ${r.points} pts · ${counts[k]} in the set`).join("\n");
   return {
     title: "Craziest packs pulled", color: BRAND, footer,
     description: board.join("\n") || "Nobody has opened a pack yet. Run `/pack`!",
@@ -946,7 +948,7 @@ function playerEmbed(d: LeagueData, p: Player, url: Url, footer: Footer): Embed 
   const img = standInArt(p);
   return {
     title: fullName(p), url: url(`/players/${p.id}`), color: hexColor(t?.primary), footer,
-    description: [`**${p.pos} · ${teamLabel(t)}**${p.jersey ? ` · #${p.jersey}` : ""}`, `${p.ovr} OVR · ${DEV_LABEL[p.dev]} · Age ${p.age} · ${p.yearsPro ? `${p.yearsPro} yrs pro` : "Rookie"}`, flags].filter(Boolean).join("\n"),
+    description: [`**${p.pos} · ${teamLabel(t)}**${p.jersey ? ` · #${p.jersey}` : ""}`, `${p.ovr} OVR · ${devName(p.dev)} · Age ${p.age} · ${p.yearsPro ? `${p.yearsPro} yrs pro` : "Rookie"}`, flags].filter(Boolean).join("\n"),
     fields,
     thumbnail: img ? { url: img } : undefined,
   };
@@ -1077,13 +1079,13 @@ function leagueCapEmbed(d: LeagueData, url: Url, footer: Footer, year = capSeaso
 
 function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
   const roster = teamPlayers(d, t.id).filter((p) => !p.ps);
-  const best = [...roster].sort((a, b) => b.ovr - a.ovr).slice(0, 6).map((p) => `${p.pos} ${fullName(p)} **${p.ovr}**${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""}`);
+  const best = [...roster].sort((a, b) => b.ovr - a.ovr).slice(0, 6).map((p) => `${p.pos} ${fullName(p)} **${p.ovr}**${devMark(p.dev)}`);
   const next = d.games.find((g) => !g.final && (g.home === t.id || g.away === t.id) && g.home && g.away);
   const opp = next ? teamOf(d, next.home === t.id ? next.away : next.home) : undefined;
   // Dev trait counts on the active roster (Nick, 2026-11-19). EA's data has rookies' real dev, not Madden's hidden one.
   const devs = [0, 0, 0, 0];
   for (const p of roster) devs[p.dev ?? 0]++;
-  const devLine = ["Normal", "Star", "Superstar", "X-Factor"].map((n, k) => `${n} **${devs[k]}**`).join(" · ");
+  const devLine = devs.map((n, k) => `${devName(k)} **${n}**`).join(" · ");
   return {
     title: teamLabel(t), url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
     description: `${t.user ? `Run by **${t.user}**` : "CPU team"} · ${t.division} · ${t.ovr} OVR`,
@@ -1115,7 +1117,7 @@ function leaguePlayersEmbed(d: LeagueData, g: DiscordPosGroup | undefined, url: 
     const yl = p.contract.yearsLeft;
     return `${k + 1}. ${p.pos} ${link ? `[${fullName(p)}](${url(`/players/${p.id}`)})` : fullName(p)} · ${teamOf(d, p.team)?.abbr || "FA"}`
       + `${showVal ? ` · ${s.short} **${sortValue(p, s.key)}** · ${p.ovr} OVR` : ` · **${p.ovr}**`}`
-      + `${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age}`
+      + `${devMark(p.dev)} · age ${p.age}`
       + ` · ${money(p.contract.capHit)}, ${yl} yr${yl === 1 ? "" : "s"} left${flags.length ? ` · ${flags.join(" · ")}` : ""}`;
   };
   const top = rated.slice(0, LEAGUE_LIST);
@@ -1157,7 +1159,7 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url:
     const v = val(p);
     return `${sort ? `${k + 1}. ` : ""}${p.pos} ${link ? `[${fullName(p)}](${url(`/players/${p.id}`)})` : fullName(p)}`
       + `${showVal ? ` · ${sort!.short} **${v ?? "–"}**` : ""} · ${showVal ? "" : "**"}${p.ovr}${showVal ? " OVR" : "**"}`
-      + `${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · age ${p.age}`
+      + `${devMark(p.dev)} · age ${p.age}`
       + ` · ${money(p.contract.capHit)}, ${yl} yr${yl === 1 ? "" : "s"} left${flags.length ? ` · ${flags.join(" · ")}` : ""}`;
   };
   const active = all.filter((p) => !p.ps), ps = all.filter((p) => p.ps);
@@ -1234,7 +1236,7 @@ function expiringEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed 
   const byId = new Map(market.map((m) => [m.id, m]));
   const lines = top.map((p, k) => {
     const r = recommend(byId.get(p.id)!, market, d.askCal, askCapFor(d, capSeason(d) + p.contract.yearsLeft));
-    const head = `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}** · age ${p.age}${p.dev ? ` · ${DEV_LABEL[p.dev]}` : ""} · now ${money(p.contract.capHit)}`;
+    const head = `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)}) · **${p.ovr}** · age ${p.age}${devMark(p.dev)} · now ${money(p.contract.capHit)}`;
     const ds = p.desired && p.desired.length > 0 && p.desired.salary + p.desired.bonus > 0
       ? ` · Madden: ${money((p.desired.salary + p.desired.bonus) / p.desired.length)}/yr, ${p.desired.length} yrs` : "";
     const ask = r
@@ -1274,7 +1276,7 @@ function rookiesEmbed(d: LeagueData, t: Team | undefined, url: Url, footer: Foot
   const pick = (p: Player) => (p.draft.round > 0 && p.draft.round < 8 ? `Rd ${p.draft.round}, #${p.draft.pick}` : "Undrafted");
   const lines = rookies.map((p, k) => {
     const team = t ? "" : ` · ${teamOf(d, p.team)?.abbr || "FA"}`;
-    const extra = [p.dev ? DEV_LABEL[p.dev] : "", pick(p), p.ps ? "PS" : ""].filter(Boolean).join(" · ");
+    const extra = [devMark(p.dev, ""), pick(p), p.ps ? "PS" : ""].filter(Boolean).join(" · ");
     return `**${k + 1}.** ${p.pos} [${fullName(p)}](${url(`/players/${p.id}`)})${team} · **${p.ovr}** · ${extra}`;
   });
   // Discord caps an embed description at 4096 characters; a big class with links could pass it.

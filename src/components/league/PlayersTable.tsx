@@ -7,6 +7,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { RATING_KEYS, RATING_LABEL, type RatingKey } from "@/lib/league/ratings";
 import { RATING_GROUPS } from "@/lib/league/ratingGroups";
 import { DEV_LABEL } from "@/lib/league/types";
+import { DevIcon } from "./DevIcon";
 import { heightText, money } from "@/lib/league/format";
 
 export type TeamLite = { id: number; abbr: string; city: string; name: string; primary: string };
@@ -322,7 +323,7 @@ export function PlayersTable({ slug, teams, rows, initial }: { slug: string; tea
                   <td>{r.pos}</td>
                   <td className="num strong">{r.ovr}</td>
                   {pinned && <td className={`num rt pl-pinned ${ratingTone(r.r[pinIdx] ?? 0)}`}>{r.r[pinIdx] ?? "—"}</td>}
-                  <td className="nw">{r.dev ? <span className={`dev dev-${r.dev}`}>{DEV_LABEL[r.dev]}</span> : <span className="muted small">Normal</span>}</td>
+                  <td className="nw">{r.dev ? <span className={`dev dev-${r.dev}`}><DevIcon dev={r.dev} size={14} />{DEV_LABEL[r.dev]}</span> : <span className="muted small dev-name"><DevIcon dev={0} size={14} />Normal</span>}</td>
                   <td className="num">{r.age}</td>
                   <td className="num">{heightText(r.ht)}</td>
                   <td className="num">{r.wt}</td>

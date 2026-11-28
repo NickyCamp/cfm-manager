@@ -8,8 +8,9 @@ import { tradeKey, weekKey, weekOrder, type C, type TradePicks, type TxEvent, ty
 import { isCommissioner, viewer } from "@/lib/marketStore";
 import { leagueBySlug } from "@/lib/discord/links";
 import { TradePicksEditor } from "@/components/league/TradePicksEditor";
-import { DEV_LABEL, type Player, type Team } from "@/lib/league/types";
+import { type Player, type Team } from "@/lib/league/types";
 import { NoData, TeamBadge } from "@/components/league/bits";
+import { DevIcon, DevName } from "@/components/league/DevIcon";
 
 export const metadata: Metadata = { title: "Transactions" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ cat?: string; team?: string; all?: string }> };
@@ -135,7 +136,7 @@ function Who({ slug, e, players }: { slug: string; e: TxEvent; players: Map<numb
   const name = p ? <Link href={`/l/${slug}/players/${p.id}`}>{e.name}</Link> : <span>{e.name}</span>;
   return (
     <span className="tx-who">
-      <strong>{name}</strong> <span className="muted small">{e.pos}{e.ovr ? ` · ${e.ovr}` : ""}{e.age ? ` · ${e.age} yrs` : ""}{e.dev ? ` · ${DEV_LABEL[e.dev]}` : ""}</span>
+      <strong>{name}</strong> <span className="muted small">{e.pos}{e.ovr ? ` · ${e.ovr}` : ""}{e.age ? ` · ${e.age} yrs` : ""}{e.dev ? <> · <DevIcon dev={e.dev} size={14} /></> : ""}</span>
     </span>
   );
 }
@@ -248,7 +249,7 @@ function DevWeek({ slug, list, players, teams }: { slug: string; list: TxEvent[]
           <li key={e.id} className="tx-row">
             <span className={`tx-badge ${up ? "k-up" : "k-down"}`}>{up ? "Up" : "Down"}</span>
             <span className="tx-teams">{e.to ? <TeamBadge team={teams.get(e.to)} size={20} /> : null}</span>
-            <span className="tx-body"><Who slug={slug} e={{ ...e, dev: 0 }} players={players} /> {DEV_LABEL[e.change![0]]} → <strong className={up ? "pos" : "neg"}>{DEV_LABEL[e.change![1]]}</strong></span>
+            <span className="tx-body"><Who slug={slug} e={{ ...e, dev: 0 }} players={players} /> <DevName dev={e.change![0]} /> → <strong className={up ? "pos" : "neg"}><DevName dev={e.change![1]} /></strong></span>
           </li>
         );
       })}

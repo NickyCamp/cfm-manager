@@ -3,7 +3,7 @@
 // cuts, signings (added 2026-11-19), extensions, trades and position changes. This file is pure (prev build vs next build →
 // messages per channel); txChannels.ts makes the channels and the sync worker posts.
 import type { LeagueData, Player } from "../league/types";
-import { DEV_LABEL } from "../league/types";
+import { devMark, devName } from "./devEmoji";
 import { money } from "../league/format";
 import { weekTitle } from "../league/derive";
 import { RATING_KEYS, RATING_SHORT } from "../league/ratings";
@@ -106,7 +106,7 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
 
   // Dev trait changes.
   const dev = both.filter(([a, b]) => a.dev !== b.dev && rostered(b)).sort(([, x], [, y]) => y.dev - x.dev || y.ovr - x.ovr)
-    .map(([a, b]) => `${b.dev > a.dev ? "⬆️" : "⬇️"} ${who(b)}: ${DEV_LABEL[a.dev]} → **${DEV_LABEL[b.dev]}**`);
+    .map(([a, b]) => `${b.dev > a.dev ? "⬆️" : "⬇️"} ${who(b)}: ${devName(a.dev)} → **${devName(b.dev)}**`);
   if (dev.length) out.dev = list("dev", dev, url("/dev"));
 
   // Injuries: newly hurt, hurt again for longer, or moved on/off IR.
@@ -191,7 +191,7 @@ export function transactionPosts(prev: LeagueData | null, next: LeagueData, o: O
     if (e.kind === "released") {
       const old = before.get(e.p);
       const dead = old?.contract.releasePenalty || 0, saved = old ? old.contract.capHit - dead : 0;
-      cuts.push({ ovr: e.ovr, line: `✂️ ${abbr(e.from)} cut [**${e.name}**](${url(`/players/${e.p}`)}) (${e.pos}, ${e.ovr}${e.dev ? ` ${DEV_LABEL[e.dev as 0 | 1 | 2 | 3]}` : ""}, age ${e.age})${old ? ` · dead money ${money(dead)} · saves ${money(saved)}` : ""}` });
+      cuts.push({ ovr: e.ovr, line: `✂️ ${abbr(e.from)} cut [**${e.name}**](${url(`/players/${e.p}`)}) (${e.pos}, ${e.ovr}${devMark(e.dev as number | undefined, " ")}, age ${e.age})${old ? ` · dead money ${money(dead)} · saves ${money(saved)}` : ""}` });
     } else if (e.kind === "extended" || e.kind === "restructured") {
       ext.push({ ovr: e.ovr, line: contractLine(e, abbr, url) });
     }
@@ -212,7 +212,7 @@ const playerRef = (e: TxEvent, url: (p?: string) => string) => (e.p ? `[**${e.na
 
 /** "✍️ DAL signed Name (WR, 74 Star, age 27) · 2 yrs, $8.0M · $4.1M cap hit"; "off MIA's practice squad" when he came from one. */
 function signedLine(e: TxEvent, abbr: (id: number | undefined) => string, url: (p?: string) => string) {
-  const dev = e.dev ? ` ${DEV_LABEL[e.dev as 0 | 1 | 2 | 3]}` : "";
+  const dev = devMark(e.dev as number | undefined, " ");
   const from = e.from ? ` off ${abbr(e.from)}'s practice squad` : "";
   return `✍️ ${abbr(e.to)} signed ${playerRef(e, url)} (${e.pos}, ${e.ovr}${dev}, age ${e.age})${from}${e.after ? ` · ${deal(e.after)} · ${money(e.after[4])} cap hit` : ""}`;
 }
@@ -262,7 +262,7 @@ export function backlogPosts(h: LeagueHistory | null, prev: LeagueData | null, n
   const of = (...k: TxEvent["kind"][]) => events.filter((e) => k.includes(e.kind));
   const tm = (e: TxEvent) => abbr(e.to || e.from);
 
-  all("dev", byWeek(of("dev"), (e) => e.change ? `${e.change[1] > e.change[0] ? "⬆️" : "⬇️"} ${playerRef(e, url)} (${e.pos}, ${tm(e)}): ${DEV_LABEL[e.change[0] as 0] ?? e.change[0]} → **${DEV_LABEL[e.change[1] as 0] ?? e.change[1]}**` : null), url("/dev"));
+  all("dev", byWeek(of("dev"), (e) => e.change ? `${e.change[1] > e.change[0] ? "⬆️" : "⬇️"} ${playerRef(e, url)} (${e.pos}, ${tm(e)}): ${devName(e.change[0])} → **${devName(e.change[1])}**` : null), url("/dev"));
   const ovr = (up: boolean) => byWeek(of("rating"), (e) => e.change && (e.change[1] > e.change[0]) === up ? `${up ? "⬆️" : "⬇️"} ${playerRef(e, url)} (${e.pos}, ${tm(e)}) **${e.change[0]}→${e.change[1]} OVR**` : null);
   all("ratingsUp", ovr(true));
   all("ratingsDown", ovr(false));

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { getLeagueData } from "@/lib/league/load";
 import { indexes } from "@/lib/league/derive";
 import { buildDevTracker, DEV_GROUPS, DEV_RULES, STAR_STARTS, STAT_LABEL, STATUS_ORDER, SUPERSTAR_STARTS, type DevRow } from "@/lib/league/dev";
-import { DEV_LABEL } from "@/lib/league/types";
 import { NoData, PlayerLink, TeamBadge } from "@/components/league/bits";
+import { DevName } from "@/components/league/DevIcon";
 
 export const metadata: Metadata = { title: "Dev tracker" };
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pos?: string; all?: string; q?: string }> };
@@ -101,7 +101,7 @@ export default async function DevTracker({ params, searchParams }: Props) {
                       return (
                         <tr key={r.p.id}>
                           <td className="cap-name"><TeamBadge team={t} size={20} /> <PlayerLink slug={slug} player={r.p} /> <span className="muted small">{r.pos}</span></td>
-                          <td>{DEV_LABEL[r.p.dev]}</td>
+                          <td className="nw"><DevName dev={r.p.dev} /></td>
                           <td className="num">{r.gp}</td>
                           <td className="small">{r.stats.map((s) => <span key={s.id} className="rank-stat">{STAT_LABEL[s.id]} {Number.isInteger(s.value) ? s.value : s.value.toFixed(1)} <span className="muted">#{s.rank}</span></span>)}</td>
                           <td className="num strong">{r.avg}</td>
