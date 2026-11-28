@@ -14,7 +14,10 @@ function sig(slug: string, key: string, exp: number) {
 // version (pulledAt, plus anything else shown, like a nickname): a sync or edit gives a new link.
 const DAY = 86400;
 const expiry = () => (Math.floor(Date.now() / 1000 / DAY) + LINK_DAYS) * DAY;
-const ver = (v?: string) => (v ? `&v=${createHmac("sha1", "v").update(v).digest("base64url").slice(0, 10)}` : "");
+// LINK_GEN: bump to give every picture a new link, e.g. after links Discord gave up on (2026-11-28,
+// blank EML cards: Discord keeps showing a link blank once it timed out on it).
+const LINK_GEN = "2";
+const ver = (v?: string) => (v ? `&v=${createHmac("sha1", "v").update(`${LINK_GEN}|${v}`).digest("base64url").slice(0, 10)}` : "");
 
 /** side "both": front and back side by side. */
 export function cardImageUrl(base: string, slug: string, id: number, side: "front" | "both" = "front", v?: string) {
