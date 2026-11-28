@@ -22,6 +22,8 @@ const ANYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] };
 const player = { type: STRING, name: "player", description: "Start typing a name", required: true, autocomplete: true };
 const group = (required: boolean) => ({ type: STRING, name: "group", description: "Position group (OL, DL, DB…)", required, choices: DISCORD_POS_GROUPS.map((g) => ({ name: g.name, value: g.key })) });
 const rating = { type: STRING, name: "rating", description: "Sort by a rating: Overall, Speed, Throw Power… (start typing)", required: false, autocomplete: true };
+// Dev trait filter for /players (Nick, 2026-11-27). Values are EA's devTrait numbers.
+const dev = { type: STRING, name: "dev", description: "Only one development trait: Normal, Star, Superstar or X-Factor", required: false, choices: [{ name: "Normal", value: "0" }, { name: "Star", value: "1" }, { name: "Superstar", value: "2" }, { name: "X-Factor", value: "3" }] };
 const order = { type: STRING, name: "order", description: "Best to worst (default) or worst to best", required: false, choices: [{ name: "Best to worst", value: "desc" }, { name: "Worst to best", value: "asc" }] };
 const team = (required: boolean) => ({ type: STRING, name: "team", description: "Start typing a team", required, autocomplete: true });
 // /stats by (Nick, 2026-11-22): rank teams by their season total instead of players.
@@ -107,9 +109,9 @@ const PLAIN = [
   { name: "team", description: "A team's record, cap space and best players", ...ANYWHERE, options: [team(true)] },
   {
     name: "players",
-    description: "Players by team and/or position group, sorted by any rating; no team = the whole league",
+    description: "Players by team, position group and/or dev trait, sorted by any rating; no team = the whole league",
     ...ANYWHERE,
-    options: [{ ...team(false), description: "Start typing a team; leave empty for the whole league" }, group(false), rating, order],
+    options: [{ ...team(false), description: "Start typing a team; leave empty for the whole league" }, group(false), dev, rating, order],
   },
   { name: "expiring", description: "A team's top 10 expiring contracts by overall, with each player's projected ask", ...ANYWHERE, options: [team(true)] },
   { name: "rookie", description: "Top 10 rookies by overall, or a team's whole class; pick a team and/or a draft year", ...ANYWHERE, options: [team(false), { type: INTEGER, name: "year", description: "Draft class year, e.g. 2027 (default: the newest class)", required: false, min_value: 2000, max_value: 2100 }] },
@@ -201,6 +203,7 @@ export const COMMANDS = [
       { ...group(false), description: "Players in one position group (OL, DL, DB…); with the team box, just that team" },
       { ...rating, description: "Sort players by a rating (start typing); add team or group to narrow it" },
       { ...order, description: "With rating: best to worst (default) or worst to best" },
+      { ...dev, description: "Players of one dev trait (Normal, Star, Superstar, X-Factor); add team or group to narrow it" },
       { ...STATS_BY, description: "For stats: Players (top 10, default) or Teams (every team ranked by its total)" },
       { type: INTEGER, name: "week", description: "For tws/scores: week 1-18; tws playoffs 19 WC, 20 Div, 21 Conf, 22 SB", required: false, min_value: 1, max_value: 22 },
       { type: INTEGER, name: "preseason", description: "For tws: a preseason week (1-4) instead of a regular-season week", required: false, min_value: 1, max_value: 4 },

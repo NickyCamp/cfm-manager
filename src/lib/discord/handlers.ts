@@ -245,7 +245,7 @@ const LEAGUE_PICK_CMDS = new Set(["player", "gamelog", "yearlog", "contract", "c
 // Boxes that are a command themselves, and which plain-command option their value becomes.
 const BOX_CMDS: [box: string, cmd: string, as: string][] = [["tws", "tws", "team"], ["stats", "stats", "category"], ["cap", "cap", "team"], ["contract", "contract", "player"], ["player", "player", "player"], ["team", "team", "team"]];
 // Which helper boxes each command also reads.
-const EXTRA: Record<string, string[]> = { players: ["group", "rating", "order"], tws: ["week", "preseason"], stats: ["team", "by"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"], gamelog: ["player", "year"], yearlog: ["player"] };
+const EXTRA: Record<string, string[]> = { players: ["group", "dev", "rating", "order"], tws: ["week", "preseason"], stats: ["team", "by"], cap: ["year"], scores: ["week"], schedule: ["team", "week"], rookie: ["team", "year"], expiring: ["team"], funfact: ["player", "team"], gamelog: ["player", "year"], yearlog: ["player"] };
 
 /**
  * /league league:<slug> <box>:<value> …  →  the plain command with its own options, plus the picked league.
@@ -266,8 +266,8 @@ function unwrapLeague(i: Interaction): { cmd: string; pick: string; focused?: st
   const more = String(get("more")?.value ?? "");
   const box = more ? undefined : BOX_CMDS.find(([b]) => get(b));
   // The team box plus the group, rating or order box = that team's players (/players).
-  // The group, rating or order box alone = league-wide /players.
-  const listing = get("group") || get("rating") || get("order");
+  // The group, dev, rating or order box alone = league-wide /players.
+  const listing = get("group") || get("dev") || get("rating") || get("order");
   const cmd = more || ((!box || box[0] === "team") && listing ? "players" : box?.[1]) || "info";
   const own = box ? [{ ...get(box[0])!, name: box[2] }] : [];
   const extra = opts.filter((o) => (EXTRA[cmd] || []).includes(o.name) && !own.some((x) => x.name === o.name));
@@ -448,8 +448,12 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         if (!r) return reply(`No rating called **${rv}**. Start typing in the rating box and pick one from the list.`);
         sort = { ...r, dir: ov === "asc" ? "asc" : "desc" };
       }
-      if (!t) return { embeds: [leaguePlayersEmbed(d, g, url, footer, sort)] };
-      return { embeds: [groupEmbed(d, t, g, url, footer, sort)] };
+      // Dev trait filter (Nick, 2026-11-27): 0 Normal, 1 Star, 2 Superstar, 3 X-Factor.
+      const dv = String(opt(i, "dev") ?? "");
+      const dev = dv !== "" && /^[0-3]$/.test(dv) ? Number(dv) : undefined;
+      if (dv !== "" && dev == null) return reply("Pick a dev trait: Normal, Star, Superstar or X-Factor.");
+      if (!t) return { embeds: [leaguePlayersEmbed(d, g, url, footer, sort, dev)] };
+      return { embeds: [groupEmbed(d, t, g, url, footer, sort, dev)] };
     }
     case "rookie": {
       const v = opt(i, "team");
@@ -1096,9 +1100,10 @@ function teamEmbed(d: LeagueData, t: Team, url: Url, footer: Footer): Embed {
 /** /players with no team: the league's top 25 rostered players (one position group or everyone) by a rating,
  *  OVR best to worst by default. Free agents left out; practice squad flagged. Nick, 2026-11-18. */
 const LEAGUE_LIST = 25;
-function leaguePlayersEmbed(d: LeagueData, g: DiscordPosGroup | undefined, url: Url, footer: Footer, sort?: PlayerSort): Embed {
+function leaguePlayersEmbed(d: LeagueData, g: DiscordPosGroup | undefined, url: Url, footer: Footer, sort?: PlayerSort, dev?: number): Embed {
   const s: PlayerSort = sort ?? { ...findSortRating("")!, dir: "desc" };
-  const pool = d.players.filter((p) => p.team > 0 && !p.gone && (!g || g.positions.includes(p.pos)));
+  const pool = d.players.filter((p) => p.team > 0 && !p.gone && (!g || g.positions.includes(p.pos)) && (dev == null || (p.dev ?? 0) === dev));
+  const what = `${dev != null ? `${DEV_LABEL[dev]} ` : ""}${g ? g.name : "players"}`;
   const rated = pool.filter((p) => sortValue(p, s.key) != null);
   rated.sort((a, b) => {
     const va = sortValue(a, s.key)!, vb = sortValue(b, s.key)!;
@@ -1114,14 +1119,14 @@ function leaguePlayersEmbed(d: LeagueData, g: DiscordPosGroup | undefined, url: 
       + ` · ${money(p.contract.capHit)}, ${yl} yr${yl === 1 ? "" : "s"} left${flags.length ? ` · ${flags.join(" · ")}` : ""}`;
   };
   const top = rated.slice(0, LEAGUE_LIST);
-  const head = `${s.dir === "asc" ? "Bottom" : "Top"} ${top.length} of ${rated.length} rostered ${g ? g.name : "players"} league-wide by ${s.label}, `
+  const head = `${s.dir === "asc" ? "Bottom" : "Top"} ${top.length} of ${rated.length} rostered ${what} league-wide by ${s.label}, `
     + `${s.dir === "asc" ? "worst to best" : "best to worst"}.${rated.length < pool.length ? `\n-# ${pool.length - rated.length} without ratings in this build left out.` : ""}`;
   let desc = `${head}\n\n${top.map((p, k) => line(p, k, true)).join("\n")}`;
   if (desc.length > 4000) desc = `${head}\n\n${top.map((p, k) => line(p, k, false)).join("\n")}`;
   return {
-    title: `League ${g ? g.label.toLowerCase() : "players"} by ${s.short}`,
+    title: `League ${dev != null ? `${DEV_LABEL[dev]} ` : ""}${g ? g.label.toLowerCase() : "players"} by ${s.short}`,
     url: url("/players"), color: BRAND, footer,
-    description: top.length ? desc : `No rostered ${g ? g.name : "players"} found.`,
+    description: top.length ? desc : `No rostered ${what} found.`,
   };
 }
 
@@ -1132,7 +1137,7 @@ const ALL_POSITIONS = [...new Set(DISCORD_POS_GROUPS.flatMap((x) => x.positions)
  *  group is empty), practice squad last. Default order is a depth chart (position, then OVR); with a rating or
  *  order picked it's that rating, best to worst or worst to best. A group also gets its league rank.
  *  Nick, 2026-11-18. */
-function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url: Url, footer: Footer, sort?: PlayerSort): Embed {
+function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url: Url, footer: Footer, sort?: PlayerSort, dev?: number): Embed {
   const positions = g?.positions ?? ALL_POSITIONS;
   const order = (p: Player) => { const k = positions.indexOf(p.pos); return k < 0 ? 99 : k; };
   const val = (p: Player) => (sort ? sortValue(p, sort.key) : null);
@@ -1142,7 +1147,8 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url:
     if (va == null || vb == null) return va == null && vb == null ? b.ovr - a.ovr : va == null ? 1 : -1;
     return (sort!.dir === "asc" ? va - vb : vb - va) || b.ovr - a.ovr;
   };
-  const all = teamPlayers(d, t.id).filter((p) => !g || g.positions.includes(p.pos))
+  // The dev filter narrows the list and summary only; the league rank below still uses the whole group.
+  const all = teamPlayers(d, t.id).filter((p) => (!g || g.positions.includes(p.pos)) && (dev == null || (p.dev ?? 0) === dev))
     .sort((a, b) => Number(a.ps) - Number(b.ps) || (sort ? bySort(a, b) : order(a) - order(b) || b.ovr - a.ovr));
   const showVal = sort && sort.key !== "ovr";
   const line = (p: Player, k: number, link = true) => {
@@ -1158,9 +1164,10 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url:
   const cap = active.reduce((a, p) => a + p.contract.capHit, 0);
   const avg = active.length ? Math.round(active.reduce((a, p) => a + p.ovr, 0) / active.length) : 0;
   const sortNote = sort ? `\n-# Sorted by ${sort.label}, ${sort.dir === "asc" ? "worst to best" : "best to worst"}.` : "";
+  const devNote = dev != null ? ` ${DEV_LABEL[dev]}` : "";
   const head = active.length
-    ? `${active.length} on the active roster · avg ${avg} OVR · ${money(cap)} in cap hits this season${sortNote}`
-    : `No ${g ? g.name : "players"} on the ${teamLabel(t)} active roster.`;
+    ? `${active.length} on the active roster${dev != null ? ` (${DEV_LABEL[dev]} only)` : ""} · avg ${avg} OVR · ${money(cap)} in cap hits this season${sortNote}`
+    : `No${devNote} ${g ? g.name : "players"} on the ${teamLabel(t)} active roster.`;
   // Where this group ranks: every team's starters in the group by average OVR (Nick, 2026-11-18). Groups only.
   let rankBlock = "";
   if (g) {
@@ -1204,7 +1211,7 @@ function groupEmbed(d: LeagueData, t: Team, g: DiscordPosGroup | undefined, url:
   if (left > 0) ({ out: desc, left } = build(false));
   if (left > 0) desc += `\n-# +${left} more on the [team page](${url(`/teams/${t.abbr.toLowerCase()}`)}).`;
   return {
-    title: `${teamLabel(t)}: ${g ? g.label : "Roster"}${sort ? ` by ${sort.short}` : ""}`,
+    title: `${teamLabel(t)}: ${dev != null ? `${DEV_LABEL[dev]} ` : ""}${g ? g.label : dev != null ? "players" : "Roster"}${sort ? ` by ${sort.short}` : ""}`,
     url: url(`/teams/${t.abbr.toLowerCase()}`), color: hexColor(t.primary), footer,
     description: desc,
   };
