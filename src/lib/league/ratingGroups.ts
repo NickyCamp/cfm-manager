@@ -25,6 +25,9 @@ const FIRST: Record<string, string[]> = {
   K: ["Special teams"], P: ["Special teams"],
 };
 
+/** The rating groups that matter most for a position, in order (Physical not included). */
+export const ratingFocus = (pos: string): string[] => FIRST[pos] || [];
+
 export type RatingRow = { key: RatingKey; label: string; value: number };
 
 /** The player's ratings in groups, most relevant first. Empty if this build has no ratings. */
