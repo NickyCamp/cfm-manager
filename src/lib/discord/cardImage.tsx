@@ -355,7 +355,7 @@ export async function renderCard(p: PlayerCardProps, art?: string, cutout = fals
 /** Downloads an image and returns it as a data: URL Satori can draw (null if it isn't a PNG/JPEG). */
 export async function imageDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { headers: { accept: "image/png,image/jpeg" }, cache: "no-store" });
+    const res = await fetch(url, { headers: { accept: "image/png,image/jpeg" }, cache: "no-store", signal: AbortSignal.timeout(6000) }); // a stuck CDN falls back to the next art, not a blank card
     if (!res.ok) return null;
     const type = (res.headers.get("content-type") || "").split(";")[0];
     if (!/^image\/(png|jpeg)$/.test(type)) return null;

@@ -20,6 +20,31 @@ export const maxDuration = 300; // /alertvideo copies a video of up to 10 MB; /m
 
 const PING = 1, COMMAND = 2, COMPONENT = 3, AUTOCOMPLETE = 4, MODAL_SUBMIT = 5;
 
+/**
+ * Draws a reply's own pictures (/player card, /pack, /stats…) before the reply is shown.
+ * Discord gives up on an embed image after a few seconds and then keeps showing it blank for
+ * that link. A cold server (a league nobody has used for a while: load its data, fonts, frames,
+ * headshot) can take longer than that, so quieter leagues like EML got blank cards while NCL,
+ * used all day, didn't. Fetching the link here first leaves the finished PNG in Vercel's cache
+ * (the image routes send s-maxage), so Discord's own fetch is answered at once.
+ */
+async function warmImages(msg: Message, base: string) {
+  const urls = (msg.embeds ?? []).flatMap((e) => [e.image?.url, e.thumbnail?.url]).filter((u): u is string => !!u && u.startsWith(`${base}/api/discord/`));
+  if (!urls.length) return;
+  const t0 = Date.now();
+  await Promise.all(urls.map(async (u) => {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(25_000) });
+      await r.arrayBuffer();
+      if (!r.ok) console.error("discord image warm-up", r.status, u.split("?")[0]);
+    } catch (e) {
+      console.error("discord image warm-up failed", u.split("?")[0], (e as Error).message);
+    }
+  }));
+  const ms = Date.now() - t0;
+  if (ms > 3000) console.log("discord image warm-up took", ms, "ms", urls.map((u) => u.split("?")[0]).join(", "));
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const ok = verifyDiscordRequest(body, req.headers.get("x-signature-ed25519"), req.headers.get("x-signature-timestamp"), process.env.DISCORD_PUBLIC_KEY || "");
@@ -180,6 +205,7 @@ export async function POST(req: Request) {
         const msg = await runCommand(i, base);
         // e.g. /cap showing a team under water plays the league's over-the-cap video.
         const file = msg.video ? await loadAlertVideo(msg.video).catch(() => undefined) : undefined;
+        await warmImages(msg, base);
         await editOriginal(i.application_id, i.token, msg, file);
         // e.g. /sync: wait for the run to finish, then update the same reply.
         const next = msg.followUp ? await msg.followUp().catch(() => null) : null;
