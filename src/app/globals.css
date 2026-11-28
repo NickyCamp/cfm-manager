@@ -1790,3 +1790,8 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 /* Player page Stats tab: career table (2026-11-24) */
 .career-tbl tr.row-on td { background: rgba(242, 194, 0, 0.12); }
 .career-tbl td a { font-weight: 600; }
+
+/* Dev trait icons (public/dev, Nick 2026-11-28) */
+.dev-ico { display: inline-block; vertical-align: -3px; object-fit: contain; flex: none; }
+.dev .dev-ico { margin-right: 3px; vertical-align: -2px; }
+.dev-name { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }

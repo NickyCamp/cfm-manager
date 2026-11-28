@@ -7,7 +7,8 @@ import { PlayerStats } from "@/components/league/PlayerStats";
 import { capSeason, indexes } from "@/lib/league/derive";
 import { heightText, money, onColor, pct } from "@/lib/league/format";
 import { DevTag, NoData, TeamBadge } from "@/components/league/bits";
-import { DEV_LABEL, type LeagueData, type Player } from "@/lib/league/types";
+import { DevName } from "@/components/league/DevIcon";
+import { type LeagueData, type Player } from "@/lib/league/types";
 import { ratingGroups } from "@/lib/league/ratingGroups";
 import { isCapSet, leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { projectPlayer } from "@/lib/league/projection";
@@ -77,7 +78,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               <h2>{p.first} {p.last}</h2>
               {p.nick && <div className="tb-nick">&ldquo;{p.nick}&rdquo;</div>}
               <div className="tb-meta">
-                <span>{p.pos}</span><span>{p.ovr} OVR</span><span>{DEV_LABEL[p.dev]}</span><span>Age {p.age}</span>
+                <span>{p.pos}</span><span>{p.ovr} OVR</span><span><DevName dev={p.dev} /></span><span>Age {p.age}</span>
                 <span>{heightText(p.height)}, {p.weight} lb</span>
                 {p.college && <span>{p.college}</span>}
               </div>

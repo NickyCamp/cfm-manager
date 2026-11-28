@@ -36,6 +36,7 @@ import { resolvePortraits } from "../src/lib/league/portraits";
 import type { LeagueData } from "../src/lib/league/types";
 import { leagueChanges } from "../src/lib/discord/changes";
 import { approvedTradePlayers, tradeTransactionPosts } from "../src/lib/discord/tradeTransactions";
+import { loadDevEmojis } from "../src/lib/discord/devEmoji";
 import type { TradeChannels } from "../src/lib/discord/tradeChannels";
 import { TX_CHANNELS, backlogPosts, transactionPosts, type TxChannelsState, type TxKey } from "../src/lib/discord/txPosts";
 import { maddenBlockChanges, type TradeBlockState } from "../src/lib/league/tradeBlock";
@@ -93,6 +94,7 @@ async function postTradeTransactions(lg: League, prev: LeagueData | null, data: 
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!st?.transactionsId || !token) return;
   try {
+    await loadDevEmojis();
     const msgs = tradeTransactionPosts(prev, data, st, lg.settings?.discord?.guildId, APP_URL, lg.slug);
     for (const m of msgs) {
       const err = await postToChannel(token, st.transactionsId, m);
@@ -129,6 +131,7 @@ async function postTransactionChannels(lg: League, prev: LeagueData | null, data
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!st?.channels || !token) return;
   try {
+    await loadDevEmojis();
     const opts = { appUrl: APP_URL, slug: lg.slug, leagueName: lg.name, trade: lg.settings?.tradeChannels || null, guildId: lg.settings?.discord?.guildId, tradePicks: lg.settings?.tradePicks };
     const byKey = transactionPosts(prev, data, opts);
     // New channels (or "Repost history"): everything the site already saved goes first, oldest first.

@@ -5,6 +5,7 @@ import { onColor } from "@/lib/league/format";
 import { record } from "@/lib/league/derive";
 import { FlapNumber } from "@/components/league/FlapNumber";
 import { logoVar, teamLogo } from "@/lib/league/logos";
+import { DevIcon } from "./DevIcon";
 
 export function TeamBadge({ team, size = 28 }: { team: Team | undefined; size?: number }) {
   if (!team) return <span className="team-badge tbd" style={{ width: size, height: size }}>?</span>;
@@ -34,7 +35,7 @@ export function PlayerLink({ slug, player }: { slug: string; player: Player | un
 
 export function DevTag({ dev }: { dev: number }) {
   if (!dev) return null;
-  return <span className={`dev dev-${dev}`} title={DEV_LABEL[dev]}>{DEV_LABEL[dev]}</span>;
+  return <span className={`dev dev-${dev}`} title={DEV_LABEL[dev]}><DevIcon dev={dev} size={14} />{DEV_LABEL[dev]}</span>;
 }
 
 export function GameCard({ slug, game, teams }: { slug: string; game: Game; teams: Map<number, Team> }) {
