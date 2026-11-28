@@ -31,7 +31,7 @@ const byName = (n: string) => ALL.find((c) => c.name === n.replace(/^\//, "").tr
 // The overview's groups, in order. Commands missing from every group go under "Other".
 const GROUPS: [string, string[]][] = [
   ["🚀 Start here", ["help", "web", "myleague", "connect", "league"]],
-  ["🏈 Players and teams", ["player", "gamelog", "yearlog", "contract", "amnesty", "team", "players", "rookie", "expiring"]],
+  ["🏈 Players and teams", ["player", "compare", "gamelog", "yearlog", "contract", "amnesty", "team", "players", "rookie", "expiring"]],
   ["💰 Cap", ["cap"]],
   ["📊 Games and stats", ["tws", "scores", "schedule", "streamlink", "live", "redzone", "standings", "playoffs", "stats", "funfact", "sync"]],
   ["🔁 Trades", ["trade", "tradeblock"]],

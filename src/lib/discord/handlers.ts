@@ -18,10 +18,11 @@ import { leagueCap, projectedLeagueCap } from "@/lib/league/cap";
 import { playoffPicture, recText } from "@/lib/league/playoffs";
 import { askCapHits, recommend, type MarketPlayer } from "@/lib/league/recommend";
 import { standInArt } from "@/lib/league/headshots";
-import { amnestyImageUrl, cardImageUrl, logImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
+import { amnestyImageUrl, cardImageUrl, compareImageUrl, logImageUrl, matchupImageUrl, packImageUrl, statsImageUrl } from "./cardLink";
 import { ODDS, PACK_SIZE, RARITY, cardPoints, luckLabel, openPack, packHits, recordTopPack } from "./packs";
 import { loadPackStats, savePackStats } from "./packStore";
 import { DISCORD_POS_GROUPS, findSortRating, groupStarters, sortRatingChoices, sortValue, type DiscordPosGroup, type PlayerSort } from "./posGroups";
+import { comparePlayers, seasonKeyFor, type CompareBy, type CompareView } from "./compare";
 import { STAT_CATS, statLeaders, type StatCat } from "./stats";
 import { pickFact, playerFacts, remember, teamFacts } from "./funfacts";
 import { mergeQuips, resolveQuipsWild, type QuipMemory } from "./factFormat";
@@ -240,6 +241,54 @@ export async function yearLogCmd(lg: LinkedLeague, d: LeagueData, p: Player, url
   }] };
 }
 
+// ---------- /compare (Nick, 2026-11-28) ----------
+
+/** The year box: this league's seasons, then the real NFL seasons either player has. */
+async function compareYears(lg: LinkedLeague, d: LeagueData, p1: unknown, p2: unknown, q: string) {
+  const league = leagueShort(lg.name, lg.slug);
+  const years = [d.season.year, ...(await pastYears(lg.slug, d))];
+  const out = years.map((y) => ({ name: `${y} ${league}`, value: String(y) }));
+  const players = [p1, p2].map((x) => (x ? findPlayer(d, x) : undefined)).filter((p): p is Player => Boolean(p));
+  const nfl = [...new Set(players.flatMap((p) => realSeasonList(p)))].sort((a, b) => b - a);
+  for (const y of nfl) out.push({ name: `${y} NFL (real games)`, value: `nfl-${y}` });
+  const n = norm(q);
+  return out.filter((c) => !n || norm(c.name).includes(n)).slice(0, 25);
+}
+
+async function compareCmd(i: Interaction, lg: LinkedLeague, d: LeagueData, url: (path?: string) => string, footer: Embed["footer"], base: string): Promise<Message> {
+  const a = findPlayer(d, opt(i, "player1")), b = findPlayer(d, opt(i, "player2"));
+  if (!a || !b) return reply(`No player by that name${!a && !b ? " (either box)" : ""}. Pick both from the list as you type.`);
+  if (a.id === b.id) return reply("Pick two different players.");
+  const by: CompareBy = opt(i, "by") === "ratings" ? "ratings" : "stats";
+  const year = String(opt(i, "year") ?? "").trim() || undefined;
+  // A year with no stats choice means that season; totals ignore the year.
+  const view = (["season", "career", "all"].includes(String(opt(i, "stats"))) ? opt(i, "stats") : "season") as CompareView;
+  const league = leagueShort(lg.name, lg.slug);
+  let key = String(d.season.year);
+  if (by === "stats" && view === "season" && year) {
+    const [sa, sb] = await Promise.all([playerSeasons(lg.slug, d, a), playerSeasons(lg.slug, d, b)]);
+    const k = seasonKeyFor(d, sa, sb, year);
+    if (!k) return reply(`Neither player has a ${year} season. League seasons: ${[d.season.year, ...(await pastYears(lg.slug, d))].join(", ")}; real NFL seasons run 2004-2025.`);
+    key = k;
+  }
+  const c = await comparePlayers(lg.slug, d, league, a, b, by, view, key);
+  if (typeof c === "string") return reply(c);
+  const ta = teamOf(d, a.team), tb = teamOf(d, b.team);
+  const [ea, eb] = c.edges;
+  const lead = ea === eb ? `Even: ${ea} rows each` : `**${ea > eb ? fullName(a) : fullName(b)}** wins ${Math.max(ea, eb)} rows to ${Math.min(ea, eb)}`;
+  const ignored = by === "stats" && view !== "season" && year ? ` · year ignored for totals` : by === "ratings" && (year || opt(i, "stats")) ? " · stats options ignored for ratings" : "";
+  return { embeds: [{
+    title: `${fullName(a)} vs ${fullName(b)}`,
+    color: hexColor((ea >= eb ? ta : tb)?.primary),
+    description: [
+      `[${fullName(a)}](${url(`/players/${a.id}`)}) · ${a.pos} · ${ta?.abbr ?? "FA"}  vs  [${fullName(b)}](${url(`/players/${b.id}`)}) · ${b.pos} · ${tb?.abbr ?? "FA"}`,
+      `${c.title} · ${lead}${ignored}`,
+    ].join("\n"),
+    image: { url: compareImageUrl(base, lg.slug, a.id, b.id, by, by === "ratings" ? "season" : view, key, `${d.pulledAt}|${a.nick ?? ""}|${b.nick ?? ""}`) },
+    footer,
+  }] };
+}
+
 // ---------- /league: the same commands for any league you're in ----------
 
 const LEAGUE_PICK_CMDS = new Set(["player", "gamelog", "yearlog", "contract", "cap", "team", "players", "rookie", "expiring", "tws", "stats", "funfact", "standings", "playoffs", "scores", "schedule", "pack", "packs", "sync", "info"]);
@@ -321,6 +370,7 @@ export async function autocomplete(i: Interaction): Promise<{ name: string; valu
   const q = String(focused?.value ?? "");
   if (i.data?.name === "set") return setChoices(lg, d, (i as { sub?: string }).sub, focused?.name || "", q, opt(i, "game"));
   if (focused?.name === "year" && i.data?.name === "gamelog") return gamelogYears(lg, d, opt(i, "player"), q);
+  if (focused?.name === "year" && i.data?.name === "compare") return compareYears(lg, d, opt(i, "player1"), opt(i, "player2"), q);
   if (focused?.name === "team") {
     const n = norm(q);
     return [...d.teams]
@@ -402,6 +452,7 @@ export async function runCommand(i: Interaction, base: string): Promise<Message>
         image: { url: cardImageUrl(base, lg.slug, p.id, "both", `${d.pulledAt}|${p.nick ?? ""}`) },
       }] };
     }
+    case "compare": return compareCmd(i, lg, d, url, footer, base);
     case "gamelog":
     case "yearlog": {
       const p = findPlayer(d, opt(i, "player"));

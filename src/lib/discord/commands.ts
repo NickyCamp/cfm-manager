@@ -97,6 +97,21 @@ const PLAIN = [
     ...ANYWHERE,
     options: [player, { type: STRING, name: "year", description: "Season (pick after the player; default: his latest)", required: false, autocomplete: true }],
   },
+  // /compare (Nick, 2026-11-28): two players side by side like Stathead, by stats (a season or totals) or by ratings.
+  {
+    name: "compare",
+    description: "Compare two players side by side, by stats (a season or career totals) or by Madden ratings",
+    ...ANYWHERE,
+    options: [
+      { ...player, name: "player1", description: "First player (start typing a name)" },
+      { ...player, name: "player2", description: "Second player (start typing a name)" },
+      { type: STRING, name: "by", description: "Stats (default) or Madden ratings", required: false,
+        choices: [{ name: "Stats", value: "stats" }, { name: "Madden ratings", value: "ratings" }] },
+      { type: STRING, name: "stats", description: "Season stats (default) or career totals", required: false,
+        choices: [{ name: "Season", value: "season" }, { name: "Career totals (league)", value: "career" }, { name: "Career totals + real NFL seasons", value: "all" }] },
+      { type: STRING, name: "year", description: "Season for season stats (default: the current season); league years or real NFL years", required: false, autocomplete: true },
+    ],
+  },
   { name: "yearlog", description: "A player's stats year by year: every league season, then real NFL seasons", ...ANYWHERE, options: [player] },
   // /amnesty (Nick, 2026-11-20): his full contract, then the new contract that makes a cut cost exactly 50%.
   { name: "amnesty", description: "50% amnesty: a player's contract and the rebuilt deal: 50% in 1 season, or 25% + 25% over 2", ...ANYWHERE, options: [player] },

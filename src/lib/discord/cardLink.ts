@@ -57,3 +57,9 @@ export function logImageUrl(base: string, slug: string, playerId: number, season
   const exp = expiry(), key = `log${playerId}-${season}`;
   return `${base}/api/discord/log?l=${encodeURIComponent(slug)}&p=${playerId}&y=${encodeURIComponent(season)}&e=${exp}&s=${sig(slug, key, exp)}${ver(v)}`;
 }
+
+/** The /compare picture: two players, by stats or ratings, a span (season/career/all) and a season key. */
+export function compareImageUrl(base: string, slug: string, a: number, b: number, by: string, view: string, season: string, v?: string) {
+  const exp = expiry(), key = `cmp${a}-${b}-${by}-${view}-${season}`;
+  return `${base}/api/discord/compare?l=${encodeURIComponent(slug)}&a=${a}&b=${b}&m=${by}&w=${view}&y=${encodeURIComponent(season)}&e=${exp}&s=${sig(slug, key, exp)}${ver(v)}`;
+}

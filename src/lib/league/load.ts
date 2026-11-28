@@ -173,6 +173,18 @@ export function forgetLeagueData(slug: string) {
 type Forced = Record<string, { kind: "win" | "loss" | "sim" | "dc" | "played"; team?: number; activity?: number | number[] }>;
 /** From leagues.settings for this season: Madden's award winners a commissioner entered (awards[year])
  *  and the results admins forced with /set (forcedGames[year]). */
+/** Madden's award winners for every season a commissioner entered them: year → market key → player id. */
+export const leagueAwardsByYear = cache(async (slug: string): Promise<Record<string, Record<string, string>>> => {
+  if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return {};
+  try {
+    const { data } = await supabaseAdmin().from("leagues").select("settings").eq("slug", slug).maybeSingle();
+    return (data?.settings as { awards?: Record<string, Record<string, string>> } | null)?.awards ?? {};
+  } catch (e) {
+    console.error("league awards load failed", slug, (e as Error).message);
+    return {};
+  }
+});
+
 async function leagueOverlays(slug: string, year: number): Promise<{ awards: Record<string, string> | null; forced: Forced | null; simSeen?: unknown }> {
   if (process.env.LOCAL_LEAGUE_DATA || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { awards: null, forced: null };
   try {
